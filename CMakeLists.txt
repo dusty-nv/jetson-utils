@@ -72,20 +72,20 @@ foreach(include ${jetsonUtilityIncludes})
 	configure_file(${include} ${PROJECT_INCLUDE_DIR} COPYONLY)
 endforeach()
 	
+# copy image data
+file(GLOB imageData ${PROJECT_SOURCE_DIR}/data/images/*)
+
+foreach(image ${imageData})
+	message("-- Copying ${image}")
+	file(COPY ${image} DESTINATION ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
+	#configure_file(${include} ${CMAKE_RUNTIME_OUTPUT_DIRECTORY} COPYONLY)
+endforeach()
+	
 	
 # post-build standalone steps
 if(hasParent)
 	# nop
-else()
-	# copy image data
-	file(GLOB imageData ${PROJECT_SOURCE_DIR}/data/images/*)
-
-	foreach(image ${imageData})
-		message("-- Copying ${image}")
-		file(COPY ${image} DESTINATION ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
-		#configure_file(${include} ${CMAKE_RUNTIME_OUTPUT_DIRECTORY} COPYONLY)
-	endforeach()
-	
+else()	
 	# setup `make install` stuff
 	foreach(include ${jetsonUtilityIncludes})
 		install(FILES "${include}" DESTINATION include/jetson-utils)
