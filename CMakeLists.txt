@@ -7,6 +7,11 @@ get_directory_property(hasParent PARENT_DIRECTORY)
 
 if(hasParent)
 	message("-- jetson-utils:  building as submodule, ${hasParent}")
+	
+	# configure Qt
+	find_package(Qt4 REQUIRED)
+	include(${QT_USE_FILE})
+	add_definitions(${QT_DEFINITIONS})
 else()
 	message("-- jetson-utils:  building as standalone")
 	
