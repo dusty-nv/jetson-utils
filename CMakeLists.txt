@@ -73,7 +73,7 @@ foreach(include ${jetsonUtilityIncludes})
 endforeach()
 	
 # copy image data
-file(GLOB imageData ${PROJECT_SOURCE_DIR}/data/images/*)
+file(GLOB imageData ${PROJECT_SOURCE_DIR}/data/*.png ${PROJECT_SOURCE_DIR}/data/*.jpg)
 
 foreach(image ${imageData})
 	message("-- Copying ${image}")
