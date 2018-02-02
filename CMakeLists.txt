@@ -62,7 +62,9 @@ target_link_libraries(jetson-utils Qt4::QtGui GL GLEW gstreamer-1.0 gstapp-1.0)
 
 
 # post-build standalone steps
-if(not hasParent)
+if(hasParent)
+	# nop
+else()
 	# transfer all headers to the include directory
 	foreach(include ${jetsonUtilityIncludes})
 		message("-- Copying ${include}")
