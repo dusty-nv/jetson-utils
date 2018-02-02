@@ -66,16 +66,17 @@ cuda_add_library(jetson-utils SHARED ${jetsonUtilitySources})
 target_link_libraries(jetson-utils Qt4::QtGui GL GLEW gstreamer-1.0 gstapp-1.0)	
 
 
+# transfer all headers to the include directory
+foreach(include ${jetsonUtilityIncludes})
+	message("-- Copying ${include}")
+	configure_file(${include} ${PROJECT_INCLUDE_DIR} COPYONLY)
+endforeach()
+	
+	
 # post-build standalone steps
 if(hasParent)
 	# nop
 else()
-	# transfer all headers to the include directory
-	foreach(include ${jetsonUtilityIncludes})
-		message("-- Copying ${include}")
-		configure_file(${include} ${PROJECT_INCLUDE_DIR} COPYONLY)
-	endforeach()
-	
 	# copy image data
 	file(GLOB imageData ${PROJECT_SOURCE_DIR}/data/images/*)
 
