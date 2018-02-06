@@ -37,8 +37,6 @@
 #include "cudaYUV.h"
 #include "cudaRGB.h"
 
-#include "tensorNet.h"
-
 
 // constructor
 gstCamera::gstCamera()
