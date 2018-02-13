@@ -29,8 +29,8 @@
 
 //#include "cudaNormalize.h"
 
-#define WINDOW_WIDTH  640
-#define WINDOW_HEIGHT 480
+#define TEXTURE_WIDTH  512
+#define TEXTURE_HEIGHT 512
 
 
 bool signal_recieved = false;
