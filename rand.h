@@ -37,7 +37,7 @@ inline float randf( float range_min=0.0f, float range_max=1.0f )		{ return ((flo
 /**
  * Generate a random integer within the specified range
  */
-inline int rand( int range_min, int range_max )							{ const float r = (randf() * (range_max - range_min)) + range_min; return int(f); }
+inline int rand( int range_min, int range_max )							{ const float r = (randf() * (range_max - range_min)) + range_min; return int(r); }
 
 
 /**
