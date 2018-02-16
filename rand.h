@@ -31,13 +31,13 @@
 /**
  * Generate a floating-point random number within the specified range
  */
-inline float randf( float range_min=0.0f, float range_max=1.0f );		{ return ((float(rand) / RAND_MAX) * (range_max - range_min)) - range_min; }
+inline float randf( float range_min=0.0f, float range_max=1.0f )		{ return ((float(rand) / RAND_MAX) * (range_max - range_min)) + range_min; }
 
 
 /**
  * Generate a random integer within the specified range
  */
-inline int rand( int range_min, int range_max )							{ const float r = (randf() * (range_max - range_min)) - range_min); return int(f); }
+inline int rand( int range_min, int range_max )							{ const float r = (randf() * (range_max - range_min)) + range_min); return int(f); }
 
 
 /**
