@@ -70,6 +70,7 @@ int main( int argc, char** argv )
 		return 0;
 	}
 
+	display->SetTitle("NVIDIA OpenGL Display Test");
 	
 	/*
 	 * initialize default test texture pattern

@@ -165,7 +165,7 @@ bool glDisplay::initWindow()
 	if( !win )
 		return false;
 
-	XStoreName(mDisplayX, win, "NVIDIA OpenGL display");
+	XStoreName(mDisplayX, win, "NVIDIA OpenGL Display");
 	XMapWindow(mDisplayX, win);
 
 	// cleanup
