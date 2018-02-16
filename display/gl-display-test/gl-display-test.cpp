@@ -29,8 +29,8 @@
 
 //#include "cudaNormalize.h"
 
-#define TEXTURE_WIDTH  512
-#define TEXTURE_HEIGHT 512
+#define TEXTURE_WIDTH  1024
+#define TEXTURE_HEIGHT 1024
 
 
 bool signal_recieved = false;
@@ -86,7 +86,7 @@ int main( int argc, char** argv )
 	
 	for( uint32_t y=0; y < TEXTURE_HEIGHT; y++ )
 		for( uint32_t x=0; x < TEXTURE_WIDTH; x++ )
-			texIn[y*TEXTURE_WIDTH+x] = make_float4(0.0f, 1.0f, 1.0f, 1.0f);
+			texIn[y*TEXTURE_WIDTH+x] = make_float4(0.0f, float(x)/float(TEXTURE_WIDTH), float(y)/float(TEXTURE_HEIGHT), 1.0f);
 
 		
 	/*
