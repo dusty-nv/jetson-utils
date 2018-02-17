@@ -23,11 +23,12 @@
 #include "glDisplay.h"
 #include "glTexture.h"
 
+#include "cudaFont.h"
+
 #include <stdio.h>
 #include <signal.h>
 #include <unistd.h>
 
-//#include "cudaNormalize.h"
 
 #define TEXTURE_WIDTH  1024
 #define TEXTURE_HEIGHT 1024
@@ -72,6 +73,7 @@ int main( int argc, char** argv )
 
 	display->SetTitle("NVIDIA OpenGL Display Test");
 	
+
 	/*
 	 * initialize default test texture pattern
 	 */
@@ -103,18 +105,19 @@ int main( int argc, char** argv )
 	
 
 	/*
+	 * create font
+	 */
+	cudaFont* font = cudaFont::Create();
+	
+	if( !font )
+		printf("failed to create cudaFont object\n");
+
+
+	/*
 	 * rendering loop
 	 */
 	while( !signal_recieved )
 	{
-		void* imgCPU  = NULL;
-		void* imgCUDA = NULL;
-		
-		// rescale image pixel intensities
-		/*CUDA(cudaNormalizeRGBA((float4*)imgRGBA, make_float2(0.0f, 255.0f), 
-						   (float4*)imgRGBA, make_float2(0.0f, 1.0f), 
- 						   camera->GetWidth(), camera->GetHeight()));*/
-
 		// update display
 		if( display != NULL )
 		{
@@ -123,14 +126,24 @@ int main( int argc, char** argv )
 
 			if( texture != NULL )
 			{
-				/*void* tex_map = texture->MapCUDA();
+				void* tex_map = texture->MapCUDA();
+
+				CUDA(cudaMemset(tex_map, 0, texture->GetSize()));
 
 				if( tex_map != NULL )
 				{
-					cudaMemcpy(tex_map, imgRGBA, texture->GetSize(), cudaMemcpyDeviceToDevice);
+					if( font != NULL )
+					{
+						char str[256];
+						sprintf(str, "AaBbCcDdEeFfGgHhIiJjKkLlMmNn 123456890");
+
+						font->RenderOverlay((float4*)tex_map, (float4*)tex_map, texture->GetWidth(), texture->GetHeight(),
+										    str, 0, 0, make_float4(0.0f, 0.75f, 1.0f, 255.0f));
+					}
+
 					CUDA(cudaDeviceSynchronize());
 					texture->Unmap();
-				}*/
+				}
 
 				texture->Render(50,50);		
 			}
