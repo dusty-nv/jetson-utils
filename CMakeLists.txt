@@ -33,7 +33,10 @@ else()
 		CUDA_NVCC_FLAGS
 		${CUDA_NVCC_FLAGS}; 
 		-O3 
+		-gencode arch=compute_37,code=sm_37
 		-gencode arch=compute_53,code=sm_53
+		-gencode arch=compute_60,code=sm_60
+		-gencode arch=compute_61,code=sm_61
 		-gencode arch=compute_62,code=sm_62
 	)
 	
@@ -95,7 +98,7 @@ else()
 	endforeach()
 
 	# install the shared library
-	install(TARGETS jetson-utility DESTINATION lib/jetson-utility EXPORT jetson-utilityConfig)
+	install(TARGETS jetson-utils DESTINATION lib/jetson-utility EXPORT jetson-utilityConfig)
 
 	# install the cmake project, for importing
 	#install(EXPORT jetson-utilityConfig DESTINATION share/jetson-utility/cmake)
