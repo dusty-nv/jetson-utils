@@ -63,7 +63,7 @@ int main( int argc, char** argv )
 	/*
 	 * create openGL window
 	 */
-	glDisplay* display = glDisplay::Create();
+	glDisplay* display = glDisplay::Create("NVIDIA OpenGL Display Test");
 	
 	if( !display )
 	{
@@ -71,8 +71,6 @@ int main( int argc, char** argv )
 		return 0;
 	}
 
-	display->SetTitle("NVIDIA OpenGL Display Test");
-	
 
 	/*
 	 * initialize default test texture pattern

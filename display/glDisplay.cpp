@@ -23,18 +23,22 @@
 #include "glDisplay.h"
 
 
- 
 // Constructor
 glDisplay::glDisplay()
 {
-	mWindowX   = 0;
-	mScreenX   = NULL;
-	mVisualX   = NULL;
-	mContextGL = NULL;
-	mDisplayX  = NULL;
-	mWidth     = 0;
-	mHeight    = 0;
-	mAvgTime   = 1.0f;
+	mWindowX    = 0;
+	mScreenX    = NULL;
+	mVisualX    = NULL;
+	mContextGL  = NULL;
+	mDisplayX   = NULL;
+	mWidth      = 0;
+	mHeight     = 0;
+	mAvgTime    = 1.0f;
+
+	mBgColor[0] = 0.0f;
+	mBgColor[1] = 0.0f;
+	mBgColor[2] = 0.0f;
+	mBgColor[3] = 1.0f;
 
 	clock_gettime(CLOCK_REALTIME, &mLastTime);
 }
@@ -48,7 +52,7 @@ glDisplay::~glDisplay()
 
 
 // Create
-glDisplay* glDisplay::Create()
+glDisplay* glDisplay::Create( const char* title, float r, float g, float b, float a )
 {
 	glDisplay* vp = new glDisplay();
 	
@@ -78,8 +82,23 @@ glDisplay* glDisplay::Create()
 		return NULL;
 	}
 
+	if( title != NULL )
+		vp->SetTitle(title);
+
+	vp->SetBackgroundColor(r, g, b, a);
+
 	printf("[OpenGL]  glDisplay display window initialized\n");
 	return vp;
+}
+
+
+#define DEFAULT_TITLE "NVIDIA OpenGL Display"
+
+
+// Create
+glDisplay* glDisplay::Create( float r, float g, float b, float a )
+{
+	return Create(DEFAULT_TITLE, r, g, b, a);
 }
 
 
@@ -165,7 +184,7 @@ bool glDisplay::initWindow()
 	if( !win )
 		return false;
 
-	XStoreName(mDisplayX, win, "NVIDIA OpenGL Display");
+	XStoreName(mDisplayX, win, DEFAULT_TITLE);
 	XMapWindow(mDisplayX, win);
 
 	// cleanup
@@ -204,7 +223,7 @@ void glDisplay::BeginRender()
 {
 	GL(glXMakeCurrent(mDisplayX, mWindowX, mContextGL));
 
-	GL(glClearColor(0.05f, 0.05f, 0.05f, 1.0f));
+	GL(glClearColor(mBgColor[0], mBgColor[1], mBgColor[2], mBgColor[3]));
 	GL(glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT|GL_STENCIL_BUFFER_BIT));
 
 	GL(glViewport(0, 0, mWidth, mHeight));

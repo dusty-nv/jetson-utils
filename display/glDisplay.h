@@ -38,8 +38,22 @@ class glDisplay
 public:
 	/**
 	 * Create a new maximized openGL display window.
+	 * @param r default background RGBA color, red component (0.0-1.0f)
+	 * @param g default background RGBA color, green component (0.0-1.0f)
+	 * @param b default background RGBA color, blue component (0.0-1.0f)
+	 * @param a default background RGBA color, alpha component (0.0-1.0f)
 	 */
-	static glDisplay* Create();
+	static glDisplay* Create( float r=0.05f, float g=0.05f, float b=0.05f, float a=1.0f );
+
+	/**
+	 * Create a new maximized openGL display window.
+	 * @param title window title bar label string
+	 * @param r default background RGBA color, red component (0.0-1.0f)
+	 * @param g default background RGBA color, green component (0.0-1.0f)
+	 * @param b default background RGBA color, blue component (0.0-1.0f)
+	 * @param a default background RGBA color, alpha component (0.0-1.0f)
+	 */
+	static glDisplay* Create( const char* title, float r=0.05f, float g=0.05f, float b=0.05f, float a=1.0f );
 
 	/**
 	 * Destroy window
@@ -72,6 +86,15 @@ public:
 	void SetTitle( const char* str );
 
 	/**
+	 * Set the background color.
+	 * @param r background RGBA color, red component (0.0-1.0f)
+	 * @param g background RGBA color, green component (0.0-1.0f)
+	 * @param b background RGBA color, blue component (0.0-1.0f)
+	 * @param a background RGBA color, alpha component (0.0-1.0f)
+	 */
+	inline void SetBackgroundColor( float r, float g, float b, float a )	{ mBgColor[0] = r; mBgColor[1] = g; mBgColor[2] = b; mBgColor[3] = a; }
+
+	/**
 	 * Get the average frame time (in milliseconds).
 	 */
 	inline float GetFPS()	{ return 1000000000.0f / mAvgTime; }
@@ -95,6 +118,7 @@ protected:
 
 	timespec mLastTime;
 	float    mAvgTime;
+	float    mBgColor[4];
 };
 
 #endif
