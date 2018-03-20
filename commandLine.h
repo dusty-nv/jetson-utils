@@ -52,20 +52,20 @@ public:
 	 * Get float argument.  For example if argv contained "--foo=3.14159", 
 	 * then GetInt("foo") would return 3.14159.0f
 	 *
-	 * @returns 0, if the argumentcould not be found.
+	 * @returns defaultValue, if the argumentcould not be found.
 	 *          Otherwise, returns the value of the argument.
 	 */
-	float GetFloat( const char* argName );
+	float GetFloat( const char* argName, float defaultValue=0.0f );
 
 
 	/**
 	 * Get integer argument.  For example if argv contained "--foo=100", 
 	 * then GetInt("foo") would return 100.
 	 *
-	 * @returns 0, if the argument could not be found.
+	 * @returns defaultValue, if the argument could not be found.
 	 *          Otherwise, returns the value of the argument. 
 	 */
-	int GetInt( const char* argName );
+	int GetInt( const char* argName, int defaultValue=0 );
 
 
 	/**

@@ -56,7 +56,7 @@ commandLine::commandLine( const int pArgc, char** pArgv )
 
 
 // GetInt
-int commandLine::GetInt( const char* string_ref )
+int commandLine::GetInt( const char* string_ref, int default_value )
 {
 	if( argc < 1 )
 		return 0;
@@ -91,12 +91,12 @@ int commandLine::GetInt( const char* string_ref )
 	if (bFound)
 		return value;
  
-	return 0;
+	return default_value;
 }
 
 
 // GetFloat
-float commandLine::GetFloat( const char* string_ref )
+float commandLine::GetFloat( const char* string_ref, float default_value )
 {
 	if( argc < 1 )
 		return 0;
@@ -130,7 +130,7 @@ float commandLine::GetFloat( const char* string_ref )
 	if( bFound )
 		return value;
 
-	return 0;
+	return default_value;
 }
 
 
