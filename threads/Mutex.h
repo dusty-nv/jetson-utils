@@ -19,7 +19,10 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  */
- 
+
+#ifndef __MULTITHREAD_MUTEX__
+#define __MULTITHREAD_MUTEX__
+
 #include <pthread.h>
 
 
@@ -72,3 +75,5 @@ public:
 protected:
 	pthread_mutex_t mID;
 };
+
+#endif
