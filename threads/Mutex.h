@@ -20,8 +20,8 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef __MULTITHREAD_MUTEX__
-#define __MULTITHREAD_MUTEX__
+#ifndef __MULTITHREAD_MUTEX_H_
+#define __MULTITHREAD_MUTEX_H_
 
 #include <pthread.h>
 
