@@ -83,31 +83,31 @@ inline void timePrint( const timespec& timestamp, const char* text=NULL )	{ prin
 /**
  * Put the current thread to sleep for a specified time.
  */
-inline void timeSleep( const timespec& duration )							{ nanosleep(&duration, NULL); }
+inline void sleepTime( const timespec& duration )							{ nanosleep(&duration, NULL); }
 
 
 /**
  * Put the current thread to sleep for a specified time.
  */
-inline void timeSleep( time_t seconds, long int nanoseconds )				{ timeSleep(timeNew(seconds,nanoseconds)); } 
+inline void sleepTime( time_t seconds, long int nanoseconds )				{ sleepTime(timeNew(seconds,nanoseconds)); } 
 
 
 /**
  * Put the current thread to sleep for a specified number of milliseconds.
  */
-inline void timeSleepMs( uint64_t milliseconds )							{ timeSleep(timeNew(0, milliseconds * 1000 * 1000)); }
+inline void sleepMs( uint64_t milliseconds )								{ sleepTime(timeNew(0, milliseconds * 1000 * 1000)); }
 
 
 /**
  * Put the current thread to sleep for a specified number of microseconds.
  */
-inline void timeSleepUs( uint64_t microseconds )							{ timeSleep(timeNew(0, microseconds * 1000)); }
+inline void sleepUs( uint64_t microseconds )								{ sleepTime(timeNew(0, microseconds * 1000)); }
 
 
 /**
  * Put the current thread to sleep for a specified number of nanoseconds.
  */
-inline void timeSleepNs( uint64_t nanoseconds )								{ timeSleep(timeNew(0, nanoseconds)); }
+inline void sleepNs( uint64_t nanoseconds )									{ sleepTime(timeNew(0, nanoseconds)); }
 
 
 #endif
