@@ -60,7 +60,7 @@ gstEncoder::~gstEncoder()
 	if( eos_result != 0 )
 		printf(LOG_GSTREAMER "gstEncoder - failed sending appsrc EOS (result %u)\n", eos_result);
 
-	timeSleepMs(250);
+	sleepMs(250);
 
 	// stop pipeline
 	printf(LOG_GSTREAMER "gstEncoder - transitioning pipeline to GST_STATE_NULL\n");
@@ -70,9 +70,9 @@ gstEncoder::~gstEncoder()
 	if( result != GST_STATE_CHANGE_SUCCESS )
 		printf(LOG_GSTREAMER "gstEncoder - failed to set pipeline state to NULL (error %u)\n", result);
 
-	timeSleepMs(250);
+	sleepMs(250);
 	
-	printf(LOG_GSTREAMER "gstEncoder - pipeline shutdown\n");	
+	printf(LOG_GSTREAMER "gstEncoder - pipeline shutdown complete\n");	
 }
 
 
@@ -262,11 +262,18 @@ bool gstEncoder::buildLaunchStr()
 	std::ostringstream ss;
 	ss << "appsrc name=mysource ! ";
 	
+#if GST_CHECK_VERSION(1,0,0)
+	if( mCodec == GST_CODEC_H264 )
+		ss << "omxh264enc quality-level=2 ! video/x-h264 ! ";	// TODO:  investigate quality-level
+	else if( mCodec == GST_CODEC_H265 )
+		ss << "omxh265enc quality-level=2 ! video/x-h265 ! ";
+#else
 	if( mCodec == GST_CODEC_H264 )
 		ss << "nv_omx_h264enc quality-level=2 ! video/x-h264 ! ";
 	else if( mCodec == GST_CODEC_H265 )
 		ss << "nv_omx_h265enc quality-level=2 ! video/x-h265 ! ";
-	
+#endif
+
 	if( fileLen > 0 && ipLen > 0 )
 		ss << "nvtee name=t ! ";
 
@@ -279,7 +286,7 @@ bool gstEncoder::buildLaunchStr()
 			//ss << "matroskamux ! queue ! ";
 			ss << "matroskamux ! ";
 		}
-		else if( strcasecmp(ext.c_str(), "h264") != 0 )
+		else if( strcasecmp(ext.c_str(), "h264") != 0 && strcasecmp(ext.c_str(), "h265") != 0 )
 		{
 			printf(LOG_GSTREAMER "gstEncoder - invalid output extension %s\n", ext.c_str());
 			return false;
@@ -348,10 +355,12 @@ bool gstEncoder::EncodeFrame( void* buffer, size_t size )
 		return true;
 	}
 
-	// convert memory to GstBuffer
+	
 #if GST_CHECK_VERSION(1,0,0)
+	// allocate gstreamer buffer memory
 	GstBuffer* gstBuffer = gst_buffer_new_allocate(NULL, size, NULL);
 	
+	// map the buffer for write access
 	GstMapInfo map; 
 
 	if( gst_buffer_map(gstBuffer, &map, GST_MAP_WRITE) ) 
@@ -368,11 +377,12 @@ bool gstEncoder::EncodeFrame( void* buffer, size_t size )
 	} 
 	else
 	{
-		printf(LOG_GSTREAMER "gstEncoder - failed to map gstreamer memory (%zu bytes)\n", size);
+		printf(LOG_GSTREAMER "gstEncoder - failed to map gstreamer buffer memory (%zu bytes)\n", size);
 		gst_buffer_unref(gstBuffer);
 		return false;
 	}
 #else
+	// convert memory to GstBuffer
 	GstBuffer* gstBuffer = gst_buffer_new();	
 
 	GST_BUFFER_MALLOCDATA(gstBuffer) = (guint8*)g_malloc(size);
@@ -397,6 +407,18 @@ bool gstEncoder::EncodeFrame( void* buffer, size_t size )
 	if( ret != 0 )
 		printf(LOG_GSTREAMER "gstEncoder - AppSrc pushed buffer abnormally (result %u)\n", ret);
 
+	// check for any messages
+	while(true)
+	{
+		GstMessage* msg = gst_bus_pop(mBus);
+
+		if( !msg )
+			break;
+
+		gst_message_print(mBus, msg, this);
+		gst_message_unref(msg);
+	}
+	
 	return true;
 }
 
