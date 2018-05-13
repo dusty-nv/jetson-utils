@@ -21,6 +21,7 @@
  */
  
 #include "Event.h"
+#include <errno.h>
 
 
 // constructor
@@ -64,8 +65,8 @@ void Event::Raise()
 }
 
 
-// Sync
-void Event::Sync()
+// Wait
+bool Event::Wait()
 {
 	mQueryMutex.Lock();
 
@@ -73,5 +74,28 @@ void Event::Sync()
 		pthread_cond_wait(&mID, mQueryMutex.GetID());
 
 	mQueryMutex.Unlock();
+}
+
+
+// Wait
+bool Event::Wait( const timespec& timeout )
+{
+	mQueryMutex.Lock();
+
+	const timespec abs_time = timeAdd( timestamp(), timeout );
+
+	while(!mQuery)
+	{
+		const int ret = pthread_cond_timedwait(&mID, mQueryMutex.GetID(), &abs_time);
+		
+		if( ret == ETIMEDOUT )
+		{
+			mQueryMutex.Unlock();
+			return false;
+		}
+	}
+	
+	mQueryMutex.Unlock();
+	return true;
 }
 

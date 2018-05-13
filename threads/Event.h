@@ -24,7 +24,7 @@
 #define __MULTITHREAD_EVENT_H_
 
 #include "Mutex.h"
-
+#include "timespec.h"
 
 /**
  * Event
@@ -44,19 +44,7 @@ public:
 	~Event();
 
 	/**
-	 * Wait until this event is raised.  It is likely this will block this thread (and will never timeout).
-	 * @see Raise
-	 */
-	void Sync();
-
-	/**
-	 * Query the status of this event.
-	 * @return True if the event is raised, false if not
-	 */
-	bool Query();
-
-	/**
-	 * Raise the event.  Any threads waiting to Sync() with this event will be awoken.
+	 * Raise the event.  Any threads waiting on this event will be awoken.
 	 */
 	void Raise();
 
@@ -66,9 +54,45 @@ public:
 	inline void Reset()									{ mQueryMutex.Lock(); mQuery = false; mQueryMutex.Unlock(); }
 
 	/**
+	 * Query the status of this event.
+	 * @return True if the event is raised, false if not
+	 */
+	bool Query();
+
+	/**
+	 * Wait until this event is raised.  It is likely this will block this thread (and will never timeout).
+	 * @see Raise
+	 */
+	bool Wait();
+
+	/**
+	 * Wait for a specified amount of time until this event is raised or timeout occurs.
+	 * @see Raise
+	 */
+	bool Wait( const timespec& timeout );
+	
+	/**
+	 * Wait for a specified number of milliseconds until this event is raised or timeout occurs.
+	 * @see Raise
+	 */
+	inline bool Wait( uint64_t timeout )		{ return Wait(timeNew(timeout*1000*1000)); }
+	
+	/**
+	 * Wait for a specified number of nanoseconds until this event is raised or timeout occurs.
+	 * @see Raise
+	 */
+	inline bool WaitNs( uint64_t timeout )		{ return Wait(timeNew(timeout)); }
+	
+	/**
+	 * Wait for a specified number of microseconds until this event is raised or timeout occurs.
+	 * @see Raise
+	 */
+	inline bool WaitUs( uint64_t timeout )		{ return Wait(timeNew(timeout*1000)); }
+	
+	/**
 	 * Get the Event object
 	 */
-	inline pthread_cond_t* GetID()						{ return &mID; }
+	inline pthread_cond_t* GetID()				{ return &mID; }
 
 protected:
 
