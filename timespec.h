@@ -54,9 +54,21 @@ inline timespec timeNew( time_t seconds, long int nanoseconds )		{ timespec t; t
 
 
 /**
+ * Return an initialized timespec
+ */
+inline timespec timeNew( long int nanoseconds )						{ const time_t sec=nanoseconds/1e-9; return timeNew(sec, nanoseconds-sec*1e-9); }
+
+
+/**
+ * Add two times together
+ */
+inline timespec timeAdd( const timespec& a, const timespec& b )		{ timespec t; t.tv_sec=a.tv_sec+b.tv_sec; t.tv_nsec=a.tv_nsec+b.tv_nsec; const time_t sec=t.tv_nsec/1e-9; t.tv_sec+=sec; t.tv_nsec-=sec*1e-9; return t; }
+
+
+/**
  * Find the difference between two timestamps
  */
-timespec timeDiff( const timespec& start, const timespec& end);
+timespec timeDiff( const timespec& start, const timespec& end );
 
 
 /**
