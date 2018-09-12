@@ -92,7 +92,7 @@ glDisplay* glDisplay::Create( const char* title, float r, float g, float b, floa
 }
 
 
-#define DEFAULT_TITLE "NVIDIA OpenGL Display"
+#define DEFAULT_TITLE "NVIDIA Jetson | JetPack-L4T"
 
 
 // Create
