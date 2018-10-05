@@ -37,17 +37,17 @@ public:
 	/**
 	 * Create an encoder instance that outputs to a file on disk.
 	 */
-	gstEncoder* Create( gstCodec codec, uint32_t width, uint32_t height, const char* filename );
+	static gstEncoder* Create( gstCodec codec, uint32_t width, uint32_t height, const char* filename );
 	
 	/**
 	 * Create an encoder instance that streams over the network.
 	 */
-	gstEncoder* Create( gstCodec codec, uint32_t width, uint32_t height, const char* ipAddress, uint16_t port );
+	static gstEncoder* Create( gstCodec codec, uint32_t width, uint32_t height, const char* ipAddress, uint16_t port );
 	
 	/**
 	 * Create an encoder instance that outputs to a file on disk and streams over the network.
 	 */
-	gstEncoder* Create( gstCodec codec, uint32_t width, uint32_t height, const char* filename, const char* ipAddress, uint16_t port );
+	static gstEncoder* Create( gstCodec codec, uint32_t width, uint32_t height, const char* filename, const char* ipAddress, uint16_t port );
 	
 	/**
 	 * Destructor
@@ -55,10 +55,45 @@ public:
 	~gstEncoder();
 	
 	/**
-	 * Encode the next frame provided by the user.
+	 * Encode the next fixed-point RGBA frame.
+	 * Expects 8-bit per channel, 32-bit per pixel unsigned image, range 0-255.
+	 * It is assumed the width of the buffer is equal to GetWidth(),
+	 * and that the height of the buffer is equal to GetHeight().
+	 * This function performs colorspace conversion using CUDA, so the
+	 * buffer pointer is expected to be CUDA memory allocated on the GPU.
+	 * @param buffer CUDA pointer to the RGBA image.
 	 */
-	bool EncodeFrame( void* buffer, size_t size );
+	bool EncodeRGBA( uint8_t* buffer );
+
+	/**
+	 * Encode the next floating-point RGBA frame.
+	 * It is assumed the width of the buffer is equal to GetWidth(),
+	 * and that the height of the buffer is equal to GetHeight().
+	 * This function performs colorspace conversion using CUDA, so the
+	 * buffer pointer is expected to be CUDA memory allocated on the GPU.
+	 * @param buffer CUDA pointer to the RGBA image.
+	 * @param maxPixelValue indicates the maximum pixel intensity (typically 255.0f or 1.0f)
+	 */
+	bool EncodeRGBA( float* buffer, float maxPixelValue=255.0f );
+
+	/**
+	 * Encode the next I420 frame provided by the user.
+	 * Expects 12-bpp (bit per pixel) image in YUV I420 format.
+	 * This image is passed to GStreamer, so CPU pointer should be used.
+	 * @param buffer CPU pointer to the I420 image
+	 */
+	bool EncodeI420( void* buffer, size_t size );
 	
+	/**
+	 * Retrieve the width that the encoder was created for, in pixels.
+	 */
+	inline uint32_t GetWidth() const			{ return mWidth; }
+
+	/**
+	 * Retrieve the height that the encoder was created for, in pixels.
+	 */
+	inline uint32_t GetHeight() const			{ return mHeight; }
+
 protected:
 	gstEncoder();
 	
@@ -84,6 +119,12 @@ protected:
 	std::string  mOutputPath;
 	std::string  mOutputIP;
 	uint16_t     mOutputPort;
+
+	// format conversion buffers
+	void* mCpuRGBA;
+	void* mGpuRGBA;
+	void* mCpuI420;
+	void* mGpuI420;
 };
  
  

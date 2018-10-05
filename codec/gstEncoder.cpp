@@ -25,12 +25,17 @@
 #include "filesystem.h"
 #include "timespec.h"
 
+#include "cudaMappedMemory.h"
+#include "cudaRGB.h"
+#include "cudaYUV.h"
+
 #include <gst/gst.h>
 #include <gst/app/gstappsrc.h>
 
 #include <sstream>
 #include <string.h>
 #include <strings.h>
+#include <unistd.h>
 
 
 // constructor
@@ -45,6 +50,11 @@ gstEncoder::gstEncoder()
 	mWidth      = 0;
 	mHeight     = 0;
 	mCodec      = GST_CODEC_H264;
+
+	mCpuRGBA    = NULL;
+	mGpuRGBA    = NULL;
+	mCpuI420    = NULL;
+	mGpuI420    = NULL;
 }
 
 
@@ -60,7 +70,7 @@ gstEncoder::~gstEncoder()
 	if( eos_result != 0 )
 		printf(LOG_GSTREAMER "gstEncoder - failed sending appsrc EOS (result %u)\n", eos_result);
 
-	sleepMs(250);
+	sleep(1);
 
 	// stop pipeline
 	printf(LOG_GSTREAMER "gstEncoder - transitioning pipeline to GST_STATE_NULL\n");
@@ -70,7 +80,7 @@ gstEncoder::~gstEncoder()
 	if( result != GST_STATE_CHANGE_SUCCESS )
 		printf(LOG_GSTREAMER "gstEncoder - failed to set pipeline state to NULL (error %u)\n", result);
 
-	sleepMs(250);
+	sleep(1);
 	
 	printf(LOG_GSTREAMER "gstEncoder - pipeline shutdown complete\n");	
 }
@@ -118,13 +128,39 @@ bool gstEncoder::init( gstCodec codec, uint32_t width, uint32_t height, const ch
 	if( mWidth == 0 || mHeight == 0 )
 		return false;
 	
-	mOutputPath = filename;
-	mOutputIP   = ipAddress;
+	if( filename != NULL )
+		mOutputPath = filename;
+
+	if( ipAddress != NULL )
+		mOutputIP = ipAddress;
+
 	mOutputPort = port;
 	
 	if( !filename && !ipAddress )
 		return false;
 	
+	// initialize GStreamer libraries
+	if( !gstreamerInit() )
+	{
+		printf(LOG_GSTREAMER "failed to initialize gstreamer API\n");
+		return NULL;
+	}
+
+	// build caps string
+	if( !buildCapsStr() )
+	{
+		printf(LOG_GSTREAMER "gstEncoder - failed to build caps string\n");
+		return false;
+	}
+	
+	mBufferCaps = gst_caps_from_string(mCapsStr.c_str());
+
+	if( !mBufferCaps )
+	{
+		printf(LOG_GSTREAMER "gstEncoder - failed to parse caps from string\n");
+		return false;
+	}
+
 	// build pipeline string
 	if( !buildLaunchStr() )
 	{
@@ -179,21 +215,6 @@ bool gstEncoder::init( gstCodec codec, uint32_t width, uint32_t height, const ch
 	g_signal_connect(appsrcElement, "need-data", G_CALLBACK(onNeedData), this);
 	g_signal_connect(appsrcElement, "enough-data", G_CALLBACK(onEnoughData), this);
 
-	// build caps string
-	if( !buildCapsStr() )
-	{
-		printf(LOG_GSTREAMER "gstEncoder - failed to build caps string\n");
-		return false;
-	}
-	
-	mBufferCaps = gst_caps_from_string(mCapsStr.c_str());
-
-	if( !mBufferCaps )
-	{
-		printf(LOG_GSTREAMER "gstEncoder - failed to parse caps from string\n");
-		return false;
-	}
-
 #if GST_CHECK_VERSION(1,0,0)
 	gst_app_src_set_caps(appsrc, mBufferCaps);
 #endif
@@ -238,12 +259,20 @@ bool gstEncoder::init( gstCodec codec, uint32_t width, uint32_t height, const ch
 bool gstEncoder::buildCapsStr()
 {
 	std::ostringstream ss;
-	
+
+#if GST_CHECK_VERSION(1,0,0)
+	ss << "video/x-raw";
+	ss << ",width=" << mWidth;
+	ss << ",height=" << mHeight;
+	ss << ",format=(string)I420";
+	ss << ",framerate=30/1";
+#else
 	ss << "video/x-raw-yuv";
 	ss << ",width=" << mWidth;
 	ss << ",height=" << mHeight;
 	ss << ",format=(fourcc)I420";
 	ss << ",framerate=30/1";
+#endif
 	
 	mCapsStr = ss.str();
 	
@@ -263,10 +292,12 @@ bool gstEncoder::buildLaunchStr()
 	ss << "appsrc name=mysource ! ";
 	
 #if GST_CHECK_VERSION(1,0,0)
+	ss << mCapsStr << " ! ";
+
 	if( mCodec == GST_CODEC_H264 )
-		ss << "omxh264enc quality-level=2 ! video/x-h264 ! ";	// TODO:  investigate quality-level
+		ss << "omxh264enc ! video/x-h264 ! ";	// TODO:  investigate quality-level replacement
 	else if( mCodec == GST_CODEC_H265 )
-		ss << "omxh265enc quality-level=2 ! video/x-h265 ! ";
+		ss << "omxh265enc ! video/x-h265 ! ";
 #else
 	if( mCodec == GST_CODEC_H264 )
 		ss << "nv_omx_h264enc quality-level=2 ! video/x-h264 ! ";
@@ -285,6 +316,13 @@ bool gstEncoder::buildLaunchStr()
 		{
 			//ss << "matroskamux ! queue ! ";
 			ss << "matroskamux ! ";
+		}
+		else if( strcasecmp(ext.c_str(), "mp4") == 0 )
+		{
+			if( mCodec == GST_CODEC_H264 )
+				ss << "h264parse ! qtmux ! ";
+			else if( mCodec == GST_CODEC_H265 )
+				ss << "h265parse ! qtmux ! ";
 		}
 		else if( strcasecmp(ext.c_str(), "h264") != 0 && strcasecmp(ext.c_str(), "h265") != 0 )
 		{
@@ -344,7 +382,7 @@ void gstEncoder::onEnoughData( GstElement* pipeline, gpointer user_data )
 
 
 // EncodeFrame
-bool gstEncoder::EncodeFrame( void* buffer, size_t size )
+bool gstEncoder::EncodeI420( void* buffer, size_t size )
 {
 	if( !buffer || size == 0 )
 		return false;
@@ -381,6 +419,7 @@ bool gstEncoder::EncodeFrame( void* buffer, size_t size )
 		gst_buffer_unref(gstBuffer);
 		return false;
 	}
+
 #else
 	// convert memory to GstBuffer
 	GstBuffer* gstBuffer = gst_buffer_new();	
@@ -402,7 +441,7 @@ bool gstEncoder::EncodeFrame( void* buffer, size_t size )
 	// queue buffer to gstreamer
 	GstFlowReturn ret;	
 	g_signal_emit_by_name(mAppSrc, "push-buffer", gstBuffer, &ret);
-    gst_buffer_unref(gstBuffer);
+	gst_buffer_unref(gstBuffer);
 
 	if( ret != 0 )
 		printf(LOG_GSTREAMER "gstEncoder - AppSrc pushed buffer abnormally (result %u)\n", ret);
@@ -421,5 +460,60 @@ bool gstEncoder::EncodeFrame( void* buffer, size_t size )
 	
 	return true;
 }
+
+
+// EncodeRGBA
+bool gstEncoder::EncodeRGBA( uint8_t* buffer )
+{
+	if( !buffer )
+		return false;
+
+	const size_t i420Size = (mWidth * mHeight * 12) / 8;
+
+	if( !mCpuI420 || !mGpuI420 )
+	{
+		if( !cudaAllocMapped(&mCpuI420, &mGpuI420, i420Size) )
+		{
+			printf(LOG_GSTREAMER "gstEncoder - failed to allocate CUDA memory for YUV I420 conversion\n");
+			return false;
+		}
+	}
+
+	if( CUDA_FAILED(cudaRGBAToI420((uchar4*)buffer, (uint8_t*)mGpuI420, mWidth, mHeight)) )
+	{
+		printf(LOG_GSTREAMER "gstEncoder - failed convert RGBA image to I420\n");
+		return false;
+	}
+
+	CUDA(cudaDeviceSynchronize());
+
+	return EncodeI420(mCpuI420, i420Size);
+}
+
+
+// EncodeRGBA
+bool gstEncoder::EncodeRGBA( float* buffer, float maxPixelValue )
+{
+	if( !buffer )
+		return false;
+
+	if( !mCpuRGBA || !mGpuRGBA )
+	{
+		if( !cudaAllocMapped(&mCpuRGBA, &mGpuRGBA, mWidth * mHeight * 4 * sizeof(uint8_t)) )
+		{
+			printf(LOG_GSTREAMER "gstEncoder - failed to allocate CUDA memory for RGBA8 conversion\n");
+			return false;
+		}
+	}
+
+	if( CUDA_FAILED(cudaRGBAToRGBA8((float4*)buffer, (uchar4*)mGpuRGBA, mWidth, mHeight, make_float2(0.0f, maxPixelValue))) )
+	{
+		printf(LOG_GSTREAMER "gstEncoder - failed convert RGBA32f image to RGBA8\n");
+		return false;
+	}
+
+	return EncodeRGBA((uint8_t*)mGpuRGBA);
+}
+
 
 
