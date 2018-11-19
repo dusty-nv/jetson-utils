@@ -37,6 +37,7 @@
 #include "cudaYUV.h"
 #include "cudaRGB.h"
 
+#include "NvInfer.h"
 
 
 // gstCameraSrcToString
