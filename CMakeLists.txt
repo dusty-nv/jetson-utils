@@ -107,13 +107,14 @@ else()
 	foreach(include ${jetsonUtilityIncludes})
 		install(FILES "${include}" DESTINATION include/jetson-utils)
 	endforeach()
-
-	# install the shared library
-	install(TARGETS jetson-utils DESTINATION lib/jetson-utility EXPORT jetson-utilityConfig)
-
-	# install the cmake project, for importing
-	#install(EXPORT jetson-utilityConfig DESTINATION share/jetson-utility/cmake)
 endif()
+
+
+# install the shared library
+install(TARGETS jetson-utils DESTINATION lib/${PROJECT_NAME} EXPORT jetson-utilityConfig)
+
+# install the cmake project, for importing
+install(EXPORT jetson-utilityConfig DESTINATION share/${PROJECT_NAME}/cmake)
 
 
 # build tests/sample executables
