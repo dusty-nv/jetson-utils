@@ -98,23 +98,17 @@ foreach(image ${imageData})
 	#configure_file(${include} ${CMAKE_RUNTIME_OUTPUT_DIRECTORY} COPYONLY)
 endforeach()
 	
-	
-# post-build standalone steps
-if(hasParent)
-	# nop
-else()	
-	# setup `make install` stuff
-	foreach(include ${jetsonUtilityIncludes})
-		install(FILES "${include}" DESTINATION include/jetson-utils)
-	endforeach()
-endif()
 
+# install headers
+foreach(include ${jetsonUtilityIncludes})
+	install(FILES "${include}" DESTINATION include/jetson-utils)
+endforeach()
 
 # install the shared library
-install(TARGETS jetson-utils DESTINATION lib/${PROJECT_NAME} EXPORT jetson-utilityConfig)
+install(TARGETS jetson-utils DESTINATION lib/jetson-utils EXPORT jetson-utilsConfig)
 
 # install the cmake project, for importing
-install(EXPORT jetson-utilityConfig DESTINATION share/${PROJECT_NAME}/cmake)
+install(EXPORT jetson-utilsConfig DESTINATION share/jetson-utils/cmake)
 
 
 # build tests/sample executables
