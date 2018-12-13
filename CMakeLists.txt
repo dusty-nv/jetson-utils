@@ -90,12 +90,11 @@ endforeach()
 	
 # copy image data
 file(GLOB imageData data/*.png data/*.jpg)
-#file(GLOB imageData ${PROJECT_SOURCE_DIR}/data/*.png ${PROJECT_SOURCE_DIR}/data/*.jpg)
 
 foreach(image ${imageData})
 	message("-- Copying ${image}")
 	file(COPY ${image} DESTINATION ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
-	#configure_file(${include} ${CMAKE_RUNTIME_OUTPUT_DIRECTORY} COPYONLY)
+	install(CODE "file(COPY ${image} DESTINATION ${CMAKE_INSTALL_PREFIX}/bin )" )
 endforeach()
 	
 
