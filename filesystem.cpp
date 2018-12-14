@@ -201,12 +201,7 @@ std::string locateFile( const std::string& path )
 }
 
 
-/**
- * Locate a file from a set of locations provided by the user, in addition 
- * to common system locations such as "/opt" and "/usr/local".
- * @return the confirmed path of the located file, or empty string if
- *         the file could not be found
- */
+// locateFile
 std::string locateFile( const std::string& path, std::vector<std::string>& locations )
 {
 	if( fileExists(path.c_str()) )
