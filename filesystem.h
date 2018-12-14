@@ -27,6 +27,18 @@
 #include <vector>
 
 
+
+/**
+ * Given a relative path, resolve the absolute path based on the location 
+ * of the process that calls the function.
+ *
+ * For example, if the application is located at "/home/user/my_process"
+ * and `absolutePath("resources/example")` is called, then this function
+ * would return the path "/home/user/resources/example".
+ */
+std::string absolutePath( const std::string& relative_path );
+
+
 /**
  * Return a list of all the files in the specified directory
  * @param path the path of the directory
@@ -34,7 +46,26 @@
  * @param includePath if true, the list of filenames will be prefixed with the path
  *                    if false (default), the list of filenames will contain filenames/extensions only
  */
-bool listDir( const char* path, std::vector<std::string>& list, bool includePath=false );
+bool listDirectory( const char* path, std::vector<std::string>& list, bool includePath=false );
+
+
+/**
+ * Locate a file from common system locations.
+ * First, this function will check if the file exists at the path provided,
+ * and if not it will check for the existance of the file in common system
+ * locations such as "/opt", "/usr/local", and "/usr/local/bin".
+ * @return the confirmed path of the located file, or empty string if
+ *         the file could not be found
+ */
+std::string locateFile( const std::string& path );
+
+/**
+ * Locate a file from a set of locations provided by the user, in addition 
+ * to common system locations such as "/opt" and "/usr/local".
+ * @return the confirmed path of the located file, or empty string if
+ *         the file could not be found
+ */
+std::string locateFile( const std::string& path, std::vector<std::string>& locations );
 
 
 /**
@@ -89,4 +120,29 @@ std::string fileRemoveExtension( const std::string& filename );
 std::string fileChangeExtension( const std::string& filename, const std::string& newExtension );
 
 
+/**
+ * Return the absolute path that of the calling process executable,
+ * include the process executable's filename.
+ */
+std::string processPath();
+
+
+/**
+ * Return the directory that the calling process resides in.
+ * For example, if the process executable is located at "/usr/bin/exe",
+ * then `processDirectory()` would return the path "/usr/bin".
+
+ * @note to retrieve the full path of the calling process, including
+ *       the process executable's filename, @see processPath()
+ */
+std::string processDirectory();
+
+
+/**
+ * Return the current working directory of the calling process.
+ */
+std::string workingDirectory();
+
+
 #endif
+

@@ -21,6 +21,7 @@
  */
  
 #include "filesystem.h"
+#include "Process.h"
 
 #include <sys/stat.h>
 #include <QDir>
@@ -161,6 +162,73 @@ std::string fileChangeExtension(const std::string& filename, const std::string& 
 {
 	return fileRemoveExtension(filename).append(newExtension);
 }
+
+
+// processPath
+std::string processPath()
+{
+	return Process::ExecutablePath();
+}
+
+
+// processDirectory
+std::string processDirectory()
+{
+	return Process::ExecutableDirectory();
+}
+
+
+// workingDirectory
+std::string workingDirectory()
+{
+	return Process::WorkingDirectory();
+}
+
+
+// absolutePath
+std::string absolutePath( const std::string& relative_path )
+{
+	const std::string proc = Process::ExecutableDirectory();
+	return proc + relative_path;
+}
+
+
+// locateFile
+std::string locateFile( const std::string& path )
+{
+	std::vector<std::string> locations;
+	return locateFile(path, locations);
+}
+
+
+/**
+ * Locate a file from a set of locations provided by the user, in addition 
+ * to common system locations such as "/opt" and "/usr/local".
+ * @return the confirmed path of the located file, or empty string if
+ *         the file could not be found
+ */
+std::string locateFile( const std::string& path, std::vector<std::string>& locations )
+{
+	if( fileExists(path.c_str()) )
+		return path;
+
+	locations.push_back("/usr/local/bin/");
+	locations.push_back("/usr/local/");
+	locations.push_back("/opt/");
+
+	const size_t numLocations = locations.size();
+
+	for( size_t n=0; n < numLocations; n++ )
+	{
+		const std::string str = locations[n] + path;
+
+		if( fileExists(str.c_str()) )
+			return str;
+	}
+
+	return "";
+}
+
 
 
 
