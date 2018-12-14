@@ -28,6 +28,48 @@
 #include <algorithm>
 
 
+
+// absolutePath
+std::string absolutePath( const std::string& relative_path )
+{
+	const std::string proc = Process::ExecutableDirectory();
+	return proc + relative_path;
+}
+
+
+// locateFile
+std::string locateFile( const std::string& path )
+{
+	std::vector<std::string> locations;
+	return locateFile(path, locations);
+}
+
+
+// locateFile
+std::string locateFile( const std::string& path, std::vector<std::string>& locations )
+{
+	if( fileExists(path.c_str()) )
+		return path;
+
+	locations.push_back(Process::ExecutableDirectory());
+	locations.push_back("/usr/local/bin/");
+	locations.push_back("/usr/local/");
+	locations.push_back("/opt/");
+
+	const size_t numLocations = locations.size();
+
+	for( size_t n=0; n < numLocations; n++ )
+	{
+		const std::string str = locations[n] + path;
+
+		if( fileExists(str.c_str()) )
+			return str;
+	}
+
+	return "";
+}
+
+
 // listDir
 bool listDir( const char* path, std::vector<std::string>& output, bool includePath )
 {
@@ -83,7 +125,7 @@ bool fileExists( const char* path, bool regularFilesOnly )
 
 	if( result == -1 )
 	{
-		printf("%s does not exist.\n", path);
+		//printf("%s does not exist.\n", path);
 		return false;
 	}
 
@@ -126,7 +168,7 @@ std::string filePath( const std::string& filename )
 	if( slashIdx == std::string::npos || slashIdx == 0 )
 		return filename;
 
-	return filename.substr(0, slashIdx);
+	return filename.substr(0, slashIdx + 1);
 }
 
 
@@ -183,47 +225,5 @@ std::string workingDirectory()
 {
 	return Process::WorkingDirectory();
 }
-
-
-// absolutePath
-std::string absolutePath( const std::string& relative_path )
-{
-	const std::string proc = Process::ExecutableDirectory();
-	return proc + relative_path;
-}
-
-
-// locateFile
-std::string locateFile( const std::string& path )
-{
-	std::vector<std::string> locations;
-	return locateFile(path, locations);
-}
-
-
-// locateFile
-std::string locateFile( const std::string& path, std::vector<std::string>& locations )
-{
-	if( fileExists(path.c_str()) )
-		return path;
-
-	locations.push_back("/usr/local/bin/");
-	locations.push_back("/usr/local/");
-	locations.push_back("/opt/");
-
-	const size_t numLocations = locations.size();
-
-	for( size_t n=0; n < numLocations; n++ )
-	{
-		const std::string str = locations[n] + path;
-
-		if( fileExists(str.c_str()) )
-			return str;
-	}
-
-	return "";
-}
-
-
 
 

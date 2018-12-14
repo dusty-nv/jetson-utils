@@ -22,11 +22,12 @@
  
 #include "loadImage.h"
 #include "cudaMappedMemory.h"
+#include "filesystem.h"
 
 #include <QImage>
 
 
-
+// saveImageRGBA
 bool saveImageRGBA( const char* filename, float4* cpu, int width, int height, float max_pixel )
 {
 	if( !filename || !cpu || !width || !height )
@@ -71,12 +72,21 @@ bool loadImageRGBA( const char* filename, float4** cpu, float4** gpu, int* width
 		return false;
 	}
 	
+	// verify file path
+	const std::string path = locateFile(filename);
+
+	if( path.length() == 0 )
+	{
+		printf("failed to find image '%s'\n", filename);
+		return false;
+	}
+
 	// load original image
 	QImage qImg;
 
-	if( !qImg.load(filename) )
+	if( !qImg.load(path.c_str()) )
 	{
-		printf("failed to load image %s\n", filename);
+		printf("failed to load image '%s'\n", path.c_str());
 		return false;
 	}
 
@@ -128,12 +138,21 @@ bool loadImageRGB( const char* filename, float3** cpu, float3** gpu, int* width,
 		return false;
 	}
 	
+	// verify file path
+	const std::string path = locateFile(filename);
+
+	if( path.length() == 0 )
+	{
+		printf("failed to find image '%s'\n", filename);
+		return false;
+	}
+
 	// load original image
 	QImage qImg;
 
-	if( !qImg.load(filename) )
+	if( !qImg.load(path.c_str()) )
 	{
-		printf("failed to load image %s\n", filename);
+		printf("failed to load image '%s'\n", path.c_str());
 		return false;
 	}
 
@@ -188,12 +207,21 @@ bool loadImageBGR( const char* filename, float3** cpu, float3** gpu, int* width,
 		return false;
 	}
 	
+	// verify file path
+	const std::string path = locateFile(filename);
+
+	if( path.length() == 0 )
+	{
+		printf("failed to find image '%s'\n", filename);
+		return false;
+	}
+
 	// load original image
 	QImage qImg;
 
-	if( !qImg.load(filename) )
+	if( !qImg.load(path.c_str()) )
 	{
-		printf("failed to load image %s\n", filename);
+		printf("failed to load image '%s'\n", path.c_str());
 		return false;
 	}
 
