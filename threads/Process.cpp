@@ -58,7 +58,7 @@ std::string Process::ExecutablePath()
 	if( size <= 0 )
 		return "";
 	
-	return buf;
+	return std::string(buf);
 }
 
 
