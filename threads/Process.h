@@ -25,6 +25,7 @@
 
 #include <sys/types.h>
 #include <unistd.h>
+#include <string>
 
 	   
 /**
@@ -47,6 +48,24 @@ public:
 	 * Duplicate the calling process
 	 */
 	static void Fork();
+
+	/**
+	 * Retrieve the absolute path of the calling process executable,
+	 * including the process' filename.
+	 */
+	static std::string ExecutablePath();
+
+	/**
+	 * Retrieve the directory that the process executable resides in.
+	 */
+	static std::string ExecutableDirectory();
+
+	/**
+	 * Retrieve the current working directory of the process.
+	 */
+	static std::string WorkingDirectory();
 };
 
+
 #endif
+

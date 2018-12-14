@@ -22,6 +22,9 @@
  
 #include "Process.h"
 
+#include "filesystem.h"
+#include <string.h>
+
  
 // GetID
 pid_t Process::GetID()
@@ -42,3 +45,47 @@ void Process::Fork()
 {
 	fork();
 }
+
+
+// ExecutablePath
+std::string Process::ExecutablePath()
+{
+	char buf[512];
+	memset(buf, 0, sizeof(buf));	// readlink() does not NULL-terminate
+
+	const ssize_t size = readlink("/proc/self/exe", buf, sizeof(buf));
+
+	if( size <= 0 )
+		return "";
+	
+	return buf;
+}
+
+
+// ExecutableDirectory
+std::string Process::ExecutableDirectory()
+{
+	const std::string path = ExecutablePath();
+
+	if( path.length() == 0 )
+		return "";
+
+	return filePath(path);
+}
+
+
+// WorkingDirectory
+std::string Process::WorkingDirectory()
+{
+	char buf[1024];
+
+	char* str = getcwd(buf, sizeof(buf));
+
+	if( !str )
+		return "";
+
+	return buf;
+}
+
+
+
