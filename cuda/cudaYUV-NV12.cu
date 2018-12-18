@@ -364,7 +364,7 @@ __global__ void NV12ToRGBAf(uint32_t* srcImage,  size_t nSourcePitch,
 
 
 // cudaNV12ToRGBA
-cudaError_t cudaNV12ToRGBAf( uint8_t* srcDev, size_t srcPitch, float4* destDev, size_t destPitch, size_t width, size_t height )
+cudaError_t cudaNV12ToRGBA32( uint8_t* srcDev, size_t srcPitch, float4* destDev, size_t destPitch, size_t width, size_t height )
 {
 	if( !srcDev || !destDev )
 		return cudaErrorInvalidDevicePointer;
@@ -384,9 +384,9 @@ cudaError_t cudaNV12ToRGBAf( uint8_t* srcDev, size_t srcPitch, float4* destDev, 
 	return CUDA(cudaGetLastError());
 }
 
-cudaError_t cudaNV12ToRGBAf( uint8_t* srcDev, float4* destDev, size_t width, size_t height )
+cudaError_t cudaNV12ToRGBA32( uint8_t* srcDev, float4* destDev, size_t width, size_t height )
 {
-	return cudaNV12ToRGBAf(srcDev, width * sizeof(uint8_t), destDev, width * sizeof(float4), width, height);
+	return cudaNV12ToRGBA32(srcDev, width * sizeof(uint8_t), destDev, width * sizeof(float4), width, height);
 }
 
 

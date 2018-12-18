@@ -136,13 +136,13 @@ bool gstCamera::ConvertRGBA( void* input, void** output, bool zeroCopy )
 	if( onboardCamera() )
 	{
 		// onboard camera is NV12
-		if( CUDA_FAILED(cudaNV12ToRGBAf((uint8_t*)input, (float4*)mRGBA[mLatestRGBA], mWidth, mHeight)) )
+		if( CUDA_FAILED(cudaNV12ToRGBA32((uint8_t*)input, (float4*)mRGBA[mLatestRGBA], mWidth, mHeight)) )
 			return false;
 	}
 	else
 	{
 		// USB webcam is RGB
-		if( CUDA_FAILED(cudaRGBToRGBAf((uchar3*)input, (float4*)mRGBA[mLatestRGBA], mWidth, mHeight)) )
+		if( CUDA_FAILED(cudaRGB8ToRGBA32((uchar3*)input, (float4*)mRGBA[mLatestRGBA], mWidth, mHeight)) )
 			return false;
 	}
 	

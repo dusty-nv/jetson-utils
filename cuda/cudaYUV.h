@@ -132,8 +132,8 @@ cudaError_t cudaYUYVToGray( uchar2* input, size_t inputPitch, float* output, siz
 cudaError_t cudaNV12ToRGBA( uint8_t* input, size_t inputPitch, uchar4* output, size_t outputPitch, size_t width, size_t height );
 cudaError_t cudaNV12ToRGBA( uint8_t* input, uchar4* output, size_t width, size_t height );
 
-cudaError_t cudaNV12ToRGBAf( uint8_t* input, size_t inputPitch, float4* output, size_t outputPitch, size_t width, size_t height );
-cudaError_t cudaNV12ToRGBAf( uint8_t* input, float4* output, size_t width, size_t height );
+cudaError_t cudaNV12ToRGBA32( uint8_t* input, size_t inputPitch, float4* output, size_t outputPitch, size_t width, size_t height );
+cudaError_t cudaNV12ToRGBA32( uint8_t* input, float4* output, size_t width, size_t height );
 
 /**
  * Setup NV12 color conversion constants.

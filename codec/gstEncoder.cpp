@@ -506,7 +506,7 @@ bool gstEncoder::EncodeRGBA( float* buffer, float maxPixelValue )
 		}
 	}
 
-	if( CUDA_FAILED(cudaRGBAToRGBA8((float4*)buffer, (uchar4*)mGpuRGBA, mWidth, mHeight, make_float2(0.0f, maxPixelValue))) )
+	if( CUDA_FAILED(cudaRGBA32ToRGBA8((float4*)buffer, (uchar4*)mGpuRGBA, mWidth, mHeight, make_float2(0.0f, maxPixelValue))) )
 	{
 		printf(LOG_GSTREAMER "gstEncoder - failed convert RGBA32f image to RGBA8\n");
 		return false;
