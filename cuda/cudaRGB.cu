@@ -77,11 +77,11 @@ cudaError_t cudaRGB8ToRGBA32( uchar3* srcDev, float4* destDev, size_t width, siz
 }
 
 //-------------------------------------------------------------------------------------------------------------------------
-
-__global__ void RGBToRGBA8(float4* srcImage,
-                           uchar4* dstImage,
-                           int width, int height,
-					  float scaling_factor)
+template<bool isBGRA>
+__global__ void RGBAToRGBA8(float4* srcImage,
+                            uchar4* dstImage,
+                            int width, int height,
+					   float scaling_factor)
 {
 	const int x = (blockIdx.x * blockDim.x) + threadIdx.x;
 	const int y = (blockIdx.y * blockDim.y) + threadIdx.y;
@@ -95,10 +95,21 @@ __global__ void RGBToRGBA8(float4* srcImage,
 		return;
 
 	const float4 px = srcImage[pixel];
-	dstImage[pixel] = make_uchar4(px.x * scaling_factor, 
-							px.y * scaling_factor, 
-							px.z * scaling_factor,
-							px.w * scaling_factor);
+
+	if( isBGRA )
+	{
+		dstImage[pixel] = make_uchar4(px.z * scaling_factor, 
+								px.y * scaling_factor, 
+								px.x * scaling_factor,
+								px.w * scaling_factor);
+	}
+	else
+	{
+		dstImage[pixel] = make_uchar4(px.x * scaling_factor, 
+								px.y * scaling_factor, 
+								px.z * scaling_factor,
+								px.w * scaling_factor);
+	}
 }
 
 cudaError_t cudaRGBA32ToRGBA8( float4* srcDev, uchar4* destDev, size_t width, size_t height, const float2& inputRange )
@@ -114,7 +125,7 @@ cudaError_t cudaRGBA32ToRGBA8( float4* srcDev, uchar4* destDev, size_t width, si
 	const dim3 blockDim(8,8,1);
 	const dim3 gridDim(iDivUp(width,blockDim.x), iDivUp(height,blockDim.y), 1);
 
-	RGBToRGBA8<<<gridDim, blockDim>>>( srcDev, destDev, width, height, multiplier );
+	RGBAToRGBA8<false><<<gridDim, blockDim>>>( srcDev, destDev, width, height, multiplier );
 	
 	return CUDA(cudaGetLastError());
 }
@@ -123,5 +134,110 @@ cudaError_t cudaRGBA32ToRGBA8( float4* srcDev, uchar4* destDev, size_t width, si
 {
 	return cudaRGBA32ToRGBA8(srcDev, destDev, width, height, make_float2(0.0f, 255.0f));
 }
+
+cudaError_t cudaRGBA32ToBGRA8( float4* srcDev, uchar4* destDev, size_t width, size_t height, const float2& inputRange )
+{
+	if( !srcDev || !destDev )
+		return cudaErrorInvalidDevicePointer;
+
+	if( width == 0 || height == 0 )
+		return cudaErrorInvalidValue;
+
+	const float multiplier = 255.0f / inputRange.y;
+
+	const dim3 blockDim(8,8,1);
+	const dim3 gridDim(iDivUp(width,blockDim.x), iDivUp(height,blockDim.y), 1);
+
+	RGBAToRGBA8<true><<<gridDim, blockDim>>>( srcDev, destDev, width, height, multiplier );
+	
+	return CUDA(cudaGetLastError());
+}
+
+cudaError_t cudaRGBA32ToBGRA8( float4* srcDev, uchar4* destDev, size_t width, size_t height )
+{
+	return cudaRGBA32ToBGRA8(srcDev, destDev, width, height, make_float2(0.0f, 255.0f));
+}
+
+
+//-------------------------------------------------------------------------------------------------------------------------
+template<bool isBGR>
+__global__ void RGBAToRGB8(float4* srcImage,
+                           uchar3* dstImage,
+                           int width, int height,
+					  float scaling_factor)
+{
+	const int x = (blockIdx.x * blockDim.x) + threadIdx.x;
+	const int y = (blockIdx.y * blockDim.y) + threadIdx.y;
+	
+	const int pixel = y * width + x;
+
+	if( x >= width )
+		return; 
+
+	if( y >= height )
+		return;
+
+	const float4 px = srcImage[pixel];
+
+	if( isBGR )
+	{
+		dstImage[pixel] = make_uchar3(px.z * scaling_factor, 
+								px.y * scaling_factor, 
+								px.x * scaling_factor);
+	}
+	else
+	{
+		dstImage[pixel] = make_uchar3(px.x * scaling_factor, 
+								px.y * scaling_factor, 
+								px.z * scaling_factor);
+	}
+}
+
+cudaError_t cudaRGBA32ToRGB8( float4* srcDev, uchar3* destDev, size_t width, size_t height, const float2& inputRange )
+{
+	if( !srcDev || !destDev )
+		return cudaErrorInvalidDevicePointer;
+
+	if( width == 0 || height == 0 )
+		return cudaErrorInvalidValue;
+
+	const float multiplier = 255.0f / inputRange.y;
+
+	const dim3 blockDim(8,8,1);
+	const dim3 gridDim(iDivUp(width,blockDim.x), iDivUp(height,blockDim.y), 1);
+
+	RGBAToRGB8<false><<<gridDim, blockDim>>>( srcDev, destDev, width, height, multiplier );
+	
+	return CUDA(cudaGetLastError());
+}
+
+cudaError_t cudaRGBA32ToRGB8( float4* srcDev, uchar3* destDev, size_t width, size_t height )
+{
+	return cudaRGBA32ToRGB8(srcDev, destDev, width, height, make_float2(0.0f, 255.0f));
+}
+
+cudaError_t cudaRGBA32ToBGR8( float4* srcDev, uchar3* destDev, size_t width, size_t height, const float2& inputRange )
+{
+	if( !srcDev || !destDev )
+		return cudaErrorInvalidDevicePointer;
+
+	if( width == 0 || height == 0 )
+		return cudaErrorInvalidValue;
+
+	const float multiplier = 255.0f / inputRange.y;
+
+	const dim3 blockDim(8,8,1);
+	const dim3 gridDim(iDivUp(width,blockDim.x), iDivUp(height,blockDim.y), 1);
+
+	RGBAToRGB8<true><<<gridDim, blockDim>>>( srcDev, destDev, width, height, multiplier );
+	
+	return CUDA(cudaGetLastError());
+}
+
+cudaError_t cudaRGBA32ToBGR8( float4* srcDev, uchar3* destDev, size_t width, size_t height )
+{
+	return cudaRGBA32ToBGR8(srcDev, destDev, width, height, make_float2(0.0f, 255.0f));
+}
+
 
 
