@@ -60,12 +60,12 @@ void networkAdapters( std::vector<networkAdapter_t>& interfaceList )
 		if( n->ifa_addr->sa_family != AF_INET /*AF_INET6*/ )
 			continue;
 
-		if( !addrs->ifa_name || strlen(addrs->ifa_name) == 0 )
+		if( !n->ifa_name || strlen(n->ifa_name) == 0 )
 			continue;
 
 		networkAdapter_t entry;
 
-		entry.name      = addrs->ifa_name;
+		entry.name      = n->ifa_name;
 		entry.ipAddress = IPv4AddressStr(((sockaddr_in*)n->ifa_addr)->sin_addr.s_addr);
 
 		printf("%s %s\n", entry.name.c_str(), entry.ipAddress.c_str());
