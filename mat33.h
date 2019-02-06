@@ -79,7 +79,7 @@ inline void mat33_identity( T dst[3][3] )
  * It is safe to have dst and src be the same memory.
  */
 template<typename T>
-inline void mat33_inverse( T dst, const T src[3][3] )
+inline void mat33_inverse( T dst[3][3], const T src[3][3] )
 {
 	T inv[3][3];
 
