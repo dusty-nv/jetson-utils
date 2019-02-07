@@ -23,9 +23,9 @@
 #ifndef __MATRIX_33_H_
 #define __MATRIX_33_H_
 
-
 #include <stdio.h>
 #include <unistd.h>
+#include <math.h>
 
 
 /**
@@ -107,7 +107,7 @@ inline void mat33_inverse( T dst[3][3], const T src[3][3] )
  * Multiply two 3x3 matrices, dst=a*b
  */
 template<typename T>
-inline void mat33_mul( T dst[3][3], const T a[3][3], const T b[3][3] )
+inline void mat33_multiply( T dst[3][3], const T a[3][3], const T b[3][3] )
 {
 	for( int i=0; i < 3; i++ )
 	{
@@ -212,6 +212,91 @@ inline int mat33_rank( const T src[3][3] )
 
 
 /**
+ * Initialize a 3x3 rotation matrix
+ */
+template<typename T>
+inline void mat33_rotation( T dst[3][3], T degrees )
+{
+	mat33_identity(dst);
+
+	const T rad = 0.01745329251 * degrees;
+
+	const T c = cos(rad);
+	const T s = sin(rad);
+
+	dst[0][0] = c;
+	dst[0][1] = -s;
+	dst[1][0] = s;
+	dst[1][1] = c;
+}
+
+
+/**
+ * Rotate a 3x3 matrix counter-clockwise
+ */
+template<typename T>
+inline void mat33_rotation( T dst[3][3], T src[3][3], T degrees )
+{
+	T m[3][3];
+
+	mat33_rotation(m, degrees);
+	mat33_multiply(dst, src, m);
+}
+
+
+/**
+ * Initialize a 3x3 scaling matrix
+ */
+template<typename T>
+inline void mat33_scale( T dst[3][3], T sx, T sy )
+{
+	mat33_identity(dst);
+
+	dst[0][0] = sx;
+	dst[1][1] = sy;
+}
+
+
+/**
+ * Scale a 3x3 matrix by (sx,sy)
+ */
+template<typename T>
+inline void mat33_scale( T dst[3][3], T src[3][3], T sx, T sy )
+{
+	T m[3][3];
+
+	mat33_scale(m, sx, sy);
+	mat33_multiply(dst, src, m);
+}
+
+
+/**
+ * Initialize a 3x3 shear matrix
+ */
+template<typename T>
+inline void mat33_shear( T dst[3][3], T sx, T sy )
+{
+	mat33_identity(dst);
+
+	dst[0][1] = sx;
+	dst[1][0] = sy;
+}
+
+
+/**
+ * Shear a 3x3 matrix by (sx,sy)
+ */
+template<typename T>
+inline void mat33_shear( T dst[3][3], T src[3][3], T sx, T sy )
+{
+	T m[3][3];
+
+	mat33_shear(m, sx, sy);
+	mat33_multiply(dst, src, m);
+}
+
+
+/**
  * Swap two 3x3 matrices inline, a=b and b=a
  */
 template<typename T>
@@ -232,6 +317,32 @@ template<typename T>
 inline T mat33_trace( const T src[3][3] )
 {
 	return src[0][0] + src[1][1] + src[2][2];
+}
+
+
+/**
+ * Initialize a 3x3 translation matrix
+ */
+template<typename T>
+inline void mat33_translate( T dst[3][3], T x, T y )
+{
+	mat33_identity(dst);
+
+	dst[0][2] = x;
+	dst[1][2] = y;
+}
+
+
+/**
+ * Translate a 3x3 matrix by (x,y)
+ */
+template<typename T>
+inline void mat33_translate( T dst[3][3], T src[3][3], T x, T y )
+{
+	T m[3][3];
+
+	mat33_translate(m, x, y);
+	mat33_multiply(dst, src, m);
 }
 
 
