@@ -46,12 +46,15 @@ __global__ void gpuPerspectiveWarp( T* input, T* output, int width, int height,
 	
 	T px;
 
-	px.x = 0; px.y = 0;
-	px.z = 0; px.w = 0;
+	px.x = 0; px.y = 255;
+	px.z = 0; px.w = 255;
 
 	if( u < width && v < height && u >= 0 && v >= 0 )
 		px = input[v * width + u];
 		
+     //if( x != u && y != v )
+	//	printf("(%i, %i) -> (%i, %i)\n", u, v, x, y);
+
 	output[y * width + x] = px;
 } 
 
@@ -137,6 +140,25 @@ cudaError_t cudaWarpPerspective( float4* input, float4* output, uint32_t width, 
 
 // cudaWarpAffine
 cudaError_t cudaWarpAffine( float4* input, float4* output, uint32_t width, uint32_t height,
+					   const float transform[2][3], bool transform_inverted )
+{
+	float psp_transform[3][3];
+
+	// convert the affine transform to 3x3
+	for( uint32_t i=0; i < 2; i++ )
+		for( uint32_t j=0; j < 3; j++ )
+			psp_transform[i][j] = transform[i][j];
+
+	psp_transform[2][0] = 0;
+	psp_transform[2][1] = 0;
+	psp_transform[2][2] = 1;
+
+	return CUDA(cudaWarpPerspective(input, output, width, height, psp_transform, transform_inverted));
+}
+
+
+// cudaWarpAffine
+cudaError_t cudaWarpAffine( uchar4* input, uchar4* output, uint32_t width, uint32_t height,
 					   const float transform[2][3], bool transform_inverted )
 {
 	float psp_transform[3][3];
