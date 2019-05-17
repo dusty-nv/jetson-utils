@@ -20,22 +20,17 @@
  * DEALINGS IN THE SOFTWARE.
  */
  
-#ifndef __PYTHON_BINDINGS_UTILS__
-#define __PYTHON_BINDINGS_UTILS__
+#ifndef __PYTHON_BINDINGS_IMAGE_IO__
+#define __PYTHON_BINDINGS_IMAGE_IO__
 
-#include <Python.h>
+#include "PyUtils.h"
 
-// check Python version
-#if PY_MAJOR_VERSION >= 3
-	#define PYTHON_3
-#elif PY_MAJOR_VERSION >= 2
-	#define PYTHON_2
-#endif
 
-// user-facing module name 
-#define PY_UTILS_MODULE_NAME "jetson.utils"
+// Register functions
+PyMethodDef* PyImageIO_RegisterFunctions();
 
-// logging prefix
-#define LOG_PY_UTILS PY_UTILS_MODULE_NAME " -- "
+// Register types
+bool PyImageIO_RegisterTypes( PyObject* module );
+
 
 #endif

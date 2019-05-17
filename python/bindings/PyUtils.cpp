@@ -21,8 +21,9 @@
  */
 
 #include "PyUtils.h"
-#include "PyCUDA.h"
 
+#include "PyCUDA.h"
+#include "PyImageIO.h"
 
 
 const uint32_t pyUtilsMaxFunctions = 128;
@@ -46,7 +47,7 @@ void PyUtils_AddFunctions( PyMethodDef* functions )
 		
 		if( pyUtilsNumFunctions >= pyUtilsMaxFunctions - 1 )
 		{
-			printf("jetson.utils -- exceeded max number of functions to register (%u)\n", pyUtilsMaxFunctions);
+			printf(LOG_PY_UTILS "exceeded max number of functions to register (%u)\n", pyUtilsMaxFunctions);
 			return;
 		}
 		
@@ -61,15 +62,16 @@ void PyUtils_AddFunctions( PyMethodDef* functions )
 // register functions
 bool PyUtils_RegisterFunctions()
 {
-	printf("jetson.utils -- registering module functions...\n");
+	printf(LOG_PY_UTILS "registering module functions...\n");
 	
 	// zero the master list of functions, so it end with NULL sentinel
 	memset(pyUtilsFunctions, 0, sizeof(PyMethodDef) * pyUtilsMaxFunctions);
 	
 	// add functions to the master list
 	PyUtils_AddFunctions(PyCUDA_RegisterFunctions());
-	
-	printf("jetson.utils -- done registering module functions\n");
+	PyUtils_AddFunctions(PyImageIO_RegisterFunctions());
+
+	printf(LOG_PY_UTILS "done registering module functions\n");
 	return true;
 }
 
@@ -77,12 +79,15 @@ bool PyUtils_RegisterFunctions()
 // register object types
 bool PyUtils_RegisterTypes( PyObject* module )
 {
-	printf("jetson.utils -- registering module types...\n");
+	printf(LOG_PY_UTILS "registering module types...\n");
 	
 	if( !PyCUDA_RegisterTypes(module) )
-		printf("jetson.utils -- failed to register CUDA types\n");
+		printf(LOG_PY_UTILS "failed to register CUDA types\n");
 
-	printf("jetson.utils -- done registering module types\n");
+	if( !PyImageIO_RegisterTypes(module) )
+		printf(LOG_PY_UTILS "failed to register ImageIO types\n");
+
+	printf(LOG_PY_UTILS "done registering module types\n");
 	return true;
 }
 
@@ -98,26 +103,26 @@ static struct PyModuleDef pyUtilsModuleDef = {
 PyMODINIT_FUNC
 PyInit_jetson_utils_python(void)
 {
-	printf("jetson.utils -- initializing Python %i.%i bindings...\n", PY_MAJOR_VERSION, PY_MINOR_VERSION);
+	printf(LOG_PY_UTILS "initializing Python %i.%i bindings...\n", PY_MAJOR_VERSION, PY_MINOR_VERSION);
 	
 	// register functions
 	if( !PyUtils_RegisterFunctions() )
-		printf("jetson.utils -- failed to register module functions\n");
+		printf(LOG_PY_UTILS "failed to register module functions\n");
 	
 	// create the module
 	PyObject* module = PyModule_Create(&pyUtilsModuleDef);
 	
 	if( !module )
 	{
-		printf("jetson.utils -- PyModule_Create() failed\n");
+		printf(LOG_PY_UTILS "PyModule_Create() failed\n");
 		return NULL;
 	}
 	
 	// register types
 	if( !PyUtils_RegisterTypes(module) )
-		printf("jetson.utils -- failed to register module types\n");
+		printf(LOG_PY_UTILS "failed to register module types\n");
 	
-	printf("jetson.utils -- done Python %i.%i binding initialization\n", PY_MAJOR_VERSION, PY_MINOR_VERSION);
+	printf(LOG_PY_UTILS "done Python %i.%i binding initialization\n", PY_MAJOR_VERSION, PY_MINOR_VERSION);
 	return module;
 }
 
@@ -125,26 +130,26 @@ PyInit_jetson_utils_python(void)
 PyMODINIT_FUNC
 initjetson_utils_python(void)
 {
-	printf("jetson.utils -- initializing Python %i.%i bindings...\n", PY_MAJOR_VERSION, PY_MINOR_VERSION);
+	printf(LOG_PY_UTILS "initializing Python %i.%i bindings...\n", PY_MAJOR_VERSION, PY_MINOR_VERSION);
 	
 	// register functions
 	if( !PyUtils_RegisterFunctions() )
-		printf("jetson.utils -- failed to register module functions\n");
+		printf(LOG_PY_UTILS "failed to register module functions\n");
 	
 	// create the module
 	PyObject* module = Py_InitModule("jetson_utils_python", pyUtilsFunctions);
 	
 	if( !module )
 	{
-		printf("jetson.utils -- Py_InitModule() failed\n");
+		printf(LOG_PY_UTILS "Py_InitModule() failed\n");
 		return;
 	}
 	
 	// register types
 	if( !PyUtils_RegisterTypes(module) )
-		printf("jetson.utils -- failed to register module types\n");
+		printf(LOG_PY_UTILS "failed to register module types\n");
 	
-	printf("jetson.utils -- done Python %i.%i binding initialization\n", PY_MAJOR_VERSION, PY_MINOR_VERSION);
+	printf(LOG_PY_UTILS "done Python %i.%i binding initialization\n", PY_MAJOR_VERSION, PY_MINOR_VERSION);
 }
 #endif
 

@@ -22,17 +22,97 @@
 
 #include "PyCUDA.h"
 
+#include "cudaMappedMemory.h"
 
 
-// Test function
-PyObject* PyCUDA_Test( PyObject* self, PyObject* args )
+#define CUDA_ALLOC_MAPPED_CAPSULE_NAME PY_UTILS_MODULE_NAME ".cudaAllocMapped"
+
+
+// PyCUDA_FreeMapped
+void PyCUDA_FreeMapped( PyObject* capsule )
 {
-	//PyErr_SetString(PyExc_Exception, "PyCUDA -- invalid object instance");
-		//return NULL;
+	printf(LOG_PY_UTILS "freeing CUDA mapped memory\n");
+
+	void* ptr = PyCapsule_GetPointer(capsule, CUDA_ALLOC_MAPPED_CAPSULE_NAME);
+
+	if( !ptr )
+	{
+		printf(LOG_PY_UTILS "PyCUDA_FreeMapped() failed to get pointer from PyCapsule container\n");
+		return;
+	}
+
+	if( CUDA_FAILED(cudaFreeHost(ptr)) )
+	{
+		printf(LOG_PY_UTILS "failed to free CUDA mapped memory with cudaFreeHost()\n");
+		return;
+	}
+}
+
+
+// PyCUDA_RegisterMappedMemory
+PyObject* PyCUDA_RegisterMappedMemory( void* cpuPtr, void* gpuPtr, bool freeOnDelete )
+{
+	if( !cpuPtr || !gpuPtr )
+	{
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "RegisterMappedMemory() was provided NULL memory pointers");
+		return NULL;
+	}
+
+	if( cpuPtr != gpuPtr )
+	{
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "RegisterMappedMemory() pointers don't match");
 		
-	printf("PyCUDA -- test\n");
-	
-	return Py_BuildValue("s", "test string"); //Py_RETURN_NONE;
+		if( freeOnDelete )
+			CUDA(cudaFreeHost(cpuPtr));
+
+		return NULL;
+	}
+
+	// create capsule object
+	PyObject* capsule = PyCapsule_New(cpuPtr, CUDA_ALLOC_MAPPED_CAPSULE_NAME, freeOnDelete ? PyCUDA_FreeMapped : NULL);
+
+	if( !capsule )
+	{
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "RegisterMappedMemory() failed to create PyCapsule container");
+		
+		if( freeOnDelete )
+			CUDA(cudaFreeHost(cpuPtr));
+
+		return NULL;
+	}
+
+	return capsule;
+}
+
+
+// PyCUDA_AllocMapped
+PyObject* PyCUDA_AllocMapped( PyObject* self, PyObject* args )
+{
+	int size = 0;
+
+	if( !PyArg_ParseTuple(args, "i", &size) )
+	{
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaAllocMapped() failed to parse size argument");
+		return NULL;
+	}
+		
+	if( size <= 0 )
+	{
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaAllocMapped() requested size is negative or zero");
+		return NULL;
+	}
+
+	// allocate memory
+	void* cpuPtr = NULL;
+	void* gpuPtr = NULL;
+
+	if( !cudaAllocMapped(&cpuPtr, &gpuPtr, size) )
+	{
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaAllocMapped() failed");
+		return NULL;
+	}
+
+	return PyCUDA_RegisterMappedMemory(cpuPtr, gpuPtr);
 }
 
 
@@ -40,7 +120,7 @@ PyObject* PyCUDA_Test( PyObject* self, PyObject* args )
 
 static PyMethodDef pyCUDA_Functions[] = 
 {
-	{ "Test", (PyCFunction)PyCUDA_Test, METH_NOARGS, "Test function"},
+	{ "cudaAllocMapped", (PyCFunction)PyCUDA_AllocMapped, METH_VARARGS, "Allocate CUDA ZeroCopy mapped memory" },
 	{NULL}  /* Sentinel */
 };
 
@@ -58,3 +138,4 @@ bool PyCUDA_RegisterTypes( PyObject* module )
 	
 	return true;
 }
+

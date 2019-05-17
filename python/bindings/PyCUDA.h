@@ -26,6 +26,9 @@
 #include "PyUtils.h"
 
 
+// Create memory capsule
+PyObject* PyCUDA_RegisterMappedMemory( void* cpuPtr, void* gpuPtr, bool freeOnDelete=true );
+
 // Register functions
 PyMethodDef* PyCUDA_RegisterFunctions();
 
