@@ -57,13 +57,8 @@ PyObject* PyImageIO_LoadRGBA( PyObject* self, PyObject* args )
 		return NULL;
 
 	// create dimension objects
-#ifdef PYTHON_3
-	PyObject* pyWidth  = PyLong_FromLong(width);
-	PyObject* pyHeight = PyLong_FromLong(height);
-#else
-	PyObject* pyWidth  = PyInt_FromLong(width);
-	PyObject* pyHeight = PyInt_FromLong(height);
-#endif
+	PyObject* pyWidth  = PYLONG_FROM_LONG(width);
+	PyObject* pyHeight = PYLONG_FROM_LONG(height);
 
 	// return tuple
 	PyObject* tuple = PyTuple_Pack(3, capsule, pyWidth, pyHeight);

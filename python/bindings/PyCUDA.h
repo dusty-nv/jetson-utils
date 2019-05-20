@@ -26,6 +26,9 @@
 #include "PyUtils.h"
 
 
+// Name of memory capsules
+#define CUDA_MAPPED_MEMORY_CAPSULE PY_UTILS_MODULE_NAME ".cudaAllocMapped"
+
 // Create memory capsule
 PyObject* PyCUDA_RegisterMappedMemory( void* cpuPtr, void* gpuPtr, bool freeOnDelete=true );
 

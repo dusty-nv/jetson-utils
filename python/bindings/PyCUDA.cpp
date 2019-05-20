@@ -25,7 +25,6 @@
 #include "cudaMappedMemory.h"
 
 
-#define CUDA_ALLOC_MAPPED_CAPSULE_NAME PY_UTILS_MODULE_NAME ".cudaAllocMapped"
 
 
 // PyCUDA_FreeMapped
@@ -33,7 +32,7 @@ void PyCUDA_FreeMapped( PyObject* capsule )
 {
 	printf(LOG_PY_UTILS "freeing CUDA mapped memory\n");
 
-	void* ptr = PyCapsule_GetPointer(capsule, CUDA_ALLOC_MAPPED_CAPSULE_NAME);
+	void* ptr = PyCapsule_GetPointer(capsule, CUDA_MAPPED_MEMORY_CAPSULE);
 
 	if( !ptr )
 	{
@@ -69,7 +68,7 @@ PyObject* PyCUDA_RegisterMappedMemory( void* cpuPtr, void* gpuPtr, bool freeOnDe
 	}
 
 	// create capsule object
-	PyObject* capsule = PyCapsule_New(cpuPtr, CUDA_ALLOC_MAPPED_CAPSULE_NAME, freeOnDelete ? PyCUDA_FreeMapped : NULL);
+	PyObject* capsule = PyCapsule_New(cpuPtr, CUDA_MAPPED_MEMORY_CAPSULE, freeOnDelete ? PyCUDA_FreeMapped : NULL);
 
 	if( !capsule )
 	{

@@ -25,17 +25,43 @@
 
 #include <Python.h>
 
-// check Python version
-#if PY_MAJOR_VERSION >= 3
-	#define PYTHON_3
-#elif PY_MAJOR_VERSION >= 2
-	#define PYTHON_2
-#endif
-
 // user-facing module name 
 #define PY_UTILS_MODULE_NAME "jetson.utils"
 
 // logging prefix
 #define LOG_PY_UTILS PY_UTILS_MODULE_NAME " -- "
 
+// check Python version
+#if PY_MAJOR_VERSION >= 3
+
+	// Python3 defines
+	#ifndef PYTHON_3
+	#define PYTHON_3
+	#endif
+
+	#ifndef PYLONG_FROM_LONG
+	#define PYLONG_FROM_LONG(x)			PyLong_FromLong(x)
+	#endif
+
+	#ifndef PYLONG_FROM_UNSIGNED_LONG
+	#define PYLONG_FROM_UNSIGNED_LONG(x)	PyLong_FromUnsignedLong(x)
+	#endif
+
+#elif PY_MAJOR_VERSION >= 2
+
+	// Python2 defines
+	#ifndef PYTHON_2
+	#define PYTHON_2
+	#endif
+
+	#ifndef PYLONG_FROM_LONG
+	#define PYLONG_FROM_LONG(x)			PyInt_FromLong(x)
+	#endif
+
+	#ifndef PYLONG_FROM_UNSIGNED_LONG
+	#define PYLONG_FROM_UNSIGNED_LONG(x)	PyInt_FromLong(x)
+	#endif
+
 #endif
+#endif
+
