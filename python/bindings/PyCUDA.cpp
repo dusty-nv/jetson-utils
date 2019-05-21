@@ -25,7 +25,84 @@
 #include "cudaMappedMemory.h"
 
 
+// PyCUDA_FreeMalloc
+void PyCUDA_FreeMalloc( PyObject* capsule )
+{
+	printf(LOG_PY_UTILS "freeing cudaMalloc memory\n");
 
+	void* ptr = PyCapsule_GetPointer(capsule, CUDA_MALLOC_MEMORY_CAPSULE);
+
+	if( !ptr )
+	{
+		printf(LOG_PY_UTILS "PyCUDA_FreeMalloc() failed to get pointer from PyCapsule container\n");
+		return;
+	}
+
+	if( CUDA_FAILED(cudaFree(ptr)) )
+	{
+		printf(LOG_PY_UTILS "failed to free cudaMalloc memory with cudaFree()\n");
+		return;
+	}
+}
+
+
+// PyCUDA_RegisterMemory
+PyObject* PyCUDA_RegisterMemory( void* gpuPtr, bool freeOnDelete )
+{
+	if( !gpuPtr )
+	{
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "RegisterMemory() was provided NULL memory pointers");
+		return NULL;
+	}
+
+	// create capsule object
+	PyObject* capsule = PyCapsule_New(gpuPtr, CUDA_MALLOC_MEMORY_CAPSULE, freeOnDelete ? PyCUDA_FreeMalloc : NULL);
+
+	if( !capsule )
+	{
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "RegisterMemory() failed to create PyCapsule container");
+		
+		if( freeOnDelete )
+			CUDA(cudaFree(gpuPtr));
+
+		return NULL;
+	}
+
+	return capsule;
+}
+
+
+// PyCUDA_Malloc
+PyObject* PyCUDA_Malloc( PyObject* self, PyObject* args )
+{
+	int size = 0;
+
+	if( !PyArg_ParseTuple(args, "i", &size) )
+	{
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaMalloc() failed to parse size argument");
+		return NULL;
+	}
+		
+	if( size <= 0 )
+	{
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaMalloc() requested size is negative or zero");
+		return NULL;
+	}
+
+	// allocate memory
+	void* gpuPtr = NULL;
+
+	if( !cudaMalloc(&gpuPtr, size) )
+	{
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaMalloc() failed");
+		return NULL;
+	}
+
+	return PyCUDA_RegisterMemory(gpuPtr);
+}
+
+
+//-------------------------------------------------------------------------------
 
 // PyCUDA_FreeMapped
 void PyCUDA_FreeMapped( PyObject* capsule )
@@ -119,6 +196,7 @@ PyObject* PyCUDA_AllocMapped( PyObject* self, PyObject* args )
 
 static PyMethodDef pyCUDA_Functions[] = 
 {
+	{ "cudaMalloc", (PyCFunction)PyCUDA_Malloc, METH_VARARGS, "Allocated CUDA memory on the GPU with cudaMalloc()" },
 	{ "cudaAllocMapped", (PyCFunction)PyCUDA_AllocMapped, METH_VARARGS, "Allocate CUDA ZeroCopy mapped memory" },
 	{NULL}  /* Sentinel */
 };

@@ -64,8 +64,16 @@ public:
 	bool Open();
 	void Close();
 	
+	// Is open for streaming
+	inline bool IsStreaming() const	   { return mStreaming; }
+
 	// Capture YUV (NV12)
 	bool Capture( void** cpu, void** cuda, unsigned long timeout=ULONG_MAX );
+
+	// Capture a camera image and convert to it float4 RGBA
+	// If you want to capture in a different thread than CUDA, use the Capture() and ConvertRGBA() functions.
+	// Set zeroCopy to true if you need to access the image from CPU, otherwise it will be CUDA only.
+	bool CaptureRGBA( void** output, bool zeroCopy=false, unsigned long timeout=ULONG_MAX );
 	
 	// Takes in captured YUV-NV12 CUDA image, converts to float4 RGBA (with pixel intensity 0-255)
 	// Set zeroCopy to true if you need to access ConvertRGBA from CPU, otherwise it will be CUDA only.
@@ -120,8 +128,10 @@ private:
 	bool     mLatestRetrieved;
 	
 	void*  mRGBA[NUM_RINGBUFFERS];
-	int    mV4L2Device;	// -1 for onboard, >=0 for V4L2 device
-	
+	bool   mRGBAZeroCopy; // were the RGBA buffers allocated with zeroCopy?
+	bool   mStreaming;	  // true if the device is currently open
+	int    mV4L2Device;	  // -1 for onboard, >=0 for V4L2 device
+
 	inline bool onboardCamera() const		{ return (mV4L2Device < 0); }
 };
 

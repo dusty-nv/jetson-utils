@@ -58,7 +58,8 @@ gstCamera::gstCamera()
 	mBus        = NULL;
 	mPipeline   = NULL;	
 	mV4L2Device = -1;
-	
+	mStreaming  = false;
+
 	mWidth  = 0;
 	mHeight = 0;
 	mDepth  = 0;
@@ -79,76 +80,38 @@ gstCamera::gstCamera()
 		mRingbufferGPU[n] = NULL;
 		mRGBA[n]          = NULL;
 	}
+
+	mRGBAZeroCopy = false;
 }
 
 
 // destructor	
 gstCamera::~gstCamera()
 {
-	
-}
+	Close();
 
-
-// ConvertRGBA
-bool gstCamera::ConvertRGBA( void* input, void** output, bool zeroCopy )
-{
-	if( !input || !output )
-		return false;
-	
-	if( !mRGBA[0] )
+	for( uint32_t n=0; n < NUM_RINGBUFFERS; n++ )
 	{
-		const size_t size = mWidth * mHeight * sizeof(float4);
-
-		for( uint32_t n=0; n < NUM_RINGBUFFERS; n++ )
+		// free capture buffer
+		if( mRingbufferCPU[n] != NULL )
 		{
-			if( zeroCopy )
-			{
-				void* cpuPtr = NULL;
-				void* gpuPtr = NULL;
+			CUDA(cudaFreeHost(mRingbufferCPU[n]));
 
-				if( !cudaAllocMapped(&cpuPtr, &gpuPtr, size) )
-				{
-					printf(LOG_CUDA "gstCamera -- failed to allocate zeroCopy memory for %ux%xu RGBA texture\n", mWidth, mHeight);
-					return false;
-				}
-
-				if( cpuPtr != gpuPtr )
-				{
-					printf(LOG_CUDA "gstCamera -- zeroCopy memory has different pointers, please use a UVA-compatible GPU\n");
-					return false;
-				}
-
-				mRGBA[n] = gpuPtr;
-			}
-			else
-			{
-				if( CUDA_FAILED(cudaMalloc(&mRGBA[n], size)) )
-				{
-					printf(LOG_CUDA "gstCamera -- failed to allocate memory for %ux%u RGBA texture\n", mWidth, mHeight);
-					return false;
-				}
-			}
+			mRingbufferCPU[n] = NULL;
+			mRingbufferGPU[n] = NULL;
 		}
-		
-		printf(LOG_CUDA "gstreamer camera -- allocated %u RGBA ringbuffers\n", NUM_RINGBUFFERS);
+
+		// free convert buffer
+		if( mRGBA[n] != NULL )
+		{
+			if( mRGBAZeroCopy )
+				CUDA(cudaFreeHost(mRGBA[n]));
+			else
+				CUDA(cudaFree(mRGBA[n]));
+
+			mRGBA[n] = NULL; 
+		}
 	}
-	
-	if( onboardCamera() )
-	{
-		// onboard camera is NV12
-		if( CUDA_FAILED(cudaNV12ToRGBA32((uint8_t*)input, (float4*)mRGBA[mLatestRGBA], mWidth, mHeight)) )
-			return false;
-	}
-	else
-	{
-		// USB webcam is RGB
-		if( CUDA_FAILED(cudaRGB8ToRGBA32((uchar3*)input, (float4*)mRGBA[mLatestRGBA], mWidth, mHeight)) )
-			return false;
-	}
-	
-	*output     = mRGBA[mLatestRGBA];
-	mLatestRGBA = (mLatestRGBA + 1) % NUM_RINGBUFFERS;
-	return true;
 }
 
 
@@ -213,6 +176,113 @@ bool gstCamera::Capture( void** cpu, void** cuda, unsigned long timeout )
 }
 
 
+// CaptureRGBA
+bool gstCamera::CaptureRGBA( void** output, bool zeroCopy, unsigned long timeout )
+{
+	void* cpu = NULL;
+	void* gpu = NULL;
+
+	if( !Capture(&cpu, &gpu, timeout) )
+	{
+		printf(LOG_GSTREAMER "gstCamera failed to capture frame\n");
+		return false;
+	}
+
+	if( !ConvertRGBA(gpu, output, zeroCopy) )
+	{
+		printf(LOG_GSTREAMER "gstCamera failed to convert frame to RGBA\n");
+		return false;
+	}
+
+	return true;
+}
+	
+
+// ConvertRGBA
+bool gstCamera::ConvertRGBA( void* input, void** output, bool zeroCopy )
+{
+	if( !input || !output )
+		return false;
+	
+	// check if the buffers were previously allocated with a different zeroCopy option
+	// if necessary, free them so they can be re-allocated with the correct option
+	if( mRGBA[0] != NULL && zeroCopy != mRGBAZeroCopy )
+	{
+		for( uint32_t n=0; n < NUM_RINGBUFFERS; n++ )
+		{
+			if( mRGBA[n] != NULL )
+			{
+				if( mRGBAZeroCopy )
+					CUDA(cudaFreeHost(mRGBA[n]));
+				else
+					CUDA(cudaFree(mRGBA[n]));
+
+				mRGBA[n] = NULL; 
+			}
+		}
+
+		mRGBAZeroCopy = false;	// reset for sanity
+	}
+
+	// check if the buffers need allocated
+	if( !mRGBA[0] )
+	{
+		const size_t size = mWidth * mHeight * sizeof(float4);
+
+		for( uint32_t n=0; n < NUM_RINGBUFFERS; n++ )
+		{
+			if( zeroCopy )
+			{
+				void* cpuPtr = NULL;
+				void* gpuPtr = NULL;
+
+				if( !cudaAllocMapped(&cpuPtr, &gpuPtr, size) )
+				{
+					printf(LOG_GSTREAMER "gstCamera -- failed to allocate zeroCopy memory for %ux%xu RGBA texture\n", mWidth, mHeight);
+					return false;
+				}
+
+				if( cpuPtr != gpuPtr )
+				{
+					printf(LOG_GSTREAMER "gstCamera -- zeroCopy memory has different pointers, please use a UVA-compatible GPU\n");
+					return false;
+				}
+
+				mRGBA[n] = gpuPtr;
+			}
+			else
+			{
+				if( CUDA_FAILED(cudaMalloc(&mRGBA[n], size)) )
+				{
+					printf(LOG_GSTREAMER "gstCamera -- failed to allocate memory for %ux%u RGBA texture\n", mWidth, mHeight);
+					return false;
+				}
+			}
+		}
+		
+		printf(LOG_GSTREAMER "gstCamera -- allocated %u RGBA ringbuffers\n", NUM_RINGBUFFERS);
+		mRGBAZeroCopy = zeroCopy;
+	}
+	
+	if( onboardCamera() )
+	{
+		// onboard camera is NV12
+		if( CUDA_FAILED(cudaNV12ToRGBA32((uint8_t*)input, (float4*)mRGBA[mLatestRGBA], mWidth, mHeight)) )
+			return false;
+	}
+	else
+	{
+		// USB webcam is RGB
+		if( CUDA_FAILED(cudaRGB8ToRGBA32((uchar3*)input, (float4*)mRGBA[mLatestRGBA], mWidth, mHeight)) )
+			return false;
+	}
+	
+	*output     = mRGBA[mLatestRGBA];
+	mLatestRGBA = (mLatestRGBA + 1) % NUM_RINGBUFFERS;
+	return true;
+}
+
+
 #define release_return { gst_sample_unref(gstSample); return; }
 
 
@@ -227,7 +297,7 @@ void gstCamera::checkBuffer()
 	
 	if( !gstSample )
 	{
-		printf(LOG_GSTREAMER "gstreamer camera -- gst_app_sink_pull_sample() returned NULL...\n");
+		printf(LOG_GSTREAMER "gstCamera -- gst_app_sink_pull_sample() returned NULL...\n");
 		return;
 	}
 	
@@ -235,7 +305,7 @@ void gstCamera::checkBuffer()
 	
 	if( !gstBuffer )
 	{
-		printf(LOG_GSTREAMER "gstreamer camera -- gst_sample_get_buffer() returned NULL...\n");
+		printf(LOG_GSTREAMER "gstCamera -- gst_sample_get_buffer() returned NULL...\n");
 		return;
 	}
 	
@@ -244,7 +314,7 @@ void gstCamera::checkBuffer()
 
 	if(	!gst_buffer_map(gstBuffer, &map, GST_MAP_READ) ) 
 	{
-		printf(LOG_GSTREAMER "gstreamer camera -- gst_buffer_map() failed...\n");
+		printf(LOG_GSTREAMER "gstCamera -- gst_buffer_map() failed...\n");
 		return;
 	}
 	
@@ -255,7 +325,7 @@ void gstCamera::checkBuffer()
 	
 	if( !gstData )
 	{
-		printf(LOG_GSTREAMER "gstreamer camera -- gst_buffer had NULL data pointer...\n");
+		printf(LOG_GSTREAMER "gstCamera -- gst_buffer had NULL data pointer...\n");
 		release_return;
 	}
 	
@@ -264,7 +334,7 @@ void gstCamera::checkBuffer()
 	
 	if( !gstCaps )
 	{
-		printf(LOG_GSTREAMER "gstreamer camera -- gst_buffer had NULL caps...\n");
+		printf(LOG_GSTREAMER "gstCamera -- gst_buffer had NULL caps...\n");
 		release_return;
 	}
 	
@@ -272,7 +342,7 @@ void gstCamera::checkBuffer()
 	
 	if( !gstCapsStruct )
 	{
-		printf(LOG_GSTREAMER "gstreamer camera -- gst_caps had NULL structure...\n");
+		printf(LOG_GSTREAMER "gstCamera -- gst_caps had NULL structure...\n");
 		release_return;
 	}
 	
@@ -283,7 +353,7 @@ void gstCamera::checkBuffer()
 	if( !gst_structure_get_int(gstCapsStruct, "width", &width) ||
 		!gst_structure_get_int(gstCapsStruct, "height", &height) )
 	{
-		printf(LOG_GSTREAMER "gstreamer camera -- gst_caps missing width/height...\n");
+		printf(LOG_GSTREAMER "gstCamera -- gst_caps missing width/height...\n");
 		release_return;
 	}
 	
@@ -295,7 +365,7 @@ void gstCamera::checkBuffer()
 	mDepth  = (gstSize * 8) / (width * height);
 	mSize   = gstSize;
 	
-	//printf(LOG_GSTREAMER "gstreamer camera recieved %ix%i frame (%u bytes, %u bpp)\n", width, height, gstSize, mDepth);
+	//printf(LOG_GSTREAMER "gstCamera recieved %ix%i frame (%u bytes, %u bpp)\n", width, height, gstSize, mDepth);
 	
 	// make sure ringbuffer is allocated
 	if( !mRingbufferCPU[0] )
@@ -303,16 +373,16 @@ void gstCamera::checkBuffer()
 		for( uint32_t n=0; n < NUM_RINGBUFFERS; n++ )
 		{
 			if( !cudaAllocMapped(&mRingbufferCPU[n], &mRingbufferGPU[n], gstSize) )
-				printf(LOG_CUDA "gstreamer camera -- failed to allocate ringbuffer %u  (size=%u)\n", n, gstSize);
+				printf(LOG_GSTREAMER "gstCamera -- failed to allocate ringbuffer %u  (size=%u)\n", n, gstSize);
 		}
 		
-		printf(LOG_CUDA "gstreamer camera -- allocated %u ringbuffers, %u bytes each\n", NUM_RINGBUFFERS, gstSize);
+		printf(LOG_GSTREAMER "gstCamera -- allocated %u ringbuffers, %u bytes each\n", NUM_RINGBUFFERS, gstSize);
 	}
 	
 	// copy to next ringbuffer
 	const uint32_t nextRingbuffer = (mLatestRingbuffer + 1) % NUM_RINGBUFFERS;		
 	
-	//printf(LOG_GSTREAMER "gstreamer camera -- using ringbuffer #%u for next frame\n", nextRingbuffer);
+	//printf(LOG_GSTREAMER "gstCamera -- using ringbuffer #%u for next frame\n", nextRingbuffer);
 	memcpy(mRingbufferCPU[nextRingbuffer], gstData, gstSize);
 	gst_buffer_unmap(gstBuffer, &map); 
 	//gst_buffer_unref(gstBuffer);
@@ -502,8 +572,11 @@ bool gstCamera::init( gstCameraSrc src )
 // Open
 bool gstCamera::Open()
 {
+	if( mStreaming )
+		return true;
+
 	// transition pipline to STATE_PLAYING
-	printf(LOG_GSTREAMER "gstreamer transitioning pipeline to GST_STATE_PLAYING\n");
+	printf(LOG_GSTREAMER "opening gstCamera for streaming, transitioning pipeline to GST_STATE_PLAYING\n");
 	
 	const GstStateChangeReturn result = gst_element_set_state(mPipeline, GST_STATE_PLAYING);
 
@@ -524,7 +597,7 @@ bool gstCamera::Open()
 	}
 	else if( result != GST_STATE_CHANGE_SUCCESS )
 	{
-		printf(LOG_GSTREAMER "gstreamer failed to set pipeline state to PLAYING (error %u)\n", result);
+		printf(LOG_GSTREAMER "gstCamera failed to set pipeline state to PLAYING (error %u)\n", result);
 		return false;
 	}
 
@@ -532,6 +605,7 @@ bool gstCamera::Open()
 	usleep(100*1000);
 	checkMsgBus();
 
+	mStreaming = true;
 	return true;
 }
 	
@@ -539,15 +613,19 @@ bool gstCamera::Open()
 // Close
 void gstCamera::Close()
 {
+	if( !mStreaming )
+		return;
+
 	// stop pipeline
-	printf(LOG_GSTREAMER "gstreamer transitioning pipeline to GST_STATE_NULL\n");
+	printf(LOG_GSTREAMER "closing gstCamera for streaming, transitioning pipeline to GST_STATE_NULL\n");
 
 	const GstStateChangeReturn result = gst_element_set_state(mPipeline, GST_STATE_NULL);
 
 	if( result != GST_STATE_CHANGE_SUCCESS )
-		printf(LOG_GSTREAMER "gstreamer failed to set pipeline state to PLAYING (error %u)\n", result);
+		printf(LOG_GSTREAMER "gstCamera failed to set pipeline state to PLAYING (error %u)\n", result);
 
 	usleep(250*1000);
+	mStreaming = false;
 }
 
 
