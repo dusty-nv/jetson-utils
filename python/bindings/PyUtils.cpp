@@ -22,6 +22,7 @@
 
 #include "PyUtils.h"
 
+#include "PyGL.h"
 #include "PyCUDA.h"
 #include "PyCamera.h"
 #include "PyImageIO.h"
@@ -69,6 +70,7 @@ bool PyUtils_RegisterFunctions()
 	memset(pyUtilsFunctions, 0, sizeof(PyMethodDef) * pyUtilsMaxFunctions);
 	
 	// add functions to the master list
+	PyUtils_AddFunctions(PyGL_RegisterFunctions());
 	PyUtils_AddFunctions(PyCUDA_RegisterFunctions());
 	PyUtils_AddFunctions(PyCamera_RegisterFunctions());
 	PyUtils_AddFunctions(PyImageIO_RegisterFunctions());
@@ -83,6 +85,9 @@ bool PyUtils_RegisterTypes( PyObject* module )
 {
 	printf(LOG_PY_UTILS "registering module types...\n");
 	
+	if( !PyGL_RegisterTypes(module) )
+		printf(LOG_PY_UTILS "failed to register OpenGL types\n");
+
 	if( !PyCUDA_RegisterTypes(module) )
 		printf(LOG_PY_UTILS "failed to register CUDA types\n");
 

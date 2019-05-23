@@ -36,7 +36,7 @@ typedef struct {
 // New
 static PyObject* PyCamera_New( PyTypeObject *type, PyObject *args, PyObject *kwds )
 {
-	printf("PyCamera_New()\n");
+	printf(LOG_PY_UTILS "PyCamera_New()\n");
 	
 	// allocate a new container
 	PyCamera_Object* self = (PyCamera_Object*)type->tp_alloc(type, 0);
@@ -56,7 +56,7 @@ static PyObject* PyCamera_New( PyTypeObject *type, PyObject *args, PyObject *kwd
 // Init
 static int PyCamera_Init( PyCamera_Object* self, PyObject *args, PyObject *kwds )
 {
-	printf("PyCamera_Init()\n");
+	printf(LOG_PY_UTILS "PyCamera_Init()\n");
 	
 	// parse arguments
 	int camera_width  = gstCamera::DefaultWidth;
@@ -72,11 +72,17 @@ static int PyCamera_Init( PyCamera_Object* self, PyObject *args, PyObject *kwds 
 		return -1;
 	}
   
-	if( camera_width < 0 || camera_height < 0 )
+	if( camera_width <= 0 )	
+		camera_width = gstCamera::DefaultWidth;
+
+	if( camera_height <= 0 )	
+		camera_height = gstCamera::DefaultHeight;
+
+	/*if( camera_width <= 0 || camera_height <= 0 )
 	{
 		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "gstCamera.__init__() requested dimensions are out of bounds");
 		return NULL;
-	}
+	}*/
 
 	// create the camera object
 	gstCamera* camera = gstCamera::Create(camera_width, camera_height, v4l2_device);
@@ -95,7 +101,7 @@ static int PyCamera_Init( PyCamera_Object* self, PyObject *args, PyObject *kwds 
 // Deallocate
 static void PyCamera_Dealloc( PyCamera_Object* self )
 {
-	printf("PyCamera_Dealloc()\n");
+	printf(LOG_PY_UTILS "PyCamera_Dealloc()\n");
 
 	// free the network
 	if( self->camera != NULL )
@@ -159,7 +165,7 @@ static PyObject* PyCamera_CaptureRGBA( PyCamera_Object* self, PyObject* args, Py
 
 	if( !PyArg_ParseTupleAndKeywords(args, kwds, "|ii", kwlist, &pyZeroCopy, &pyTimeout))
 	{
-		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "gstCamera.__init()__ failed to parse args tuple");
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "gstCamera.CaptureRGBA() failed to parse args tuple");
 		return NULL;
 	}
 
@@ -181,9 +187,53 @@ static PyObject* PyCamera_CaptureRGBA( PyCamera_Object* self, PyObject* args, Py
 		return NULL;
 	}
 
-	// return memory capsule (gstCamera will free the underlying memory when camera is deleted)
-	return zeroCopy ? PyCUDA_RegisterMappedMemory(ptr, ptr, false) : PyCUDA_RegisterMemory(ptr, false);
+	// register memory capsule (gstCamera will free the underlying memory when camera is deleted)
+	PyObject* capsule = zeroCopy ? PyCUDA_RegisterMappedMemory(ptr, ptr, false) : PyCUDA_RegisterMemory(ptr, false);
+
+	if( !capsule )
+		return NULL;
+
+	// create dimension objects
+	PyObject* pyWidth  = PYLONG_FROM_LONG(self->camera->GetWidth());
+	PyObject* pyHeight = PYLONG_FROM_LONG(self->camera->GetHeight());
+
+	// return tuple
+	PyObject* tuple = PyTuple_Pack(3, capsule, pyWidth, pyHeight);
+
+	Py_DECREF(capsule);
+	Py_DECREF(pyWidth);
+	Py_DECREF(pyHeight);
+
+	return tuple;
 }
+
+
+// GetWidth()
+static PyObject* PyCamera_GetWidth( PyCamera_Object* self )
+{
+	if( !self || !self->camera )
+	{
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "gstCamera invalid object instance");
+		return NULL;
+	}
+
+	return PYLONG_FROM_UNSIGNED_LONG(self->camera->GetWidth());
+}
+
+
+// GetHeight()
+static PyObject* PyCamera_GetHeight( PyCamera_Object* self )
+{
+	if( !self || !self->camera )
+	{
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "gstCamera invalid object instance");
+		return NULL;
+	}
+
+	return PYLONG_FROM_UNSIGNED_LONG(self->camera->GetHeight());
+}
+
+
 
 //-------------------------------------------------------------------------------
 static PyTypeObject pyCamera_Type = 
@@ -196,6 +246,8 @@ static PyMethodDef pyCamera_Methods[] =
 	{ "Open", (PyCFunction)PyCamera_Open, METH_NOARGS, "Open the camera for streaming frames"},
 	{ "Close", (PyCFunction)PyCamera_Close, METH_NOARGS, "Stop streaming camera frames"},
 	{ "CaptureRGBA", (PyCFunction)PyCamera_CaptureRGBA, METH_VARARGS|METH_KEYWORDS, "Capture a camera frame and convert it to float4 RGBA"},
+	{ "GetWidth", (PyCFunction)PyCamera_GetWidth, METH_NOARGS, "Return the width of the camera (in pixels)"},
+	{ "GetHeight", (PyCFunction)PyCamera_GetHeight, METH_NOARGS, "Return the height of the camera (in pixels)"},
 	{NULL}  /* Sentinel */
 };
 

@@ -63,5 +63,10 @@
 	#endif
 
 #endif
+
+#ifndef PY_RETURN_BOOL
+#define PY_RETURN_BOOL(x)	if(x) Py_RETURN_TRUE; else Py_RETURN_FALSE
+#endif
+
 #endif
 

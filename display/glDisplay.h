@@ -62,13 +62,37 @@ public:
 
 	/**
  	 * Clear window and begin rendering a frame.
+	 * If userEvents is true, UserEvents() will automatically be processed.
 	 */
-	void BeginRender();
+	void BeginRender( bool userEvents=true );
 
 	/**
 	 * Finish rendering and refresh / flip the backbuffer.
 	 */
 	void EndRender();
+
+	/**
+	 * Render an OpenGL texture
+	 * @note for more texture rendering methods, @see glTexture
+	 */
+	void Render( glTexture* texture, float x=0.0f, float y=0.0f );
+
+	/**
+	 * Render a CUDA float4 image using OpenGL interop
+	 * If normalize is true, the image's pixel values will be rescaled from the range of [0-255] to [0-1]
+	 * If normalize is false, the image's pixel values are assumed to already be in the range of [0-1]
+	 * Note that if normalization is selected to be performed, it will be done in-place on the image
+	 */
+	void Render( float* image, uint32_t width, uint32_t height, float x=0.0f, float y=0.0f, bool normalize=true );
+
+	/**
+	 * Begin the frame, render one CUDA float4 image using OpenGL interop, and end the frame.
+	 * Note that this function is only useful if you are rendering a single texture per frame.
+	 * If normalize is true, the image's pixel values will be rescaled from the range of [0-255] to [0-1]
+	 * If normalize is false, the image's pixel values are assumed to already be in the range of [0-1]
+	 * Note that if normalization is selected to be performed, it will be done in-place on the image
+	 */
+	void RenderOnce( float* image, uint32_t width, uint32_t height, float x=0.0f, float y=0.0f, bool normalize=true );
 
 	/**
 	 * Process UI events.
@@ -79,6 +103,31 @@ public:
 	 * UI event handler.
 	 */
 	void onEvent( uint msg, int a, int b );
+
+	/**
+	 * Returns true if the window is open.
+	 */
+	inline bool IsOpen() const 		{ return !mWindowClosed; }
+
+	/**
+	 * Returns true if the window has been closed.
+	 */
+	inline bool IsClosed() const		{ return mWindowClosed; }
+
+	/**
+	 * Get the average frame time (in milliseconds).
+	 */
+	inline float GetFPS() const		{ return 1000000000.0f / mAvgTime; }
+
+	/**
+	 * Get the width of the window (in pixels)
+	 */
+	inline uint32_t GetWidth() const	{ return mWidth; }
+
+	/**
+	 * Get the height of the window (in pixels)
+	 */
+	inline uint32_t GetHeight() const	{ return mHeight; }
 
 	/**
 	 * Set the window title string.
@@ -95,10 +144,10 @@ public:
 	inline void SetBackgroundColor( float r, float g, float b, float a )	{ mBgColor[0] = r; mBgColor[1] = g; mBgColor[2] = b; mBgColor[3] = a; }
 
 	/**
-	 * Get the average frame time (in milliseconds).
+	 * Default title bar name
 	 */
-	inline float GetFPS()	{ return 1000000000.0f / mAvgTime; }
-		
+	static const char* DEFAULT_TITLE;
+
 protected:
 	glDisplay();
 		
@@ -112,7 +161,10 @@ protected:
 	XVisualInfo* mVisualX;
 	Window       mWindowX;
 	GLXContext   mContextGL;
-		
+	glTexture*   mInteropTex;
+	bool		   mWindowClosed;
+	Atom		   mWindowClosedMsg;
+
 	uint32_t mWidth;
 	uint32_t mHeight;
 

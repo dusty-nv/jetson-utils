@@ -527,7 +527,7 @@ bool gstCamera::init( gstCameraSrc src )
 
 	if( !pipeline )
 	{
-		printf(LOG_GSTREAMER "gstreamer failed to cast GstElement into GstPipeline\n");
+		printf(LOG_GSTREAMER "gstCamera failed to cast GstElement into GstPipeline\n");
 		return false;
 	}	
 
@@ -536,7 +536,7 @@ bool gstCamera::init( gstCameraSrc src )
 
 	if( !mBus )
 	{
-		printf(LOG_GSTREAMER "gstreamer failed to retrieve GstBus from pipeline\n");
+		printf(LOG_GSTREAMER "gstCamera failed to retrieve GstBus from pipeline\n");
 		return false;
 	}
 
@@ -549,7 +549,7 @@ bool gstCamera::init( gstCameraSrc src )
 
 	if( !appsinkElement || !appsink)
 	{
-		printf(LOG_GSTREAMER "gstreamer failed to retrieve AppSink element from pipeline\n");
+		printf(LOG_GSTREAMER "gstCamera failed to retrieve AppSink element from pipeline\n");
 		return false;
 	}
 	
@@ -592,7 +592,7 @@ bool gstCamera::Open()
 			gst_message_unref(asyncMsg);
 		}
 		else
-			printf(LOG_GSTREAMER "gstreamer NULL message after transitioning pipeline to PLAYING...\n");
+			printf(LOG_GSTREAMER "gstCamera NULL message after transitioning pipeline to PLAYING...\n");
 #endif
 	}
 	else if( result != GST_STATE_CHANGE_SUCCESS )

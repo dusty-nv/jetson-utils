@@ -68,6 +68,8 @@ public:
 	inline bool IsStreaming() const	   { return mStreaming; }
 
 	// Capture YUV (NV12)
+	// If timeout is ULONG_MAX, the calling thread will wait indefinetly for a new frame
+	// If timeout is 0, the calling thread will return false if a new frame isn't immediately ready
 	bool Capture( void** cpu, void** cuda, unsigned long timeout=ULONG_MAX );
 
 	// Capture a camera image and convert to it float4 RGBA

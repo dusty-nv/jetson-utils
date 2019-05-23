@@ -21,6 +21,11 @@
  */
  
 #include "glDisplay.h"
+#include "cudaNormalize.h"
+
+
+// DEFAULT_TITLE
+const char* glDisplay::DEFAULT_TITLE = "NVIDIA Jetson";
 
 
 // Constructor
@@ -31,6 +36,8 @@ glDisplay::glDisplay()
 	mVisualX    = NULL;
 	mContextGL  = NULL;
 	mDisplayX   = NULL;
+	mInteropTex = NULL;
+
 	mWidth      = 0;
 	mHeight     = 0;
 	mAvgTime    = 1.0f;
@@ -40,6 +47,8 @@ glDisplay::glDisplay()
 	mBgColor[2] = 0.0f;
 	mBgColor[3] = 1.0f;
 
+	mWindowClosed = false;
+
 	clock_gettime(CLOCK_REALTIME, &mLastTime);
 }
 
@@ -47,6 +56,12 @@ glDisplay::glDisplay()
 // Destructor
 glDisplay::~glDisplay()
 {
+	if( mInteropTex != NULL )
+	{
+		delete mInteropTex;
+		mInteropTex = NULL;
+	}
+
 	glXDestroyContext(mDisplayX, mContextGL);
 }
 
@@ -61,14 +76,14 @@ glDisplay* glDisplay::Create( const char* title, float r, float g, float b, floa
 		
 	if( !vp->initWindow() )
 	{
-		printf("[OpenGL]  failed to create X11 Window.\n");
+		printf(LOG_GL "failed to create X11 Window.\n");
 		delete vp;
 		return NULL;
 	}
 	
 	if( !vp->initGL() )
 	{
-		printf("[OpenGL]  failed to initialize OpenGL.\n");
+		printf(LOG_GL "failed to initialize OpenGL.\n");
 		delete vp;
 		return NULL;
 	}
@@ -77,7 +92,7 @@ glDisplay* glDisplay::Create( const char* title, float r, float g, float b, floa
 	
 	if (GLEW_OK != err)
 	{
-		printf("[OpenGL]  GLEW Error: %s\n", glewGetErrorString(err));
+		printf(LOG_GL "GLEW Error: %s\n", glewGetErrorString(err));
 		delete vp;
 		return NULL;
 	}
@@ -87,12 +102,9 @@ glDisplay* glDisplay::Create( const char* title, float r, float g, float b, floa
 
 	vp->SetBackgroundColor(r, g, b, a);
 
-	printf("[OpenGL]  glDisplay display window initialized\n");
+	printf(LOG_GL "glDisplay -- display device initialized\n");
 	return vp;
 }
-
-
-#define DEFAULT_TITLE "NVIDIA Jetson | JetPack-L4T"
 
 
 // Create
@@ -110,14 +122,14 @@ bool glDisplay::initWindow()
 
 	if( !mDisplayX )
 	{
-		printf( "[OpenGL]  failed to open X11 server connection." );
+		printf(LOG_GL "failed to open X11 server connection.\n");
 		return false;
 	}
 
 		
 	if( !mDisplayX )
 	{
-		printf( "InitWindow() - no X11 server connection." );
+		printf(LOG_GL "InitWindow() - no X11 server connection.\n" );
 		return false;
 	}
 
@@ -126,7 +138,7 @@ bool glDisplay::initWindow()
 	const int screenWidth = DisplayWidth(mDisplayX, screenIdx);
 	const int screenHeight = DisplayHeight(mDisplayX, screenIdx);
 	
-	printf("default X screen %i:   %i x %i\n", screenIdx, screenWidth, screenHeight);
+	printf(LOG_GL "glDisplay -- X screen %i resolution:  %ix%i\n", screenIdx, screenWidth, screenHeight);
 	
 	Screen* screen = XScreenOfDisplay(mDisplayX, screenIdx);
 
@@ -184,7 +196,15 @@ bool glDisplay::initWindow()
 	if( !win )
 		return false;
 
+
+	// setup WM_DELETE message
+	mWindowClosedMsg = XInternAtom(mDisplayX, "WM_DELETE_WINDOW", False);
+	XSetWMProtocols(mDisplayX, win, &mWindowClosedMsg, 1);
+
+	// set default window title
 	XStoreName(mDisplayX, win, DEFAULT_TITLE);
+
+	// show the window
 	XMapWindow(mDisplayX, win);
 
 	// cleanup
@@ -219,8 +239,11 @@ bool glDisplay::initGL()
 
 
 // MakeCurrent
-void glDisplay::BeginRender()
+void glDisplay::BeginRender( bool userEvents )
 {
+	if( userEvents )
+		UserEvents();
+
 	GL(glXMakeCurrent(mDisplayX, mWindowX, mContextGL));
 
 	GL(glClearColor(mBgColor[0], mBgColor[1], mBgColor[2], mBgColor[3]));
@@ -248,7 +271,7 @@ static timespec timeDiff( const timespec& start, const timespec& end)
 }
 
 
-// Refresh
+// EndRender
 void glDisplay::EndRender()
 {
 	glXSwapBuffers(mDisplayX, mWindowX);
@@ -265,12 +288,79 @@ void glDisplay::EndRender()
 }
 
 
+// Render
+void glDisplay::Render( glTexture* texture, float x, float y )
+{
+	if( !texture )
+		return;
+
+	texture->Render(x,y);
+}
+
+
+// Render
+void glDisplay::Render( float* img, uint32_t width, uint32_t height, float x, float y, bool normalize )
+{
+	if( !img || width == 0 || height == 0 )
+		return;
+	
+	if( mInteropTex != NULL && (mInteropTex->GetWidth() != width || mInteropTex->GetHeight() != height) )
+	{
+		delete mInteropTex;
+		mInteropTex = NULL;
+	}
+
+	if( !mInteropTex )
+	{
+		mInteropTex = glTexture::Create(width, height, GL_RGBA32F_ARB);
+
+		if( !mInteropTex )
+		{
+			printf(LOG_GL "glDisplay.RenderCUDA() failed to create openGL interop texture\n");
+			return;
+		}
+	}
+
+	if( normalize )
+	{
+		// rescale image pixel intensities for display
+		CUDA(cudaNormalizeRGBA((float4*)img, make_float2(0.0f, 255.0f), 
+						   (float4*)img, make_float2(0.0f, 1.0f), 
+ 						   width, height));
+	}
+
+	// map from CUDA to openGL using GL interop
+	void* tex_map = mInteropTex->MapCUDA();
+
+	if( tex_map != NULL )
+	{
+		CUDA(cudaMemcpy(tex_map, img, mInteropTex->GetSize(), cudaMemcpyDeviceToDevice));
+		//CUDA(cudaDeviceSynchronize());
+		mInteropTex->Unmap();
+	}
+
+	// draw the texture
+	mInteropTex->Render(x,y);
+}
+
+
+// RenderOnce
+void glDisplay::RenderOnce( float* img, uint32_t width, uint32_t height, float x, float y, bool normalize )
+{
+	BeginRender();
+	Render(img, width, height, x, y, normalize);
+	EndRender();
+}
+
+
+
 #define MOUSE_MOVE		0
 #define MOUSE_BUTTON	1
 #define MOUSE_WHEEL		2
 #define MOUSE_DOUBLE	3
 #define KEY_STATE		4
 #define KEY_CHAR		5
+#define WINDOW_CLOSED	6
 
 
 // OnEvent
@@ -326,6 +416,12 @@ void glDisplay::onEvent( uint msg, int a, int b )
 			//mKeyText = a;
 			break;
 		}
+		case WINDOW_CLOSED:
+		{
+			printf(LOG_GL "glDisplay -- the window has been closed\n");
+			mWindowClosed = true;
+			break;
+		}
 	}
 
 	//if( msg == MOUSE_MOVE || msg == MOUSE_BUTTON || msg == MOUSE_DOUBLE || msg == MOUSE_WHEEL )
@@ -342,8 +438,6 @@ void glDisplay::UserEvents()
 	mMouseDblClick  = false;
 	mMouseWheel     = 0;
 	mKeyText		= 0;*/
-
-
 	XEvent evt;
 
 	while( XEventsQueued(mDisplayX, QueuedAlready) > 0 )
@@ -352,7 +446,7 @@ void glDisplay::UserEvents()
 
 		switch( evt.type )
 		{
-			case KeyPress:	     onEvent(KEY_STATE, evt.xkey.keycode, 1);		break;
+			case KeyPress:	      onEvent(KEY_STATE, evt.xkey.keycode, 1);		break;
 			case KeyRelease:     onEvent(KEY_STATE, evt.xkey.keycode, 0);		break;
 			case ButtonPress:	 onEvent(MOUSE_BUTTON, evt.xbutton.button, 1); 	break;
 			case ButtonRelease:  onEvent(MOUSE_BUTTON, evt.xbutton.button, 0);	break;
@@ -361,6 +455,13 @@ void glDisplay::UserEvents()
 				XWindowAttributes attr;
 				XGetWindowAttributes(mDisplayX, evt.xmotion.root, &attr);
 				onEvent(MOUSE_MOVE, evt.xmotion.x_root + attr.x, evt.xmotion.y_root + attr.y);
+				break;
+			}
+			case ClientMessage:
+			{
+				if( evt.xclient.data.l[0] == mWindowClosedMsg )
+					onEvent(WINDOW_CLOSED, 0, 0);
+
 				break;
 			}
 		}

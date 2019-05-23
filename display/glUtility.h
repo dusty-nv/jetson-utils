@@ -34,7 +34,7 @@
  * LOG_GL printf prefix.
  * @ingroup renderGL
  */
-#define LOG_GL   			"[openGL] "
+#define LOG_GL   			"[OpenGL] "
 
 
 

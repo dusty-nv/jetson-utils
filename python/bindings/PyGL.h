@@ -20,35 +20,17 @@
  * DEALINGS IN THE SOFTWARE.
  */
  
-#ifndef __PYTHON_BINDINGS_CUDA__
-#define __PYTHON_BINDINGS_CUDA__
+#ifndef __PYTHON_BINDINGS_OPENGL__
+#define __PYTHON_BINDINGS_OPENGL__
 
 #include "PyUtils.h"
 
 
-// Name of memory capsules
-#define CUDA_MALLOC_MEMORY_CAPSULE	PY_UTILS_MODULE_NAME ".cudaMalloc"
-#define CUDA_MAPPED_MEMORY_CAPSULE PY_UTILS_MODULE_NAME ".cudaAllocMapped"
-
-// Create memory capsule
-PyObject* PyCUDA_RegisterMemory( void* gpuPtr, bool freeOnDelete=true );
-
-// Create mapped memory capsule
-PyObject* PyCUDA_RegisterMappedMemory( void* cpuPtr, void* gpuPtr, bool freeOnDelete=true );
-
 // Register functions
-PyMethodDef* PyCUDA_RegisterFunctions();
+PyMethodDef* PyGL_RegisterFunctions();
 
 // Register types
-bool PyCUDA_RegisterTypes( PyObject* module );
+bool PyGL_RegisterTypes( PyObject* module );
 
-// Retrieve pointer from capsule object
-inline void* PyCUDA_GetPointer( PyObject* capsule ) 
-{
-	if( PyCapsule_IsValid(capsule, CUDA_MAPPED_MEMORY_CAPSULE) != 0 )
-		return PyCapsule_GetPointer(capsule, CUDA_MAPPED_MEMORY_CAPSULE); 
-	else if( PyCapsule_IsValid(capsule, CUDA_MALLOC_MEMORY_CAPSULE) )
-		return PyCapsule_GetPointer(capsule, CUDA_MALLOC_MEMORY_CAPSULE); 
-}
 
 #endif
