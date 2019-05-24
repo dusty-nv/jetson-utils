@@ -125,7 +125,7 @@ int main( int argc, char** argv )
 			printf("gst-camera:  recieved new frame  CPU=0x%p  GPU=0x%p\n", imgCPU, imgCUDA);
 		
 		// convert from YUV to RGBA
-		void* imgRGBA = NULL;
+		float* imgRGBA = NULL;
 		
 		if( !camera->ConvertRGBA(imgCUDA, &imgRGBA) )
 			printf("gst-camera:  failed to convert from NV12 to RGBA\n");

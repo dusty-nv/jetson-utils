@@ -264,7 +264,7 @@ static PyObject* PyFont_New( PyTypeObject *type, PyObject *args, PyObject *kwds 
 	INIT_COLOR(brown,	165.0, 42.0, 42.0);
 	INIT_COLOR(tan,	210.0, 180.0, 140.0);
 	INIT_COLOR(red,     255.0, 255.0, 255.0);
-	INIT_COLOR(green,   0.0, 255.0, 128.0);
+	INIT_COLOR(green,   0.0, 200.0, 128.0);
 	INIT_COLOR(blue,    0.0, 0.0, 255.0);
 	INIT_COLOR(cyan,    0.0, 255.0, 255.0);
 	INIT_COLOR(lime,    0.0, 255.0, 0.0);
@@ -362,13 +362,16 @@ static PyObject* PyFont_Overlay( PyFont_Object* self, PyObject* args, PyObject* 
 	int x = 0;
 	int y = 0;
 
-	static char* kwlist[] = {"input", "output", "width", "height", "text", "x", "y", "color", NULL};
+	static char* kwlist[] = {"input", "width", "height", "text", "x", "y", "color", "output", NULL};
 
-	if( !PyArg_ParseTupleAndKeywords(args, kwds, "OOiis|iiO", kwlist, &input, &output, &width, &height, &text, &x, &y, &color))
+	if( !PyArg_ParseTupleAndKeywords(args, kwds, "Oiis|iiOO", kwlist, &input, &width, &height, &text, &x, &y, &color, &output))
 	{
 		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaFont.Overlay() failed to parse args tuple");
 		return NULL;
 	}
+
+	if( !output )
+		output = input;
 
 	// parse color tuple
 	float4 rgba = make_float4(0, 0, 0, 255);

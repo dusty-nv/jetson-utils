@@ -200,8 +200,8 @@ static PyObject* PyDisplay_RenderOnce( PyDisplay_Object* self, PyObject* args, P
 	// parse arguments
 	PyObject* capsule = NULL;
 
-	float x = 0.0f;
-	float y = 0.0f;
+	float x = 5.0f;
+	float y = 30.0f;
 
 	int width  = 0;
 	int height = 0;

@@ -158,12 +158,12 @@ static PyObject* PyCamera_CaptureRGBA( PyCamera_Object* self, PyObject* args, Py
 	}
 
 	// parse arguments
-	int pyZeroCopy = 0;
 	int pyTimeout  = -1;
+	int pyZeroCopy = 0;
 
-	static char* kwlist[] = {"zeroCopy", "timeout", NULL};
+	static char* kwlist[] = {"timeout", "zeroCopy", NULL};
 
-	if( !PyArg_ParseTupleAndKeywords(args, kwds, "|ii", kwlist, &pyZeroCopy, &pyTimeout))
+	if( !PyArg_ParseTupleAndKeywords(args, kwds, "|ii", kwlist, &pyTimeout, &pyZeroCopy))
 	{
 		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "gstCamera.CaptureRGBA() failed to parse args tuple");
 		return NULL;
@@ -179,9 +179,9 @@ static PyObject* PyCamera_CaptureRGBA( PyCamera_Object* self, PyObject* args, Py
 	const bool zeroCopy = pyZeroCopy <= 0 ? false : true;
 
 	// capture RGBA
-	void* ptr = NULL;
+	float* ptr = NULL;
 
-	if( !self->camera->CaptureRGBA(&ptr, zeroCopy, timeout) )
+	if( !self->camera->CaptureRGBA(&ptr, timeout, zeroCopy) )
 	{
 		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "gstCamera failed to CaptureRGBA()");
 		return NULL;
