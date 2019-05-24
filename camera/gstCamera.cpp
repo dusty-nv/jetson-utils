@@ -149,9 +149,15 @@ GstFlowReturn gstCamera::onBuffer(_GstAppSink* sink, void* user_data)
 // Capture
 bool gstCamera::Capture( void** cpu, void** cuda, unsigned long timeout )
 {
+	if( !mStreaming )
+	{
+		if( !Open() )
+			return false;
+	}
+
 	mWaitMutex->lock();
-    const bool wait_result = mWaitEvent->wait(mWaitMutex, timeout);
-    mWaitMutex->unlock();
+	const bool wait_result = mWaitEvent->wait(mWaitMutex, timeout);
+	mWaitMutex->unlock();
 	
 	if( !wait_result )
 		return false;
@@ -177,7 +183,7 @@ bool gstCamera::Capture( void** cpu, void** cuda, unsigned long timeout )
 
 
 // CaptureRGBA
-bool gstCamera::CaptureRGBA( void** output, bool zeroCopy, unsigned long timeout )
+bool gstCamera::CaptureRGBA( float** output, unsigned long timeout, bool zeroCopy )
 {
 	void* cpu = NULL;
 	void* gpu = NULL;
@@ -199,7 +205,7 @@ bool gstCamera::CaptureRGBA( void** output, bool zeroCopy, unsigned long timeout
 	
 
 // ConvertRGBA
-bool gstCamera::ConvertRGBA( void* input, void** output, bool zeroCopy )
+bool gstCamera::ConvertRGBA( void* input, float** output, bool zeroCopy )
 {
 	if( !input || !output )
 		return false;
@@ -277,7 +283,7 @@ bool gstCamera::ConvertRGBA( void* input, void** output, bool zeroCopy )
 			return false;
 	}
 	
-	*output     = mRGBA[mLatestRGBA];
+	*output     = (float*)mRGBA[mLatestRGBA];
 	mLatestRGBA = (mLatestRGBA + 1) % NUM_RINGBUFFERS;
 	return true;
 }

@@ -75,11 +75,11 @@ public:
 	// Capture a camera image and convert to it float4 RGBA
 	// If you want to capture in a different thread than CUDA, use the Capture() and ConvertRGBA() functions.
 	// Set zeroCopy to true if you need to access the image from CPU, otherwise it will be CUDA only.
-	bool CaptureRGBA( void** output, bool zeroCopy=false, unsigned long timeout=ULONG_MAX );
+	bool CaptureRGBA( float** output, unsigned long timeout=ULONG_MAX, bool zeroCopy=false );
 	
 	// Takes in captured YUV-NV12 CUDA image, converts to float4 RGBA (with pixel intensity 0-255)
 	// Set zeroCopy to true if you need to access ConvertRGBA from CPU, otherwise it will be CUDA only.
-	bool ConvertRGBA( void* input, void** output, bool zeroCopy=false );
+	bool ConvertRGBA( void* input, float** output, bool zeroCopy=false );
 	
 	// Image dimensions
 	inline uint32_t GetWidth() const	   { return mWidth; }
