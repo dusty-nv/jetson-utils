@@ -71,11 +71,60 @@ PyObject* PyImageIO_LoadRGBA( PyObject* self, PyObject* args )
 }
 
 
+// PyImageIO_SaveRGBA
+PyObject* PyImageIO_SaveRGBA( PyObject* self, PyObject* args, PyObject* kwds )
+{
+	// parse arguments
+	const char* filename = NULL;
+	PyObject* capsule = NULL;
+
+	int width  = 0;
+	int height = 0;
+
+	float max_pixel = 255.0f;
+
+	static char* kwlist[] = {"filename", "image", "width", "height", "max_pixel", NULL};
+
+	if( !PyArg_ParseTupleAndKeywords(args, kwds, "sOii|f", kwlist, &filename, &capsule, &width, &height, &max_pixel))
+	{
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "saveImageRGBA() failed to parse args tuple");
+		return NULL;
+	}
+
+	// verify dimensions
+	if( width <= 0 || height <= 0 )
+	{
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "saveImageRGBA() image dimensions are invalid");
+		return NULL;
+	}
+
+	// get pointer to image data
+	void* img = PyCapsule_GetPointer(capsule, CUDA_MAPPED_MEMORY_CAPSULE);	// TODO  support GPU-only memory
+
+	if( !img )
+	{
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "saveImageRGBA() failed to get input image pointer from PyCapsule container");
+		return NULL;
+	}
+		
+	// save the image
+	if( !saveImageRGBA(filename, (float4*)img, width, height, max_pixel) )
+	{
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "saveImageRGBA() failed to save the image");
+		return NULL;
+	}
+		
+	// return void
+	Py_RETURN_NONE;
+}
+
+
 //-------------------------------------------------------------------------------
 
 static PyMethodDef pyImageIO_Functions[] = 
 {
 	{ "loadImageRGBA", (PyCFunction)PyImageIO_LoadRGBA, METH_VARARGS, "Load an image from disk into GPU memory as float4 RGBA" },
+	{ "saveImageRGBA", (PyCFunction)PyImageIO_SaveRGBA, METH_VARARGS|METH_KEYWORDS, "Save a float4 RGBA image to disk" },	
 	{NULL}  /* Sentinel */
 };
 

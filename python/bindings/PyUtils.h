@@ -24,6 +24,7 @@
 #define __PYTHON_BINDINGS_UTILS__
 
 #include <Python.h>
+#include <structmember.h>
 
 // user-facing module name 
 #define PY_UTILS_MODULE_NAME "jetson.utils"
