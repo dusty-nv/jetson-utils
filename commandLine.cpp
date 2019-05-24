@@ -27,6 +27,8 @@
 #include <strings.h>
 
 
+#define ARGC_START 0
+
 
 // strRemoveDelimiter
 static inline int strRemoveDelimiter(char delimiter, const char *string)
@@ -64,7 +66,7 @@ int commandLine::GetInt( const char* string_ref, int default_value )
 	bool bFound = false;
     	int value = -1;
 
-	for( int i=1; i < argc; i++ )
+	for( int i=ARGC_START; i < argc; i++ )
 	{
 		int string_start = strRemoveDelimiter('-', argv[i]);
 		const char *string_argv = &argv[i][string_start];
@@ -104,7 +106,7 @@ float commandLine::GetFloat( const char* string_ref, float default_value )
 	bool bFound = false;
 	float value = -1;
 
-	for (int i=1; i < argc; i++)
+	for (int i=ARGC_START; i < argc; i++)
 	{
 		int string_start = strRemoveDelimiter('-', argv[i]);
 		const char *string_argv = &argv[i][string_start];
@@ -140,7 +142,7 @@ const char* commandLine::GetString( const char* string_ref )
 	if( argc < 1 )
 		return 0;
 
-	for (int i=1; i < argc; i++)
+	for (int i=ARGC_START; i < argc; i++)
 	{
 		int string_start  = strRemoveDelimiter('-', argv[i]);
 		char *string_argv = (char *)&argv[i][string_start];
@@ -161,7 +163,7 @@ bool commandLine::GetFlag( const char* string_ref )
 	if( argc < 1 )
 		return false;
 
-	for (int i=1; i < argc; i++)
+	for (int i=ARGC_START; i < argc; i++)
 	{
 		int string_start = strRemoveDelimiter('-', argv[i]);
 		const char *string_argv = &argv[i][string_start];
