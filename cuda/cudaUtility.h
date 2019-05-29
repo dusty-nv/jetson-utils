@@ -98,11 +98,18 @@ inline cudaError_t cudaCheckError(cudaError_t retval, const char* txt, const cha
 
 
 /**
- * iDivUp
+ * Check for non-NULL pointer before deleting it,
+ * and then set the pointer to NULL.
+ */
+#define SAFE_DELETE(x) 		if(x != NULL) { delete x; x = NULL; }
+
+
+/**
+ * If a / b has a remainder, round up.
  * @ingroup util
  */
 inline __device__ __host__ int iDivUp( int a, int b )  		{ return (a % b != 0) ? (a / b + 1) : (a / b); }
 
 
-
 #endif
+
