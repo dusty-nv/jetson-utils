@@ -1,3 +1,4 @@
+#!/usr/bin/python
 #
 # Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
 #
@@ -42,6 +43,6 @@ display = jetson.utils.glDisplay(opt.title, opt.r, opt.g, opt.b, opt.a)
 while display.IsOpen():
 	display.BeginRender()
 	display.EndRender()
-	display.SetTitle("{:s} | {:f} FPS".format(opt.title, display.GetFPS()))
+	display.SetTitle("{:s} | {:.0f} FPS".format(opt.title, display.GetFPS()))
 
 
