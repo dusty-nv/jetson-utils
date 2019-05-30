@@ -111,7 +111,7 @@ install(EXPORT jetson-utilsConfig DESTINATION share/jetson-utils/cmake)
 
 
 # build tests/sample executables
-add_subdirectory(camera/gst-camera)
+add_subdirectory(camera/camera-viewer)
 add_subdirectory(camera/v4l2-console)
 add_subdirectory(camera/v4l2-display)
 add_subdirectory(display/gl-display-test)

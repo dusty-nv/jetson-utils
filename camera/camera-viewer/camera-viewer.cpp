@@ -32,6 +32,11 @@
 #include "cudaNormalize.h"
 
 
+#define DEFAULT_CAMERA -1		// -1 for onboard CSI camera, or change to index of /dev/video V4L2 camera (>=0)	
+#define DEFAULT_CAMERA_WIDTH 1280	// default camera width is 1280 pixels, change this if you want a different size
+#define DEFAULT_CAMERA_HEIGHT 720	// default camera height is 720 pixels, change this is you want a different size
+
+
 bool signal_recieved = false;
 
 void sig_handler(int signo)
@@ -46,7 +51,7 @@ void sig_handler(int signo)
 
 int main( int argc, char** argv )
 {
-	printf("gst-camera\n  args (%i):  ", argc);
+	printf("camera-viewer\n  args (%i):  ", argc);
 
 	for( int i=0; i < argc; i++ )
 		printf("%i [%s]  ", i, argv[i]);
@@ -60,15 +65,15 @@ int main( int argc, char** argv )
 	/*
 	 * create the camera device
 	 */
-	gstCamera* camera = gstCamera::Create();
+	gstCamera* camera = gstCamera::Create(DEFAULT_CAMERA_WIDTH, DEFAULT_CAMERA_HEIGHT, DEFAULT_CAMERA);
 	
 	if( !camera )
 	{
-		printf("\ngst-camera:  failed to initialize video device\n");
+		printf("\ncamera-viewer:  failed to initialize camera device\n");
 		return 0;
 	}
 	
-	printf("\ngst-camera:  successfully initialized video device\n");
+	printf("\ncamera-viewer:  successfully initialized camera device\n");
 	printf("    width:  %u\n", camera->GetWidth());
 	printf("   height:  %u\n", camera->GetHeight());
 	printf("    depth:  %u (bpp)\n", camera->GetPixelDepth());
@@ -81,7 +86,7 @@ int main( int argc, char** argv )
 	glDisplay* display = glDisplay::Create();
 	
 	if( !display )
-		printf("\ngst-camera:  failed to create openGL display\n");
+		printf("\ncamera-viewer:  failed to create openGL display\n");
 
 	const size_t texSz = camera->GetWidth() * camera->GetHeight() * sizeof(float4);
 	float4* texIn = (float4*)malloc(texSz);
@@ -97,7 +102,7 @@ int main( int argc, char** argv )
 	glTexture* texture = glTexture::Create(camera->GetWidth(), camera->GetHeight(), GL_RGBA32F_ARB/*GL_RGBA8*/, texIn);
 
 	if( !texture )
-		printf("gst-camera:  failed to create openGL texture\n");
+		printf("camera-viewer:  failed to create openGL texture\n");
 	
 	
 
@@ -106,11 +111,11 @@ int main( int argc, char** argv )
 	 */
 	if( !camera->Open() )
 	{
-		printf("\ngst-camera:  failed to open camera for streaming\n");
+		printf("\ncamera-viewer:  failed to open camera for streaming\n");
 		return 0;
 	}
 	
-	printf("\ngst-camera:  camera open for streaming\n");
+	printf("\ncamera-viewer:  camera open for streaming\n");
 	
 	
 	while( !signal_recieved )
@@ -120,15 +125,15 @@ int main( int argc, char** argv )
 		
 		// get the latest frame
 		if( !camera->Capture(&imgCPU, &imgCUDA, 1000) )
-			printf("\ngst-camera:  failed to capture frame\n");
+			printf("\ncamera-viewer:  failed to capture frame\n");
 		else
-			printf("gst-camera:  recieved new frame  CPU=0x%p  GPU=0x%p\n", imgCPU, imgCUDA);
+			printf("camera-viewer:  recieved new frame  CPU=0x%p  GPU=0x%p\n", imgCPU, imgCUDA);
 		
 		// convert from YUV to RGBA
 		float* imgRGBA = NULL;
 		
 		if( !camera->ConvertRGBA(imgCUDA, &imgRGBA) )
-			printf("gst-camera:  failed to convert from NV12 to RGBA\n");
+			printf("camera-viewer:  failed to convert from NV12 to RGBA\n");
 
 		// rescale image pixel intensities
 		CUDA(cudaNormalizeRGBA((float4*)imgRGBA, make_float2(0.0f, 255.0f), 
@@ -157,10 +162,14 @@ int main( int argc, char** argv )
 			}
 
 			display->EndRender();
+
+			// check if the user quit
+			if( display->IsClosed() )
+				signal_recieved = true;
 		}
 	}
 	
-	printf("\ngst-camera:  un-initializing video device\n");
+	printf("\ncamera-viewer:  un-initializing camera device\n");
 	
 	
 	/*
@@ -178,7 +187,7 @@ int main( int argc, char** argv )
 		display = NULL;
 	}
 	
-	printf("gst-camera:  video device has been un-initialized.\n");
-	printf("gst-camera:  this concludes the test of the video device.\n");
+	printf("camera-viewer:  camera device has been un-initialized.\n");
+	printf("camera-viewer:  this concludes the test of the camera device.\n");
 	return 0;
 }

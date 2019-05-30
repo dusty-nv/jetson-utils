@@ -4,3 +4,5 @@ file(GLOB glDisplayTestIncludes *.h )
 
 add_executable(gl-display-test ${glDisplayTestSources})
 target_link_libraries(gl-display-test jetson-utils)
+
+install(TARGETS gl-display-test DESTINATION bin)
