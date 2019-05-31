@@ -26,6 +26,7 @@
 #include "PyCUDA.h"
 #include "PyCamera.h"
 #include "PyImageIO.h"
+#include "PyNumPy.h"
 
 
 const uint32_t pyUtilsMaxFunctions = 128;
@@ -74,6 +75,7 @@ bool PyUtils_RegisterFunctions()
 	PyUtils_AddFunctions(PyCUDA_RegisterFunctions());
 	PyUtils_AddFunctions(PyCamera_RegisterFunctions());
 	PyUtils_AddFunctions(PyImageIO_RegisterFunctions());
+	PyUtils_AddFunctions(PyNumPy_RegisterFunctions());
 
 	printf(LOG_PY_UTILS "done registering module functions\n");
 	return true;
@@ -96,6 +98,9 @@ bool PyUtils_RegisterTypes( PyObject* module )
 
 	if( !PyImageIO_RegisterTypes(module) )
 		printf(LOG_PY_UTILS "failed to register ImageIO types\n");
+
+	if( !PyNumPy_RegisterTypes(module) )
+		printf(LOG_PY_UTILS "failed to register NumPy types\n");
 
 	printf(LOG_PY_UTILS "done registering module types\n");
 	return true;
