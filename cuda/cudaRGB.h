@@ -97,6 +97,10 @@ cudaError_t cudaRGBA32ToBGR8( float4* input, uchar3* output, size_t width, size_
  */
 cudaError_t cudaRGBA32ToBGR8( float4* input, uchar3* output, size_t width, size_t height, const float2& inputRange );
 
-
+/**
+ * Convert 8-bit fixed-point RGB mage into 8-bit fixed-point BGR image,
+ * with the 0-255 input range.   Output range is 0-255.
+ */
+cudaError_t cudaRGB8ToBGR8( uchar3* srcDev, uchar3* destDev, size_t width, size_t height );
 #endif
 

@@ -71,6 +71,7 @@ gstCamera::gstCamera()
 	mRingMutex  = new QMutex();
 	
 	mLatestRGBA       = 0;
+	mLatestBGR8	  = 0;
 	mLatestRingbuffer = 0;
 	mLatestRetrieved  = false;
 	
@@ -79,9 +80,11 @@ gstCamera::gstCamera()
 		mRingbufferCPU[n] = NULL;
 		mRingbufferGPU[n] = NULL;
 		mRGBA[n]          = NULL;
+		mBGR8[n] 	  = NULL;
 	}
 
 	mRGBAZeroCopy = false;
+	mBGR8ZeroCopy = false;
 }
 
 
@@ -111,8 +114,99 @@ gstCamera::~gstCamera()
 
 			mRGBA[n] = NULL; 
 		}
-	}
+		if( mBGR8[n] != NULL )
+                {
+                        if( mBGR8ZeroCopy )
+                                CUDA(cudaFreeHost(mBGR8[n]));
+                        else
+                                CUDA(cudaFree(mBGR8[n]));
+
+                        mRGBA[n] = NULL;
+                }
+	}	
 }
+bool gstCamera::ConvertBGR8( void* input, void** output, bool zeroCopy )
+{
+        if( !input || !output )
+                return false;
+        if( mBGR8[0] != NULL && zeroCopy != mBGR8ZeroCopy )
+        {
+                for( uint32_t n=0; n < NUM_RINGBUFFERS; n++ )
+                {
+                        if( mBGR8[n] != NULL )
+                        {
+                                if( mBGR8ZeroCopy )
+                                        CUDA(cudaFreeHost(mBGR8[n]));
+                                else
+                                        CUDA(cudaFree(mBGR8[n]));
+
+                                mBGR8[n] = NULL;
+                        }
+                }
+
+                mBGR8ZeroCopy = false; 
+        }
+
+        if( !mBGR8[0] )
+        {
+                const size_t size = mWidth * mHeight * sizeof(uchar3);
+
+                printf("%d %d %d\n",mWidth, mHeight, size);
+		for( uint32_t n=0; n < NUM_RINGBUFFERS; n++ )
+                {
+                        if( zeroCopy )
+                        {
+                                void* cpuPtr = NULL;
+                                void* gpuPtr = NULL;
+                                if( !cudaAllocMapped(&cpuPtr, &gpuPtr, (size_t)size) )
+                                {
+                                        printf(LOG_CUDA "gstCamera  failed to allocate zeroCopy memory for %ux%xu BGR8 texture\n", mWidth, mHeight);
+                                        return false;
+                                }
+                                if( cpuPtr != gpuPtr )
+                                {
+                                        printf(LOG_CUDA "gstCamera  zeroCopy memory has different pointers, please use a UVA-compatible GPU\n");
+                                        return false;
+                                }
+
+                                mBGR8[n] = gpuPtr;
+                        }
+                        else
+                        {
+                                if( CUDA_FAILED(cudaMalloc(&mBGR8[n], (size_t)size)) )
+                                {
+                                        printf(LOG_CUDA "gstCamera  failed to allocate memory for %ux%u BGR8 texture\n", mWidth, mHeight);
+                                        return false;
+                                }
+                        }
+                }
+
+                printf(LOG_CUDA "gstreamer camera  allocated %u RGBA ringbuffers\n", NUM_RINGBUFFERS);
+		mBGR8ZeroCopy = zeroCopy;
+        }
+
+        if( onboardCamera() )
+        {
+                // onboard camera is NV12
+                if( CUDA_FAILED(cudaNV12ToBGR8((uint8_t*)input, (uchar3*)mBGR8[mLatestBGR8], mWidth, mHeight)) )
+		{
+		    	return false;}
+        }
+        else
+        {
+                // USB webcam is RGB
+                                                
+                if( CUDA_FAILED(cudaRGB8ToBGR8((uchar3*)input, (uchar3*)mBGR8[mLatestBGR8], mWidth, mHeight)) )
+                        return false;
+		// memcpy((uchar3*)(mBGR8[mLatestBGR8]),(uchar3*)input,mWidth*mHeight*sizeof(uchar3));
+
+        }
+
+        *output     = mBGR8[mLatestBGR8];
+        mLatestBGR8 = (mLatestBGR8 + 1) % NUM_RINGBUFFERS;
+        return true;
+}
+
 
 
 // onEOS

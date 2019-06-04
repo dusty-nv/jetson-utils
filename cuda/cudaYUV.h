@@ -136,6 +136,14 @@ cudaError_t cudaNV12ToRGBA32( uint8_t* input, size_t inputPitch, float4* output,
 cudaError_t cudaNV12ToRGBA32( uint8_t* input, float4* output, size_t width, size_t height );
 
 /**
+ * Convert an NV12 texture (semi-planar 4:2:0) to BGR uchar4 format.
+ * NV12 = 8-bit Y plane followed by an interleaved U/V plane with 2x2 subsampling.
+ */
+cudaError_t cudaNV12ToBGR8( uint8_t* input, size_t inputPitch, uchar3* output, size_t outputPitch, size_t width, size_t height );
+cudaError_t cudaNV12ToBGR8( uint8_t* input, uchar3* output, size_t width, size_t height );
+
+
+/**
  * Setup NV12 color conversion constants.
  * cudaNV12SetupColorspace() isn't necessary for the user to call, it will be
  * called automatically by cudaNV12ToRGBA() with a hue of 0.0.
