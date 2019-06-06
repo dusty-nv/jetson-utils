@@ -7,11 +7,6 @@ get_directory_property(hasParent PARENT_DIRECTORY)
 
 if(hasParent)
 	message("-- jetson-utils:  building as submodule, ${hasParent}")
-	
-	# configure Qt
-	find_package(Qt4 REQUIRED)
-	include(${QT_USE_FILE})
-	add_definitions(${QT_DEFINITIONS})
 else()
 	message("-- jetson-utils:  building as standalone")
 	
@@ -21,11 +16,6 @@ else()
 	# -std=gnu++11
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")	
   
-	# Qt is used to load images (installed by ubuntu-desktop)
-	find_package(Qt4 REQUIRED)
-	include(${QT_USE_FILE})
-	add_definitions(${QT_DEFINITIONS})
-	
 	# setup CUDA
 	find_package(CUDA)
 	message("-- CUDA version: ${CUDA_VERSION}")
@@ -79,7 +69,7 @@ file(GLOB jetsonUtilitySources *.cpp camera/*.cpp codec/*.cpp cuda/*.cu display/
 file(GLOB jetsonUtilityIncludes *.h camera/*.h codec/*.h cuda/*.h display/*.h image/*.h input/*.h network/*.h threads/*.h)
 
 cuda_add_library(jetson-utils SHARED ${jetsonUtilitySources})
-target_link_libraries(jetson-utils Qt4::QtGui GL GLEW gstreamer-1.0 gstapp-1.0)	
+target_link_libraries(jetson-utils GL GLEW gstreamer-1.0 gstapp-1.0)	
 
 
 # transfer all headers to the include directory
