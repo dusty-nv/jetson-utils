@@ -30,9 +30,6 @@
 #include <unistd.h>
 #include <string.h>
 
-#include <QMutex>
-#include <QWaitCondition>
-
 #include "cudaMappedMemory.h"
 #include "cudaYUV.h"
 #include "cudaRGB.h"
@@ -66,10 +63,6 @@ gstCamera::gstCamera()
 	mSize   = 0;
 	mSource = GST_SOURCE_NVCAMERA;
 
-	mWaitEvent  = new QWaitCondition();
-	mWaitMutex  = new QMutex();
-	mRingMutex  = new QMutex();
-	
 	mLatestRGBA       = 0;
 	mLatestRingbuffer = 0;
 	mLatestRetrieved  = false;
@@ -147,31 +140,31 @@ GstFlowReturn gstCamera::onBuffer(_GstAppSink* sink, void* user_data)
 	
 
 // Capture
-bool gstCamera::Capture( void** cpu, void** cuda, unsigned long timeout )
+bool gstCamera::Capture( void** cpu, void** cuda, uint64_t timeout )
 {
+	// confirm the camera is streaming
 	if( !mStreaming )
 	{
 		if( !Open() )
 			return false;
 	}
 
-	mWaitMutex->lock();
-	const bool wait_result = mWaitEvent->wait(mWaitMutex, timeout);
-	mWaitMutex->unlock();
-	
-	if( !wait_result )
+	// wait until a new frame is recieved
+	if( !mWaitEvent.Wait(timeout) )
 		return false;
 	
-	mRingMutex->lock();
+	// get the latest ringbuffer
+	mRingMutex.Lock();
 	const uint32_t latest = mLatestRingbuffer;
 	const bool retrieved = mLatestRetrieved;
 	mLatestRetrieved = true;
-	mRingMutex->unlock();
+	mRingMutex.Unlock();
 	
 	// skip if it was already retrieved
 	if( retrieved )
 		return false;
 	
+	// set output pointers
 	if( cpu != NULL )
 		*cpu = mRingbufferCPU[latest];
 	
@@ -396,11 +389,11 @@ void gstCamera::checkBuffer()
 	
 	
 	// update and signal sleeping threads
-	mRingMutex->lock();
+	mRingMutex.Lock();
 	mLatestRingbuffer = nextRingbuffer;
 	mLatestRetrieved  = false;
-	mRingMutex->unlock();
-	mWaitEvent->wakeAll();
+	mRingMutex.Unlock();
+	mWaitEvent.Wake();
 }
 
 
@@ -649,3 +642,4 @@ void gstCamera::checkMsgBus()
 		gst_message_unref(msg);
 	}
 }
+

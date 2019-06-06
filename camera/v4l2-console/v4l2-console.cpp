@@ -25,7 +25,6 @@
 #include <stdio.h>
 #include <signal.h>
 //#include <unistd.h>
-#include <QImage>
 
 
 bool signal_recieved = false;
@@ -110,6 +109,7 @@ int main( int argc, char** argv )
 		{
 			printf("recieved new video frame\n");
 			
+#if 0
 			static int num_frames = 0;
 			
 			const int width  = camera->GetWidth();
@@ -133,6 +133,7 @@ int main( int argc, char** argv )
 			
 			qImg.save(QString(output_filename));
 			num_frames++;
+#endif
 		}
 			
 	}

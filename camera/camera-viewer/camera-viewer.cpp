@@ -79,7 +79,6 @@ int main( int argc, char** argv )
 	printf("    depth:  %u (bpp)\n", camera->GetPixelDepth());
 	
 
-
 	/*
 	 * create openGL window
 	 */
@@ -87,23 +86,6 @@ int main( int argc, char** argv )
 	
 	if( !display )
 		printf("\ncamera-viewer:  failed to create openGL display\n");
-
-	const size_t texSz = camera->GetWidth() * camera->GetHeight() * sizeof(float4);
-	float4* texIn = (float4*)malloc(texSz);
-
-	/*if( texIn != NULL )
-		memset(texIn, 0, texSz);*/
-
-	if( texIn != NULL )
-		for( uint32_t y=0; y < camera->GetHeight(); y++ )
-			for( uint32_t x=0; x < camera->GetWidth(); x++ )
-				texIn[y*camera->GetWidth()+x] = make_float4(0.0f, 1.0f, 1.0f, 1.0f);
-
-	glTexture* texture = glTexture::Create(camera->GetWidth(), camera->GetHeight(), GL_RGBA32F_ARB/*GL_RGBA8*/, texIn);
-
-	if( !texture )
-		printf("camera-viewer:  failed to create openGL texture\n");
-	
 	
 
 	/*
@@ -118,50 +100,26 @@ int main( int argc, char** argv )
 	printf("\ncamera-viewer:  camera open for streaming\n");
 	
 	
+	/*
+	 * processing loop
+	 */
 	while( !signal_recieved )
 	{
-		void* imgCPU  = NULL;
-		void* imgCUDA = NULL;
-		
-		// get the latest frame
-		if( !camera->Capture(&imgCPU, &imgCUDA, 1000) )
-			printf("\ncamera-viewer:  failed to capture frame\n");
-		else
-			printf("camera-viewer:  recieved new frame  CPU=0x%p  GPU=0x%p\n", imgCPU, imgCUDA);
-		
-		// convert from YUV to RGBA
+		// capture latest image
 		float* imgRGBA = NULL;
 		
-		if( !camera->ConvertRGBA(imgCUDA, &imgRGBA) )
-			printf("camera-viewer:  failed to convert from NV12 to RGBA\n");
-
-		// rescale image pixel intensities
-		CUDA(cudaNormalizeRGBA((float4*)imgRGBA, make_float2(0.0f, 255.0f), 
-						   (float4*)imgRGBA, make_float2(0.0f, 1.0f), 
- 						   camera->GetWidth(), camera->GetHeight()));
+		if( !camera->CaptureRGBA(&imgRGBA, 1000) )
+			printf("camera-viewer:  failed to capture RGBA image\n");
 
 		// update display
 		if( display != NULL )
 		{
-			display->BeginRender();
+			display->RenderOnce((float*)imgRGBA, camera->GetWidth(), camera->GetHeight());
 
-			if( texture != NULL )
-			{
-				void* tex_map = texture->MapCUDA();
-
-				if( tex_map != NULL )
-				{
-					cudaMemcpy(tex_map, imgRGBA, texture->GetSize(), cudaMemcpyDeviceToDevice);
-					CUDA(cudaDeviceSynchronize());
-
-					texture->Unmap();
-				}
-				//texture->UploadCPU(texIn);
-
-				texture->Render(100,100);		
-			}
-
-			display->EndRender();
+			// update status bar
+			char str[256];
+			sprintf(str, "Camera Viewer (%ux%u) | %.0f FPS", camera->GetWidth(), camera->GetHeight(), display->GetFPS());
+			display->SetTitle(str);	
 
 			// check if the user quit
 			if( display->IsClosed() )

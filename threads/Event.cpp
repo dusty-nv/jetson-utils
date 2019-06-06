@@ -52,16 +52,13 @@ bool Event::Query()
 }
 
 
-// Raise
-void Event::Raise()
+// Wake
+void Event::Wake()
 {
 	mQueryMutex.Lock();
 	mQuery = true;
 	pthread_cond_signal(&mID);
 	mQueryMutex.Unlock();
-
-	if( mAutoReset )
-		Reset();
 }
 
 
@@ -73,7 +70,11 @@ bool Event::Wait()
 	while(!mQuery)
 		pthread_cond_wait(&mID, mQueryMutex.GetID());
 
+	if( mAutoReset )
+		mQuery = false;
+
 	mQueryMutex.Unlock();
+	return true;
 }
 
 
@@ -95,6 +96,9 @@ bool Event::Wait( const timespec& timeout )
 		}
 	}
 	
+	if( mAutoReset )
+		mQuery = false;
+
 	mQueryMutex.Unlock();
 	return true;
 }

@@ -112,7 +112,7 @@ void InputDevices::Enumerate( DeviceList& devices )
 
 	for(int i = 0; i < ndev; i++)
 	{
-		char fname[64];
+		char fname[512];
 		char name[256] = "???";
 
 		snprintf(fname, sizeof(fname), "%s/%s", DEV_PATH, namelist[i]->d_name);

@@ -26,10 +26,10 @@
 #include <gst/gst.h>
 #include <string>
 
+#include "Mutex.h"
+#include "Event.h"
 
 struct _GstAppSink;
-class QWaitCondition;
-class QMutex;
 
 
 /**
@@ -68,14 +68,15 @@ public:
 	inline bool IsStreaming() const	   { return mStreaming; }
 
 	// Capture YUV (NV12)
-	// If timeout is ULONG_MAX, the calling thread will wait indefinetly for a new frame
+	// If timeout is UINT64_MAX, the calling thread will wait indefinetly for a new frame
 	// If timeout is 0, the calling thread will return false if a new frame isn't immediately ready
-	bool Capture( void** cpu, void** cuda, unsigned long timeout=ULONG_MAX );
+	// Otherwise the timeout is in millseconds before returning if a new frame isn't ready
+	bool Capture( void** cpu, void** cuda, uint64_t timeout=UINT64_MAX );
 
 	// Capture a camera image and convert to it float4 RGBA
 	// If you want to capture in a different thread than CUDA, use the Capture() and ConvertRGBA() functions.
 	// Set zeroCopy to true if you need to access the image from CPU, otherwise it will be CUDA only.
-	bool CaptureRGBA( float** output, unsigned long timeout=ULONG_MAX, bool zeroCopy=false );
+	bool CaptureRGBA( float** output, uint64_t timeout=UINT64_MAX, bool zeroCopy=false );
 	
 	// Takes in captured YUV-NV12 CUDA image, converts to float4 RGBA (with pixel intensity 0-255)
 	// Set zeroCopy to true if you need to access ConvertRGBA from CPU, otherwise it will be CUDA only.
@@ -120,10 +121,9 @@ private:
 	void* mRingbufferCPU[NUM_RINGBUFFERS];
 	void* mRingbufferGPU[NUM_RINGBUFFERS];
 	
-	QWaitCondition* mWaitEvent;
-	
-	QMutex* mWaitMutex;
-	QMutex* mRingMutex;
+	Event mWaitEvent;
+	Mutex mWaitMutex;
+	Mutex mRingMutex;
 	
 	uint32_t mLatestRGBA;
 	uint32_t mLatestRingbuffer;

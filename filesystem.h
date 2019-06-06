@@ -46,7 +46,7 @@ std::string absolutePath( const std::string& relative_path );
  * @param includePath if true, the list of filenames will be prefixed with the path
  *                    if false (default), the list of filenames will contain filenames/extensions only
  */
-bool listDirectory( const char* path, std::vector<std::string>& list, bool includePath=false );
+//bool listDirectory( const char* path, std::vector<std::string>& list, bool includePath=false );
 
 
 /**

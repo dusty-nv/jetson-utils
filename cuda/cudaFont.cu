@@ -23,7 +23,7 @@
 #include "cudaFont.h"
 #include "cudaMappedMemory.h"
 
-#include "loadImage.h"
+#include "imageIO.h"
 
 
 // constructor

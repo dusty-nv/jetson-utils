@@ -24,7 +24,6 @@
 #include "Process.h"
 
 #include <sys/stat.h>
-#include <QDir>
 #include <algorithm>
 
 
@@ -70,7 +69,8 @@ std::string locateFile( const std::string& path, std::vector<std::string>& locat
 }
 
 
-// listDir
+// listDir (TODO: migrate this from Qt to stat)
+#if 0
 bool listDir( const char* path, std::vector<std::string>& output, bool includePath )
 {
 	if( !path )
@@ -112,7 +112,7 @@ bool listDir( const char* path, std::vector<std::string>& output, bool includePa
 
 	return true;
 }
-
+#endif
 
 // fileExists
 bool fileExists( const char* path, bool regularFilesOnly )
