@@ -30,6 +30,16 @@
 
 
 /**
+ * Determine an appropriate font size given a particular dimension to use
+ * (typically an image's width). Then the font won't be radically unsized. 
+ * @param dimension The dimension's size to fit against (i.e. image width)
+ * @returns a font size between 10 and 32 pixels tall. 
+ * @ingroup util
+ */
+float adaptFontSize( uint32_t dimension );
+
+
+/**
  * Font overlay rendering using CUDA
  * @ingroup util
  */
@@ -37,44 +47,88 @@ class cudaFont
 {
 public:
 	/**
-	 * Create new CUDA font overlay object using textured fonts
+	 * Create new CUDA font overlay object using baked fonts.
+	 * @param size The desired height of the font, in pixels.
 	 */
-	static cudaFont* Create( const char* font_bitmap="fontmapA.png" );
+	static cudaFont* Create( float size=32.0f );
+
+	/**
+	 * Create new CUDA font overlay object using baked fonts.
+	 * @param font The name of the TTF font to use.
+	 * @param size The desired height of the font, in pixels.
+	 */
+	static cudaFont* Create( const char* font, float size );
 	
+	/**
+	 * Create new CUDA font overlay object using baked fonts.
+	 * @param font A list of font names that are acceptable to use.
+	 *             If the first font isn't found on the system,
+	 *             then the next font from the list will be tried.
+	 * @param size The desired height of the font, in pixels.
+	 */
+	static cudaFont* Create( const std::vector<std::string>& fonts, float size );
+
 	/**
 	 * Destructor
 	 */
 	~cudaFont();
 	
 	/**
-	 * Draw font overlay onto image
+	 * Render text overlay onto image
 	 */
-	bool RenderOverlay( float4* input, float4* output, uint32_t width, uint32_t height, 
-						const char* str, int x, int y, const float4& color=make_float4(0, 0, 0, 255));
+	bool OverlayText( float4* image, uint32_t width, uint32_t height, 
+			        const char* str, int x, int y, 
+				   const float4& color=make_float4(0, 0, 0, 255),
+				   const float4& background=make_float4(0, 0, 0, 0),
+				   int backgroundPadding=5 );
 						
 	/**
-	 * Draw font overlay onto image
+	 * Render text overlay onto image
 	 */
-	bool RenderOverlay( float4* input, float4* output, uint32_t width, uint32_t height, 
-						const std::vector< std::pair< std::string, int2 > >& text,
-						const float4& color=make_float4(0.0f, 0.0f, 0.0f, 255.0f));
+	bool OverlayText( float4* image, uint32_t width, uint32_t height, 
+			        const std::vector< std::pair< std::string, int2 > >& text,
+			        const float4& color=make_float4(0, 0, 0, 255),
+				   const float4& background=make_float4(0, 0, 0, 0),
+				   int backgroundPadding=5 );
 	
 protected:
 	cudaFont();
-	bool init( const char* bitmap_path );
+	bool init( const char* font, float size );
 
-	float4* mFontMapCPU;
-	float4* mFontMapGPU;
+	uint8_t* mFontMapCPU;
+	uint8_t* mFontMapGPU;
 	
 	int mFontMapWidth;
 	int mFontMapHeight;
-	int2 mFontCellSize;
 	
-	short4* mCommandCPU;
-	short4* mCommandGPU;
-	int     mCmdEntries;
+	void* mCommandCPU;
+	void* mCommandGPU;
+	int   mCmdIndex;
+
+	float4* mRectsCPU;
+	float4* mRectsGPU;
+	int     mRectIndex;
+
+	float4* mRectImg;
+	int     mRectImgWidth;
+	int	   mRectImgHeight;
 	
 	static const uint32_t MaxCommands = 1024;
+	static const uint32_t FirstGlyph  = 32;
+	static const uint32_t LastGlyph   = 255;
+	static const uint32_t NumGlyphs   = LastGlyph - FirstGlyph;
+
+	struct GlyphInfo
+	{
+		uint16_t x;
+		uint16_t y;
+		uint16_t width;
+		uint16_t height;
+
+		float xAdvance;
+		float xOffset;
+		float yOffset;
+	} mGlyphInfo[NumGlyphs];
 };
 
 #endif
