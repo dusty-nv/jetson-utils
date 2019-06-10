@@ -193,12 +193,42 @@ PyObject* PyCUDA_AllocMapped( PyObject* self, PyObject* args )
 }
 
 
+// PyCUDA_DeviceSynchronize
+PyObject* PyCUDA_DeviceSynchronize( PyObject* self )
+{
+	CUDA(cudaDeviceSynchronize());
+	Py_RETURN_NONE;
+}
+
+
+// PyCUDA_AdaptFontSize
+PyObject* PyCUDA_AdaptFontSize( PyObject* self, PyObject* args )
+{
+	int dim = 0;
+
+	if( !PyArg_ParseTuple(args, "i", &dim) )
+	{
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "adaptFontSize() failed to parse size argument");
+		return NULL;
+	}
+		
+	if( dim <= 0 )
+	{
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "adaptFontSize() requested size is negative or zero");
+		return NULL;
+	}
+
+	return PyFloat_FromDouble(adaptFontSize(dim));
+}
+
 //-------------------------------------------------------------------------------
 
 static PyMethodDef pyCUDA_Functions[] = 
 {
 	{ "cudaMalloc", (PyCFunction)PyCUDA_Malloc, METH_VARARGS, "Allocated CUDA memory on the GPU with cudaMalloc()" },
 	{ "cudaAllocMapped", (PyCFunction)PyCUDA_AllocMapped, METH_VARARGS, "Allocate CUDA ZeroCopy mapped memory" },
+	{ "cudaDeviceSynchronize", (PyCFunction)PyCUDA_DeviceSynchronize, METH_NOARGS, "Wait for the GPU to complete all work" },
+	{ "adaptFontSize", (PyCFunction)PyCUDA_AdaptFontSize, METH_VARARGS, "Determine an appropriate font size for the given image dimension" },
 	{NULL}  /* Sentinel */
 };
 
@@ -232,6 +262,16 @@ typedef struct {
 	PyObject* purple;
 	PyObject* magenta;
 
+	PyObject* gray_90;
+	PyObject* gray_80;
+	PyObject* gray_70;
+	PyObject* gray_60;
+	PyObject* gray_50;
+	PyObject* gray_40;
+	PyObject* gray_30;
+	PyObject* gray_20;
+	PyObject* gray_10;
+
 } PyFont_Object;
 
 
@@ -258,6 +298,13 @@ static PyObject* PyFont_New( PyTypeObject *type, PyObject *args, PyObject *kwds 
 			return NULL;								\
 		}
 
+	#define INIT_GRAY(color, a)		\
+		self->color = Py_BuildValue("(ffff)", 0.0, 0.0, 0.0, a);	\
+		if( !self->color ) {							\
+			Py_DECREF(self);							\
+			return NULL;								\
+		}
+
 	INIT_COLOR(black,   0.0, 0.0, 0.0);									
 	INIT_COLOR(white,   255.0, 255.0, 255.0);
 	INIT_COLOR(gray,	128.0, 128.0, 128.0);
@@ -273,6 +320,16 @@ static PyObject* PyFont_New( PyTypeObject *type, PyObject *args, PyObject *kwds 
 	INIT_COLOR(purple,  128.0, 0.0, 128.0);
 	INIT_COLOR(magenta, 255.0, 0.0, 255.0);
 
+	INIT_GRAY(gray_90, 230.0);
+	INIT_GRAY(gray_80, 200.0);
+	INIT_GRAY(gray_70, 180.0);
+	INIT_GRAY(gray_60, 150.0);
+	INIT_GRAY(gray_50, 127.5);
+	INIT_GRAY(gray_40, 100.0);
+	INIT_GRAY(gray_30, 75.0);
+	INIT_GRAY(gray_20, 50.0);
+	INIT_GRAY(gray_10, 25.0);
+
 	self->font = NULL;
 	return (PyObject*)self;
 }
@@ -284,17 +341,19 @@ static int PyFont_Init( PyFont_Object* self, PyObject *args, PyObject *kwds )
 	printf(LOG_PY_UTILS "PyFont_Init()\n");
 	
 	// parse arguments
-	const char* bitmap = "fontmapA.png";
-	static char* kwlist[] = {"bitmap", NULL};
+	const char* font_name = NULL;
+	float font_size = 32.0f;
 
-	if( !PyArg_ParseTupleAndKeywords(args, kwds, "|s", kwlist, &bitmap))
+	static char* kwlist[] = {"font", "size", NULL};
+
+	if( !PyArg_ParseTupleAndKeywords(args, kwds, "|sf", kwlist, &font_name, &font_size))
 	{
 		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "pyFont.__init()__ failed to parse args tuple");
 		return -1;
 	}
   
 	// create the font
-	cudaFont* font = cudaFont::Create(bitmap);
+	cudaFont* font = cudaFont::Create(font_name, font_size);
 
 	if( !font )
 	{
@@ -335,13 +394,23 @@ static void PyFont_Dealloc( PyFont_Object* self )
 	Py_XDECREF(self->purple);
 	Py_XDECREF(self->magenta);
 
+	Py_XDECREF(self->gray_90);
+	Py_XDECREF(self->gray_80);
+	Py_XDECREF(self->gray_70);
+	Py_XDECREF(self->gray_60);
+	Py_XDECREF(self->gray_50);
+	Py_XDECREF(self->gray_40);
+	Py_XDECREF(self->gray_30);
+	Py_XDECREF(self->gray_20);
+	Py_XDECREF(self->gray_10);
+
 	// free the container
 	Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
 
 // Overlay
-static PyObject* PyFont_Overlay( PyFont_Object* self, PyObject* args, PyObject* kwds )
+static PyObject* PyFont_OverlayText( PyFont_Object* self, PyObject* args, PyObject* kwds )
 {
 	if( !self || !self->font )
 	{
@@ -351,8 +420,8 @@ static PyObject* PyFont_Overlay( PyFont_Object* self, PyObject* args, PyObject* 
 
 	// parse arguments
 	PyObject* input  = NULL;
-	PyObject* output = NULL;
 	PyObject* color  = NULL;
+	PyObject* bg     = NULL;
 
 	const char* text = NULL;
 
@@ -362,16 +431,16 @@ static PyObject* PyFont_Overlay( PyFont_Object* self, PyObject* args, PyObject* 
 	int x = 0;
 	int y = 0;
 
-	static char* kwlist[] = {"input", "width", "height", "text", "x", "y", "color", "output", NULL};
+	static char* kwlist[] = {"image", "width", "height", "text", "x", "y", "color", "background", NULL};
 
-	if( !PyArg_ParseTupleAndKeywords(args, kwds, "Oiis|iiOO", kwlist, &input, &width, &height, &text, &x, &y, &color, &output))
+	if( !PyArg_ParseTupleAndKeywords(args, kwds, "Oiis|iiOO", kwlist, &input, &width, &height, &text, &x, &y, &color, &bg))
 	{
-		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaFont.Overlay() failed to parse args tuple");
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaFont.OverlayText() failed to parse args tuple");
 		return NULL;
 	}
 
-	if( !output )
-		output = input;
+	//if( !output )
+	//	output = input;
 
 	// parse color tuple
 	float4 rgba = make_float4(0, 0, 0, 255);
@@ -380,13 +449,31 @@ static PyObject* PyFont_Overlay( PyFont_Object* self, PyObject* args, PyObject* 
 	{
 		if( !PyTuple_Check(color) )
 		{
-			PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaFont.Overlay() color argument isn't a valid tuple");
+			PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaFont.OverlayText() color argument isn't a valid tuple");
 			return NULL;
 		}
 
 		if( !PyArg_ParseTuple(color, "fff|f", &rgba.x, &rgba.y, &rgba.z, &rgba.w) )
 		{
-			PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaFont.Overlay() failed to parse color tuple");
+			PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaFont.OverlayText() failed to parse color tuple");
+			return NULL;
+		}
+	}
+
+	// parse background color tuple
+	float4 bg_rgba = make_float4(0, 0, 0, 0);
+
+	if( bg != NULL )
+	{
+		if( !PyTuple_Check(bg) )
+		{
+			PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaFont.OverlayText() background color argument isn't a valid tuple");
+			return NULL;
+		}
+
+		if( !PyArg_ParseTuple(bg, "fff|f", &bg_rgba.x, &bg_rgba.y, &bg_rgba.z, &bg_rgba.w) )
+		{
+			PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaFont.OverlayText() failed to parse background color tuple");
 			return NULL;
 		}
 	}
@@ -394,7 +481,7 @@ static PyObject* PyFont_Overlay( PyFont_Object* self, PyObject* args, PyObject* 
 	// verify dimensions
 	if( width <= 0 || height <= 0 )
 	{
-		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaFont.Overlay() image dimensions are invalid");
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaFont.OverlayText() image dimensions are invalid");
 		return NULL;
 	}
 
@@ -403,23 +490,23 @@ static PyObject* PyFont_Overlay( PyFont_Object* self, PyObject* args, PyObject* 
 
 	if( !input_img )
 	{
-		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaFont.Overlay() failed to get input image pointer from PyCapsule container");
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaFont.OverlayText() failed to get input image pointer from PyCapsule container");
 		return NULL;
 	}
 
 	// get pointer to output image data
-	void* output_img = PyCUDA_GetPointer(output);
+	/*void* output_img = PyCUDA_GetPointer(output);
 
 	if( !output_img )
 	{
 		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaFont.Overlay() failed to get output image pointer from PyCapsule container");
 		return NULL;
-	}
+	}*/
 
 	//printf("cudaFont.Overlay(%p, %p, %i, %i, '%s', %i, %i, (%f, %f, %f, %f))\n", input_img, output_img, width, height, text, x, y, rgba.x, rgba.y, rgba.z, rgba.w);
 
 	// render the font overlay
-	self->font->RenderOverlay((float4*)input_img, (float4*)output_img, width, height, text, x, y, rgba);
+	self->font->OverlayText((float4*)input_img, width, height, text, x, y, rgba, bg_rgba);
 
 	// return void
 	Py_RETURN_NONE;
@@ -434,7 +521,7 @@ static PyTypeObject pyFont_Type =
 
 static PyMethodDef pyFont_Methods[] = 
 {
-	{ "Overlay", (PyCFunction)PyFont_Overlay, METH_VARARGS|METH_KEYWORDS, "Render the font overlay for a given text string"},
+	{ "OverlayText", (PyCFunction)PyFont_OverlayText, METH_VARARGS|METH_KEYWORDS, "Render the font overlay for a given text string"},
 	{NULL}  /* Sentinel */
 };
 
@@ -454,6 +541,15 @@ static PyMemberDef pyFont_Members[] =
 	{ "Orange",  T_OBJECT_EX, offsetof(PyFont_Object, orange),  0, "Orange color tuple"},
 	{ "Purple",  T_OBJECT_EX, offsetof(PyFont_Object, purple),  0, "Purple color tuple"},
 	{ "Magenta", T_OBJECT_EX, offsetof(PyFont_Object, magenta), 0, "Magenta color tuple"},
+	{ "Gray90",  T_OBJECT_EX, offsetof(PyFont_Object, gray_90), 0, "Gray color tuple (90% alpha)"},
+	{ "Gray80",  T_OBJECT_EX, offsetof(PyFont_Object, gray_80), 0, "Gray color tuple (80% alpha)"},
+	{ "Gray70",  T_OBJECT_EX, offsetof(PyFont_Object, gray_70), 0, "Gray color tuple (70% alpha)"},
+	{ "Gray60",  T_OBJECT_EX, offsetof(PyFont_Object, gray_60), 0, "Gray color tuple (60% alpha)"},
+	{ "Gray50",  T_OBJECT_EX, offsetof(PyFont_Object, gray_50), 0, "Gray color tuple (50% alpha)"},
+	{ "Gray40",  T_OBJECT_EX, offsetof(PyFont_Object, gray_40), 0, "Gray color tuple (40% alpha)"},
+	{ "Gray30",  T_OBJECT_EX, offsetof(PyFont_Object, gray_30), 0, "Gray color tuple (30% alpha)"},
+	{ "Gray20",  T_OBJECT_EX, offsetof(PyFont_Object, gray_20), 0, "Gray color tuple (20% alpha)"},
+	{ "Gray10",  T_OBJECT_EX, offsetof(PyFont_Object, gray_10), 0, "Gray color tuple (10% alpha)"},
 	{NULL}  /* Sentinel */
 };
 
