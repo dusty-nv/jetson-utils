@@ -29,8 +29,8 @@ static inline __device__ __host__ bool eq_less( float a, float b, float epsilon 
 }
 
 template<typename T>
-__global__ void gpuRectOutlines( T* input, T* output, int width, int height,
-						        float4* rects, int numRects, float4 color ) 
+__global__ void gpuRectFill( T* input, T* output, int width, int height,
+					    float4* rects, int numRects, float4 color ) 
 {
 	const int x = blockIdx.x * blockDim.x + threadIdx.x;
 	const int y = blockIdx.y * blockDim.y + threadIdx.y;
@@ -38,13 +38,13 @@ __global__ void gpuRectOutlines( T* input, T* output, int width, int height,
 	if( x >= width || y >= height )
 		return;
 
-	const T px_in = input[ y * width + x ];
-	T px_out = px_in;
+	const T px_in  = input[ y * width + x ];
+	      T px_out = px_in;
 	
 	const float fx = x;
 	const float fy = y;
 	
-	const float thick = 10.0f;
+	//const float thick = 10.0f;
 	const float alpha = color.w / 255.0f;
 	const float ialph = 1.0f - alpha;
 	
@@ -71,16 +71,19 @@ __global__ void gpuRectOutlines( T* input, T* output, int width, int height,
 }
 
 
-cudaError_t cudaRectOutlineOverlay( float4* input, float4* output, uint32_t width, uint32_t height, float4* boundingBoxes, int numBoxes, const float4& color )
+// cudaRectFill
+cudaError_t cudaRectFill( float4* input, float4* output, uint32_t width, uint32_t height, float4* rects, int numRects, const float4& color )
 {
-	if( !input || !output || width == 0 || height == 0 || !boundingBoxes || numBoxes == 0 )
+	if( !input || !output || width == 0 || height == 0 || !rects || numRects == 0 )
 		return cudaErrorInvalidValue;
 
 	// launch kernel
 	const dim3 blockDim(8, 8);
 	const dim3 gridDim(iDivUp(width,blockDim.x), iDivUp(height,blockDim.y));
 
-	gpuRectOutlines<float4><<<gridDim, blockDim>>>(input, output, width, height, boundingBoxes, numBoxes, color); 
+	gpuRectFill<float4><<<gridDim, blockDim>>>(input, output, width, height, rects, numRects, color); 
 
 	return cudaGetLastError();
 }
+
+
