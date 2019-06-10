@@ -59,7 +59,7 @@
  * LOG_CUDA string.
  * @ingroup util
  */
-#define LOG_CUDA "[cuda]   "
+#define LOG_CUDA "[cuda]  "
 
 /*
  * define this if you want all cuda calls to be printed

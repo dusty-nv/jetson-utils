@@ -134,8 +134,8 @@ int main( int argc, char** argv )
 						char str[256];
 						sprintf(str, "AaBbCcDdEeFfGgHhIiJjKkLlMmNn 123456890");
 
-						font->RenderOverlay((float4*)tex_map, (float4*)tex_map, texture->GetWidth(), texture->GetHeight(),
-										    str, 0, 0, make_float4(0.0f, 0.75f, 1.0f, 255.0f));
+						font->OverlayText((float4*)tex_map, texture->GetWidth(), texture->GetHeight(),
+									   str, 0, 0, make_float4(0.0f, 0.75f, 1.0f, 255.0f));
 					}
 
 					CUDA(cudaDeviceSynchronize());
