@@ -81,6 +81,10 @@ public:
 	// Takes in captured YUV-NV12 CUDA image, converts to float4 RGBA (with pixel intensity 0-255)
 	// Set zeroCopy to true if you need to access ConvertRGBA from CPU, otherwise it will be CUDA only.
 	bool ConvertRGBA( void* input, float** output, bool zeroCopy=false );
+
+	// Takes in captured YUV-NV12 CUDA image, converts to uint8 BGR (with pixel intensity 0-255)
+	// Set zeroCopy to true if you need to access ConvertBGR8 from CPU, otherwise it will be CUDA only.
+	bool ConvertBGR8( void* input, void** output, bool zeroCopy=false );	
 	
 	// Image dimensions
 	inline uint32_t GetWidth() const	   { return mWidth; }
@@ -126,11 +130,14 @@ private:
 	Mutex mRingMutex;
 	
 	uint32_t mLatestRGBA;
+	uint32_t mLatestBGR8;
 	uint32_t mLatestRingbuffer;
 	bool     mLatestRetrieved;
 	
 	void*  mRGBA[NUM_RINGBUFFERS];
+	void*  mBGR8[NUM_RINGBUFFERS];
 	bool   mRGBAZeroCopy; // were the RGBA buffers allocated with zeroCopy?
+	bool   mBGR8ZeroCopy;
 	bool   mStreaming;	  // true if the device is currently open
 	int    mV4L2Device;	  // -1 for onboard, >=0 for V4L2 device
 
