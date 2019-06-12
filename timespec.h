@@ -50,7 +50,7 @@ inline timespec timeZero()							{ timespec t; t.tv_sec=0; t.tv_nsec=0; return t
 /**
  * Return an initialized timespec
  */
-inline timespec timeNew( time_t seconds, long int nanoseconds )		{ timespec t; t.tv_sec=seconds; t.tv_nsec=nanoseconds; }
+inline timespec timeNew( time_t seconds, long int nanoseconds )		{ timespec t; t.tv_sec=seconds; t.tv_nsec=nanoseconds; return t; }
 
 
 /**
@@ -68,7 +68,27 @@ inline timespec timeAdd( const timespec& a, const timespec& b )		{ timespec t; t
 /**
  * Find the difference between two timestamps
  */
-timespec timeDiff( const timespec& start, const timespec& end );
+inline void timeDiff( const timespec& start, const timespec& end, timespec* result )
+{
+	if ((end.tv_nsec-start.tv_nsec)<0) {
+		result->tv_sec = end.tv_sec-start.tv_sec-1;
+		result->tv_nsec = 1000000000+end.tv_nsec-start.tv_nsec;
+	} else {
+		result->tv_sec = end.tv_sec-start.tv_sec;
+		result->tv_nsec = end.tv_nsec-start.tv_nsec;
+	}
+}
+
+
+/**
+ * Find the difference between two timestamps
+ */
+inline timespec timeDiff( const timespec& start, const timespec& end )
+{
+	timespec result;
+	timeDiff(start, end, &result);
+	return result;
+}
 
 
 /**
@@ -77,7 +97,33 @@ timespec timeDiff( const timespec& start, const timespec& end );
  *        >0, if timestamp A is greater than timestamp B
  *        <0, if timestamp A is less than timestamp B
  */
-int timeCmp( const timespec& a, const timespec& b );
+inline int timeCmp( const timespec& a, const timespec& b )
+{
+	if( a.tv_sec < b.tv_sec )
+		return -1;
+	else if( a.tv_sec > b.tv_sec )
+		return 1;
+	else
+	{
+		if( a.tv_nsec < b.tv_nsec )
+			return -1;
+		else if( a.tv_nsec > b.tv_nsec )
+			return 1;
+		else
+			return 0;
+	}
+}
+
+/**
+ * Convert to 32-bit float (in milliseconds).
+ */
+inline float timeFloat( const timespec& a )								{ return a.tv_sec * 1000.0f + a.tv_nsec * 0.000001f; }
+
+
+/**
+ * Convert to 64-bit double (in milliseconds).
+ */
+inline float timeDouble( const timespec& a )								{ return a.tv_sec * 1000.0 + a.tv_nsec * 0.000001; }
 
 
 /**
@@ -89,7 +135,7 @@ inline char* timeStr( const timespec& timestamp, char* strOut )				{ sprintf(str
 /**
  * Print the time to stdout
  */
-inline void timePrint( const timespec& timestamp, const char* text=NULL )	{ printf("%s   %lu s  %010lu ns\n", text, (uint64_t)timestamp.tv_sec, (uint64_t)timestamp.tv_nsec); }
+inline void timePrint( const timespec& timestamp, const char* text=NULL )		{ printf("%s   %lu s  %010lu ns\n", text, (uint64_t)timestamp.tv_sec, (uint64_t)timestamp.tv_nsec); }
 
 
 /**

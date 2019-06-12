@@ -109,10 +109,6 @@ protected:
 	float4* mRectsGPU;
 	int     mRectIndex;
 
-	float4* mRectImg;
-	int     mRectImgWidth;
-	int	   mRectImgHeight;
-	
 	static const uint32_t MaxCommands = 1024;
 	static const uint32_t FirstGlyph  = 32;
 	static const uint32_t LastGlyph   = 255;

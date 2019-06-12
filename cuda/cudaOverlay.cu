@@ -23,10 +23,10 @@
 #include "cudaOverlay.h"
 
 
-static inline __device__ __host__ bool eq_less( float a, float b, float epsilon )
+/*static inline __device__ __host__ bool eq_less( float a, float b, float epsilon )
 {
 	return (a > (b - epsilon) && a < (b + epsilon)) ? true : false;
-}
+}*/
 
 template<typename T>
 __global__ void gpuRectFill( T* input, T* output, int width, int height,

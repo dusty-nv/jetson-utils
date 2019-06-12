@@ -45,7 +45,7 @@ inline bool cudaAllocMapped( void** cpuPtr, void** gpuPtr, size_t size )
 		return false;
 
 	memset(*cpuPtr, 0, size);
-	printf(LOG_CUDA "cudaAllocMapped %zu bytes, CPU %p GPU %p\n", size, *cpuPtr, *gpuPtr);
+	//printf(LOG_CUDA "cudaAllocMapped %zu bytes, CPU %p GPU %p\n", size, *cpuPtr, *gpuPtr);
 	return true;
 }
 

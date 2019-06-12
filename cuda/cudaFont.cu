@@ -82,13 +82,8 @@ cudaFont::cudaFont()
 	mRectsGPU   = NULL;
 	mRectIndex  = 0;
 
-	mRectImg       = NULL;
-	mRectImgWidth  = 0;
-	mRectImgHeight = 0;
-
 	mFontMapWidth  = 256;
 	mFontMapHeight = 256;
-
 }
 
 
@@ -96,12 +91,6 @@ cudaFont::cudaFont()
 // destructor
 cudaFont::~cudaFont()
 {
-	if( mRectImg != NULL )
-	{
-		CUDA(cudaFree(mRectImg));
-		mRectImg = NULL;
-	}
-
 	if( mRectsCPU != NULL )
 	{
 		CUDA(cudaFreeHost(mRectsCPU));
@@ -267,7 +256,9 @@ bool cudaFont::init( const char* filename, float size )
 				break;
 			}
 
+		#ifdef DEBUG_FONT
 			printf(LOG_CUDA "fit only %i of %u font glyphs in %ux%u bitmap\n", glyphsPacked, NumGlyphs, mFontMapWidth, mFontMapHeight);
+		#endif
 
 			CUDA(cudaFreeHost(mFontMapCPU));
 		
@@ -277,12 +268,16 @@ bool cudaFont::init( const char* filename, float size )
 			mFontMapWidth *= 2;
 			mFontMapHeight *= 2;
 
+		#ifdef DEBUG_FONT
 			printf(LOG_CUDA "attempting to pack font with %ux%u bitmap...\n", mFontMapWidth, mFontMapHeight);
+		#endif
 			continue;
 		}
 		else
 		{
+		#ifdef DEBUG_FONT
 			printf(LOG_CUDA "packed %u glyphs in %ux%u bitmap (font size=%.0fpx)\n", NumGlyphs, mFontMapWidth, mFontMapHeight, size);
+		#endif		
 			break;
 		}
 	}
@@ -535,40 +530,13 @@ bool cudaFont::OverlayText( float4* image, uint32_t width, uint32_t height,
 #endif
 
 	// draw background rects
-	float4* input = image;
-
 	if( has_bg && numRects > 0 )
-	{
-		if( !mRectImg || mRectImgWidth < width || mRectImgHeight < height )
-		{
-			if( mRectImg != NULL )
-			{
-				CUDA(cudaFree(mRectImg));
-				mRectImg = NULL;
-			}
-
-			if( CUDA_FAILED(cudaMalloc((void**)&mRectImg, width * height * sizeof(float4))) )
-			{
-				printf(LOG_CUDA "font failed to allocate %ux%u temp image\n", width, height);
-				return false;
-			}
-
-			printf(LOG_CUDA "font allocated %ux%u temp image\n", width, height);
-
-			mRectImgWidth = width;
-			mRectImgHeight = height;
-		}
-
 		CUDA(cudaRectFill(image, image, width, height, mRectsGPU + mRectIndex, numRects, bg_color));
-		//CUDA(cudaDeviceSynchronize());
-
-		//input = mRectImg;
-	}
 
 	// draw text characters
 	CUDA(cudaOverlayText<float4>( mFontMapGPU, maxGlyphSize, mFontMapWidth,
 				        		((GlyphCommand*)mCommandGPU) + mCmdIndex, numCommands, 
-							color, input, image, width, height));
+							color, image, image, width, height));
 			
 	// advance the buffer indices
 	mCmdIndex += numCommands;
