@@ -24,6 +24,8 @@
 
 #include <unistd.h>
 #include <malloc.h>
+#include <sched.h>
+#include <string.h>
 #include <sys/mman.h>
 
 
@@ -102,45 +104,78 @@ void Thread::StopThread()
 
 	
 // GetMaxPriorityLevel
-int Thread::GetMaxPriorityLevel()
+int Thread::GetMaxPriority()
+{
+	return sched_get_priority_max(SCHED_FIFO);
+}
+
+
+// GetMinPriorityLevel
+int Thread::GetMinPriority()
 {
 	return sched_get_priority_min(SCHED_FIFO);
 }
 
 
-// GetMinPriorityLevel
-int Thread::GetMinPriorityLevel()
+// GetPriority
+int Thread::GetPriority( pthread_t* thread_ptr )
 {
-	return sched_get_priority_max(SCHED_FIFO);
+	pthread_t thread;
+
+	if( !thread_ptr )
+		thread = pthread_self();
+	else
+		thread = *thread_ptr;
+
+	struct sched_param schedp;
+	int policy = SCHED_FIFO;
+
+	if( pthread_getschedparam(thread, &policy, &schedp) != 0 )
+	{
+		printf("Thread::GetPriority() - failed to retrieve thread's priority level\n");
+		return 0;
+	}
+
+	return schedp.sched_priority;
+}
+
+
+// SetPriority
+int Thread::SetPriority( int priority, pthread_t* thread_ptr )
+{
+	pthread_t thread;
+
+	if( !thread_ptr )
+		thread = pthread_self();
+	else
+		thread = *thread_ptr;
+
+	struct sched_param schedp;
+	schedp.sched_priority = priority;
+
+	const int result = pthread_setschedparam(thread, SCHED_FIFO, &schedp); //pthread_setschedprio(thread, priority);//
+
+	if( result != 0 )
+	{
+		printf("Thread::SetPriority() - failed to set thread's priority level to %i (error=%i %s)\n", priority, result, strerror(result));
+		return false;
+	}
+
+	return true;
 }
 
 
 // GetPriorityLevel
 int Thread::GetPriorityLevel()
 {
-	struct sched_param schedp;
-	int policy = SCHED_FIFO;
-
-	if( pthread_getschedparam(mThreadID, &policy, &schedp) != 0 )
-	{
-		printf("Thread::GetPriorityLevel() - Failed to retrieve thread's priority level\n");
-		return 0;
-	}
-
-	return schedp.__sched_priority;
+	return Thread::GetPriority(GetThreadID());
 }
 
 
 // SetPriorityLevel
 bool Thread::SetPriorityLevel( int priority )
 {
-	struct sched_param schedp;
-	schedp.__sched_priority = priority;
-
-	if( pthread_setschedparam(mThreadID, SCHED_FIFO, &schedp) != 0 )
-		return false;
-
-	return true;
+	return Thread::SetPriority(priority, GetThreadID());
 }
 
 
@@ -185,3 +220,56 @@ void Thread::Yield( unsigned int ms )
 {
 	sleep(ms);
 }
+
+
+// LockAffinity
+bool Thread::LockAffinity( unsigned int cpuID )
+{
+	return Thread::SetAffinity( cpuID, GetThreadID() );
+}
+
+
+// SetAffinity
+bool Thread::SetAffinity( unsigned int cpuID, pthread_t* thread_ptr )
+{
+	pthread_t thread;
+	cpu_set_t cpu_set;
+
+	CPU_ZERO(&cpu_set);
+	CPU_SET(cpuID, &cpu_set);
+
+	if( !thread_ptr )
+		thread = pthread_self();
+	else
+		thread = *thread_ptr;
+
+	const int result_set_cpu = pthread_setaffinity_np(thread, sizeof(cpu_set_t), &cpu_set);
+
+	if( result_set_cpu != 0 )
+	{
+		printf("pthread_setaffinity_np() failed (error=%i)\n", result_set_cpu);
+		return false;
+	}
+
+	/*const int result_get_cpu = pthread_getaffinity_np(thread_self, sizeof(cpu_set_t), &cpu_set);
+
+	if( result_get_cpu != 0 )
+	{
+		printf("pthread_getaffinity_np() failed (error=%i)\n", result_get_cpu);
+		return false;
+	}
+
+	const int cpu_set_count = CPU_COUNT(&cpu_set);
+	printf("cpu_set_count=%i\n", cpu_set_count);*/
+
+	return true;
+}
+
+
+// GetCPU
+int Thread::GetCPU()
+{
+	return sched_getcpu();
+}
+
+

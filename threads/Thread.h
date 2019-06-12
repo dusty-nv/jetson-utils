@@ -82,12 +82,24 @@ public:
 	/**
 	 * Get the maximum priority level available
 	 */
-	static int GetMaxPriorityLevel();
+	static int GetMaxPriority();
 	
 	/**
 	 * Get the minimum priority level avaiable
 	 */
-	static int GetMinPriorityLevel();
+	static int GetMinPriority();
+
+	/**
+	 * Get the priority level of the thread.
+	 * @param thread The thread, or if NULL, the currently running thread.
+	 */
+	static int GetPriority( pthread_t* thread=NULL );
+ 
+	/**
+	 * Set the priority level of the thread.
+	 * @param thread The thread, or if NULL, the currently running thread.
+	 */
+	static int SetPriority( int priority, pthread_t* thread=NULL );
 
 	/**
 	 * Get this thread's priority level
@@ -102,15 +114,35 @@ public:
 	/**
 	 * Whatever thread you are calling from, yield the processor for the specified number of milliseconds.
 	 * Accuracy may vary wildly the lower you go, and depending on the platform.
+
 	 */
 	static void Yield( unsigned int ms );
 
 	/**
 	 * Get thread identififer
 	 */
-	inline pthread_t* GetThreadId() 						{ return &mThreadID; }
+	inline pthread_t* GetThreadID() 						{ return &mThreadID; }
+
+	/**
+	 * Lock this thread to a CPU core.
+	 */
+	bool LockAffinity( unsigned int cpu );
+
+	/**
+	 * Lock the specified thread's affinity to a CPU core.
+	 * @param cpu The CPU core to lock the thread to.
+	 * @param thread The thread, or if NULL, the currently running thread.
+	 */
+	static bool SetAffinity( unsigned int cpu, pthread_t* thread=NULL );
+
+	/**
+	 * Look up which CPU core the thread is running on.
+	 */
+	static int GetCPU();
 
 protected:
+
+
 
 	static void* DefaultEntry( void* param );
 
