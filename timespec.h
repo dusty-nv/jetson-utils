@@ -135,7 +135,7 @@ inline char* timeStr( const timespec& timestamp, char* strOut )				{ sprintf(str
 /**
  * Print the time to stdout
  */
-inline void timePrint( const timespec& timestamp, const char* text=NULL )		{ printf("%s   %lu s  %010lu ns\n", text, (uint64_t)timestamp.tv_sec, (uint64_t)timestamp.tv_nsec); }
+inline void timePrint( const timespec& timestamp, const char* text=NULL )		{ printf("%s   %lus  %010luns\n", text, (uint64_t)timestamp.tv_sec, (uint64_t)timestamp.tv_nsec); }
 
 
 /**
