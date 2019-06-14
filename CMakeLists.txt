@@ -62,8 +62,9 @@ else()
 
 endif()
 
+# TODO see if this can be replaced by a FindGStreamer or similar
+include_directories(${PROJECT_INCLUDE_DIR}/jetson-utils)
 include_directories(/usr/include/gstreamer-1.0 /usr/include/glib-2.0 /usr/include/libxml2 /usr/lib/aarch64-linux-gnu/gstreamer-1.0/include /usr/lib/x86_64-linux-gnu/gstreamer-1.0/include/ /usr/lib/aarch64-linux-gnu/glib-2.0/include/ /usr/lib/x86_64-linux-gnu/glib-2.0/include/)
-
 
 # build library
 file(GLOB jetsonUtilitySources *.cpp camera/*.cpp codec/*.cpp cuda/*.cu display/*.cpp image/*.cpp input/*.cpp network/*.cpp threads/*.cpp)
@@ -73,10 +74,12 @@ cuda_add_library(jetson-utils SHARED ${jetsonUtilitySources})
 target_link_libraries(jetson-utils GL GLEW gstreamer-1.0 gstapp-1.0)	
 
 
-# transfer all headers to the include directory
+# transfer all headers to the include directory 
+file(MAKE_DIRECTORY ${PROJECT_INCLUDE_DIR}/jetson-utils)
+
 foreach(include ${jetsonUtilityIncludes})
 	message("-- Copying ${include}")
-	configure_file(${include} ${PROJECT_INCLUDE_DIR} COPYONLY)
+	configure_file(${include} ${PROJECT_INCLUDE_DIR}/jetson-utils COPYONLY)
 endforeach()
 	
 # copy image data

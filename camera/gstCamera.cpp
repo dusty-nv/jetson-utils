@@ -467,13 +467,13 @@ gstCamera* gstCamera::Create( uint32_t width, uint32_t height, int v4l2_device )
 	cam->mDepth      = cam->onboardCamera() ? 12 : 24;	// NV12 or RGB
 	cam->mSize       = (width * height * cam->mDepth) / 8;
 
-	if( !cam->init(GST_SOURCE_NVCAMERA) )
+	if( !cam->init(GST_SOURCE_NVARGUS) )
 	{
-		printf(LOG_GSTREAMER "failed to init gstCamera (GST_SOURCE_NVCAMERA)\n");
+		printf(LOG_GSTREAMER "failed to init gstCamera (GST_SOURCE_NVARGUS)\n");
 
-		if( !cam->init(GST_SOURCE_NVARGUS) )
+		if( !cam->init(GST_SOURCE_NVCAMERA) )
 		{
-			printf(LOG_GSTREAMER "failed to init gstCamera (GST_SOURCE_NVARGUS)\n");
+			printf(LOG_GSTREAMER "failed to init gstCamera (GST_SOURCE_NVCAMERA)\n");
 
 			if( cam->mV4L2Device < 0 )
 				cam->mV4L2Device = 0;

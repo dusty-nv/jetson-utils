@@ -47,7 +47,7 @@ const char* gstCameraSrcToString( gstCameraSrc src );	/**< Text version of gstCa
 
 
 /**
- * gstreamer CSI camera using nvcamerasrc (or optionally v4l2src)
+ * GStreamer MIPI CSI or V4L2 camera using nvarguscamerasrc (or v4l2src)
  * @ingroup util
  */
 class gstCamera
@@ -67,7 +67,7 @@ public:
 	// Is open for streaming
 	inline bool IsStreaming() const	   { return mStreaming; }
 
-	// Capture YUV (NV12)
+	// Capture YUV (NV12) for NVCAMERA/NVARGUS or RGB for V4L2.
 	// If timeout is UINT64_MAX, the calling thread will wait indefinetly for a new frame
 	// If timeout is 0, the calling thread will return false if a new frame isn't immediately ready
 	// Otherwise the timeout is in millseconds before returning if a new frame isn't ready
