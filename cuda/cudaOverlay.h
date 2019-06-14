@@ -28,14 +28,14 @@
 
 /**
  * cudaRectFill
- * @ingroup util
+ * @ingroup cuda
  */
 cudaError_t cudaRectFill( float4* input, float4* output, uint32_t width, uint32_t height, float4* rects, int numRects, const float4& color );
 
 
 /**
  * cudaRectOutline
- * @ingroup util
+ * @ingroup cuda
  */
 //cudaError_t cudaRectOutline( float4* input, float4* output, uint32_t width, uint32_t height, float4* boundingBoxes, int numBoxes, const float4& color );
 

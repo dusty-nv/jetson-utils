@@ -29,12 +29,14 @@
 #include "Mutex.h"
 #include "Event.h"
 
+
+// Forward declarations
 struct _GstAppSink;
 
 
 /**
  * Enumeration of camera input source methods
- * @ingroup util
+ * @ingroup gstCamera
  */
 enum gstCameraSrc
 {
@@ -43,53 +45,223 @@ enum gstCameraSrc
 	GST_SOURCE_V4L2		/* use v4l2src element */
 };
 
-const char* gstCameraSrcToString( gstCameraSrc src );	/**< Text version of gstCameraSrc enum */
+/**
+ * Stringize function to convert gstCameraSrc enum to text
+ * @ingroup gstCamera
+ */
+const char* gstCameraSrcToString( gstCameraSrc src );	
 
 
 /**
- * GStreamer MIPI CSI or V4L2 camera using nvarguscamerasrc (or v4l2src)
- * @ingroup util
+ * MIPI CSI and V4L2 camera capture using GStreamer and `nvarguscamerasrc` or `v4l2src` elements.
+ * gstCamera supports both MIPI CSI cameras and V4L2-compliant devices like USB webcams.
+ *
+ * Examples of MIPI CSI cameras that work out of the box are the OV5693 module from the
+ * Jetson TX1/TX2 devkits, and the IMX219 sensor from the Raspberry Pi Camera Module v2.
+ *
+ * For MIPI CSI cameras, the GStreamer element `nvarguscamerasrc` will be used for capture.
+ * For V4L2 devices, the GStreamer element `v4l2src` will be used for camera capture.
+ *
+ * gstCamera uses CUDA underneath for any necessary colorspace conversion, and provides
+ * the captured image frames in CUDA device memory, or zero-copy shared CPU/GPU memory.
+ *
+ * @ingroup gstCamera
  */
 class gstCamera
 {
 public:
-	// Create camera
-	static gstCamera* Create( int v4l2_device=-1 );	// use onboard camera by default (>=0 for V4L2)
+	/**
+	 * Create a MIPI CSI or V4L2 camera device.
+	 *
+	 * gstCamera will use the `nvarguscamerasrc` GStreamer element for MIPI CSI cameras,
+	 * and the `v4l2src` GStreamer element for capturing V4L2 cameras, like USB webcams.
+	 *
+	 * The camera will be created with a resolution indicated by gstCamera::DefaultWidth
+	 * and gstCamera::DefaultHeight (1280x720 by default).
+	 *
+	 * @param v4l2_device device index of the V4L2 `/dev/video` node to use, or -1 to use
+      *                    the onboard MIPI CSI camera.  The default is to use MIPI CSI.
+	 *                    For example, if you wanted to use the `/dev/video0` V4L2 device,
+	 *                    you would provide a value of `0` for this argument, or `1` for
+ 	 *                    `/dev/video1`, ect.
+	 *
+	 * @returns A pointer to the created gstCamera device, or NULL if there was an error.
+	 */
+	static gstCamera* Create( int v4l2_device=-1 ); // use MIPI CSI camera by default (>=0 for V4L2)
+
+	/**
+	 * Create a MIPI CSI or V4L2 camera device.
+	 *
+	 * gstCamera will use the `nvarguscamerasrc` GStreamer element for MIPI CSI cameras,
+	 * and the `v4l2src` GStreamer element for capturing V4L2 cameras, like USB webcams.
+	 *
+	 * @param width desired width (in pixels) of the camera resolution.  
+	 *              This should be from a format that the camera supports.
+	 *
+	 * @param height desired height (in pixels) of the camera resolution.  
+	 *               This should be from a format that the camera supports.
+	 *
+	 * @param v4l2_device device index of the V4L2 `/dev/video` node to use, or -1 to use
+      *                    the onboard MIPI CSI camera.  The default is to use MIPI CSI.
+	 *                    For example, if you wanted to use the `/dev/video0` V4L2 device,
+	 *                    you would provide a value of `0` for this argument, or `1` for
+ 	 *                    `/dev/video1`, ect.
+	 *
+	 * @returns A pointer to the created gstCamera device, or NULL if there was an error.
+	 */
 	static gstCamera* Create( uint32_t width, uint32_t height, int v4l2_device=-1 );
 	
-	// Destroy
+	/**
+	 * Release the camera interface and resources.
+	 * Destroying the camera will also Close() the stream if it is still open.
+	 */
 	~gstCamera();
 
-	// Start/stop streaming
+	/**
+	 * Begin streaming the camera.
+	 * After Open() is called, frames from the camera will begin to be captured.
+	 *
+	 * Open() is not stricly necessary to call, if you call one of the Capture()
+	 * functions they will first check to make sure that the stream is opened,
+	 * and if not they will open it automatically for you.
+	 *
+	 * @returns `true` on success, `false` if an error occurred opening the stream.
+	 */
 	bool Open();
+
+	/**
+	 * Stop streaming the camera.
+	 * @note Close() is automatically called by the camera's destructor when
+	 * it gets deleted, so you do not explicitly need to call Close() before
+	 * exiting the program if you delete your camera object.
+	 */
 	void Close();
 	
-	// Is open for streaming
+	/**
+	 * Check if the camera is streaming or not.
+	 * @returns `true` if the camera is streaming (open), or `false` if it's closed.
+	 */
 	inline bool IsStreaming() const	   { return mStreaming; }
 
-	// Capture YUV (NV12) for NVCAMERA/NVARGUS or RGB for V4L2.
-	// If timeout is UINT64_MAX, the calling thread will wait indefinetly for a new frame
-	// If timeout is 0, the calling thread will return false if a new frame isn't immediately ready
-	// Otherwise the timeout is in millseconds before returning if a new frame isn't ready
+	/**
+	 * Capture the next image frame from the camera.
+	 *
+	 * For MIPI CSI cameras, Capture() will provide an image in YUV (NV12) format.
+	 * For V4L2 devices, Capture() will provide an image in RGB (24-bit) format.
+	 *
+	 * The captured images reside in shared CPU/GPU memory, also known as CUDA
+	 * mapped memory or zero-copy memory.  Hence it is unnessary to copy them to GPU.
+	 * This memory is managed internally by gstCamera, so don't attempt to free it.
+	 *
+	 * @param[out] cpu Pointer that gets returned to the image in CPU address space.
+	 * @param[out] cuda Pointer that gets returned to the image in GPU address space.
+	 *
+	 * @param[in] timeout The time in milliseconds for the calling thread to wait to
+	 *                    return if a new camera frame isn't recieved by that time.
+	 *                    If timeout is 0, the calling thread will return immediately
+	 *                    if a new frame isn't already available.
+	 *                    If timeout is UINT64_MAX, the calling thread will wait
+	 *                    indefinetly for a new frame to arrive (this is the default behavior).
+	 *
+	 * @returns `true` if a frame was successfully captured, otherwise `false` if a timeout
+	 *               or error occurred, or if timeout was 0 and a frame wasn't ready.
+	 */
 	bool Capture( void** cpu, void** cuda, uint64_t timeout=UINT64_MAX );
 
-	// Capture a camera image and convert to it float4 RGBA
-	// If you want to capture in a different thread than CUDA, use the Capture() and ConvertRGBA() functions.
-	// Set zeroCopy to true if you need to access the image from CPU, otherwise it will be CUDA only.
-	bool CaptureRGBA( float** output, uint64_t timeout=UINT64_MAX, bool zeroCopy=false );
+	/**
+	 * Capture the next image frame from the camera and convert it to float4 RGBA format,
+	 * with pixel intensities ranging between 0.0 and 255.0.
+	 *
+	 * Internally, CaptureRGBA() first calls Capture() and then ConvertRGBA().
+	 * The ConvertRGBA() function uses CUDA, so if you want to capture from a different 
+	 * thread than your CUDA device, use the Capture() and ConvertRGBA() functions.
+	 *
+	 * @param[out] image Pointer that gets returned to the image in GPU address space,
+	 *                   or if the zeroCopy parameter is true, then the pointer is valid
+	 *                   in both CPU and GPU address spaces.  Do not manually free the image memory, 
+	 *                   it is managed internally.  The image is in float4 RGBA format.
+	 *                   The size of the image is:  `GetWidth() * GetHeight() * sizeof(float) * 4`
+	 *
+	 * @param[in] timeout The time in milliseconds for the calling thread to wait to
+	 *                    return if a new camera frame isn't recieved by that time.
+	 *                    If timeout is 0, the calling thread will return immediately
+	 *                    if a new frame isn't already available.
+	 *                    If timeout is UINT64_MAX, the calling thread will wait
+	 *                    indefinetly for a new frame to arrive (this is the default behavior).
+	 *
+	 * @param[in] zeroCopy If `true`, the image will reside in shared CPU/GPU memory.
+	 *                     If `false`, the image will only be accessible from the GPU.
+	 *                     You would need to set zeroCopy to `true` if you wanted to
+	 *                     access the image pixels from the CPU.  Since this isn't
+	 *                     generally the case, the default is `false` (GPU only).
+	 *
+	 * @returns `true` if a frame was successfully captured, otherwise `false` if a timeout
+	 *               or error occurred, or if timeout was 0 and a frame wasn't ready.
+	 */
+	bool CaptureRGBA( float** image, uint64_t timeout=UINT64_MAX, bool zeroCopy=false );
 	
-	// Takes in captured YUV-NV12 CUDA image, converts to float4 RGBA (with pixel intensity 0-255)
-	// Set zeroCopy to true if you need to access ConvertRGBA from CPU, otherwise it will be CUDA only.
+	/**
+	 * Convert an image to float4 RGBA that was previously aquired with Capture().
+	 * This function uses CUDA to perform the colorspace conversion to float4 RGBA,
+ 	 * with pixel intensities ranging from 0.0 to 255.0.
+	 *
+	 * @param[in] input Pointer to the input image, typically the pointer from Capture().
+	 *                  If this is a MIPI CSI camera, it's expected to be in YUV (NV12) format.
+	 *                  If this is a V4L2 device, it's expected to be in RGB (24-bit) format.
+	 *                  In both cases, these are the formats that Capture() provides the image in.
+	 *
+	 * @param[out] output Pointer that gets returned to the image in GPU address space,
+	 *                    or if the zeroCopy parameter is true, then the pointer is valid
+	 *                    in both CPU and GPU address spaces.  Do not manually free the image memory, 
+	 *                   it is managed internally.  The image is in float4 RGBA format.
+	 *                   The size of the image is:  `GetWidth() * GetHeight() * sizeof(float) * 4`
+	 *
+	 * @param[in] zeroCopy If `true`, the image will reside in shared CPU/GPU memory.
+	 *                     If `false`, the image will only be accessible from the GPU.
+	 *                     You would need to set zeroCopy to `true` if you wanted to
+	 *                     access the image pixels from the CPU.  Since this isn't
+	 *                     generally the case, the default is `false` (GPU only).
+	 * 
+	 * @returns `true` on success, `false` if an error occurred.
+	 */
 	bool ConvertRGBA( void* input, float** output, bool zeroCopy=false );
 	
-	// Image dimensions
+	/**
+	 * Return the width of the camera.
+	 */
 	inline uint32_t GetWidth() const	   { return mWidth; }
+
+	/**
+	 * Return the height of the camera.
+	 */
 	inline uint32_t GetHeight() const	   { return mHeight; }
+
+	/**
+	 * Return the pixel bit depth of the camera (measured in bits).
+	 * This will be 12 for MIPI CSI cameras (YUV NV12 format)
+	 * or 24 for VL42 cameras (RGB 24-bit).
+	 */
 	inline uint32_t GetPixelDepth() const { return mDepth; }
+
+	/**
+	 * Return the size (in bytes) of a camera frame from Capture().
+	 *
+	 * @note this is not the size of the converted float4 RGBA image
+	 *       from Convert(), but rather the YUV (NV12) or RGB (24-bit)
+	 *       image that gets aquired by the Capture() function.
+	 *       To calculate the size of the converted float4 RGBA image,
+	 *       take:  `GetWidth() * GetHeight() * sizeof(float) * 4`
+	 */
 	inline uint32_t GetSize() const	   { return mSize; }
 	
-	// Default resolution, unless otherwise specified during Create()
+	/**
+	 * Default camera width, unless otherwise specified during Create()
+ 	 */
 	static const uint32_t DefaultWidth  = 1280;
+
+	/**
+	 * Default camera height, unless otherwise specified during Create()
+ 	 */
 	static const uint32_t DefaultHeight = 720;
 	
 private:

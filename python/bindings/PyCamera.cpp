@@ -170,7 +170,7 @@ static PyObject* PyCamera_CaptureRGBA( PyCamera_Object* self, PyObject* args, Py
 	}
 
 	// convert signed timeout to unsigned long
-	unsigned long timeout = ULONG_MAX;
+	uint64_t timeout = UINT64_MAX;
 
 	if( pyTimeout >= 0 )
 		timeout = pyTimeout;

@@ -20,9 +20,8 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef __V4L2_CAPTURE_H
-#define __V4L2_CAPTURE_H
-
+#ifndef __V4L2_CAPTURE_H__
+#define __V4L2_CAPTURE_H__
 
 #include <linux/videodev2.h>
 
@@ -32,16 +31,12 @@
 
 
 
-struct v4l2_mmap
-{
-	struct v4l2_buffer buf;
-	void*  ptr;
-};
-
-
 /**
- * Video4Linux2 camera capture streaming.
- * @ingroup util
+ * Video4Linux2 (V4L2) camera capture streaming.
+ * @note gstCamera, which convieniently handles both V4L2 and MIPI CSI cameras,
+ * is used mostly in lieu of v4l2Camera. v4l2Camera is provided in the event that 
+ * you would rather interface with V4L2 directly, rather than go through GStreamer.
+ * @ingroup camera
  */
 class v4l2Camera
 {
@@ -104,7 +99,7 @@ private:
 	bool initUserPtr();
 	bool initMMap();
 
-	int 	mFD;
+	int 	    mFD;
 	int	    mRequestFormat;
 	uint32_t mRequestWidth;
 	uint32_t mRequestHeight;
@@ -112,6 +107,12 @@ private:
 	uint32_t mHeight;
 	uint32_t mPitch;
 	uint32_t mPixelDepth;
+
+	struct v4l2_mmap
+	{
+		struct v4l2_buffer buf;
+		void*  ptr;
+	};
 
 	v4l2_mmap* mBuffersMMap;
 	size_t mBufferCountMMap;

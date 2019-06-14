@@ -31,17 +31,18 @@
 
 /**
  * Determine an appropriate font size given a particular dimension to use
- * (typically an image's width). Then the font won't be radically unsized. 
+ * (typically an image's width). Then the font won't be radically unsized.
+ * 
  * @param dimension The dimension's size to fit against (i.e. image width)
  * @returns a font size between 10 and 32 pixels tall. 
- * @ingroup util
+ * @ingroup cudaFont
  */
 float adaptFontSize( uint32_t dimension );
 
 
 /**
- * Font overlay rendering using CUDA
- * @ingroup util
+ * TTF font rasterization and image overlay rendering using CUDA.
+ * @ingroup cudaFont
  */
 class cudaFont
 {
