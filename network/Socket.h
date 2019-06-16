@@ -28,7 +28,8 @@
 
 
 /**
- * SocketType
+ * TCP/UDP enumeration.
+ * @ingroup network
  */
 enum SocketType
 {
@@ -56,6 +57,8 @@ enum SocketType
  * 	1.  Create a Socket instance with the static Create() function.
  *  2.  Bind() the Socket to a host IP address and port
  *  3.  Exchange data with the Send/Recv functions
+ *
+ * @ingroup network
  */
 class Socket
 {

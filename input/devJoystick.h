@@ -31,6 +31,7 @@
 
 /**
  * Joystick device
+ * @ingroup input
  */
 class JoystickDevice
 {

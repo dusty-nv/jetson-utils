@@ -29,7 +29,19 @@
 
 /**
  * Load a color image from disk into CUDA memory with alpha, in float4 RGBA format with pixel values 0-255.
- * Supported image file formats include:  JPEG, PNG, TGA, BMP, GIF, PSD, HDR, PIC, and PNM (PPM/PGM binary).
+ *
+ * Supported image file formats by loadImageRGBA() include:
+ * 
+ *   - JPEG
+ *   - PNG
+ *   - TGA
+ *   - BMP
+ *   - GIF
+ *   - PSD
+ *   - HDR
+ *   - PIC
+ *   - PNM (PPM/PGM binary)
+ *
  * This function loads the image into shared CPU/GPU memory, using the functions from cudaMappedMemory.h
  *
  * @param[in] filename Path to the image file to load from disk.
@@ -47,14 +59,22 @@
  *                       Otherwise if the value of height is 0, the image will be loaded with it's dimensions from the file on disk.
  * @param[in] mean_pixel Mean pixel subtraction is applied using this specified color (mean pixel subtraction is typically performed before
  *                       processing an image with neural networks).  By default the value is zero, so no mean pixel subtraction is done.  
- * @ingroup util
+ * @ingroup image
  */
 bool loadImageRGBA( const char* filename, float4** cpu, float4** gpu, int* width, int* height, const float4& mean_pixel=make_float4(0,0,0,0) );
 
 
 /**
  * Save a float4 RGBA image to disk.
- * Supported image file formats include:  JPEG, PNG, TGA, BMP, and HDR.
+ *
+ * Supported image file formats by saveImageRGBA() include:  
+ *
+ *   - JPEG
+ *   - PNG
+ *   - TGA
+ *   - BMP
+ *   - HDR
+ *
  * @param filename Desired path of the image file to save to disk.
  * @param cpu Pointer to the buffer containing the image in CPU address space.
  * @param width Width of the image in pixels.
@@ -67,14 +87,26 @@ bool loadImageRGBA( const char* filename, float4** cpu, float4** gpu, int* width
  *                A level of 100 corresponds to maximum quality and reduced compression.
  *                By default a level of 100 is used for maximum quality and reduced compression. 
  *                Note that this quality parameter only applies to JPEG and PNG, other formats will ignore it.
- * @ingroup util
+ * @ingroup image
  */
 bool saveImageRGBA( const char* filename, float4* cpu, int width, int height, float max_pixel=255.0f, int quality=100 );
 
 
 /**
  * Load a color image from disk into CUDA memory, in float3 RGB format with pixel values 0-255.
- * Supported image file formats include:  JPEG, PNG, TGA, BMP, GIF, PSD, HDR, PIC, and PNM (PPM/PGM binary).
+ *
+ * Supported image file formats by loadImageRGB include:
+ * 
+ *   - JPEG
+ *   - PNG
+ *   - TGA
+ *   - BMP
+ *   - GIF
+ *   - PSD
+ *   - HDR
+ *   - PIC
+ *   - PNM (PPM/PGM binary)
+ *
  * This function loads the image into shared CPU/GPU memory, using the functions from cudaMappedMemory.h
  *
  * @param[in] filename Path to the image file to load from disk.
@@ -92,14 +124,26 @@ bool saveImageRGBA( const char* filename, float4* cpu, int width, int height, fl
  *                       Otherwise if the value of height is 0, the image will be loaded with it's dimensions from the file on disk.
  * @param[in] mean_pixel Mean pixel subtraction is applied using this specified color (mean pixel subtraction is typically performed before
  *                       processing an image with neural networks).  By default the value is zero, so no mean pixel subtraction is done.  
- * @ingroup util
+ * @ingroup image
  */
 bool loadImageRGB( const char* filename, float3** cpu, float3** gpu, int* width, int* height, const float3& mean_pixel=make_float3(0,0,0) );
 
 
 /**
  * Load a color image from disk into CUDA memory, in float3 BGR format with pixel values 0-255.
- * Supported image file formats include:  JPEG, PNG, TGA, BMP, GIF, PSD, HDR, PIC, and PNM (PPM/PGM binary).
+ *
+ * Supported image file formats by loadImageBGR() include:
+ * 
+ *   - JPEG
+ *   - PNG
+ *   - TGA
+ *   - BMP
+ *   - GIF
+ *   - PSD
+ *   - HDR
+ *   - PIC
+ *   - PNM (PPM/PGM binary)
+ *
  * This function loads the image into shared CPU/GPU memory, using the functions from cudaMappedMemory.h
  *
  * @param[in] filename Path to the image file to load from disk.
@@ -117,7 +161,7 @@ bool loadImageRGB( const char* filename, float3** cpu, float3** gpu, int* width,
  *                       Otherwise if the value of height is 0, the image will be loaded with it's dimensions from the file on disk.
  * @param[in] mean_pixel Mean pixel subtraction is applied using this specified color (mean pixel subtraction is typically performed before
  *                       processing an image with neural networks).  By default the value is zero, so no mean pixel subtraction is done.  
- * @ingroup util
+ * @ingroup image
  */
 bool loadImageBGR( const char* filename, float3** cpu, float3** gpu, int* width, int* height, const float3& mean=make_float3(0,0,0) );
 

@@ -28,7 +28,8 @@
 
 
 /**
- * gstCodec enumeration
+ * Video codec (H.264/H.265) enumeration.
+ * @ingroup codec
  */
 enum gstCodec
 {
@@ -38,22 +39,26 @@ enum gstCodec
 
 
 /**
- * LOG_GSTREAMER printf prefix
+ * LOG_GSTREAMER logging prefix
+ * @ingroup codec
  */
 #define LOG_GSTREAMER "[gstreamer] "
 
 
 /**
  * gstreamerInit
+ * @internal
+ * @ingroup codec
  */
 bool gstreamerInit();
 
 
 /**
  * gst_message_print
+ * @internal
+ * @ingroup codec
  */
 gboolean gst_message_print(_GstBus* bus, _GstMessage* message, void* user_data);
-
 
 
 #endif

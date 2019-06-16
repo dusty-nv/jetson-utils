@@ -33,6 +33,7 @@
 
 /**
  * Keyboard device
+ * @ingroup input
  */
 class KeyboardDevice
 {

@@ -30,6 +30,7 @@
  * Function pointer typedef representing a thread's main entry point.
  * A user-defined parameter is passed through such that the user can 
  * pass data or other value to their thread so that it can self-identify.
+ * @ingroup threads
  */
 typedef void* (*ThreadEntryFunction)( void* user_param );
 
@@ -38,6 +39,7 @@ typedef void* (*ThreadEntryFunction)( void* user_param );
  * Thread class for launching an asynchronous operating-system dependent thread.
  * To make your own thread, provide a function pointer of the thread's entry point,
  * or inherit from this class and implement your own Run() function.
+ * @ingroup threads
  */
 class Thread
 {

@@ -32,12 +32,14 @@
 
 /**
  * Typedef of device <path, name> pairs
+ * @ingroup input
  */
 typedef std::vector< std::pair<std::string, std::string> > DeviceList;
 
 
 /**
  * Input device manager
+ * @ingroup input
  */
 class InputDevices
 {

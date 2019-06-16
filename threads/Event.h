@@ -27,7 +27,8 @@
 #include "timespec.h"
 
 /**
- * Event
+ * Event object for signalling other threads.
+ * @ingroup threads
  */
 class Event
 {

@@ -28,13 +28,15 @@
 
 
 /**
- * Retrieve the host system's network hostname
+ * Retrieve the host system's network hostname.
+ * @ingroup network
  */
 std::string networkHostname();
 
 
 /**
- * Info about a particular network interface
+ * Info about a particular network interface.
+ * @ingroup network
  */
 struct networkAdapter_t
 {
@@ -44,6 +46,7 @@ struct networkAdapter_t
 
 /**
  * Retrieve info about the different network interfaces of the system.
+ * @ingroup network
  */
 void networkAdapters( std::vector<networkAdapter_t>& interfaceList );
 

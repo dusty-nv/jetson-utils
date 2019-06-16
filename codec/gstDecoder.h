@@ -30,7 +30,8 @@ struct _GstAppSink;
 
 
 /**
- * HW-accelerated H.264/H.265 video decoder for Jetson using GStreamer
+ * Hardware-accelerated H.264/H.265 video decoder for Jetson using GStreamer.
+ * @ingroup codec
  */
 class gstDecoder
 {

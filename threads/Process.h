@@ -29,7 +29,8 @@
 
 	   
 /**
- * Process
+ * Static functions for retrieving information about the running process.
+ * @ingroup threads
  */
 class Process
 {

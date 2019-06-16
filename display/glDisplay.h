@@ -32,6 +32,7 @@
 
 /**
  * OpenGL display window / video viewer
+ * @ingroup OpenGL
  */
 class glDisplay
 {

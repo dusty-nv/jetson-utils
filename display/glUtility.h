@@ -31,22 +31,38 @@
 
 
 /**
- * LOG_GL printf prefix.
- * @ingroup renderGL
+ * OpenGL logging prefix.
+ * @ingroup OpenGL
  */
 #define LOG_GL   			"[OpenGL] "
 
-
-
+/**
+ * OpenGL error-checking macro
+ * @ingroup OpenGL
+ */
 #define GL(x)				{ x; glCheckError( #x, __FILE__, __LINE__ ); }
-#define GL_VERIFY(x)		{ x; if(glCheckError( #x, __FILE__, __LINE__ )) return false; }
-#define GL_VERIFYN(x)		{ x; if(glCheckError( #x, __FILE__, __LINE__ )) return NULL; }
-#define GL_CHECK(msg)		{ glCheckError(msg, __FILE__, __LINE__); }
-
 
 /**
- * openGL error logging macros
- * @ingroup renderGL
+ * Return false on OpenGL error.
+ * @ingroup OpenGL
+ */
+#define GL_VERIFY(x)		{ x; if(glCheckError( #x, __FILE__, __LINE__ )) return false; }
+
+/**
+ * OpenGL NULL on OpenGL error.
+ * @ingroup OpenGL
+ */
+#define GL_VERIFYN(x)		{ x; if(glCheckError( #x, __FILE__, __LINE__ )) return NULL; }
+
+/**
+ * Print a message on OpenGL error.
+ * @ingroup OpenGL
+ */
+#define GL_CHECK(msg)		{ glCheckError(msg, __FILE__, __LINE__); }
+
+/**
+ * OpenGL error-checking messsage function.
+ * @ingroup OpenGL
  */
 inline bool glCheckError(const char* msg, const char* file, int line)
 {
@@ -83,8 +99,8 @@ inline bool glCheckError(const char* msg, const char* file, int line)
 
 
 /**
- * openGL error check + logging
- * @ingroup renderGL
+ * OpenGL error check + logging
+ * @ingroup OpenGL
  */
 inline bool glCheckError(const char* msg)
 {
@@ -123,8 +139,8 @@ inline bool glCheckError(const char* msg)
 
 
 /**
- * glPrintFreeMem
- * @ingroup renderGL
+ * Print the amount of free GPU memory.
+ * @ingroup OpenGL
  */
 inline void glPrintFreeMem()
 {
@@ -134,7 +150,7 @@ inline void glPrintFreeMem()
 	glGetIntegerv(GL_GPU_MEM_INFO_TOTAL_AVAILABLE_MEM_NVX, &total_mem_kb);
 	glGetIntegerv(GL_GPU_MEM_INFO_CURRENT_AVAILABLE_MEM_NVX,&cur_avail_mem_kb);
 
-	printf("[openGL]   GPU memory free    %i / %i kb\n", cur_avail_mem_kb, total_mem_kb);
+	printf(LOG_GL "GPU memory free    %i / %i kb\n", cur_avail_mem_kb, total_mem_kb);
 }
 
 

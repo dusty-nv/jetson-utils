@@ -30,6 +30,7 @@
 
 /**
  * Cast a 3x3 matrix from one type to another.
+ * @ingroup matrix
  */
 template<typename T1, typename T2>
 inline void mat33_cast( T1 dst[3][3], const T2 src[3][3] )
@@ -42,6 +43,7 @@ inline void mat33_cast( T1 dst[3][3], const T2 src[3][3] )
 
 /**
  * Copy src input matrix to dst output.
+ * @ingroup matrix
  */
 template<typename T>
 inline void mat33_copy( T dst[3][3], const T src[3][3] )
@@ -51,7 +53,8 @@ inline void mat33_copy( T dst[3][3], const T src[3][3] )
 
 
 /**
- * Compute the determinant of a 3x3 matrix, returns |src|
+ * Compute the determinant of a 3x3 matrix, returns `|src|`
+ * @ingroup matrix
  */
 template <typename T>
 inline T mat33_det( const T src[3][3] )
@@ -64,6 +67,7 @@ inline T mat33_det( const T src[3][3] )
 
 /**
  * Initialize a 3x3 identity matrix.
+ * @ingroup matrix
  */
 template<typename T>
 inline void mat33_identity( T dst[3][3] )
@@ -75,8 +79,9 @@ inline void mat33_identity( T dst[3][3] )
 
 
 /**
- * Compute the inverse of a 3x3 matrix, dst=src^-1
+ * Compute the inverse of a 3x3 matrix, `dst=src^-1`
  * It is safe to have dst and src be the same memory.
+ * @ingroup matrix
  */
 template<typename T>
 inline void mat33_inverse( T dst[3][3], const T src[3][3] )
@@ -104,7 +109,8 @@ inline void mat33_inverse( T dst[3][3], const T src[3][3] )
 
 
 /**
- * Multiply two 3x3 matrices, dst=a*b
+ * Multiply two 3x3 matrices, `dst=a*b`
+ * @ingroup matrix
  */
 template<typename T>
 inline void mat33_multiply( T dst[3][3], const T a[3][3], const T b[3][3] )
@@ -124,6 +130,7 @@ inline void mat33_multiply( T dst[3][3], const T a[3][3], const T b[3][3] )
 
 /**
  * Print out a 3x3 matrix to stdout.
+ * @ingroup matrix
  */
 template<typename T>
 inline void mat33_print( const T src[3][3], const char* name=NULL )
@@ -147,7 +154,8 @@ inline void mat33_print( const T src[3][3], const char* name=NULL )
 
 
 /**
- * Determine the rank of a 3x3 matrix
+ * Determine the rank of a 3x3 matrix.
+ * @ingroup matrix
  */
 template<typename T>
 inline int mat33_rank( const T src[3][3] )
@@ -212,7 +220,8 @@ inline int mat33_rank( const T src[3][3] )
 
 
 /**
- * Initialize a 3x3 rotation matrix
+ * Initialize a 3x3 rotation matrix.
+ * @ingroup matrix
  */
 template<typename T>
 inline void mat33_rotation( T dst[3][3], T degrees )
@@ -232,7 +241,8 @@ inline void mat33_rotation( T dst[3][3], T degrees )
 
 
 /**
- * Rotate a 3x3 matrix counter-clockwise
+ * Rotate a 3x3 matrix counter-clockwise.
+ * @ingroup matrix
  */
 template<typename T>
 inline void mat33_rotation( T dst[3][3], T src[3][3], T degrees )
@@ -245,7 +255,8 @@ inline void mat33_rotation( T dst[3][3], T src[3][3], T degrees )
 
 
 /**
- * Initialize a 3x3 scaling matrix
+ * Initialize a 3x3 scaling matrix.
+ * @ingroup matrix
  */
 template<typename T>
 inline void mat33_scale( T dst[3][3], T sx, T sy )
@@ -258,7 +269,8 @@ inline void mat33_scale( T dst[3][3], T sx, T sy )
 
 
 /**
- * Scale a 3x3 matrix by (sx,sy)
+ * Scale a 3x3 matrix by `(sx,sy)`
+ * @ingroup matrix
  */
 template<typename T>
 inline void mat33_scale( T dst[3][3], T src[3][3], T sx, T sy )
@@ -271,7 +283,8 @@ inline void mat33_scale( T dst[3][3], T src[3][3], T sx, T sy )
 
 
 /**
- * Initialize a 3x3 shear matrix
+ * Initialize a 3x3 shear matrix.
+ * @ingroup matrix
  */
 template<typename T>
 inline void mat33_shear( T dst[3][3], T sx, T sy )
@@ -284,7 +297,8 @@ inline void mat33_shear( T dst[3][3], T sx, T sy )
 
 
 /**
- * Shear a 3x3 matrix by (sx,sy)
+ * Shear a 3x3 matrix by (sx,sy).
+ * @ingroup matrix
  */
 template<typename T>
 inline void mat33_shear( T dst[3][3], T src[3][3], T sx, T sy )
@@ -297,7 +311,8 @@ inline void mat33_shear( T dst[3][3], T src[3][3], T sx, T sy )
 
 
 /**
- * Swap two 3x3 matrices inline, a=b and b=a
+ * Swap two 3x3 matrices inline, `a=b` and `b=a`
+ * @ingroup matrix
  */
 template<typename T>
 inline void mat33_swap( T a[3][3], T b[3][3] )
@@ -311,7 +326,8 @@ inline void mat33_swap( T a[3][3], T b[3][3] )
 
 
 /**
- * Compute the trace of a 3x3 matrix, returns tr(src)
+ * Compute the trace of a 3x3 matrix, returns `tr(src)`
+ * @ingroup matrix
  */
 template<typename T>
 inline T mat33_trace( const T src[3][3] )
@@ -321,7 +337,8 @@ inline T mat33_trace( const T src[3][3] )
 
 
 /**
- * Initialize a 3x3 translation matrix
+ * Initialize a 3x3 translation matrix.
+ * @ingroup matrix
  */
 template<typename T>
 inline void mat33_translate( T dst[3][3], T x, T y )
@@ -334,7 +351,8 @@ inline void mat33_translate( T dst[3][3], T x, T y )
 
 
 /**
- * Translate a 3x3 matrix by (x,y)
+ * Translate a 3x3 matrix by `(x,y)`
+ * @ingroup matrix
  */
 template<typename T>
 inline void mat33_translate( T dst[3][3], T src[3][3], T x, T y )
@@ -347,7 +365,8 @@ inline void mat33_translate( T dst[3][3], T src[3][3], T x, T y )
 
 
 /**
- * Transform a 2D vector by a 3x3 matrix
+ * Transform a 2D vector by a 3x3 matrix.
+ * @ingroup matrix
  */
 template<typename T>
 inline void mat33_transform( T& x_out, T& y_out, const T x_in, const T y_in, const T mat[3][3] )
@@ -362,7 +381,8 @@ inline void mat33_transform( T& x_out, T& y_out, const T x_in, const T y_in, con
 
 
 /**
- * Transform a 2D vector by a 3x3 matrix, dst=src*mat
+ * Transform a 2D vector by a 3x3 matrix, `dst=src*mat`
+ * @ingroup matrix
  */
 template<typename T>
 inline void mat33_transform( T dst[2], const T src[2], const T mat[3][3] )
@@ -372,7 +392,8 @@ inline void mat33_transform( T dst[2], const T src[2], const T mat[3][3] )
 
 
 /**
- * Transform an array of 2D vectors by a 3x3 matrix
+ * Transform an array of 2D vectors by a 3x3 matrix.
+ * @ingroup matrix
  */
 template<typename T>
 inline void mat33_transform( T* dst, const T* src, const int N, const T mat[3][3] )
@@ -382,7 +403,8 @@ inline void mat33_transform( T* dst, const T* src, const int N, const T mat[3][3
 }
 
 /**
- * Transpose a 3x3 matrix, dst=src^T
+ * Transpose a 3x3 matrix, `dst=src^T`
+ * @ingroup matrix
  */
 template<typename T>
 inline void mat33_transpose( T dst[3][3], const T src[3][3] )
@@ -395,6 +417,7 @@ inline void mat33_transpose( T dst[3][3], const T src[3][3] )
 
 /**
  * Set a 3x3 matrix to all zero's.
+ * @ingroup matrix
  */
 template<typename T>
 inline void mat33_zero( T dst[3][3] )

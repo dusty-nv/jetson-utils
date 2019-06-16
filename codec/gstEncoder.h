@@ -27,9 +27,10 @@
 
 
 /**
- * HW-accelerated H.264/H.265 video encoder for Jetson using GStreamer.
+ * Hardware-accelerated H.264/H.265 video encoder for Jetson using GStreamer.
  * The encoder can write the encoded video to disk in .mkv or .h264/.h265 formats,
  * or handle streaming network transmission to remote host(s) via RTP/RTSP protocol.
+ * @ingroup codec
  */
 class gstEncoder
 {

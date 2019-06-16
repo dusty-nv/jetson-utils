@@ -30,6 +30,7 @@
  * A lightweight mutual exclusion lock.  It is very fast to check if the mutex is available,
  * lock it, and release it.  However, if the mutex is unavailable when you attempt to
  * lock it, execution of the thread will stop until it becomes available.
+ * @ingroup threads
  */
 class Mutex
 {

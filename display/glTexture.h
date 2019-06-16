@@ -29,7 +29,8 @@
 
 
 /**
- * OpenGL texture
+ * OpenGL texture with CUDA interoperability.
+ * @ingroup OpenGL
  */
 class glTexture
 {
