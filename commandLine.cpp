@@ -22,7 +22,6 @@
 
 #include "commandLine.h"
 
-#include <stdlib.h>		// atoi
 #include <string.h>
 #include <strings.h>
 
@@ -31,19 +30,15 @@
 
 
 // strRemoveDelimiter
-static inline int strRemoveDelimiter(char delimiter, const char *string)
+static inline int strRemoveDelimiter( char delimiter, const char* string )
 {
     int string_start = 0;
 
-    while (string[string_start] == delimiter)
-    {
+    while( string[string_start] == delimiter )
         string_start++;
-    }
 
-    if (string_start >= (int)strlen(string)-1)
-    {
+    if( string_start >= (int)strlen(string)-1 )
         return 0;
-    }
 
     return string_start;
 }
@@ -64,13 +59,17 @@ int commandLine::GetInt( const char* string_ref, int default_value )
 		return 0;
 
 	bool bFound = false;
-    	int value = -1;
+    int value = -1;
 
 	for( int i=ARGC_START; i < argc; i++ )
 	{
-		int string_start = strRemoveDelimiter('-', argv[i]);
-		const char *string_argv = &argv[i][string_start];
-		int length = (int)strlen(string_ref);
+		const int string_start = strRemoveDelimiter('-', argv[i]);
+		
+		if( string_start == 0 )
+			continue;
+		
+		const char* string_argv = &argv[i][string_start];
+		const int length = (int)strlen(string_ref);
 
 		if (!strncasecmp(string_argv, string_ref, length))
 		{
@@ -108,9 +107,13 @@ float commandLine::GetFloat( const char* string_ref, float default_value )
 
 	for (int i=ARGC_START; i < argc; i++)
 	{
-		int string_start = strRemoveDelimiter('-', argv[i]);
-		const char *string_argv = &argv[i][string_start];
-		int length = (int)strlen(string_ref);
+		const int string_start = strRemoveDelimiter('-', argv[i]);
+		
+		if( string_start == 0 )
+			continue;
+		
+		const char* string_argv = &argv[i][string_start];
+		const int length = (int)strlen(string_ref);
 
 		if (!strncasecmp(string_argv, string_ref, length))
 		{
@@ -136,27 +139,6 @@ float commandLine::GetFloat( const char* string_ref, float default_value )
 }
 
 
-// GetString
-const char* commandLine::GetString( const char* string_ref )
-{
-	if( argc < 1 )
-		return 0;
-
-	for (int i=ARGC_START; i < argc; i++)
-	{
-		int string_start  = strRemoveDelimiter('-', argv[i]);
-		char *string_argv = (char *)&argv[i][string_start];
-		int length = (int)strlen(string_ref);
-
-		if (!strncasecmp(string_argv, string_ref, length))
-			return (string_argv + length + 1);
-			//*string_retval = &string_argv[length+1];
-	}
-
-	return NULL;
-}
-
-
 // GetFlag
 bool commandLine::GetFlag( const char* string_ref )
 {
@@ -165,13 +147,16 @@ bool commandLine::GetFlag( const char* string_ref )
 
 	for (int i=ARGC_START; i < argc; i++)
 	{
-		int string_start = strRemoveDelimiter('-', argv[i]);
-		const char *string_argv = &argv[i][string_start];
-
-		const char *equal_pos = strchr(string_argv, '=');
-		int argv_length = (int)(equal_pos == 0 ? strlen(string_argv) : equal_pos - string_argv);
-
-		int length = (int)strlen(string_ref);
+		const int string_start = strRemoveDelimiter('-', argv[i]);
+		
+		if( string_start == 0 )
+			continue;
+		
+		const char* string_argv = &argv[i][string_start];
+		const char* equal_pos = strchr(string_argv, '=');
+		
+		const int argv_length = (int)(equal_pos == 0 ? strlen(string_argv) : equal_pos - string_argv);
+		const int length = (int)strlen(string_ref);
 
 		if( length == argv_length && !strncasecmp(string_argv, string_ref, length) )
 			return true;
@@ -181,3 +166,70 @@ bool commandLine::GetFlag( const char* string_ref )
 }
 
 
+// GetString
+const char* commandLine::GetString( const char* string_ref, const char* default_value )
+{
+	if( argc < 1 )
+		return 0;
+
+	for (int i=ARGC_START; i < argc; i++)
+	{
+		const int string_start  = strRemoveDelimiter('-', argv[i]);
+		
+		if( string_start == 0 )
+			continue;
+		
+		char* string_argv = (char*)&argv[i][string_start];
+		const int length = (int)strlen(string_ref);
+
+		if (!strncasecmp(string_argv, string_ref, length))
+			return (string_argv + length + 1);
+			//*string_retval = &string_argv[length+1];
+	}
+
+	return default_value;
+}
+
+
+// GetPosition
+const char* commandLine::GetPosition( unsigned int position, const char* default_value )
+{
+	if( argc < 1 )
+		return 0;
+
+	unsigned int position_count = 0;
+	
+	for (int i=1/*ARGC_START*/; i < argc; i++)
+	{
+		const int string_start = strRemoveDelimiter('-', argv[i]);
+		
+		if( string_start != 0 )
+			continue;
+		
+		if( position == position_count )
+			return argv[i];
+		
+		position_count++;
+	}
+
+	return default_value;
+}
+
+
+// GetPositionArgs
+unsigned int commandLine::GetPositionArgs()
+{
+	unsigned int position_count = 0;
+	
+	for (int i=1/*ARGC_START*/; i < argc; i++)
+	{
+		const int string_start = strRemoveDelimiter('-', argv[i]);
+		
+		if( string_start != 0 )
+			continue;
+		
+		position_count++;
+	}
+
+	return position_count;
+}

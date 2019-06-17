@@ -24,67 +24,82 @@
 #define __COMMAND_LINE_H_
 
 
+#include <stdlib.h>	
+
+
 /**
- * commandLine parser class
+ * Command line parser class.
  * @ingroup util
  */
 class commandLine
 {
 public:
 	/**
-	 * constructor
+	 * Constructor, takes the command line from `main()`
 	 */
 	commandLine( const int argc, char** argv );
 
-
 	/**
 	 * Checks to see whether the specified flag was included on the 
-	 * command line.   For example, if argv contained "--foo", then 
-	 * GetFlag("foo") would return true.
+	 * command line.   For example, if argv contained `--foo`, then 
+	 * `GetFlag("foo")` would return `true`
 	 *
-	 * @returns true, if the flag with argName was found
-	 *          false, if the flag with argName was not found
+	 * @returns `true`, if the flag with argName was found
+	 *          `false`, if the flag with argName was not found
 	 */
 	bool GetFlag( const char* argName );
-
 	
 	/**
-	 * Get float argument.  For example if argv contained "--foo=3.14159", 
-	 * then GetInt("foo") would return 3.14159.0f
+	 * Get float argument.  For example if argv contained `--foo=3.14159`, 
+	 * then `GetInt("foo")` would return `3.14159f`
 	 *
-	 * @returns defaultValue, if the argumentcould not be found.
+	 * @returns `defaultValue` if the argument couldn't be found. (`0.0` by default).
 	 *          Otherwise, returns the value of the argument.
 	 */
 	float GetFloat( const char* argName, float defaultValue=0.0f );
 
-
 	/**
-	 * Get integer argument.  For example if argv contained "--foo=100", 
-	 * then GetInt("foo") would return 100.
+	 * Get integer argument.  For example if argv contained `--foo=100`, 
+	 * then `GetInt("foo")` would return `100`
 	 *
-	 * @returns defaultValue, if the argument could not be found.
+	 * @returns `defaultValue` if the argument couldn't be found (`0` by default).
 	 *          Otherwise, returns the value of the argument. 
 	 */
 	int GetInt( const char* argName, int defaultValue=0 );
 
+	/**
+	 * Get string argument.  For example if argv contained `--foo=bar`,
+	 * then `GetString("foo")` would return `"bar"`
+	 *
+	 * @returns `defaultValue` if the argument couldn't be found (`NULL` by default).
+	 *          Otherwise, returns a pointer to the argument value string
+	 *          from the `argv` array.
+	 */
+	const char* GetString( const char* argName, const char* defaultValue=NULL );
 
 	/**
-	 * Get string argument.  For example if argv contained "--foo=bar",
-	 * then GetString("foo") would return "bar".
+	 * Get positional string argument.  Positional arguments aren't named, but rather
+	 * referenced by their index in the list. For example if the command line contained
+	 * `my-program --foo=bar /path/to/my_file.txt`, then `GetString(0)` would return
+	 * `"/path/to/my_file.txt"
 	 *
-	 * @returns NULL, if the argument could not be found.
+	 * @returns `defaultValue` if the argument couldn't be found (`NULL` by default).
 	 *          Otherwise, returns a pointer to the argument value string
-	 *          from the argv array.
+	 *          from the `argv` array.
 	 */
-	const char* GetString( const char* argName );
-
-
+	const char* GetPosition( unsigned int position, const char* defaultValue=NULL );
+	
+	/**
+	 * Get the number of positional arguments in the command line.
+	 * Positional arguments are those that don't have a name.
+	 */
+	unsigned int GetPositionArgs();
+	
 protected:
 
 	int argc;
 	char** argv;
 };
-
 
 
 #endif
