@@ -21,20 +21,10 @@
  */
 
 #include "gstCamera.h"
-
 #include "glDisplay.h"
-#include "glTexture.h"
+#include "commandLine.h"
 
-#include <stdio.h>
 #include <signal.h>
-#include <unistd.h>
-
-#include "cudaNormalize.h"
-
-
-#define DEFAULT_CAMERA -1		// -1 for onboard CSI camera, or change to index of /dev/video V4L2 camera (>=0)	
-#define DEFAULT_CAMERA_WIDTH 1280	// default camera width is 1280 pixels, change this if you want a different size
-#define DEFAULT_CAMERA_HEIGHT 720	// default camera height is 720 pixels, change this is you want a different size
 
 
 bool signal_recieved = false;
@@ -51,22 +41,21 @@ void sig_handler(int signo)
 
 int main( int argc, char** argv )
 {
-	printf("camera-viewer\n  args (%i):  ", argc);
-
-	for( int i=0; i < argc; i++ )
-		printf("%i [%s]  ", i, argv[i]);
-		
-	printf("\n");
+	commandLine cmdLine(argc, argv);
 	
-		
+	/*
+	 * attach signal handler
+	 */	
 	if( signal(SIGINT, sig_handler) == SIG_ERR )
 		printf("\ncan't catch SIGINT\n");
 
 	/*
 	 * create the camera device
 	 */
-	gstCamera* camera = gstCamera::Create(DEFAULT_CAMERA_WIDTH, DEFAULT_CAMERA_HEIGHT, DEFAULT_CAMERA);
-	
+	gstCamera* camera = gstCamera::Create(cmdLine.GetInt("width", gstCamera::DefaultWidth),
+								   cmdLine.GetInt("height", gstCamera::DefaultHeight),
+								   cmdLine.GetString("camera"));
+
 	if( !camera )
 	{
 		printf("\ncamera-viewer:  failed to initialize camera device\n");
@@ -85,7 +74,7 @@ int main( int argc, char** argv )
 	glDisplay* display = glDisplay::Create();
 	
 	if( !display )
-		printf("\ncamera-viewer:  failed to create openGL display\n");
+		printf("camera-viewer:  failed to create openGL display\n");
 	
 
 	/*
@@ -93,11 +82,11 @@ int main( int argc, char** argv )
 	 */
 	if( !camera->Open() )
 	{
-		printf("\ncamera-viewer:  failed to open camera for streaming\n");
+		printf("camera-viewer:  failed to open camera for streaming\n");
 		return 0;
 	}
 	
-	printf("\ncamera-viewer:  camera open for streaming\n");
+	printf("camera-viewer:  camera open for streaming\n");
 	
 	
 	/*
@@ -127,25 +116,15 @@ int main( int argc, char** argv )
 		}
 	}
 	
-	printf("\ncamera-viewer:  un-initializing camera device\n");
-	
-	
-	/*
-	 * shutdown the camera device
-	 */
-	if( camera != NULL )
-	{
-		delete camera;
-		camera = NULL;
-	}
 
-	if( display != NULL )
-	{
-		delete display;
-		display = NULL;
-	}
+	/*
+	 * destroy resources
+	 */
+	printf("\ncamera-viewer:  shutting down...\n");
 	
-	printf("camera-viewer:  camera device has been un-initialized.\n");
-	printf("camera-viewer:  this concludes the test of the camera device.\n");
+	SAFE_DELETE(camera);
+	SAFE_DELETE(display);
+
+	printf("camera-viewer:  shutdown complete.\n");
 	return 0;
 }

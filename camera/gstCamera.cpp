@@ -54,7 +54,7 @@ gstCamera::gstCamera()
 	mAppSink    = NULL;
 	mBus        = NULL;
 	mPipeline   = NULL;	
-	mV4L2Device = -1;
+	mSensorCSI  = -1;
 	mStreaming  = false;
 
 	mWidth  = 0;
@@ -263,15 +263,15 @@ bool gstCamera::ConvertRGBA( void* input, float** output, bool zeroCopy )
 		mRGBAZeroCopy = zeroCopy;
 	}
 	
-	if( onboardCamera() )
+	if( csiCamera() )
 	{
-		// onboard camera is NV12
+		// MIPI CSI camera is NV12
 		if( CUDA_FAILED(cudaNV12ToRGBA32((uint8_t*)input, (float4*)mRGBA[mLatestRGBA], mWidth, mHeight)) )
 			return false;
 	}
 	else
 	{
-		// USB webcam is RGB
+		// V4L2 webcam is RGB
 		if( CUDA_FAILED(cudaRGB8ToRGBA32((uchar3*)input, (float4*)mRGBA[mLatestRGBA], mWidth, mHeight)) )
 			return false;
 	}
@@ -406,7 +406,7 @@ bool gstCamera::buildLaunchStr( gstCameraSrc src )
 	// #define CAPS_STR "video/x-raw(memory:NVMM), width=(int)1920, height=(int)1080, format=(string)I420, framerate=(fraction)30/1"
 	std::ostringstream ss;
 
-	if( onboardCamera() && src != GST_SOURCE_V4L2 )
+	if( csiCamera() && src != GST_SOURCE_V4L2 )
 	{
 		mSource = src;	 // store camera source method
 
@@ -419,13 +419,13 @@ bool gstCamera::buildLaunchStr( gstCameraSrc src )
 		if( src == GST_SOURCE_NVCAMERA )
 			ss << "nvcamerasrc fpsRange=\"30.0 30.0\" ! video/x-raw(memory:NVMM), width=(int)" << mWidth << ", height=(int)" << mHeight << ", format=(string)NV12 ! nvvidconv flip-method=" << flipMethod << " ! "; //'video/x-raw(memory:NVMM), width=(int)1920, height=(int)1080, format=(string)I420, framerate=(fraction)30/1' ! ";
 		else if( src == GST_SOURCE_NVARGUS )
-			ss << "nvarguscamerasrc ! video/x-raw(memory:NVMM), width=(int)" << mWidth << ", height=(int)" << mHeight << ", framerate=30/1, format=(string)NV12 ! nvvidconv flip-method=" << flipMethod << " ! ";
+			ss << "nvarguscamerasrc sensor-id=" << mSensorCSI << " ! video/x-raw(memory:NVMM), width=(int)" << mWidth << ", height=(int)" << mHeight << ", framerate=30/1, format=(string)NV12 ! nvvidconv flip-method=" << flipMethod << " ! ";
 		
 		ss << "video/x-raw ! appsink name=mysink";
 	}
 	else
 	{
-		ss << "v4l2src device=/dev/video" << mV4L2Device << " ! ";
+		ss << "v4l2src device=" << mCameraStr << " ! ";
 		ss << "video/x-raw, width=(int)" << mWidth << ", height=(int)" << mHeight << ", "; 
 		
 	#if NV_TENSORRT_MAJOR >= 5
@@ -447,8 +447,43 @@ bool gstCamera::buildLaunchStr( gstCameraSrc src )
 }
 
 
+// parseCameraStr
+bool gstCamera::parseCameraStr( const char* camera )
+{
+	if( !camera || strlen(camera) == 0 )
+	{
+		mSensorCSI = 0;
+		mCameraStr = "0";
+		return true;
+	}
+
+	mCameraStr = camera;
+
+	// check if the string is a V4L2 device
+	const char* prefixV4L2 = "/dev/video";
+
+	const size_t prefixLength = strlen(prefixV4L2);
+	const size_t cameraLength = strlen(camera);
+
+	if( cameraLength < prefixLength )
+	{
+		const int result = sscanf(camera, "%i", &mSensorCSI);
+
+		if( result == 1 && mSensorCSI >= 0 )
+			return true;
+	}
+	else if( strncmp(camera, prefixV4L2, prefixLength) == 0 )
+	{
+		return true;
+	}
+
+	printf(LOG_GSTREAMER "gstCamera::Create('%s') -- invalid camera device requested\n", camera);
+	return false;
+}
+
+
 // Create
-gstCamera* gstCamera::Create( uint32_t width, uint32_t height, int v4l2_device )
+gstCamera* gstCamera::Create( uint32_t width, uint32_t height, const char* camera )
 {
 	if( !gstreamerInit() )
 	{
@@ -461,40 +496,42 @@ gstCamera* gstCamera::Create( uint32_t width, uint32_t height, int v4l2_device )
 	if( !cam )
 		return NULL;
 	
-	cam->mV4L2Device = v4l2_device;
+	if( !cam->parseCameraStr(camera) )
+		return NULL;
+
 	cam->mWidth      = width;
 	cam->mHeight     = height;
-	cam->mDepth      = cam->onboardCamera() ? 12 : 24;	// NV12 or RGB
+	cam->mDepth      = cam->csiCamera() ? 12 : 24;	// NV12 or RGB
 	cam->mSize       = (width * height * cam->mDepth) / 8;
 
 	if( !cam->init(GST_SOURCE_NVARGUS) )
 	{
-		printf(LOG_GSTREAMER "failed to init gstCamera (GST_SOURCE_NVARGUS)\n");
+		printf(LOG_GSTREAMER "failed to init gstCamera (GST_SOURCE_NVARGUS, camera %s)\n", cam->mCameraStr.c_str());
 
 		if( !cam->init(GST_SOURCE_NVCAMERA) )
 		{
-			printf(LOG_GSTREAMER "failed to init gstCamera (GST_SOURCE_NVCAMERA)\n");
+			printf(LOG_GSTREAMER "failed to init gstCamera (GST_SOURCE_NVCAMERA, camera %s)\n", cam->mCameraStr.c_str());
 
-			if( cam->mV4L2Device < 0 )
-				cam->mV4L2Device = 0;
+			if( cam->mSensorCSI >= 0 )
+				cam->mSensorCSI = -1;
 
 			if( !cam->init(GST_SOURCE_V4L2) )
 			{
-				printf(LOG_GSTREAMER "failed to init gstCamera (GST_SOURCE_V4L2)\n");
+				printf(LOG_GSTREAMER "failed to init gstCamera (GST_SOURCE_V4L2, camera %s)\n", cam->mCameraStr.c_str());
 				return NULL;
 			}
 		}
 	}
 	
-	printf(LOG_GSTREAMER "gstCamera successfully initialized with %s\n", gstCameraSrcToString(cam->mSource)); 
+	printf(LOG_GSTREAMER "gstCamera successfully initialized with %s, camera %s\n", gstCameraSrcToString(cam->mSource), cam->mCameraStr.c_str()); 
 	return cam;
 }
 
 
 // Create
-gstCamera* gstCamera::Create( int v4l2_device )
+gstCamera* gstCamera::Create( const char* camera )
 {
-	return Create( DefaultWidth, DefaultHeight, v4l2_device );
+	return Create( DefaultWidth, DefaultHeight, camera );
 }
 
 
@@ -502,7 +539,7 @@ gstCamera* gstCamera::Create( int v4l2_device )
 bool gstCamera::init( gstCameraSrc src )
 {
 	GError* err = NULL;
-	printf(LOG_GSTREAMER "gstCamera attempting to initialize with %s\n", gstCameraSrcToString(src));
+	printf(LOG_GSTREAMER "gstCamera attempting to initialize with %s, camera %s\n", gstCameraSrcToString(src), mCameraStr.c_str());
 
 	// build pipeline string
 	if( !buildLaunchStr(src) )

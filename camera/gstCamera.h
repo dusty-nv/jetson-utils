@@ -79,15 +79,16 @@ public:
 	 * The camera will be created with a resolution indicated by gstCamera::DefaultWidth
 	 * and gstCamera::DefaultHeight (1280x720 by default).
 	 *
-	 * @param v4l2_device device index of the V4L2 `/dev/video` node to use, or -1 to use
-      *                    the onboard MIPI CSI camera.  The default is to use MIPI CSI.
-	 *                    For example, if you wanted to use the `/dev/video0` V4L2 device,
-	 *                    you would provide a value of `0` for this argument, or `1` for
- 	 *                    `/dev/video1`, ect.
+	 * @param camera Camera device to use.  If using MIPI CSI, this string can be `NULL`
+	 *			  to default to CSI camera 0, otherwise the string should contain the
+	 *			  device index of the CSI camera (e.g. `"0"` for CSI camera 0 or `"1"`
+	 *               for CSI camera 1, ect).  If using V4L2, the string should contain
+	 *               the `/dev/video` node to use (e.g. `"/dev/video0"` for V4L2 camera 0).
+	 *               By default, `camera` parameter is NULL and MIPI CSI camera 0 is used.
 	 *
 	 * @returns A pointer to the created gstCamera device, or NULL if there was an error.
 	 */
-	static gstCamera* Create( int v4l2_device=-1 ); // use MIPI CSI camera by default (>=0 for V4L2)
+	static gstCamera* Create( const char* camera=NULL ); // use MIPI CSI camera by default
 
 	/**
 	 * Create a MIPI CSI or V4L2 camera device.
@@ -101,15 +102,16 @@ public:
 	 * @param height desired height (in pixels) of the camera resolution.  
 	 *               This should be from a format that the camera supports.
 	 *
-	 * @param v4l2_device device index of the V4L2 `/dev/video` node to use, or -1 to use
-      *                    the onboard MIPI CSI camera.  The default is to use MIPI CSI.
-	 *                    For example, if you wanted to use the `/dev/video0` V4L2 device,
-	 *                    you would provide a value of `0` for this argument, or `1` for
- 	 *                    `/dev/video1`, ect.
+	 * @param camera Camera device to use.  If using MIPI CSI, this string can be `NULL`
+	 *			  to default to CSI camera 0, otherwise the string should contain the
+	 *			  device index of the CSI camera (e.g. `"0"` for CSI camera 0 or `"1"`
+	 *               for CSI camera 1, ect).  If using V4L2, the string should contain
+	 *               the `/dev/video` node to use (e.g. `"/dev/video0"` for V4L2 camera 0).
+	 *               By default, `camera` parameter is NULL and MIPI CSI camera 0 is used.
 	 *
 	 * @returns A pointer to the created gstCamera device, or NULL if there was an error.
 	 */
-	static gstCamera* Create( uint32_t width, uint32_t height, int v4l2_device=-1 );
+	static gstCamera* Create( uint32_t width, uint32_t height, const char* camera=NULL );
 	
 	/**
 	 * Release the camera interface and resources.
@@ -273,6 +275,8 @@ private:
 
 	bool init( gstCameraSrc src );
 	bool buildLaunchStr( gstCameraSrc src );
+	bool parseCameraStr( const char* camera );
+
 	void checkMsgBus();
 	void checkBuffer();
 	
@@ -282,7 +286,8 @@ private:
 	gstCameraSrc mSource;
 
 	std::string  mLaunchStr;
-	
+	std::string  mCameraStr;
+
 	uint32_t mWidth;
 	uint32_t mHeight;
 	uint32_t mDepth;
@@ -304,9 +309,9 @@ private:
 	void*  mRGBA[NUM_RINGBUFFERS];
 	bool   mRGBAZeroCopy; // were the RGBA buffers allocated with zeroCopy?
 	bool   mStreaming;	  // true if the device is currently open
-	int    mV4L2Device;	  // -1 for onboard, >=0 for V4L2 device
+	int    mSensorCSI;	  // -1 for V4L2, >=0 for MIPI CSI
 
-	inline bool onboardCamera() const		{ return (mV4L2Device < 0); }
+	inline bool csiCamera() const		{ return (mSensorCSI >= 0); }
 };
 
 #endif

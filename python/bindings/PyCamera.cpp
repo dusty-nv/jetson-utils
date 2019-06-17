@@ -59,13 +59,13 @@ static int PyCamera_Init( PyCamera_Object* self, PyObject *args, PyObject *kwds 
 	printf(LOG_PY_UTILS "PyCamera_Init()\n");
 	
 	// parse arguments
-	int camera_width  = gstCamera::DefaultWidth;
-	int camera_height = gstCamera::DefaultHeight;
-	int v4l2_device   = -1;
+	int camera_width   = gstCamera::DefaultWidth;
+	int camera_height  = gstCamera::DefaultHeight;
+	const char* device = NULL;
 
-	static char* kwlist[] = {"width", "height", "v4l2_device", NULL};
+	static char* kwlist[] = {"width", "height", "camera", NULL};
 
-	if( !PyArg_ParseTupleAndKeywords(args, kwds, "|iii", kwlist, &camera_width, &camera_height, &v4l2_device))
+	if( !PyArg_ParseTupleAndKeywords(args, kwds, "|iii", kwlist, &camera_width, &camera_height, &device))
 	{
 		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "gstCamera.__init()__ failed to parse args tuple");
 		printf(LOG_PY_UTILS "gstCamera.__init()__ failed to parse args tuple\n");
@@ -85,7 +85,7 @@ static int PyCamera_Init( PyCamera_Object* self, PyObject *args, PyObject *kwds 
 	}*/
 
 	// create the camera object
-	gstCamera* camera = gstCamera::Create(camera_width, camera_height, v4l2_device);
+	gstCamera* camera = gstCamera::Create(camera_width, camera_height, device);
 
 	if( !camera )
 	{
