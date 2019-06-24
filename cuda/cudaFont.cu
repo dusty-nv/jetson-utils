@@ -51,7 +51,7 @@ struct __align__(16) GlyphCommand
 float adaptFontSize( uint32_t dimension )
 {
 	const float max_font = 32.0f;
-	const float min_font = 20.0f;
+	const float min_font = 28.0f;
 
 	const uint32_t max_dim = 1536;
 	const uint32_t min_dim = 768;
