@@ -47,7 +47,7 @@ public:
 	 * @returns `true`, if the flag with argName was found
 	 *          `false`, if the flag with argName was not found
 	 */
-	bool GetFlag( const char* argName );
+	bool GetFlag( const char* argName ) const;
 	
 	/**
 	 * Get float argument.  For example if argv contained `--foo=3.14159`, 
@@ -56,7 +56,7 @@ public:
 	 * @returns `defaultValue` if the argument couldn't be found. (`0.0` by default).
 	 *          Otherwise, returns the value of the argument.
 	 */
-	float GetFloat( const char* argName, float defaultValue=0.0f );
+	float GetFloat( const char* argName, float defaultValue=0.0f ) const;
 
 	/**
 	 * Get integer argument.  For example if argv contained `--foo=100`, 
@@ -65,7 +65,7 @@ public:
 	 * @returns `defaultValue` if the argument couldn't be found (`0` by default).
 	 *          Otherwise, returns the value of the argument. 
 	 */
-	int GetInt( const char* argName, int defaultValue=0 );
+	int GetInt( const char* argName, int defaultValue=0 ) const; 
 
 	/**
 	 * Get string argument.  For example if argv contained `--foo=bar`,
@@ -75,7 +75,7 @@ public:
 	 *          Otherwise, returns a pointer to the argument value string
 	 *          from the `argv` array.
 	 */
-	const char* GetString( const char* argName, const char* defaultValue=NULL );
+	const char* GetString( const char* argName, const char* defaultValue=NULL ) const;
 
 	/**
 	 * Get positional string argument.  Positional arguments aren't named, but rather
@@ -87,13 +87,13 @@ public:
 	 *          Otherwise, returns a pointer to the argument value string
 	 *          from the `argv` array.
 	 */
-	const char* GetPosition( unsigned int position, const char* defaultValue=NULL );
+	const char* GetPosition( unsigned int position, const char* defaultValue=NULL ) const;
 	
 	/**
 	 * Get the number of positional arguments in the command line.
 	 * Positional arguments are those that don't have a name.
 	 */
-	unsigned int GetPositionArgs();
+	unsigned int GetPositionArgs() const;
 	
 protected:
 

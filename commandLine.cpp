@@ -53,7 +53,7 @@ commandLine::commandLine( const int pArgc, char** pArgv )
 
 
 // GetInt
-int commandLine::GetInt( const char* string_ref, int default_value )
+int commandLine::GetInt( const char* string_ref, int default_value ) const
 {
 	if( argc < 1 )
 		return 0;
@@ -97,7 +97,7 @@ int commandLine::GetInt( const char* string_ref, int default_value )
 
 
 // GetFloat
-float commandLine::GetFloat( const char* string_ref, float default_value )
+float commandLine::GetFloat( const char* string_ref, float default_value ) const
 {
 	if( argc < 1 )
 		return 0;
@@ -140,7 +140,7 @@ float commandLine::GetFloat( const char* string_ref, float default_value )
 
 
 // GetFlag
-bool commandLine::GetFlag( const char* string_ref )
+bool commandLine::GetFlag( const char* string_ref ) const
 {
 	if( argc < 1 )
 		return false;
@@ -167,7 +167,7 @@ bool commandLine::GetFlag( const char* string_ref )
 
 
 // GetString
-const char* commandLine::GetString( const char* string_ref, const char* default_value )
+const char* commandLine::GetString( const char* string_ref, const char* default_value ) const
 {
 	if( argc < 1 )
 		return 0;
@@ -192,7 +192,7 @@ const char* commandLine::GetString( const char* string_ref, const char* default_
 
 
 // GetPosition
-const char* commandLine::GetPosition( unsigned int position, const char* default_value )
+const char* commandLine::GetPosition( unsigned int position, const char* default_value ) const
 {
 	if( argc < 1 )
 		return 0;
@@ -217,7 +217,7 @@ const char* commandLine::GetPosition( unsigned int position, const char* default
 
 
 // GetPositionArgs
-unsigned int commandLine::GetPositionArgs()
+unsigned int commandLine::GetPositionArgs() const
 {
 	unsigned int position_count = 0;
 	
