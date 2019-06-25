@@ -95,9 +95,14 @@ public:
 	 */
 	unsigned int GetPositionArgs() const;
 	
-protected:
-
+	/**
+	 * The argument count that the object was created with from main()
+	 */
 	int argc;
+
+	/**
+	 * The argument strings that the object was created with from main()
+	 */
 	char** argv;
 };
 
