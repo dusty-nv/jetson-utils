@@ -65,7 +65,7 @@ static int PyCamera_Init( PyCamera_Object* self, PyObject *args, PyObject *kwds 
 
 	static char* kwlist[] = {"width", "height", "camera", NULL};
 
-	if( !PyArg_ParseTupleAndKeywords(args, kwds, "|iii", kwlist, &camera_width, &camera_height, &device))
+	if( !PyArg_ParseTupleAndKeywords(args, kwds, "|iis", kwlist, &camera_width, &camera_height, &device))
 	{
 		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "gstCamera.__init()__ failed to parse args tuple");
 		printf(LOG_PY_UTILS "gstCamera.__init()__ failed to parse args tuple\n");
