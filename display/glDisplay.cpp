@@ -48,6 +48,10 @@ glDisplay::glDisplay()
 	mBgColor[2] = 0.0f;
 	mBgColor[3] = 1.0f;
 
+	mNormalizedCUDA   = NULL;
+	mNormalizedWidth  = 0;
+	mNormalizedHeight = 0;
+
 	mWindowClosed = false;
 
 	clock_gettime(CLOCK_REALTIME, &mLastTime);
@@ -61,6 +65,12 @@ glDisplay::~glDisplay()
 	{
 		delete mInteropTex;
 		mInteropTex = NULL;
+	}
+
+	if( mNormalizedCUDA != NULL )
+	{
+		CUDA(cudaFree(mNormalizedCUDA));
+		mNormalizedCUDA = NULL;
 	}
 
 	glXDestroyContext(mDisplayX, mContextGL);
@@ -302,16 +312,34 @@ void glDisplay::Render( float* img, uint32_t width, uint32_t height, float x, fl
 
 		if( !mInteropTex )
 		{
-			printf(LOG_GL "glDisplay.RenderCUDA() failed to create openGL interop texture\n");
+			printf(LOG_GL "glDisplay.Render() failed to create OpenGL interop texture\n");
 			return;
 		}
 	}
 
 	if( normalize )
 	{
+		if( !mNormalizedCUDA || mNormalizedWidth != width || mNormalizedHeight != height )
+		{
+			if( mNormalizedCUDA != NULL )
+			{
+				CUDA(cudaFree(mNormalizedCUDA));
+				mNormalizedCUDA = NULL;
+			}
+
+			if( CUDA_FAILED(cudaMalloc(&mNormalizedCUDA, width * height * sizeof(float) * 4)) )
+			{
+				printf(LOG_GL "glDisplay.Render() failed to allocate CUDA memory for normalization\n");
+				return;
+			}
+
+			mNormalizedWidth = width;
+			mNormalizedHeight = height;
+		}
+
 		// rescale image pixel intensities for display
 		CUDA(cudaNormalizeRGBA((float4*)img, make_float2(0.0f, 255.0f), 
-						   (float4*)img, make_float2(0.0f, 1.0f), 
+						   (float4*)mNormalizedCUDA, make_float2(0.0f, 1.0f), 
  						   width, height));
 	}
 
@@ -320,7 +348,7 @@ void glDisplay::Render( float* img, uint32_t width, uint32_t height, float x, fl
 
 	if( tex_map != NULL )
 	{
-		CUDA(cudaMemcpy(tex_map, img, mInteropTex->GetSize(), cudaMemcpyDeviceToDevice));
+		CUDA(cudaMemcpy(tex_map, normalize ? mNormalizedCUDA : img, mInteropTex->GetSize(), cudaMemcpyDeviceToDevice));
 		//CUDA(cudaDeviceSynchronize());
 		mInteropTex->Unmap();
 	}

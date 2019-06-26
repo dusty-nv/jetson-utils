@@ -172,6 +172,10 @@ protected:
 	timespec mLastTime;
 	float    mAvgTime;
 	float    mBgColor[4];
+
+	float*   mNormalizedCUDA;
+	uint32_t mNormalizedWidth;
+	uint32_t mNormalizedHeight;
 };
 
 #endif
