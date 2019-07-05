@@ -36,6 +36,19 @@
 #define LOG_IMAGE "[image] "
 
 
+// limit_pixel
+static inline unsigned char limit_pixel( float pixel, float max_pixel )
+{
+	if( pixel < 0 )
+		pixel = 0;
+
+	if( pixel > max_pixel )
+		pixel = max_pixel;
+
+	return (unsigned char)pixel;
+}
+
+
 // saveImageRGBA
 bool saveImageRGBA( const char* filename, float4* cpu, int width, int height, float max_pixel, int quality )
 {
@@ -75,10 +88,10 @@ bool saveImageRGBA( const char* filename, float4* cpu, int width, int height, fl
 			const size_t offset = yOffset + x * sizeof(unsigned char) * 4;
 			const float4 pixel  = cpu[y * width + x];
 
-			img[offset + 0] = pixel.x * scale;
-			img[offset + 1] = pixel.y * scale;
-			img[offset + 2] = pixel.z * scale;
-			img[offset + 3] = pixel.w * scale;
+			img[offset + 0] = limit_pixel(pixel.x * scale, max_pixel);
+			img[offset + 1] = limit_pixel(pixel.y * scale, max_pixel);
+			img[offset + 2] = limit_pixel(pixel.z * scale, max_pixel);
+			img[offset + 3] = limit_pixel(pixel.w * scale, max_pixel);
 		}
 	}
 
