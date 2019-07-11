@@ -42,7 +42,8 @@ enum gstCameraSrc
 {
 	GST_SOURCE_NVCAMERA,	/* use nvcamerasrc element */
 	GST_SOURCE_NVARGUS,		/* use nvargussrc element */
-	GST_SOURCE_V4L2		/* use v4l2src element */
+	GST_SOURCE_V4L2,		/* use v4l2src element */
+	GST_SOURCE_RTSP			/* use rtspsrc element */
 };
 
 /**
