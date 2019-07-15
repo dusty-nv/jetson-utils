@@ -441,11 +441,10 @@ bool gstCamera::buildLaunchStr( gstCameraSrc src )
 	else if ( src == GST_SOURCE_RTSP )
 	{
 		ss << "rtspsrc location=" << mCameraStr << " latency=0 ! ";
-		//ss << "queue ! rtph264depay ! h264parse ! queue ! omxh264dec ! videoconvert ! video/x-raw, format=RGB ! videoconvert ! ";
-		ss << "decodebin ! ";
-        ss << "nvvidconv ! ";
-        ss << "video/x-raw, format=I420, width=" << mWidth << ", height=" << mHeight << " ! ";
-		//videoscale ! video/x-raw,width=1280,height=800
+		ss << "queue ! rtph264depay ! h264parse ! queue ! omxh264dec ! ";
+		ss << "videoconvert ! video/x-raw, format=RGB ! ";
+		//ss << "videoconvert ! videoscale ! video/x-raw, format=RGB, width=" << mWidth << ", height=" << mHeight << " ! ";
+		
 		ss << "appsink name=mysink";
 	}
 	
