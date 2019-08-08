@@ -27,6 +27,7 @@
 #include "PyCamera.h"
 #include "PyImageIO.h"
 #include "PyNumPy.h"
+#include "PyGst.h"
 
 
 const uint32_t pyUtilsMaxFunctions = 128;
@@ -66,16 +67,17 @@ void PyUtils_AddFunctions( PyMethodDef* functions )
 bool PyUtils_RegisterFunctions()
 {
 	printf(LOG_PY_UTILS "registering module functions...\n");
-	
+
 	// zero the master list of functions, so it end with NULL sentinel
 	memset(pyUtilsFunctions, 0, sizeof(PyMethodDef) * pyUtilsMaxFunctions);
-	
+
 	// add functions to the master list
 	PyUtils_AddFunctions(PyGL_RegisterFunctions());
 	PyUtils_AddFunctions(PyCUDA_RegisterFunctions());
 	PyUtils_AddFunctions(PyCamera_RegisterFunctions());
 	PyUtils_AddFunctions(PyImageIO_RegisterFunctions());
 	PyUtils_AddFunctions(PyNumPy_RegisterFunctions());
+	PyUtils_AddFunctions(PyGst_RegisterFunctions());
 
 	printf(LOG_PY_UTILS "done registering module functions\n");
 	return true;
@@ -101,6 +103,9 @@ bool PyUtils_RegisterTypes( PyObject* module )
 
 	if( !PyNumPy_RegisterTypes(module) )
 		printf(LOG_PY_UTILS "failed to register NumPy types\n");
+
+	if( !PyGst_RegisterTypes(module) )
+		printf(LOG_PY_UTILS "failed to register GStreamer types\n");
 
 	printf(LOG_PY_UTILS "done registering module types\n");
 	return true;
