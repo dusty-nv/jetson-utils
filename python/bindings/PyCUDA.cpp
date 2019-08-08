@@ -94,7 +94,7 @@ PyObject* PyCUDA_Malloc( PyObject* self, PyObject* args )
 	// allocate memory
 	void* gpuPtr = NULL;
 
-	if( !cudaMalloc(&gpuPtr, size) )
+	if( CUDA_FAILED(cudaMalloc(&gpuPtr, size)) )
 	{
 		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaMalloc() failed");
 		return NULL;
