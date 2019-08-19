@@ -28,6 +28,7 @@
 #include "glTexture.h"
 
 #include <time.h>
+#include <vector>
 
 
 /**
@@ -155,6 +156,8 @@ protected:
 	bool initWindow();
 	bool initGL();
 
+	glTexture* allocTexture( uint32_t width, uint32_t height );
+
 	static const int screenIdx = 0;
 		
 	Display*     mDisplayX;
@@ -162,7 +165,6 @@ protected:
 	XVisualInfo* mVisualX;
 	Window       mWindowX;
 	GLXContext   mContextGL;
-	glTexture*   mInteropTex;
 	bool		   mWindowClosed;
 	Atom		   mWindowClosedMsg;
 
@@ -176,6 +178,8 @@ protected:
 	float*   mNormalizedCUDA;
 	uint32_t mNormalizedWidth;
 	uint32_t mNormalizedHeight;
+
+	std::vector<glTexture*> mTextures;
 };
 
 #endif

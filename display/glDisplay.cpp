@@ -37,7 +37,6 @@ glDisplay::glDisplay()
 	mVisualX    = NULL;
 	mContextGL  = NULL;
 	mDisplayX   = NULL;
-	mInteropTex = NULL;
 
 	mWidth      = 0;
 	mHeight     = 0;
@@ -61,11 +60,18 @@ glDisplay::glDisplay()
 // Destructor
 glDisplay::~glDisplay()
 {
-	if( mInteropTex != NULL )
+	const size_t numTextures = mTextures.size();
+
+	for( size_t n=0; n < numTextures; n++ )
 	{
-		delete mInteropTex;
-		mInteropTex = NULL;
+		if( mTextures[n] != NULL )
+		{
+			delete mTextures[n];
+			mTextures[n] = NULL;
+		}
 	}
+
+	mTextures.clear();
 
 	if( mNormalizedCUDA != NULL )
 	{
@@ -284,6 +290,35 @@ void glDisplay::EndRender()
 }
 
 
+// allocTexture
+glTexture* glDisplay::allocTexture( uint32_t width, uint32_t height )
+{
+	if( width == 0 || height == 0 )
+		return NULL;
+
+	const size_t numTextures = mTextures.size();
+
+	for( size_t n=0; n < numTextures; n++ )
+	{
+		glTexture* tex = mTextures[n];
+
+		if( tex->GetWidth() == width && tex->GetHeight() == height )
+			return tex;
+	}
+
+	glTexture* tex = glTexture::Create(width, height, GL_RGBA32F_ARB);
+
+	if( !tex )
+	{
+		printf(LOG_GL "glDisplay.Render() failed to create OpenGL interop texture\n");
+		return NULL;
+	}
+
+	mTextures.push_back(tex);
+	return tex;
+}
+
+
 // Render
 void glDisplay::Render( glTexture* texture, float x, float y )
 {
@@ -293,33 +328,22 @@ void glDisplay::Render( glTexture* texture, float x, float y )
 	texture->Render(x,y);
 }
 
-
 // Render
 void glDisplay::Render( float* img, uint32_t width, uint32_t height, float x, float y, bool normalize )
 {
 	if( !img || width == 0 || height == 0 )
 		return;
 	
-	if( mInteropTex != NULL && (mInteropTex->GetWidth() != width || mInteropTex->GetHeight() != height) )
-	{
-		delete mInteropTex;
-		mInteropTex = NULL;
-	}
+	// obtain the OpenGL texture to use
+	glTexture* interopTex = allocTexture(width, height);
 
-	if( !mInteropTex )
-	{
-		mInteropTex = glTexture::Create(width, height, GL_RGBA32F_ARB);
-
-		if( !mInteropTex )
-		{
-			printf(LOG_GL "glDisplay.Render() failed to create OpenGL interop texture\n");
-			return;
-		}
-	}
-
+	if( !interopTex )
+		return;
+	
+	// normalize pixels from [0,255] -> [0,1]
 	if( normalize )
 	{
-		if( !mNormalizedCUDA || mNormalizedWidth != width || mNormalizedHeight != height )
+		if( !mNormalizedCUDA || mNormalizedWidth < width || mNormalizedHeight < height )
 		{
 			if( mNormalizedCUDA != NULL )
 			{
@@ -344,17 +368,17 @@ void glDisplay::Render( float* img, uint32_t width, uint32_t height, float x, fl
 	}
 
 	// map from CUDA to openGL using GL interop
-	void* tex_map = mInteropTex->MapCUDA();
+	void* tex_map = interopTex->MapCUDA();
 
 	if( tex_map != NULL )
 	{
-		CUDA(cudaMemcpy(tex_map, normalize ? mNormalizedCUDA : img, mInteropTex->GetSize(), cudaMemcpyDeviceToDevice));
+		CUDA(cudaMemcpy(tex_map, normalize ? mNormalizedCUDA : img, interopTex->GetSize(), cudaMemcpyDeviceToDevice));
 		//CUDA(cudaDeviceSynchronize());
-		mInteropTex->Unmap();
+		interopTex->Unmap();
 	}
 
 	// draw the texture
-	mInteropTex->Render(x,y);
+	interopTex->Render(x,y);
 }
 
 
