@@ -85,7 +85,7 @@ public:
 	 * If normalize is false, the image's pixel values are assumed to already be in the range of [0-1]
 	 * Note that if normalization is selected to be performed, it will be done in-place on the image
 	 */
-	void Render( float* image, uint32_t width, uint32_t height, float x=5.0f, float y=30.0f, bool normalize=true );
+	void Render( float* image, uint32_t width, uint32_t height, float x=0.0f, float y=30.0f, bool normalize=true );
 
 	/**
 	 * Begin the frame, render one CUDA float4 image using OpenGL interop, and end the frame.
