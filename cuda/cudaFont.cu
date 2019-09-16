@@ -560,5 +560,65 @@ bool cudaFont::OverlayText( float4* input, uint32_t width, uint32_t height,
 
 	return OverlayText(input, width, height, list, color, bg_color, bg_padding);
 }
-						
+
+
+// TextExtents
+int4 cudaFont::TextExtents( const char* str, int x, int y )
+{
+	if( !str )
+		return make_int4(0,0,0,0);
+
+	const size_t numChars = strlen(str);
+
+	// determine the max 'height' of the string
+	int maxHeight = 0;
+
+	for( uint32_t n=0; n < numChars; n++ )
+	{
+		char c = str[n];
+		
+		if( c < FirstGlyph || c > LastGlyph )
+			continue;
+		
+		c -= FirstGlyph;
+
+		const int yOffset = abs((int)mGlyphInfo[c].yOffset);
+
+		if( maxHeight < yOffset )
+			maxHeight = yOffset;
+	}
+
+	// get the starting position of the string
+	int2 pos = make_int2(x,y);
+
+	if( pos.x < 0 )
+		pos.x = 0;
+
+	if( pos.y < 0 )
+		pos.y = 0;
+	
+	pos.y += maxHeight;
+
+
+	// find the extents of the string
+	for( uint32_t n=0; n < numChars; n++ )
+	{
+		char c = str[n];
+		
+		// make sure the character is in range
+		if( c < FirstGlyph || c > LastGlyph )
+			continue;
+		
+		c -= FirstGlyph;	// rebase char against glyph 0
+		
+		// advance the text position
+		pos.x += mGlyphInfo[c].xAdvance;
+	}
+
+	return make_int4(x, y, pos.x, pos.y);
+}
+	
+
+
+				
 	

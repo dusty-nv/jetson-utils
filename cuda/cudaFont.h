@@ -92,6 +92,11 @@ public:
 				   const float4& background=make_float4(0, 0, 0, 0),
 				   int backgroundPadding=5 );
 	
+	/**
+	 * Return the bounding rectangle of the given text string.
+	 */
+	int4 TextExtents( const char* str, int x=0, int y=0 );
+
 protected:
 	cudaFont();
 	bool init( const char* font, float size );
