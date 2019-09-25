@@ -47,14 +47,21 @@ std::string locateFile( const std::string& path )
 // locateFile
 std::string locateFile( const std::string& path, std::vector<std::string>& locations )
 {
+	// check the given path first
 	if( fileExists(path.c_str()) )
 		return path;
 
+	// add standard search locations
 	locations.push_back(Process::ExecutableDirectory());
+
 	locations.push_back("/usr/local/bin/");
 	locations.push_back("/usr/local/");
 	locations.push_back("/opt/");
 
+	locations.push_back("images/");
+	locations.push_back("/usr/local/bin/images/");
+
+	// check each location until the file is found
 	const size_t numLocations = locations.size();
 
 	for( size_t n=0; n < numLocations; n++ )

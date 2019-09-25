@@ -82,12 +82,12 @@ std::string locateFile( const std::string& path, std::vector<std::string>& locat
 /**
  * Verify path and return true if the file exists.
  *
- * @param regularFilesOnly If false (which is the default), then sysFileExists() includes filesystem entries 
+ * @param regularFilesOnly If false (which is the default), then fileExists() includes filesystem entries 
  *                         like directories, device files, and sockets when verifying the path.
  *
- *                         If regularFilesOnly parameter is true, then sysFileExists() will verify the path 
+ *                         If regularFilesOnly parameter is true, then fileExists() will verify the path 
  *                         is to a readable, "regular" file.  Other file types (for example directories)
- *                         will result in sysFileExists() returning false.
+ *                         will result in fileExists() returning false.
  *
  * @ingroup filesystem
  */
