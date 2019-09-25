@@ -83,13 +83,13 @@ foreach(include ${jetsonUtilityIncludes})
 endforeach()
 	
 # copy image data
-file(GLOB imageData data/*.png data/*.jpg)
+#file(GLOB imageData data/*.png data/*.jpg)
 
-foreach(image ${imageData})
-	message("-- Copying ${image}")
-	file(COPY ${image} DESTINATION ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
-	install(CODE "file(COPY ${image} DESTINATION ${CMAKE_INSTALL_PREFIX}/bin )" )
-endforeach()
+#foreach(image ${imageData})
+#	message("-- Copying ${image}")
+#	file(COPY ${image} DESTINATION ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
+#	install(CODE "file(COPY ${image} DESTINATION ${CMAKE_INSTALL_PREFIX}/bin )" )
+#endforeach()
 	
 
 # install headers
