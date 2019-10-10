@@ -27,6 +27,7 @@
 #include "cudaUtility.h"
 
 
+
 /**
  * Function for increasing or decreasing the size of an image on the GPU.
  * @ingroup cuda
@@ -43,7 +44,6 @@ cudaError_t cudaResizeRGBA( float4* input,  size_t inputWidth,  size_t inputHeig
 				        float4* output, size_t outputWidth, size_t outputHeight );
 
 
-						
 
 #endif
 

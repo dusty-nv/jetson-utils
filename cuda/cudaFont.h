@@ -23,6 +23,7 @@
 #ifndef __CUDA_FONT_H__
 #define __CUDA_FONT_H__
 
+
 #include "cudaUtility.h"
 
 #include <string>
