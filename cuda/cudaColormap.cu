@@ -1676,7 +1676,7 @@ float4* cudaColormapPalette( cudaColormapType colormap )
 	if( CUDA_FAILED(cudaColormapInit()) )
 		return NULL;
 
-	return colormapPalettesGPU + (colormap * sizeof(float4) * 256);
+	return colormapPalettesGPU + (colormap * 256);
 }
 
 
@@ -1713,6 +1713,9 @@ cudaError_t cudaColormap( float* input, size_t input_width, size_t input_height,
 
 	if( colormap > COLORMAP_VIRIDIS )
 		return cudaErrorNotYetImplemented;
+
+	if( input_width == output_width && input_height == output_height )
+		filter = FILTER_POINT;
 
 	// get the pointer to the colormap
 	float4* palette = cudaColormapPalette(colormap);
