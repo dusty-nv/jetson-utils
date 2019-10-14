@@ -25,6 +25,7 @@
 
 
 #include "cudaFilterMode.h"
+#include "cudaMath.h"
 
 
 /**
