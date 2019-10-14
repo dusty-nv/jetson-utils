@@ -1680,7 +1680,7 @@ float4* cudaColormapPalette( cudaColormapType colormap )
 }
 
 
-// gpuColormap
+// gpuColormapPalette
 template<cudaFilterMode filter>
 __global__ void gpuColormapPalette( float4* palette, float* input, int input_width, int input_height,
 							 float4* output, int output_width, int output_height, 
@@ -1693,9 +1693,37 @@ __global__ void gpuColormapPalette( float4* palette, float* input, int input_wid
 		return;
 
 	const float pixel = cudaFilterPixel<filter>(input, x, y, input_width, input_height, output_width, output_height);
-	const float value = fmaxf(fminf((pixel - min_value) * multiplier, 255.0f), 0.0f);
+	const float value = fmaxf(fminf((pixel - min_value) * multiplier, 255.0f), 0.0f); // __saturatef(pixel - min_value) * 255.0f; 
 
 	output[y * output_width + x] = palette[(int)value];
+}
+
+
+// gpuColormapFlow
+template<cudaFilterMode filter>
+__global__ void gpuColormapFlow( float2* input, int input_width, int input_height,
+						   float4* output, int output_width, int output_height, 
+						   float max_value )
+{
+	const int x = blockIdx.x * blockDim.x + threadIdx.x;
+	const int y = blockIdx.y * blockDim.y + threadIdx.y;
+
+	if( x >= output_width || y >= output_height )
+		return;
+
+	const float2 pixel = cudaFilterPixel<filter>(input, x, y, input_width, input_height, output_width, output_height);
+	const float2 value = pixel / max_value;
+
+	const float3 color = make_float3(1.0f + value.y,
+							   1.0f - 0.5 * (value.x + value.y),
+                                      1.0f + value.x) * 255.0f;
+
+	/*const float4 color = make_float4(__saturatef(1.0f + value.y),
+							   __saturatef(1.0f - 0.5 * (value.x + value.y)),
+							   __saturatef(1.0f + value.x), 1.0f); 
+
+	output[y * output_width + x] = color * 255.0f;*/
+	output[y * output_width + x] = make_float4(clamp(color, 0.0f, 255.0f), 255.0f);
 }
 
 
@@ -1711,34 +1739,54 @@ cudaError_t cudaColormap( float* input, size_t input_width, size_t input_height,
 	if( input_width == 0 || output_width == 0 || input_height == 0 || output_height == 0 )
 		return cudaErrorInvalidValue;
 
-	if( colormap > COLORMAP_VIRIDIS )
+	if( colormap > COLORMAP_FLOW )
 		return cudaErrorNotYetImplemented;
 
 	if( input_width == output_width && input_height == output_height )
 		filter = FILTER_POINT;
 
-	// get the pointer to the colormap
-	float4* palette = cudaColormapPalette(colormap);
+	// palettized colormaps
+	if( colormap <= COLORMAP_VIRIDIS )
+	{
+		// get the pointer to the colormap
+		float4* palette = cudaColormapPalette(colormap);
 
-	if( !palette )
-		return cudaErrorMemoryAllocation;
- 
-	// calculate the multiplier to map from input_range -> [0,255]
-	const float multiplier = 255.0f / (input_range.y - input_range.x);
+		if( !palette )
+			return cudaErrorMemoryAllocation;
+	 
+		// calculate the multiplier to map from input_range -> [0,255]
+		const float multiplier = 255.0f / (input_range.y - input_range.x);
 
-	// launch kernel
-	const dim3 blockDim(8, 8);
-	const dim3 gridDim(iDivUp(output_width,blockDim.x), iDivUp(output_height,blockDim.y));
+		// launch kernel
+		const dim3 blockDim(8, 8);
+		const dim3 gridDim(iDivUp(output_width,blockDim.x), iDivUp(output_height,blockDim.y));
 
-	#define colormapKernel(filterMode) gpuColormapPalette<filterMode><<<gridDim, blockDim, 0, stream>>>( \
-									palette, input, input_width, input_height, \
-									output, output_width, output_height, \
-									multiplier, input_range.x);
+		#define colormapKernel(filterMode) gpuColormapPalette<filterMode><<<gridDim, blockDim, 0, stream>>>( \
+										palette, input, input_width, input_height, \
+										output, output_width, output_height, \
+										multiplier, input_range.x);
 
-	if( filter == FILTER_POINT )
-		colormapKernel(FILTER_POINT)
-	else if( filter == FILTER_LINEAR )
-		colormapKernel(FILTER_LINEAR)
+		if( filter == FILTER_POINT )
+			colormapKernel(FILTER_POINT)
+		else if( filter == FILTER_LINEAR )
+			colormapKernel(FILTER_LINEAR)
+	}
+	else if( colormap == COLORMAP_FLOW )
+	{
+		// parametric flow field
+		const dim3 blockDim(8, 8);
+		const dim3 gridDim(iDivUp(output_width,blockDim.x), iDivUp(output_height,blockDim.y));
+
+		#define flowKernel(filterMode) gpuColormapFlow<filterMode><<<gridDim, blockDim, 0, stream>>>( \
+										(float2*)input, input_width, input_height, \
+										output, output_width, output_height, \
+										input_range.y);
+
+		if( filter == FILTER_POINT )
+			flowKernel(FILTER_POINT)
+		else if( filter == FILTER_LINEAR )
+			flowKernel(FILTER_LINEAR)
+	}
 
 	return CUDA(cudaGetLastError());
 }

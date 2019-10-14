@@ -42,7 +42,7 @@ enum cudaColormapType
 	COLORMAP_TURBO,     /**< Turbo colormap,   see https://ai.googleblog.com/2019/08/turbo-improved-rainbow-colormap-for.html */
 	COLORMAP_VIRIDIS,   /**< Viridis colormap, see http://bids.github.io/colormap/ */
 
-	// Parameterized
+	// Parametric
 	COLORMAP_FLOW,		/**< Optical flow x/y velocity (2D) */
 	COLORMAP_NONE,		/**< Pass-through (no remapping applied) */
 	COLORMAP_LINEAR,	/**< Linearly remap the values to [0,255] */
