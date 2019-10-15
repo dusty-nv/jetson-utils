@@ -35,7 +35,7 @@
 enum cudaFilterMode
 {
 	FILTER_POINT,	 /**< Nearest-neighbor sampling */
-	FILTER_LINEAR,	 /**< Bilinear filtering */
+	FILTER_LINEAR	 /**< Bilinear filtering */
 };
 
 /**
@@ -51,6 +51,19 @@ cudaFilterMode cudaFilterModeFromStr( const char* filter, cudaFilterMode default
  */
 const char* cudaFilterModeToStr( cudaFilterMode filter );
 
+
+/**
+ * Enumeration of image layout formats.
+ * @ingroup cuda
+ */
+enum cudaDataFormat
+{
+	FORMAT_HWC,	/**< Height * Width * Channels (packed format) */
+	FORMAT_CHW,	/**< Channels * Width * Height (DNN format) */
+	
+	/**< Default format (HWC) */
+	FORMAT_DEFAULT = FORMAT_HWC
+};
 
 						
 #endif

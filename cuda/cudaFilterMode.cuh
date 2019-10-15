@@ -29,9 +29,55 @@
 
 
 /**
+ * CUDA device function for reading a pixel from an image, either in HWC or CHW layout.
+ *
+ * @param input pointer to image in CUDA device memory
+ * @param x desired x-coordinate to sample
+ * @param y desired y-coordinate to sample
+ * @param width width of the input image
+ * @param height height of the input image
+ *
+ * @returns the raw pixel data from the input image
+ * @ingroup cuda
+ */
+template<cudaDataFormat layout, typename T>
+__device__ inline T cudaReadPixel( T* input, int x, int y, int width, int height )
+{
+	return input[y * width + x];
+}
+
+template<> __device__ inline 
+float2 cudaReadPixel<FORMAT_CHW>( float2* input, int x, int y, int width, int height )
+{
+	float* ptr = (float*)input;
+	const int offset = y * width + x;
+	return make_float2(ptr[offset], ptr[width * height + offset]);
+}
+
+template<> __device__ inline 
+float3 cudaReadPixel<FORMAT_CHW>( float3* input, int x, int y, int width, int height )
+{
+	float* ptr = (float*)input;
+	const int offset = y * width + x;
+	const int pixels = width * height;
+	return make_float3(ptr[offset], ptr[pixels + offset], ptr[pixels * 2 + offset]);
+}
+
+template<> __device__ inline 
+float4 cudaReadPixel<FORMAT_CHW>( float4* input, int x, int y, int width, int height )
+{
+	float* ptr = (float*)input;
+	const int offset = y * width + x;
+	const int pixels = width * height;
+	return make_float4(ptr[offset], ptr[pixels + offset], ptr[pixels * 2 + offset], ptr[pixels * 3 + offset]);
+}
+
+
+/**
  * CUDA device function for sampling a pixel with bilinear or point filtering.
  * cudaFilterPixel() is for use inside of other CUDA kernels, and accepts a
- * cudaFilterMode template parameter which sets the filtering mode.
+ * cudaFilterMode template parameter which sets the filtering mode, in addition
+ * to a cudaDataFormat template parameter which sets the format (HWC or CHW).
  *
  * @param input pointer to image in CUDA device memory
  * @param x desired x-coordinate to sample
@@ -42,15 +88,15 @@
  * @returns the filtered pixel from the input image
  * @ingroup cuda
  */ 
-template<cudaFilterMode filter, typename T>
-__device__ T cudaFilterPixel( T* input, float x, float y, int width, int height )
+template<cudaFilterMode filter, cudaDataFormat format=FORMAT_HWC, typename T>
+__device__ inline T cudaFilterPixel( T* input, float x, float y, int width, int height )
 {
 	if( filter == FILTER_POINT )
 	{
 		const int x1 = int(x);
 		const int y1 = int(y);
 
-		return input[y1 * width + x1];
+		return cudaReadPixel<format>(input, x1, y1, width, height); //input[y1 * width + x1];
 	}
 	else // FILTER_LINEAR
 	{
@@ -67,10 +113,10 @@ __device__ T cudaFilterPixel( T* input, float x, float y, int width, int height 
 		const int y2 = y1 >= height - 1 ? y1 : y1 + 1;
 		
 		const T samples[4] = {
-			input[y1 * width + x1],
-			input[y1 * width + x2],
-			input[y2 * width + x1],
-			input[y2 * width + x2] };
+			cudaReadPixel<format>(input, x1, y1, width, height),   //input[y1 * width + x1],
+			cudaReadPixel<format>(input, x2, y1, width, height),   //input[y1 * width + x2],
+			cudaReadPixel<format>(input, x1, y2, width, height),   //input[y2 * width + x1],
+			cudaReadPixel<format>(input, x2, y2, width, height) }; //input[y2 * width + x2] };
 
 		// compute bilinear weights
 		const float x1d = cx - float(x1);
@@ -107,15 +153,15 @@ __device__ T cudaFilterPixel( T* input, float x, float y, int width, int height 
  * @returns the filtered pixel from the input image
  * @ingroup cuda
  */ 
-template<cudaFilterMode filter, typename T>
-__device__ T cudaFilterPixel( T* input, int x, int y,
-						int input_width, int input_height,
-						int output_width, int output_height )
+template<cudaFilterMode filter, cudaDataFormat format=FORMAT_HWC, typename T>
+__device__ inline T cudaFilterPixel( T* input, int x, int y,
+						       int input_width, int input_height,
+						       int output_width, int output_height )
 {
 	const float px = float(x) / float(output_width) * float(input_width);
 	const float py = float(y) / float(output_height) * float(input_height);
 
-	return cudaFilterPixel<filter>(input, px, py, input_width, input_height);
+	return cudaFilterPixel<filter, format>(input, px, py, input_width, input_height);
 }
 
 
