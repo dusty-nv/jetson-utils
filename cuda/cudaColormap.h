@@ -65,26 +65,29 @@ cudaColormapType cudaColormapFromStr( const char* colormap );
 const char* cudaColormapToStr( cudaColormapType colormap );
 
 /**
- * Apply a colormap from a single-channel image to RGBA (float4).
+ * Apply a colormap from an input image or vector field to RGBA (float4).
  * If the input and output dimensions differ, this function will rescale the image
  * using bilinear or nearest-point interpolation as set by the `filter` mode.
  * @param input_range the minimum and maximum values of the input image.
  * @param colormap the colormap to apply (@see cudaColormapType)
+ * @param format layout of multi-channel input data (HWC or CHW). 
  * @ingroup colormap
  */
 cudaError_t cudaColormap( float* input, float4* output, 
 					 size_t width, size_t height,
 					 const float2& input_range=make_float2(0,255),
                           cudaColormapType colormap=COLORMAP_DEFAULT,
+					 cudaDataFormat format=FORMAT_DEFAULT,
 					 cudaStream_t stream=NULL);
 
 /**
- * Apply a colormap from a single-channel image to RGBA (float4).
+ * Apply a colormap from an input image or vector field to RGBA (float4).
  * If the input and output dimensions differ, this function will rescale the image
  * using bilinear or nearest-point interpolation as set by the `filter` mode.
  * @param input_range the minimum and maximum values of the input image.
  * @param colormap the colormap to apply (@see cudaColormapType)
- * @param filter the interpolation mode used for rescaling. 
+ * @param filter the interpolation mode used for rescaling.
+ * @param format layout of multi-channel input data (HWC or CHW).
  * @ingroup colormap
  */
 cudaError_t cudaColormap( float* input, size_t input_width, size_t input_height,
@@ -92,6 +95,7 @@ cudaError_t cudaColormap( float* input, size_t input_width, size_t input_height,
 					 const float2& input_range=make_float2(0,255),
                           cudaColormapType colormap=COLORMAP_DEFAULT,
 					 cudaFilterMode filter=FILTER_LINEAR,
+					 cudaDataFormat format=FORMAT_DEFAULT,
 					 cudaStream_t stream=NULL );
 
 /**

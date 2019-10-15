@@ -1700,7 +1700,7 @@ __global__ void gpuColormapPalette( float4* palette, float* input, int input_wid
 
 
 // gpuColormapFlow
-template<cudaFilterMode filter>
+template<cudaFilterMode filter, cudaDataFormat format>
 __global__ void gpuColormapFlow( float2* input, int input_width, int input_height,
 						   float4* output, int output_width, int output_height, 
 						   float max_value )
@@ -1711,12 +1711,12 @@ __global__ void gpuColormapFlow( float2* input, int input_width, int input_heigh
 	if( x >= output_width || y >= output_height )
 		return;
 
-	const float2 pixel = cudaFilterPixel<filter>(input, x, y, input_width, input_height, output_width, output_height);
+	const float2 pixel = cudaFilterPixel<filter, format>(input, x, y, input_width, input_height, output_width, output_height);
 	const float2 value = pixel / max_value;
 
-	const float3 color = make_float3(1.0f + value.y,
+	const float3 color = make_float3(1.0f + value.x,
 							   1.0f - 0.5 * (value.x + value.y),
-                                      1.0f + value.x) * 255.0f;
+                                      1.0f + value.y) * 255.0f;
 
 	/*const float4 color = make_float4(__saturatef(1.0f + value.y),
 							   __saturatef(1.0f - 0.5 * (value.x + value.y)),
@@ -1731,7 +1731,7 @@ __global__ void gpuColormapFlow( float2* input, int input_width, int input_heigh
 cudaError_t cudaColormap( float* input, size_t input_width, size_t input_height,
 					 float4* output, size_t output_width, size_t output_height,
 					 const float2& input_range, cudaColormapType colormap, 
-					 cudaFilterMode filter, cudaStream_t stream )
+					 cudaFilterMode filter, cudaDataFormat format, cudaStream_t stream )
 {
 	if( !input || !output )
 		return cudaErrorInvalidDevicePointer;
@@ -1771,21 +1771,34 @@ cudaError_t cudaColormap( float* input, size_t input_width, size_t input_height,
 		else if( filter == FILTER_LINEAR )
 			colormapKernel(FILTER_LINEAR)
 	}
-	else if( colormap == COLORMAP_FLOW )
+	else if( colormap == COLORMAP_FLOW ) // parametric flow field
 	{
-		// parametric flow field
+		// get the maximum absolute value
+		const float max_value = fmaxf(fabs(input_range.x), fabs(input_range.y));
+
+		// launch kernel
 		const dim3 blockDim(8, 8);
 		const dim3 gridDim(iDivUp(output_width,blockDim.x), iDivUp(output_height,blockDim.y));
 
-		#define flowKernel(filterMode) gpuColormapFlow<filterMode><<<gridDim, blockDim, 0, stream>>>( \
-										(float2*)input, input_width, input_height, \
-										output, output_width, output_height, \
-										input_range.y);
+		#define flowKernel(filterMode, layout) gpuColormapFlow<filterMode, layout><<<gridDim, blockDim, 0, stream>>>( \
+										 (float2*)input, input_width, input_height, \
+										 output, output_width, output_height, \
+										 max_value);
 
 		if( filter == FILTER_POINT )
-			flowKernel(FILTER_POINT)
+		{
+			if( format == FORMAT_CHW )
+				flowKernel(FILTER_POINT, FORMAT_CHW)
+			else if( format == FORMAT_HWC )
+				flowKernel(FILTER_POINT, FORMAT_HWC)
+		}
 		else if( filter == FILTER_LINEAR )
-			flowKernel(FILTER_LINEAR)
+		{
+			if( format == FORMAT_CHW )
+				flowKernel(FILTER_LINEAR, FORMAT_CHW)
+			else if( format == FORMAT_HWC )
+				flowKernel(FILTER_LINEAR, FORMAT_HWC)
+		}
 	}
 
 	return CUDA(cudaGetLastError());
