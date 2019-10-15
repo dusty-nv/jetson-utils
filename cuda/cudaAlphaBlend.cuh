@@ -35,7 +35,7 @@
  * @note cudaAlphaBlend() is for use inside of other CUDA kernels.
  * @ingroup cuda
  */
-inline __device__ float4 cudaAlphaBlend( const float4& src, const float4& dst )
+__device__ inline float4 cudaAlphaBlend( const float4& src, const float4& dst )
 {
 	const float alph = dst.w / 255.0f;
 	const float inva = 1.0f - alph;
