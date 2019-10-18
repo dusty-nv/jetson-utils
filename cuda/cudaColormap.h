@@ -73,7 +73,7 @@ const char* cudaColormapToStr( cudaColormapType colormap );
  * @param format layout of multi-channel input data (HWC or CHW). 
  * @ingroup colormap
  */
-cudaError_t cudaColormap( float* input, float4* output, 
+cudaError_t cudaColormap( float* input, float* output, 
 					 size_t width, size_t height,
 					 const float2& input_range=make_float2(0,255),
                           cudaColormapType colormap=COLORMAP_DEFAULT,
@@ -91,7 +91,7 @@ cudaError_t cudaColormap( float* input, float4* output,
  * @ingroup colormap
  */
 cudaError_t cudaColormap( float* input, size_t input_width, size_t input_height,
-					 float4* output, size_t output_width, size_t output_height,
+					 float* output, size_t output_width, size_t output_height,
 					 const float2& input_range=make_float2(0,255),
                           cudaColormapType colormap=COLORMAP_DEFAULT,
 					 cudaFilterMode filter=FILTER_LINEAR,

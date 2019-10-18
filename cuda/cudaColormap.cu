@@ -1727,9 +1727,25 @@ __global__ void gpuColormapFlow( float2* input, int input_width, int input_heigh
 }
 
 
+// gpuColormapNone
+template<cudaFilterMode filter, cudaDataFormat format, typename T>
+__global__ void gpuColormapNone( T* input, int input_width, int input_height,
+						   T* output, int output_width, int output_height )
+{
+	const int x = blockIdx.x * blockDim.x + threadIdx.x;
+	const int y = blockIdx.y * blockDim.y + threadIdx.y;
+
+	if( x >= output_width || y >= output_height )
+		return;
+
+	output[y * output_width + x] = cudaFilterPixel<filter, format>(input, x, y, input_width, input_height, output_width, output_height);
+}
+
+
+
 // cudaColormap
 cudaError_t cudaColormap( float* input, size_t input_width, size_t input_height,
-					 float4* output, size_t output_width, size_t output_height,
+					 float* output, size_t output_width, size_t output_height,
 					 const float2& input_range, cudaColormapType colormap, 
 					 cudaFilterMode filter, cudaDataFormat format, cudaStream_t stream )
 {
@@ -1739,7 +1755,7 @@ cudaError_t cudaColormap( float* input, size_t input_width, size_t input_height,
 	if( input_width == 0 || output_width == 0 || input_height == 0 || output_height == 0 )
 		return cudaErrorInvalidValue;
 
-	if( colormap > COLORMAP_FLOW )
+	if( colormap > COLORMAP_NONE )
 		return cudaErrorNotYetImplemented;
 
 	if( input_width == output_width && input_height == output_height )
@@ -1763,7 +1779,7 @@ cudaError_t cudaColormap( float* input, size_t input_width, size_t input_height,
 
 		#define colormapKernel(filterMode) gpuColormapPalette<filterMode><<<gridDim, blockDim, 0, stream>>>( \
 										palette, input, input_width, input_height, \
-										output, output_width, output_height, \
+										(float4*)output, output_width, output_height, \
 										multiplier, input_range.x);
 
 		if( filter == FILTER_POINT )
@@ -1782,7 +1798,7 @@ cudaError_t cudaColormap( float* input, size_t input_width, size_t input_height,
 
 		#define flowKernel(filterMode, layout) gpuColormapFlow<filterMode, layout><<<gridDim, blockDim, 0, stream>>>( \
 										 (float2*)input, input_width, input_height, \
-										 output, output_width, output_height, \
+										 (float4*)output, output_width, output_height, \
 										 max_value);
 
 		if( filter == FILTER_POINT )
@@ -1800,8 +1816,43 @@ cudaError_t cudaColormap( float* input, size_t input_width, size_t input_height,
 				flowKernel(FILTER_LINEAR, FORMAT_HWC)
 		}
 	}
+	else if( colormap == COLORMAP_NONE )
+	{
+		// launch kernel
+		const dim3 blockDim(8, 8);
+		const dim3 gridDim(iDivUp(output_width,blockDim.x), iDivUp(output_height,blockDim.y));
+
+		#define noneKernel(filterMode, layout) gpuColormapNone<filterMode, layout><<<gridDim, blockDim, 0, stream>>>( \
+										 input, input_width, input_height, \
+										 output, output_width, output_height);
+
+		if( filter == FILTER_POINT )
+		{
+			if( format == FORMAT_CHW )
+				noneKernel(FILTER_POINT, FORMAT_CHW)
+			else if( format == FORMAT_HWC )
+				noneKernel(FILTER_POINT, FORMAT_HWC)
+		}
+		else if( filter == FILTER_LINEAR )
+		{
+			if( format == FORMAT_CHW )
+				noneKernel(FILTER_LINEAR, FORMAT_CHW)
+			else if( format == FORMAT_HWC )
+				noneKernel(FILTER_LINEAR, FORMAT_HWC)
+		}
+	}
 
 	return CUDA(cudaGetLastError());
+}
+
+
+// cudaColormap
+cudaError_t cudaColormap( float* input, float* output, size_t width, size_t height,
+					 const float2& input_range, cudaColormapType colormap,
+					 cudaDataFormat format, cudaStream_t stream)
+{
+	return cudaColormap(input, width, height, output, width, height,
+					input_range, colormap, FILTER_POINT, format, stream);
 }
 
 
