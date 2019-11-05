@@ -30,9 +30,13 @@
 #include <gst/gst.h>
 #include <gst/video/video.h>
 
+#ifdef HAS_NUMPY
+#define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
+#include <numpy/arrayobject.h>
+#endif // HAS_NUMPY
 
 // cudaFromGstSample()
-PyObject* PyGst_ToCUDA( PyObject* self, PyObject* args )
+PyObject* PyGst_SampleToCUDA( PyObject* self, PyObject* args )
 {
         PyGObject* pybuf;
 
@@ -135,12 +139,137 @@ PyObject* PyGst_ToCUDA( PyObject* self, PyObject* args )
         return tuple;
 }
 
+#ifdef HAS_NUMPY
+// numpyFromGstBuffer()
+PyObject* PyGst_BufferToNumPy( PyObject* self, PyObject* args, PyObject* kwds )
+{
+        PyGObject* pybuf;
+
+	int width  = 0;
+	int height = 0;
+	int depth  = 0;
+
+	static char* kwlist[] = {"buffer", "width", "height", "depth", NULL};
+
+        if ( !PyArg_ParseTupleAndKeywords(args, kwds, "Oiii", kwlist, &pybuf, &width, &height, &depth) )
+        {
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "numpyFromGstBuffer() failed to parse args tuple");
+                return NULL;
+        }
+
+        GstBuffer* buffer = GST_BUFFER(pybuf->obj);
+
+        GstMapInfo info;
+
+        if ( !gst_buffer_map(buffer, &info, GST_MAP_READ) )
+        {
+                gst_buffer_unref(buffer);
+                PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "gst_buffer_map() failed");
+                return NULL;
+        }
+
+	// create numpy array
+	npy_intp dims[] = { height, width, depth };
+
+        PyArrayObject* array = (PyArrayObject *) PyArray_SimpleNewFromData(3, dims, NPY_UINT8, info.data);
+	if( !array )
+	{
+                gst_buffer_unmap(buffer, &info);
+                gst_buffer_unref(buffer);
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "failed to create numpy array");
+		return NULL;
+	}
+
+        gst_buffer_unmap(buffer, &info);
+
+        // numpy array is now tied to the buffer object
+        Py_INCREF((PyObject*)pybuf);
+        PyArray_SetBaseObject(array, (PyObject*)pybuf);
+
+	// return the numpy array
+	return (PyObject*) array;
+}
+
+// numpyToGstBuffer()
+PyObject* PyGst_BufferFromNumPy( PyObject* self, PyObject* args, PyObject* kwds )
+{
+	PyObject* object = NULL;
+
+	if( !PyArg_ParseTuple(args, "O", &object) )
+	{
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "numpyToGstBuffer() failed to parse array argument");
+		return NULL;
+	}
+
+	// cast to numpy array. it will basically increase the refcount since
+	// this should already be an NPY_UINT8 contiguous array.
+	PyArrayObject* array = (PyArrayObject*) PyArray_FROM_OTF(object, NPY_UINT8, NPY_ARRAY_IN_ARRAY);
+	if( !array )
+		return NULL;
+
+	// calculate the size of the array
+	const int ndim = PyArray_NDIM(array);
+
+	if( ndim != 3 )
+	{
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "numpyToGstBuffer() numpy ndim is not 3");
+		return NULL;
+	}
+
+        npy_intp* dims = PyArray_DIMS(array);
+	size_t    size = 0;
+
+	for( int n=0; n < ndim; n++ )
+	{
+		printf(LOG_PY_UTILS "numpyToGstBuffer() ndarray dim %i = %li\n", n, dims[n]);
+
+		if( n == 0 )
+			size = dims[0];
+		else
+			size *= dims[n];
+
+
+	}
+
+	if( size == 0 )
+	{
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "numpyToGstBuffer() numpy ndarray has data size of 0 bytes");
+		return NULL;
+	}
+
+	// retrieve the data pointer to the array
+	uint8_t* arrayPtr = (uint8_t*)PyArray_DATA(array);
+
+        // new GstBuffer memory
+        gpointer data = g_malloc(size);
+        if ( !data )
+	{
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "numpyToGstBuffer() malloc failed");
+		return NULL;
+	}
+
+	memcpy(data, arrayPtr, size);
+
+        GstBuffer* buffer = gst_buffer_new_wrapped(data, size);
+
+	// create GstBuffer boxed object
+	PyObject* gobj = pyg_boxed_new(GST_TYPE_BUFFER, buffer, false, true);
+
+        Py_DECREF((PyObject*)array);
+
+        return gobj;
+}
+#endif // HAS_NUMPY
 
 //-------------------------------------------------------------------------------
 
 static PyMethodDef pyGst_Functions[] =
 {
-        { "cudaFromGstSample", (PyCFunction)PyGst_ToCUDA, METH_VARARGS, "Convert a GstSample to CUDA memory" },
+        { "cudaFromGstSample", (PyCFunction)PyGst_SampleToCUDA, METH_VARARGS, "Convert an NV12 GstSample to CUDA memory" },
+#ifdef HAS_NUMPY
+        { "numpyFromGstBuffer", (PyCFunction)PyGst_BufferToNumPy, METH_VARARGS|METH_KEYWORDS, "Convert an RGBA8 GstBuffer to a numpy array" },
+        { "numpyToGstBuffer", (PyCFunction)PyGst_BufferFromNumPy, METH_VARARGS, "Convert a numpy array to an RGBA8 GstBuffer" },
+#endif // HAS_NUMPY
         {NULL}  /* Sentinel */
 };
 
@@ -150,6 +279,14 @@ PyMethodDef* PyGst_RegisterFunctions()
         return pyGst_Functions;
 }
 
+#ifdef HAS_NUMPY
+// Initialize NumPy
+PyMODINIT_FUNC PyGst_ImportNumPy()
+{
+	import_array();
+}
+#endif // HAS_NUMPY
+
 // Register types
 bool PyGst_RegisterTypes( PyObject* module )
 {
@@ -157,5 +294,9 @@ bool PyGst_RegisterTypes( PyObject* module )
                 return false;
 
         gst_init(NULL, NULL);
+        pygobject_init(-1, -1, -1);
+#ifdef HAS_NUMPY
+	PyGst_ImportNumPy();
+#endif // HAS_NUMPY
         return true;
 }

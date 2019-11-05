@@ -25,7 +25,6 @@
 
 #include "PyUtils.h"
 
-
 // Register functions
 PyMethodDef* PyGst_RegisterFunctions();
 
