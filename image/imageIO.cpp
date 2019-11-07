@@ -330,6 +330,13 @@ bool loadImageRGBA( const char* filename, float4** cpu, float4** gpu, int* width
 }
 
 
+// loadImageRGBA
+bool loadImageRGBA( const char* filename, float4** ptr, int* width, int* height, const float4& mean )
+{
+	return loadImageRGBA(filename, ptr, ptr, width, height, mean);
+}
+
+
 // loadImageRGB
 bool loadImageRGB( const char* filename, float3** cpu, float3** gpu, int* width, int* height, const float3& mean )
 {

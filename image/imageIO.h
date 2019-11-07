@@ -65,6 +65,39 @@ bool loadImageRGBA( const char* filename, float4** cpu, float4** gpu, int* width
 
 
 /**
+ * Load a color image from disk into CUDA memory with alpha, in float4 RGBA format with pixel values 0-255.
+ *
+ * Supported image file formats by loadImageRGBA() include:
+ * 
+ *   - JPEG
+ *   - PNG
+ *   - TGA
+ *   - BMP
+ *   - GIF
+ *   - PSD
+ *   - HDR
+ *   - PIC
+ *   - PNM (PPM/PGM binary)
+ *
+ * This function loads the image into shared CPU/GPU memory, using the functions from cudaMappedMemory.h
+ *
+ * @param[in] filename Path to the image file to load from disk.
+ * @param[out] ptr Reference to pointer that will be set to the shared CPU/GPU buffer containing the image that will be allocated.
+ *                 This buffer will be allocated by loadImageRGBA() in CUDA mapped memory, so it is shared between CPU/GPU.
+ * @param[in,out] width Pointer to int variable that gets set to the width of the image in pixels.
+ *                      If the width variable contains a non-zero value when it's passed in, the image is resized to this desired width.
+ *                      Otherwise if the value of width is 0, the image will be loaded with it's dimensions from the file on disk.
+ * @param[in,out] height Pointer to int variable that gets set to the height of the image in pixels.
+ *                       If the height variable contains a non-zero value when it's passed in, the image is resized to this desired height.
+ *                       Otherwise if the value of height is 0, the image will be loaded with it's dimensions from the file on disk.
+ * @param[in] mean_pixel Mean pixel subtraction is applied using this specified color (mean pixel subtraction is typically performed before
+ *                       processing an image with neural networks).  By default the value is zero, so no mean pixel subtraction is done.  
+ * @ingroup image
+ */
+bool loadImageRGBA( const char* filename, float4** ptr, int* width, int* height, const float4& mean_pixel=make_float4(0,0,0,0) );
+
+
+/**
  * Save a float4 RGBA image to disk.
  *
  * Supported image file formats by saveImageRGBA() include:  
