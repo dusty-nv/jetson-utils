@@ -71,17 +71,17 @@ file(GLOB jetsonUtilitySources *.cpp camera/*.cpp codec/*.cpp cuda/*.cu display/
 file(GLOB jetsonUtilityIncludes *.h camera/*.h codec/*.h cuda/*.h cuda/*.cuh display/*.h image/*.h input/*.h network/*.h threads/*.h)
 
 cuda_add_library(jetson-utils SHARED ${jetsonUtilitySources})
-target_link_libraries(jetson-utils GL GLEW gstreamer-1.0 gstapp-1.0)	
+target_link_libraries(jetson-utils GL GLEW gstreamer-1.0 gstvideo-1.0 gstapp-1.0)
 
 
-# transfer all headers to the include directory 
+# transfer all headers to the include directory
 file(MAKE_DIRECTORY ${PROJECT_INCLUDE_DIR}/jetson-utils)
 
 foreach(include ${jetsonUtilityIncludes})
 	message("-- Copying ${include}")
 	configure_file(${include} ${PROJECT_INCLUDE_DIR}/jetson-utils COPYONLY)
 endforeach()
-	
+
 # copy image data
 #file(GLOB imageData data/*.png data/*.jpg)
 

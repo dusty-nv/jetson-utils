@@ -31,7 +31,7 @@ endif()
 
 message("-- found Python version:  ${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR} (${PYTHONLIBS_VERSION_STRING})")
 message("-- found Python include:  ${PYTHON_INCLUDE_DIRS}")
-message("-- found Python library:  ${PYTHON_LIBRARIES}") 
+message("-- found Python library:  ${PYTHON_LIBRARIES}")
 
 include_directories(${PYTHON_INCLUDE_DIRS})
 
@@ -50,6 +50,9 @@ if(${NUMPY_FOUND})
 else()
 	message("-- NumPy not found")
 endif()
+
+# TODO see if this can be replaced by a FindGStreamer or similar
+include_directories(/usr/include/pygobject-3.0 /usr/include/gstreamer-1.0 /usr/include/glib-2.0 /usr/include/libxml2 /usr/lib/aarch64-linux-gnu/gstreamer-1.0/include /usr/lib/x86_64-linux-gnu/gstreamer-1.0/include/ /usr/lib/aarch64-linux-gnu/glib-2.0/include/ /usr/lib/x86_64-linux-gnu/glib-2.0/include/)
 
 # build the bindings
 file(GLOB pythonUtilsSources *.cpp)
@@ -75,4 +78,3 @@ install(TARGETS jetson-utils-python-${PYTHON_VERSION_MAJOR}${PYTHON_VERSION_MINO
 
 install(DIRECTORY ../python/Jetson DESTINATION ${PYTHON_BINDING_INSTALL_DIR})
 install(DIRECTORY ../python/jetson DESTINATION ${PYTHON_BINDING_INSTALL_DIR})
-
