@@ -67,7 +67,7 @@ include_directories(${PROJECT_INCLUDE_DIR}/jetson-utils)
 include_directories(/usr/include/gstreamer-1.0 /usr/include/glib-2.0 /usr/include/libxml2 /usr/lib/aarch64-linux-gnu/gstreamer-1.0/include /usr/lib/x86_64-linux-gnu/gstreamer-1.0/include/ /usr/lib/aarch64-linux-gnu/glib-2.0/include/ /usr/lib/x86_64-linux-gnu/glib-2.0/include/)
 
 # build library
-file(GLOB jetsonUtilitySources *.cpp camera/*.cpp codec/*.cpp cuda/*.cu display/*.cpp image/*.cpp input/*.cpp network/*.cpp threads/*.cpp)
+file(GLOB jetsonUtilitySources *.cpp camera/*.cpp codec/*.cpp cuda/*.cu cuda/*.cpp display/*.cpp image/*.cpp input/*.cpp network/*.cpp threads/*.cpp)
 file(GLOB jetsonUtilityIncludes *.h camera/*.h codec/*.h cuda/*.h cuda/*.cuh display/*.h image/*.h input/*.h network/*.h threads/*.h)
 
 cuda_add_library(jetson-utils SHARED ${jetsonUtilitySources})
