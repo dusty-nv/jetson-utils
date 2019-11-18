@@ -35,27 +35,79 @@
 class glTexture
 {
 public:
+	/**
+	 * Allocate an OpenGL texture
+	 * @param width the width of the texture in pixels
+	 * @param height the height of the texture in pixels
+	 * @param format GL_RGBA8, GL_RGBA32F, ect.
+	 * @param data initialize the texture's memory with this CPU pointer, size is width*height*bpp
+	 */
 	static glTexture* Create( uint32_t width, uint32_t height, uint32_t format, void* data=NULL );
+	
+	/**
+	 * Free the texture
+	 */
 	~glTexture();
 	
+	/**
+	 * Render the texture at the specified window coordinates.
+	 */
 	void Render( float x, float y );
+
+	/**
+	 * Render the texture with the specified position and size.
+	 */
 	void Render( float x, float y, float width, float height );
+
+	/**
+	 * Render the texture to the specific screen rectangle.
+	 */
 	void Render( const float4& rect );
 	
+	/**
+	 * Retrieve the OpenGL resource handle of the texture.
+	 */
 	inline uint32_t GetID() const		{ return mID; }
+
+	/**
+	 * Retrieve the width in pixels of the texture.
+	 */
 	inline uint32_t GetWidth() const	{ return mWidth; }
+
+	/**
+	 * Retrieve the height in pixels of the texture.
+	 */
 	inline uint32_t GetHeight() const	{ return mHeight; }
+
+	/**
+	 * Retrieve the texture's format (e.g. GL_RGBA8, GL_RGBA32F, ect.)
+	 */
 	inline uint32_t GetFormat() const	{ return mFormat; }
+
+	/**
+	 * Retrieve the size in bytes of the texture
+	 */
 	inline uint32_t GetSize() const	{ return mSize; }
 	
+	/**
+	 * Map the texture for access in CUDA
+	 */
 	void* MapCUDA();
-	void  Unmap();
+
+	/**
+	 * Unmap the texture from CUDA
+	 */
+	void Unmap();
 	
+	/**
+	 * Update the contents of the texture from a CPU pointer.
+	 */
 	bool UploadCPU( void* data );
 	
 private:
 	glTexture();
-	bool init(uint32_t width, uint32_t height, uint32_t format, void* data);
+
+	bool init( uint32_t width, uint32_t height, uint32_t format, void* data );
 	
 	uint32_t mID;
 	uint32_t mDMA;
@@ -65,6 +117,7 @@ private:
 	uint32_t mSize;
 	
 	cudaGraphicsResource* mInteropCUDA;
+
 	void* mInteropHost;
 	void* mInteropDevice;
 };
