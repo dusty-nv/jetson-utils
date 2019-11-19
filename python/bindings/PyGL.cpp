@@ -353,8 +353,8 @@ static PyObject* PyDisplay_IsClosed( PyDisplay_Object* self )
 }
 
 
-// UserEvents
-static PyObject* PyDisplay_UserEvents( PyDisplay_Object* self )
+// ProcessEvents
+static PyObject* PyDisplay_ProcessEvents( PyDisplay_Object* self )
 {
 	if( !self || !self->display )
 	{
@@ -362,7 +362,7 @@ static PyObject* PyDisplay_UserEvents( PyDisplay_Object* self )
 		return NULL;
 	}
 
-	self->display->UserEvents();
+	self->display->ProcessEvents();
 	Py_RETURN_NONE; 
 }
 
@@ -387,7 +387,7 @@ static PyMethodDef PyDisplay_Methods[] =
 	{ "IsClosed", (PyCFunction)PyDisplay_IsClosed, METH_NOARGS, "Returns true if the window has been closed"},
 	{ "SetBackgroundColor", (PyCFunction)PyDisplay_SetBackgroundColor, METH_VARARGS|METH_KEYWORDS, "Set the window background color"},
 	{ "SetTitle", (PyCFunction)PyDisplay_SetTitle, METH_VARARGS, "Set the window title string"},
-	{ "UserEvents", (PyCFunction)PyDisplay_UserEvents, METH_NOARGS, "Process UI events"},
+	{ "ProcessEvents", (PyCFunction)PyDisplay_ProcessEvents, METH_NOARGS, "Process UI events"},
 	{NULL}  /* Sentinel */
 };
 
