@@ -71,7 +71,7 @@ file(GLOB jetsonUtilitySources *.cpp camera/*.cpp codec/*.cpp cuda/*.cu cuda/*.c
 file(GLOB jetsonUtilityIncludes *.h camera/*.h codec/*.h cuda/*.h cuda/*.cuh display/*.h image/*.h input/*.h network/*.h threads/*.h)
 
 cuda_add_library(jetson-utils SHARED ${jetsonUtilitySources})
-target_link_libraries(jetson-utils GL GLEW gstreamer-1.0 gstapp-1.0)	
+target_link_libraries(jetson-utils GL GLU GLEW gstreamer-1.0 gstapp-1.0)	
 
 
 # transfer all headers to the include directory 
