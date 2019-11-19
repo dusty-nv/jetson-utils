@@ -23,9 +23,9 @@
 #ifndef __GL_VIEWPORT_H__
 #define __GL_VIEWPORT_H__
 
-
 #include "glUtility.h"
 #include "glTexture.h"
+#include "glEvents.h"
 
 #include <time.h>
 #include <vector>
@@ -64,9 +64,9 @@ public:
 
 	/**
  	 * Clear window and begin rendering a frame.
-	 * If userEvents is true, UserEvents() will automatically be processed.
+	 * If processEvents is true, ProcessEvents() will automatically be called.
 	 */
-	void BeginRender( bool userEvents=true );
+	void BeginRender( bool processEvents=true );
 
 	/**
 	 * Finish rendering and refresh / flip the backbuffer.
@@ -97,14 +97,33 @@ public:
 	void RenderOnce( float* image, uint32_t width, uint32_t height, float x=5.0f, float y=30.0f, bool normalize=true );
 
 	/**
-	 * Process UI events.
+	 * Process UI event messages.  Any queued events will be dispatched to the
+	 * event message handlers that were registered with RegisterEventHandler()
+	 *
+	 * ProcessEvents() usually gets called automatically by BeginFrame(), so it
+	 * is not typically necessary to explicitly call it unless you passed `false`
+	 * to BeginFrame() and wish to process events at another time of your choosing.
+	 *
+	 * @see glEventType
+	 * @see glEventHandler 
 	 */
-	void UserEvents();
-		
+	void ProcessEvents();
+
 	/**
-	 * UI event handler.
+	 * Register an event message handler that will be called by ProcessEvents()
+	 * @param callback function pointer to the event message handler callback
+	 * @param user optional user-specified pointer that will be passed to all
+	 *             invocations of this event handler (typically an object)
 	 */
-	void onEvent( uint msg, int a, int b );
+	void RegisterEventHandler( glEventHandler callback, void* user=NULL );
+
+	/**
+	 * Remove an event message handler from being called by ProcessEvents()
+	 * RemoveEventHandler() will search for previously registered event
+	 * handlers that have the same function pointer and/or user pointer,
+	 * and remove them for being called again in the future.
+	 */
+	void RemoveEventHandler( glEventHandler callback, void* user=NULL );
 
 	/**
 	 * Returns true if the window is open.
@@ -130,6 +149,16 @@ public:
 	 * Get the height of the window (in pixels)
 	 */
 	inline uint32_t GetHeight() const	{ return mHeight; }
+
+	/**
+	 * Get the ID of this display instance into glGetDisplay()
+	 */
+	inline uint32_t GetID() const		{ return mID; }
+
+	/**
+	 * Enable debugging of events.
+	 */
+	void EnableDebug();
 
 	/**
 	 * Set the window title string.
@@ -158,6 +187,15 @@ protected:
 
 	glTexture* allocTexture( uint32_t width, uint32_t height );
 
+	void dispatchEvent( glEventType msg, int a, int b );
+	static bool onEvent( uint16_t msg, int a, int b, void* user );
+
+	struct eventHandler
+	{
+		glEventHandler callback;
+		void* user;
+	};
+
 	static const int screenIdx = 0;
 		
 	Display*     mDisplayX;
@@ -165,11 +203,13 @@ protected:
 	XVisualInfo* mVisualX;
 	Window       mWindowX;
 	GLXContext   mContextGL;
+	bool		   mEnableDebug;
 	bool		   mWindowClosed;
 	Atom		   mWindowClosedMsg;
 
 	uint32_t mWidth;
 	uint32_t mHeight;
+	uint32_t mID;
 
 	timespec mLastTime;
 	float    mAvgTime;
@@ -180,7 +220,20 @@ protected:
 	uint32_t mNormalizedHeight;
 
 	std::vector<glTexture*> mTextures;
+	std::vector<eventHandler> mEventHandlers;
 };
+
+/**
+ * Retrieve a display window object
+ * @ingroup OpenGL
+ */
+glDisplay* glGetDisplay( uint32_t display=0 );
+
+/**
+ * Return the number of created glDisplay windows
+ * @ingroup OpenGL
+ */
+uint32_t glGetNumDisplays();
 
 #endif
 

@@ -25,27 +25,44 @@
 #include "timespec.h"
 
 
-// DEFAULT_TITLE
+//--------------------------------------------------------------
+std::vector<glDisplay*> gDisplays;
+
+glDisplay* glGetDisplay( uint32_t display )
+{
+	if( display >= gDisplays.size() )
+		return NULL;
+	
+	return gDisplays[display];
+}
+
+uint32_t glGetNumDisplays()
+{
+	return gDisplays.size();
+}
+//--------------------------------------------------------------
+
 const char* glDisplay::DEFAULT_TITLE = "NVIDIA Jetson";
 
 
 // Constructor
 glDisplay::glDisplay()
 {
-	mWindowX    = 0;
-	mScreenX    = NULL;
-	mVisualX    = NULL;
-	mContextGL  = NULL;
-	mDisplayX   = NULL;
+	mWindowX     = 0;
+	mScreenX     = NULL;
+	mVisualX     = NULL;
+	mContextGL   = NULL;
+	mDisplayX    = NULL;
+	mEnableDebug = false;
 
-	mWidth      = 0;
-	mHeight     = 0;
-	mAvgTime    = 1.0f;
+	mWidth       = 0;
+	mHeight      = 0;
+	mAvgTime     = 1.0f;
 
-	mBgColor[0] = 0.0f;
-	mBgColor[1] = 0.0f;
-	mBgColor[2] = 0.0f;
-	mBgColor[3] = 1.0f;
+	mBgColor[0]  = 0.0f;
+	mBgColor[1]  = 0.0f;
+	mBgColor[2]  = 0.0f;
+	mBgColor[3]  = 1.0f;
 
 	mNormalizedCUDA   = NULL;
 	mNormalizedWidth  = 0;
@@ -53,13 +70,30 @@ glDisplay::glDisplay()
 
 	mWindowClosed = false;
 
+	// get the starting time for FPS counter
 	clock_gettime(CLOCK_REALTIME, &mLastTime);
+	
+	// register default event handler
+	RegisterEventHandler(&onEvent, this);
 }
 
 
 // Destructor
 glDisplay::~glDisplay()
 {
+	// remove this instance from the global list
+	const size_t numDisplays = gDisplays.size();
+
+	for( size_t n=0; n < numDisplays; n++ )
+	{
+		if( gDisplays[n] == this )
+		{
+			gDisplays.erase(gDisplays.begin() + n);
+			break;
+		}
+	}
+
+	// release textures used during rendering
 	const size_t numTextures = mTextures.size();
 
 	for( size_t n=0; n < numTextures; n++ )
@@ -73,12 +107,14 @@ glDisplay::~glDisplay()
 
 	mTextures.clear();
 
+	// free CUDA memory used for normalization
 	if( mNormalizedCUDA != NULL )
 	{
 		CUDA(cudaFree(mNormalizedCUDA));
 		mNormalizedCUDA = NULL;
 	}
 
+	// destroy the OpenGL context
 	glXDestroyContext(mDisplayX, mContextGL);
 }
 
@@ -120,6 +156,7 @@ glDisplay* glDisplay::Create( const char* title, float r, float g, float b, floa
 	vp->SetBackgroundColor(r, g, b, a);
 
 	printf(LOG_GL "glDisplay -- display device initialized\n");
+	gDisplays.push_back(vp);
 	return vp;
 }
 
@@ -208,7 +245,7 @@ bool glDisplay::initWindow()
 	
 	// create window
 	Window win = XCreateWindow(mDisplayX, winRoot, 0, 0, screenWidth, screenHeight, 0,
-							   visual->depth, InputOutput, visual->visual, CWBorderPixel|CWColormap|CWEventMask, &winAttr);
+						  visual->depth, InputOutput, visual->visual, CWBorderPixel|CWColormap|CWEventMask, &winAttr);
 
 	if( !win )
 		return false;
@@ -236,10 +273,12 @@ bool glDisplay::initWindow()
 }
 
 
+// SetTitle
 void glDisplay::SetTitle( const char* str )
 {
 	XStoreName(mDisplayX, mWindowX, str);
 }
+
 
 // initGL
 bool glDisplay::initGL()
@@ -256,10 +295,10 @@ bool glDisplay::initGL()
 
 
 // MakeCurrent
-void glDisplay::BeginRender( bool userEvents )
+void glDisplay::BeginRender( bool processEvents )
 {
-	if( userEvents )
-		UserEvents();
+	if( processEvents )
+		ProcessEvents();
 
 	GL(glXMakeCurrent(mDisplayX, mWindowX, mContextGL));
 
@@ -391,84 +430,15 @@ void glDisplay::RenderOnce( float* img, uint32_t width, uint32_t height, float x
 }
 
 
-
-#define MOUSE_MOVE		0
-#define MOUSE_BUTTON	1
-#define MOUSE_WHEEL		2
-#define MOUSE_DOUBLE	3
-#define KEY_STATE		4
-#define KEY_CHAR		5
-#define WINDOW_CLOSED	6
-
-
-// OnEvent
-void glDisplay::onEvent( uint msg, int a, int b )
+// EnableDebug
+void glDisplay::EnableDebug()
 {
-	switch(msg)
-	{
-		case MOUSE_MOVE:
-		{
-			//mMousePos.Set(a,b);
-			break;
-		}
-		case MOUSE_BUTTON:
-		{
-			/*if( mMouseButton[a] != (bool)b )
-			{
-				mMouseButton[a] = b;
-
-				if( b )
-					mMouseDownEvent = true;
-
-				// ignore right-mouse up events
-				if( !(a == 1 && !b) )
-					mMouseEvent = true;
-			}*/
-
-			break;
-		}
-		case MOUSE_DOUBLE:
-		{
-			/*mMouseDblClick = b;
-
-			if( b )
-			{
-				mMouseEvent = true;
-				mMouseDownEvent = true;
-			}*/
-
-			break;
-		}
-		case MOUSE_WHEEL:
-		{
-			//mMouseWheel = a;
-			break;
-		}
-		case KEY_STATE:
-		{
-			//mKeys[a] = b;
-			break;
-		}
-		case KEY_CHAR:
-		{
-			//mKeyText = a;
-			break;
-		}
-		case WINDOW_CLOSED:
-		{
-			printf(LOG_GL "glDisplay -- the window has been closed\n");
-			mWindowClosed = true;
-			break;
-		}
-	}
-
-	//if( msg == MOUSE_MOVE || msg == MOUSE_BUTTON || msg == MOUSE_DOUBLE || msg == MOUSE_WHEEL )
-	//	mMouseEventLast = time();
+	mEnableDebug = true;
 }
 
 
-// UserEvents()
-void glDisplay::UserEvents()
+// ProcessEvents()
+void glDisplay::ProcessEvents()
 {
 	// reset input states
 	/*mMouseEvent     = false;
@@ -476,33 +446,184 @@ void glDisplay::UserEvents()
 	mMouseDblClick  = false;
 	mMouseWheel     = 0;
 	mKeyText		= 0;*/
+
 	XEvent evt;
 
 	while( XEventsQueued(mDisplayX, QueuedAlready) > 0 )
 	{
 		XNextEvent(mDisplayX, &evt);
 
-		switch( evt.type )
+		if( evt.type == KeyPress || evt.type == KeyRelease )
 		{
-			case KeyPress:	      onEvent(KEY_STATE, evt.xkey.keycode, 1);		break;
-			case KeyRelease:     onEvent(KEY_STATE, evt.xkey.keycode, 0);		break;
-			case ButtonPress:	 onEvent(MOUSE_BUTTON, evt.xbutton.button, 1); 	break;
-			case ButtonRelease:  onEvent(MOUSE_BUTTON, evt.xbutton.button, 0);	break;
-			case MotionNotify:
-			{
-				XWindowAttributes attr;
-				XGetWindowAttributes(mDisplayX, evt.xmotion.root, &attr);
-				onEvent(MOUSE_MOVE, evt.xmotion.x_root + attr.x, evt.xmotion.y_root + attr.y);
-				break;
-			}
-			case ClientMessage:
-			{
-				if( evt.xclient.data.l[0] == mWindowClosedMsg )
-					onEvent(WINDOW_CLOSED, 0, 0);
+			const int keyPressed = (evt.type == KeyPress) ? KEY_PRESSED : KEY_RELEASED;
 
-				break;
+			// ignores modifiers (raw)
+			const KeySym keySymbolRaw = XLookupKeysym(&evt.xkey, 0);	
+
+			if( keySymbolRaw != NoSymbol )
+				dispatchEvent(KEY_RAW, (int)keySymbolRaw, keyPressed);
+
+			// apply modifier translation
+			char keyStr[32];
+			KeySym keySymbol;
+			const int strLen = XLookupString(&evt.xkey, keyStr, sizeof(keyStr), &keySymbol, NULL);
+
+			if( keySymbol != NoSymbol )
+			{
+				dispatchEvent(KEY_STATE, (int)keySymbol, keyPressed);
+
+				if( evt.type == KeyPress && strLen == 1 )
+					dispatchEvent(KEY_CHAR, (int)keyStr[0], 0);
 			}
+		}
+		else if( evt.type == ButtonPress || evt.type == ButtonRelease )
+		{
+			const int buttonPressed = (evt.type == ButtonPress) ? BUTTON_PRESSED : BUTTON_RELEASED;
+			dispatchEvent(MOUSE_BUTTON, evt.xbutton.button, buttonPressed);
+
+			if( buttonPressed )
+			{
+				if( evt.xbutton.button == 4 )
+					dispatchEvent(MOUSE_WHEEL, -1, 0);
+				else if( evt.xbutton.button == 5 )
+					dispatchEvent(MOUSE_WHEEL, 1, 0);
+			}
+		}
+		else if( evt.type == MotionNotify )
+		{
+			XWindowAttributes attr;
+			XGetWindowAttributes(mDisplayX, evt.xmotion.root, &attr);
+			dispatchEvent(MOUSE_MOVE, evt.xmotion.x_root + attr.x, evt.xmotion.y_root + attr.y);
+		}
+		else if( evt.type == ClientMessage )
+		{
+			if( evt.xclient.data.l[0] == mWindowClosedMsg )
+				dispatchEvent(WINDOW_CLOSED, 0, 0);
 		}
 	}
 }
+
+
+// RegisterEventHandler
+void glDisplay::RegisterEventHandler( glEventHandler callback, void* user )
+{
+	if( !callback )
+		return;
+
+	eventHandler handler;
+
+	handler.callback = callback;
+	handler.user = user;
+
+	mEventHandlers.push_back(handler);
+}
+
+
+// RemoveEventHandler
+void glDisplay::RemoveEventHandler( glEventHandler callback, void* user )
+{
+	if( !callback && !user )
+		return;
+
+	for( int n=0; n < mEventHandlers.size(); n++ )
+	{
+		bool found = false;
+
+		if( callback != NULL && user != NULL )
+		{
+			if( mEventHandlers[n].callback == callback && mEventHandlers[n].user == user )
+				found = true;
+		}
+		else if( callback != NULL )
+		{
+			if( mEventHandlers[n].callback == callback )
+				found = true;
+		}
+		else if( user != NULL )
+		{
+			if( mEventHandlers[n].user == user )
+				found = true;
+		}
+
+		if( found )
+		{
+			mEventHandlers.erase(mEventHandlers.begin() + n);
+			n--;	// keep searching for more matches
+		}
+	}
+}
+
+// dispatchEvent
+void glDisplay::dispatchEvent( glEventType msg, int a, int b )
+{
+	const uint32_t numHandlers = mEventHandlers.size();
+
+	for( uint32_t n=0; n < numHandlers; n++ )
+		mEventHandlers[n].callback(msg, a, b, mEventHandlers[n].user);
+}
+
+
+// onEvent
+bool glDisplay::onEvent( uint16_t msg, int a, int b, void* user )
+{
+	if( !user )
+		return false;
+
+	glDisplay* display = (glDisplay*)user;
+
+	switch(msg)
+	{
+		case MOUSE_MOVE:
+		{
+			if( display->mEnableDebug )
+				printf(LOG_GL "glDisplay -- event MOUSE_MOVE (%i, %i)\n", a, b);
+
+			break;
+		}
+		case MOUSE_BUTTON:
+		{
+			if( display->mEnableDebug )
+				printf(LOG_GL "glDisplay -- event MOUSE_BUTTON %i (%s)\n", a, b ? "pressed" : "released");
+	
+			break;
+		}
+		case MOUSE_WHEEL:
+		{
+			if( display->mEnableDebug )
+				printf(LOG_GL "glDisplay -- event MOUSE_WHEEL %i\n", a);
+	 
+			break;
+		}
+		case KEY_STATE:
+		{
+			if( display->mEnableDebug )
+				printf(LOG_GL "glDisplay -- event KEY_STATE %i %s (%s)\n", a, XKeysymToString(a), b ? "pressed" : "released");
+
+			break;
+		}
+		case KEY_RAW:
+		{
+			if( display->mEnableDebug )
+				printf(LOG_GL "glDisplay -- event KEY_RAW %i %s (%s)\n", a, XKeysymToString(a), b ? "pressed" : "released");
+
+			break;
+		}
+		case KEY_CHAR:
+		{
+			if( display->mEnableDebug )
+				printf(LOG_GL "glDisplay -- event KEY_CHAR %c (%i)\n", (char)a, a);
+
+			break;
+		}
+		case WINDOW_CLOSED:
+		{
+			printf(LOG_GL "glDisplay -- the window has been closed\n");
+			display->mWindowClosed = true;
+			return true;
+		}
+	}
+
+	return false;
+}
+
 
