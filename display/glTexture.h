@@ -24,8 +24,24 @@
 #define __GL_TEXTURE_H__
 
 
-#include "cudaUtility.h"
-#include "cuda_gl_interop.h"
+#include "glBuffer.h"
+
+
+/**
+ * Alias for GL_RGB32F
+ * @ingroup OpenGL
+ */
+#ifndef GL_RGB32F
+#define GL_RGB32F GL_RGB32F_ARB
+#endif
+
+/**
+ * Alias for GL_RGBA32F
+ * @ingroup OpenGL
+ */
+#ifndef GL_RGBA32F
+#define GL_RGBA32F GL_RGBA32F_ARB
+#endif
 
 
 /**

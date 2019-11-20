@@ -180,7 +180,17 @@ glTexture::glTexture()
 // destructor
 glTexture::~glTexture()
 {
-	GL(glDeleteTextures(1, &mID));
+	if( mInteropCUDA != NULL )
+	{
+		CUDA(cudaGraphicsUnregisterResource(mInteropCUDA));
+		mInteropCUDA = NULL;
+	}
+
+	if( mID != 0 )
+	{
+		GL(glDeleteTextures(1, &mID));
+		mID = 0;
+	}
 }
 	
 
@@ -253,7 +263,7 @@ void* glTexture::MapCUDA()
 		if( CUDA_FAILED(cudaGraphicsGLRegisterBuffer(&mInteropCUDA, mDMA, cudaGraphicsRegisterFlagsWriteDiscard)) )
 			return NULL;
 
-		printf( "[cuda]   registered %u byte openGL texture for interop access (%ux%u)\n", mSize, mWidth, mHeight);
+		printf(LOG_CUDA "registered %u byte openGL texture for interop access (%ux%u)\n", mSize, mWidth, mHeight);
 	}
 	
 	if( CUDA_FAILED(cudaGraphicsMapResources(1, &mInteropCUDA)) )
@@ -269,7 +279,7 @@ void* glTexture::MapCUDA()
 	}
 	
 	if( mSize != mappedSize )
-		printf("[OpenGL]  glTexture::MapCUDA() -- size mismatch %zu bytes  (expected=%u)\n", mappedSize, mSize);
+		printf(LOG_GL "glTexture::MapCUDA() -- size mismatch %zu bytes  (expected=%u)\n", mappedSize, mSize);
 		
 	return devPtr;
 }
