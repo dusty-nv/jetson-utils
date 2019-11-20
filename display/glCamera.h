@@ -81,6 +81,11 @@ public:
 	void Activate( CameraMode mode );
 
 	/**
+	 * Restore previous GL_PROJECTION and GL_MODELVIEW matrices
+	 */
+	void Deactivate();
+
+	/**
 	 * Get the camera mode
 	 */
 	inline CameraMode GetCameraMode() const						{ return mMode; }
@@ -174,6 +179,9 @@ private:
 	float mDefaultEye[3];
 	float mDefaultRotation[3];
 	float mDefaultLookAt[3];
+
+	float mPrevModelView[16];
+	float mPrevProjection[16];
 };
 
 #endif

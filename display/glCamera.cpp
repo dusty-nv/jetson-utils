@@ -53,6 +53,9 @@ glCamera::glCamera( CameraMode mode )
 	mDefaultRotation[1] = 0.0f;
 	mDefaultRotation[2] = 0.0f;
 
+	memset(mPrevModelView, 0, sizeof(mPrevModelView));
+	memset(mPrevProjection, 0, sizeof(mPrevProjection));
+
 	Reset();
 }
 
@@ -100,6 +103,10 @@ void glCamera::Activate( CameraMode mode )
 // Activate
 void glCamera::Activate()
 {
+	// save the previous matrices
+	glGetFloatv(GL_MODELVIEW_MATRIX, mPrevModelView);
+	glGetFloatv(GL_PROJECTION_MATRIX, mPrevProjection);
+
 	// get the viewport bounds
 	GLint viewport[4];					
 	glGetIntegerv(GL_VIEWPORT, viewport);
@@ -130,6 +137,16 @@ void glCamera::Activate()
 		//glRotatef(mRotation[2] * RAD_TO_DEG, 0.0f, 0.0f, 1.0f);
 		glTranslatef(-mEye[0], -mEye[1], -mEye[2]);
 	}
+}
+
+// Deactivate
+void glCamera::Deactivate()
+{
+	glMatrixMode(GL_MODELVIEW);
+	glLoadMatrixf(mPrevModelView);
+	
+	glMatrixMode(GL_PROJECTION);
+	glLoadMatrixf(mPrevProjection);
 }
 
 
