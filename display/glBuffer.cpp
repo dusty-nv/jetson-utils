@@ -32,8 +32,12 @@ glBuffer::glBuffer()
 	mType  = 0;
 	mUsage = 0;
 
+	mMapDevice = 0;
+	mMapFlags  = 0;
+	
 	mNumElements = 0;
 	mElementSize = 0;
+	mInteropCUDA = NULL;
 }
 
 
@@ -49,17 +53,20 @@ glBuffer::~glBuffer()
 
 
 // Create
-glBuffer* glBuffer::Create( uint32_t type, uint32_t numElements, uint32_t elementSize, void* data, uint32_t usage )
+glBuffer* glBuffer::Create( uint32_t type, uint32_t size, void* data, uint32_t usage )
 {
-	if( !numElements || !elementSize )
-		return NULL;
-
-	// allocate new buffer
 	glBuffer* buf = new glBuffer();
 
-	if( !buf || !buf->init(type, numElements, elementSize, data, usage) )
+	if( !buf )
 	{
-		printf(LOG_GL "failed to create buffer (%u bytes)\n", numElements * elementSize);
+		printf(LOG_GL "failed to construct new glBuffer object\n");
+		return NULL;
+	}
+
+	if( !buf->init(type, size, data, usage) )
+	{
+		printf(LOG_GL "failed to create buffer (%u bytes)\n", size);
+		delete buf;		
 		return NULL;
 	}
 
@@ -67,11 +74,34 @@ glBuffer* glBuffer::Create( uint32_t type, uint32_t numElements, uint32_t elemen
 }
 
 
-// init
-bool glBuffer::init( uint32_t type, uint32_t numElements, uint32_t elementSize, void* data, uint32_t usage )
+// Create
+glBuffer* glBuffer::Create( uint32_t type, uint32_t numElements, uint32_t elementSize, void* data, uint32_t usage )
 {
-	const uint32_t size = numElements * elementSize;
+	glBuffer* buf = new glBuffer();
 
+	if( !buf )
+	{
+		printf(LOG_GL "failed to construct new glBuffer object\n");
+		return NULL;
+	}
+
+	if( !buf->init(type, numElements * elementSize, data, usage) )
+	{
+		printf(LOG_GL "failed to create buffer (%u bytes)\n", numElements * elementSize);
+		delete buf;		
+		return NULL;
+	}
+
+	buf->mNumElements = numElements;
+	buf->mElementSize = elementSize;
+
+	return buf;
+}
+
+
+// init
+bool glBuffer::init( uint32_t type, uint32_t size, void* data, uint32_t usage )
+{
 	GL_VERIFY(glGenBuffers(1, &mID));
 	GL_VERIFY(glBindBuffer(type, mID));
 	GL_VERIFY(glBufferData(type, size, data, usage));
@@ -81,8 +111,8 @@ bool glBuffer::init( uint32_t type, uint32_t numElements, uint32_t elementSize, 
 	mSize  = size;
 	mUsage = usage;
 
-	mNumElements = numElements;
-	mElementSize = elementSize;
+	mNumElements = size;
+	mElementSize = 1;
 
 	return true;
 }
@@ -106,36 +136,190 @@ void glBuffer::Unbind()
 }
 
 
-// Lock
-void* glBuffer::Lock( uint lockMode )
+// cudaGraphicsRegisterFlagsFromGL
+cudaGraphicsRegisterFlags cudaGraphicsRegisterFlagsFromGL( uint32_t flags )
+{
+	if( flags == GL_WRITE_DISCARD )
+		return cudaGraphicsRegisterFlagsWriteDiscard;
+	else if( flags == GL_READ_ONLY )
+		return cudaGraphicsRegisterFlagsReadOnly;
+	else
+		return cudaGraphicsRegisterFlagsNone;
+}
+
+
+// Map
+void* glBuffer::Map( uint32_t device, uint32_t flags )
 {
 	if( !Bind() )
 		return NULL;
 
-	// if we are only writing, discard the old buffer so we can lock without stalling the CPU
-	if( lockMode == GL_WRITE_ONLY )
-		GL(glBufferData(mType, mSize, NULL, mUsage));
-
-	// lock the buffer
-	void* data = glMapBuffer(mType, lockMode);
-
-	if( !data )
+	if( device == GL_MAP_CPU )
 	{
-		printf(LOG_GL "glMapBuffer() failed\n");
-		return NULL;
+		// invalidate the old buffer so we can map without stalling
+		if( flags == GL_WRITE_DISCARD )
+		{
+			GL(glBufferData(mType, mSize, NULL, mUsage));
+			flags = GL_WRITE_ONLY; // GL expects GL_WRITE_ONLY
+		}
+
+		// lock the buffer
+		void* ptr = glMapBuffer(mType, flags);
+
+		if( !ptr )
+		{
+			printf(LOG_GL "glMapBuffer() failed\n");
+			return NULL;
+		}
+
+		mMapDevice = device;
+		return ptr;
+	}
+	else if( device == GL_MAP_CUDA )
+	{
+		if( !mInteropCUDA )
+		{
+			if( CUDA_FAILED(cudaGraphicsGLRegisterBuffer(&mInteropCUDA, mID, cudaGraphicsRegisterFlagsFromGL(flags))) )
+				return NULL;
+
+			printf(LOG_CUDA "registered OpenGL buffer for interop access (%u bytes)\n", mSize);
+
+			if( mUsage != GL_DYNAMIC_DRAW )
+			{
+				printf(LOG_CUDA "warning: OpenGL interop buffer was not created with GL_DYNAMIC_DRAW\n");
+				printf(LOG_CUDA "it's recommended that GL interopability buffers use GL_DYNAMIC_DRAW\n");
+			}		
+		}
+
+		if( mMapFlags != 0 && mMapFlags != flags )
+			CUDA(cudaGraphicsResourceSetMapFlags(mInteropCUDA, cudaGraphicsRegisterFlagsFromGL(flags)));
+
+		if( CUDA_FAILED(cudaGraphicsMapResources(1, &mInteropCUDA)) )
+			return NULL;
+
+		void*  devPtr     = NULL;
+		size_t mappedSize = 0;
+
+		if( CUDA_FAILED(cudaGraphicsResourceGetMappedPointer(&devPtr, &mappedSize, mInteropCUDA)) )
+		{
+			CUDA(cudaGraphicsUnmapResources(1, &mInteropCUDA));
+			return NULL;
+		}
+		
+		if( mSize != mappedSize )
+			printf(LOG_GL "glBuffer::Map() -- CUDA size mismatch %zu bytes  (expected=%u)\n", mappedSize, mSize);
+		
+		mMapDevice = device;
+		mMapFlags = flags;	// these only need tracked for GPU	
 	}
 
-	return data;
+	printf(LOG_GL "glBuffer::Map() -- invalid device (must be GL_MAP_CPU or GL_MAP_CUDA)\n");
+	return NULL;
 }
 
 
-// Unlock
-void glBuffer::Unlock()
+// Unmap
+void glBuffer::Unmap()
 {
+	if( mMapDevice != GL_MAP_CPU && mMapDevice != GL_MAP_CUDA )
+		return;
+
 	if( !Bind() )
 		return;
 
-	GL(glUnmapBuffer(mType));
+	if( mMapDevice == GL_MAP_CPU )
+	{
+		GL(glUnmapBuffer(mType));
+	}
+	else if( mMapDevice == GL_MAP_CUDA )
+	{
+		if( !mInteropCUDA )
+			return;
+
+		CUDA(cudaGraphicsUnmapResources(1, &mInteropCUDA));
+	}
+
+	mMapDevice = 0;
 }
+
+
+// Copy
+bool glBuffer::Copy( void* ptr, uint32_t offset, uint32_t size, uint32_t flags )
+{
+	if( !ptr || size == 0 || size >= mSize || offset >= mSize || offset > (mSize - size) )
+		return false;
+
+	uint32_t mapFlags = GL_READ_ONLY;
+
+	if( flags == GL_FROM_CPU || flags == GL_FROM_CUDA )
+	{
+		if( size == mSize )
+			mapFlags = GL_WRITE_DISCARD;
+		else
+			mapFlags = GL_WRITE_ONLY;
+	}
+	
+	if( flags == GL_FROM_CPU )
+	{
+		// TODO for faster CPU path, see http://hacksoflife.blogspot.com/2015/06/glmapbuffer-no-longer-cool.html
+		void* dst = Map(GL_MAP_CPU, mapFlags);
+
+		if( !dst )
+			return false;
+
+		memcpy((uint8_t*)dst + offset, ptr, size);
+	}
+	else if( flags == GL_FROM_CUDA )
+	{
+		void* dst = Map(GL_MAP_CUDA, mapFlags);
+
+		if( !dst )
+			return false;
+
+		if( CUDA_FAILED(cudaMemcpy((uint8_t*)dst + offset, ptr, size, cudaMemcpyDeviceToDevice)) )
+		{
+			Unmap();
+			return false;
+		}
+	}
+	else if( flags == GL_TO_CPU )
+	{
+		void* src = Map(GL_MAP_CPU, mapFlags);
+
+		if( !src )
+			return false;
+	
+		memcpy(ptr, (uint8_t*)src + offset, size);
+	}
+	else if( flags == GL_TO_CUDA )
+	{
+		void* src = Map(GL_MAP_CUDA, mapFlags);
+
+		if( !src )
+			return false;
+	
+		if( CUDA_FAILED(cudaMemcpy(ptr, (uint8_t*)src + offset, size, cudaMemcpyDeviceToDevice)) )
+		{
+			Unmap();
+			return false;
+		}
+	}
+
+	Unmap();
+	return true;
+}
+
+// Copy
+bool glBuffer::Copy( void* ptr, uint32_t size, uint32_t flags )
+{
+	return Copy(ptr, 0, mSize, flags);
+}
+
+// Copy
+bool glBuffer::Copy( void* ptr, uint32_t flags )
+{
+	return Copy(ptr, 0, mSize, flags);
+}
+
 
 
