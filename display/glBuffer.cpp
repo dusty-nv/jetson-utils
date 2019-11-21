@@ -151,6 +151,12 @@ cudaGraphicsRegisterFlags cudaGraphicsRegisterFlagsFromGL( uint32_t flags )
 // Map
 void* glBuffer::Map( uint32_t device, uint32_t flags )
 {
+	if( mMapDevice != 0 )
+	{
+		printf(LOG_GL "error -- glBuffer is already mapped (call Unmap() first)\n");
+		return NULL;
+	}
+
 	if( !Bind() )
 		return NULL;
 
@@ -211,6 +217,8 @@ void* glBuffer::Map( uint32_t device, uint32_t flags )
 		
 		mMapDevice = device;
 		mMapFlags = flags;	// these only need tracked for GPU	
+
+		return devPtr;
 	}
 
 	printf(LOG_GL "glBuffer::Map() -- invalid device (must be GL_MAP_CPU or GL_MAP_CUDA)\n");
