@@ -71,10 +71,28 @@
 enum glEventType
 {
 	/**
-	 * Message when the mouse has been moved
-	 * a = x-coordinate, b = y-coordinate
+	 * Message when the mouse has moved (relative coordinates)
+	 *
+	 * a = x position, relative to window top-left
+	 * b = y position, relative to window top-left
+	 *
+	 * @note the mouse must be within the window to recieve this
+	 *       message, and the coordinates will be provided in
+	 *       coordinates relative to the top-left of the window
 	 */
 	MOUSE_MOVE = 0,
+	
+	/**
+	 * Message when the mouse has moved (absolute coordinates)
+	 *
+	 * a = x position, in absolute screen coordinates
+	 * b = y position, in absolute screen coordinates
+	 *
+	 * @note the mouse must be within the window to recieve this
+	 *       message, and the coordinates will be provided in
+	 *       absolute screen coordinates regardless of window.
+	 */
+	MOUSE_ABSOLUTE,
 
 	/**
 	 * Message when a mouse button has been pressed/released
@@ -91,6 +109,18 @@ enum glEventType
 	 *   - 5 (scroll wheel down)
 	 */
 	MOUSE_BUTTON,
+
+	/**
+	 * Message when the left mouse button has been dragged
+	 *
+	 * a = x delta (change in position)
+	 * b = y delta (change in position)
+	 *
+	 * @note the mouse must be within the window to recieve this
+	 *       message, and the coordinates will be provided as
+	 *       a delta from the change in position from last message
+	 */
+	MOUSE_DRAG,
 
 	/**
 	 * Message when the mouse wheel has been scrolled
@@ -112,7 +142,7 @@ enum glEventType
 	KEY_STATE,
 
 	/**
-	 * Message when a raw key state has changed (raw, so no modifiers applied)
+	 * Message when a key state has changed (raw, so no modifiers applied)
 	 *
 	 * a = raw key symbol (without modifier translation)
 	 * b = KEY_PRESSED or KEY_RELEASED
@@ -134,6 +164,14 @@ enum glEventType
 	 * so for example if you press Shift + a, it will be reported as 'A'.
 	 */
 	KEY_CHAR,
+
+	/**
+	 * Message indicating that the window has been resized
+	 *
+	 * a = new width (in pixels)
+	 * b = new height (in pixels)
+	 */
+	WINDOW_RESIZE,
 
 	/**
 	 * Message indicating that the window is closing
