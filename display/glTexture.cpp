@@ -201,7 +201,7 @@ glTexture* glTexture::Create( uint32_t width, uint32_t height, uint32_t format, 
 	
 	if( !tex->init(width, height, format, data) )
 	{
-		printf("[OpenGL]  failed to create %ux%u texture\n", width, height);
+		printf(LOG_GL "failed to create %ux%u texture\n", width, height);
 		return NULL;
 	}
 	
@@ -230,7 +230,7 @@ bool glTexture::init( uint32_t width, uint32_t height, uint32_t format, void* da
 	GL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR));
 	GL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR));
 
-	printf("[OpenGL]   creating %ux%u texture\n", width, height);
+	printf(LOG_GL "creating %ux%u texture\n", width, height);
 	
 	// allocate texture
 	GL_VERIFYN(glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, glTextureLayout(format), glTextureType(format), data));
