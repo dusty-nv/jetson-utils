@@ -133,7 +133,7 @@ inline void apptime( timespec* a )										{ timespec t; timestamp(&t); timeDif
  * Retrieve the elapsed time since the process started (in seconds).
  * @ingroup time
  */
-inline float apptime()												{ timespec t; appTime(&t); return t.tv_sec + t.tv_nsec * 0.000000001f; }
+inline float apptime()												{ timespec t; apptime(&t); return t.tv_sec + t.tv_nsec * 0.000000001f; }
 
 /**
  * Convert to 32-bit float (in milliseconds).
