@@ -53,6 +53,9 @@ glCamera::glCamera( CameraMode mode )
 	mDefaultRotation[1] = 0.0f;
 	mDefaultRotation[2] = 0.0f;
 
+	mMovementSpeed   = 1.0f;
+	mMovementEnabled = false;
+
 	memset(mPrevModelView, 0, sizeof(mPrevModelView));
 	memset(mPrevProjection, 0, sizeof(mPrevProjection));
 
@@ -110,7 +113,7 @@ void glCamera::Activate()
 	// get the viewport bounds
 	GLint viewport[4];					
 	glGetIntegerv(GL_VIEWPORT, viewport);
-	printf(LOG_GL "glCamera -- viewport %i %i %i %i\n", viewport[0], viewport[1], viewport[2], viewport[3]);
+	//printf(LOG_GL "glCamera -- viewport %i %i %i %i\n", viewport[0], viewport[1], viewport[2], viewport[3]);
 	const float aspect = float(viewport[2]) / float(viewport[3]);	// TODO what if viewport origin is not (0,0)?
 
 	// set perspective matrix
@@ -187,6 +190,7 @@ void glCamera::StoreDefaults()
 // RegisterEvents
 void glCamera::RegisterEvents( uint32_t display )
 {
+	SetMovementEnabled(true);
 	glRegisterEvents(&onEvent, this);
 }
 
@@ -199,38 +203,54 @@ bool glCamera::onEvent( uint16_t msg, int a, int b, void* user )
 
 	glCamera* cam = (glCamera*)user;
 
+	if( !cam->mMovementEnabled )
+		return false;
+
 	if( msg == KEY_RAW && b == KEY_PRESSED )
 	{
-		float motion_scale = 25.0f;
+		float movement_speed = cam->mMovementSpeed;
 
-		if( a == XK_w || a == XK_s || a == XK_Up || a == XK_Down )
+		if( a == XK_Up || a == XK_Down || a == XK_w || a == XK_s )
 		{
-			if( a == XK_w || a == XK_Up )	
-				motion_scale *= -1.0;
+			if( a == XK_Up || a == XK_w )	
+				movement_speed *= -1.0;
 
-			cam->mEye[0] -= sinf(cam->mRotation[1]) * motion_scale;
-			cam->mEye[1] += sinf(cam->mRotation[0]) * motion_scale;
-			cam->mEye[2] += cosf(cam->mRotation[1]) * motion_scale;
+			cam->mEye[0] -= sinf(cam->mRotation[1]) * movement_speed;
+			cam->mEye[1] += sinf(cam->mRotation[0]) * movement_speed;
+			cam->mEye[2] += cosf(cam->mRotation[1]) * movement_speed;
 		}
-		else if( a == XK_a || a == XK_d || a == XK_Left || a == XK_Right )
+		else if( a == XK_Left || a == XK_Right || a == XK_a || a == XK_d )
 		{
-			if( a == XK_a || a == XK_Left )	
-				motion_scale *= -1.0;
+			if( a == XK_Left || a == XK_a )	
+				movement_speed *= -1.0;
 
-			cam->mEye[0] += cosf(cam->mRotation[1]) * motion_scale;
-			cam->mEye[2] += sinf(cam->mRotation[1]) * motion_scale;
+			cam->mEye[0] += cosf(cam->mRotation[1]) * movement_speed;
+			cam->mEye[2] += sinf(cam->mRotation[1]) * movement_speed;
 		}
 		else if( a == XK_q || a == XK_z || a == XK_e )
 		{
 			if( a == XK_z || a == XK_e )
-				motion_scale *= -1.0;
+				movement_speed *= -1.0;
 
-			cam->mEye[1] += motion_scale;
+			cam->mEye[1] += movement_speed;
 		}
 		else if( a == XK_r )
 		{
 			cam->Reset();
 		}
+	}
+	else if( msg == MOUSE_WHEEL )
+	{
+		const float movement_speed = cam->mMovementSpeed * a;
+
+		cam->mEye[0] -= sinf(cam->mRotation[1]) * movement_speed;
+		cam->mEye[1] += sinf(cam->mRotation[0]) * movement_speed;
+		cam->mEye[2] += cosf(cam->mRotation[1]) * movement_speed;
+	}
+	else if( msg == MOUSE_DRAG )
+	{
+		cam->mRotation[0] += float(b) * 0.0025f;
+		cam->mRotation[1] += float(a) * 0.0055f;
 	}
 	
 	return true;

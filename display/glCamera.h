@@ -116,12 +116,12 @@ public:
 	inline void SetFar( float far )							{ mFar = far; }
 
 	/**
-	 * Set the eye position (LookAt)
+	 * Set the eye position
 	 */
 	inline void SetEye( float x, float y, float z )				{ mEye[0] = x; mEye[1] = y; mEye[2] = z; }
 
 	/**
-	 * Set the look-at point (LookAt)
+	 * Set the look-at point
 	 */
 	inline void SetLookAt( float x, float y, float z )			{ mLookAt[0] = x; mLookAt[1] = y; mLookAt[2] = z; }
 
@@ -146,6 +146,16 @@ public:
 	inline void SetRoll( float roll )							{ mRotation[2] = roll; }
 
 	/**
+	 * Set the movement speed (in world units)
+	 */
+	inline void SetMovementSpeed( float speed )					{ mMovementSpeed = speed; }
+
+	/**
+	 * Enable or disable movement from user input
+	 */
+	inline void SetMovementEnabled( bool enabled )				{ mMovementEnabled = enabled; }
+
+	/**
 	 * Store the current configuration as defaults
 	 */
 	void StoreDefaults();
@@ -156,7 +166,7 @@ public:
 	void Reset();
 
 	/**
-	 * Register to recieve input events
+	 * Register to recieve input events (enable movement)
 	 */
 	void RegisterEvents( uint32_t display=0 );
 	
@@ -182,6 +192,9 @@ private:
 
 	float mPrevModelView[16];
 	float mPrevProjection[16];
+
+	float mMovementSpeed;
+	bool  mMovementEnabled;
 };
 
 #endif
