@@ -22,16 +22,27 @@
 
 #include "glDisplay.h"
 #include "glTexture.h"
+#include "glBuffer.h"
+#include "glCamera.h"
 
 #include "cudaFont.h"
+#include "cudaNormalize.h"
+#include "cudaInteropKernels.h"
+
+#include "timespec.h"
 
 #include <stdio.h>
 #include <signal.h>
 #include <unistd.h>
 
 
-#define TEXTURE_WIDTH  1024
-#define TEXTURE_HEIGHT 1024
+#define TEXTURE_WIDTH 768
+#define TEXTURE_HEIGHT 64
+#define TEXTURE_OFFSET 30
+
+#define GRID_N          128
+#define GRID_POINTS     (GRID_N * GRID_N)
+#define GRID_WORLD_SIZE 10.0f
 
 
 bool signal_recieved = false;
@@ -48,56 +59,35 @@ void sig_handler(int signo)
 
 int main( int argc, char** argv )
 {
-	printf("gl-display-test\n  args (%i):  ", argc);
-
-	for( int i=0; i < argc; i++ )
-		printf("%i [%s]  ", i, argv[i]);
-		
-	printf("\n");
-	
-		
+	/*
+	 * register signal handler (Ctrl+C)
+	 */
 	if( signal(SIGINT, sig_handler) == SIG_ERR )
-		printf("\ncan't catch SIGINT\n");
+		printf("can't catch SIGINT\n");
 
 
 	/*
 	 * create openGL window
 	 */
-	glDisplay* display = glDisplay::Create("NVIDIA OpenGL Display Test");
+	glDisplay* display = glDisplay::Create("NVIDIA OpenGL/CUDA Interoperability Test");
 	
 	if( !display )
 	{
-		printf("\ngl-display:  failed to create openGL display\n");
+		printf("gl-display-test:  failed to create openGL display\n");
 		return 0;
 	}
 
+	display->EnableDebug();	// print events
 
-	/*
-	 * initialize default test texture pattern
-	 */
-	const size_t texSize = TEXTURE_WIDTH * TEXTURE_HEIGHT * sizeof(float4);
-	
-	float4* texIn = (float4*)malloc(texSize);
 
-	if( !texIn )
-	{
-		printf("failed to allocate texture initialization input\n");
-		return 0;
-	}
-	
-	for( uint32_t y=0; y < TEXTURE_HEIGHT; y++ )
-		for( uint32_t x=0; x < TEXTURE_WIDTH; x++ )
-			texIn[y*TEXTURE_WIDTH+x] = make_float4(0.0f, float(x)/float(TEXTURE_WIDTH), float(y)/float(TEXTURE_HEIGHT), 1.0f);
-
-		
 	/*
 	 * allocate openGL texture
 	 */
-	glTexture* texture = glTexture::Create(TEXTURE_WIDTH, TEXTURE_HEIGHT, GL_RGBA32F_ARB/*GL_RGBA8*/, texIn);
+	glTexture* texture = glTexture::Create(TEXTURE_WIDTH, TEXTURE_HEIGHT, GL_RGBA32F, NULL);
 
 	if( !texture )
 	{
-		printf("gl-display:  failed to create openGL texture\n");
+		printf("gl-display-test:  failed to create openGL texture\n");
 		return 0;
 	}
 	
@@ -108,50 +98,125 @@ int main( int argc, char** argv )
 	cudaFont* font = cudaFont::Create();
 	
 	if( !font )
-		printf("failed to create cudaFont object\n");
+	{
+		printf("gl-display-test:  failed to create cudaFont object\n");
+		return 0;
+	}
+
+
+	/*
+	 * create 3D camera
+	 */
+	glCamera* camera = glCamera::Create(glCamera::YawPitchRoll);
+
+	if( !camera )
+	{
+		printf("gl-display-test:  failed to create glCamera object\n");
+		return 0;
+	}
+
+	camera->SetEye(0.0f, GRID_WORLD_SIZE, GRID_WORLD_SIZE);
+	camera->StoreDefaults();
+
+
+	/*
+	 * create vertex buffer
+	 */
+	glBuffer* buffer = glBuffer::Create(GL_VERTEX_BUFFER, GRID_POINTS * sizeof(PointVertex), NULL, GL_DYNAMIC_DRAW);
+
+	if( !buffer )
+	{
+		printf("gl-display-test:  failed to create glBuffer object\n");
+		return 0;
+	}
 
 
 	/*
 	 * rendering loop
 	 */
-	while( !signal_recieved )
+	while( !signal_recieved && display->IsOpen() )
 	{
-		// update display
-		if( display != NULL )
+		display->BeginRender();
+
+		// draw test buffer
+		PointVertex* points = (PointVertex*)buffer->Map(GL_MAP_CUDA, GL_WRITE_DISCARD);
+
+		if( points != NULL )
 		{
-			display->BeginRender();
+			// animate the points in CUDA
+			CUDA(cudaGeneratePointGrid(points, GRID_N, GRID_WORLD_SIZE, apptime()));
+			CUDA(cudaDeviceSynchronize());
 
-			if( texture != NULL )
+			buffer->Unmap();
+
+			// change the viewport
+			const int viewportWidth = display->GetWidth() / 2;
+			const int viewportHeight = display->GetHeight() / 2;
+
+			display->SetViewport(0, TEXTURE_HEIGHT + TEXTURE_OFFSET, display->GetWidth(), 
+							 display->GetHeight() - TEXTURE_HEIGHT - TEXTURE_OFFSET);
+
+			// enable the camera and buffer
+			camera->Activate();
+			buffer->Bind();
+
+			GL(glEnableClientState(GL_VERTEX_ARRAY));
+			GL(glVertexPointer(3, GL_FLOAT, sizeof(PointVertex), 0));
+
+			GL(glEnableClientState(GL_COLOR_ARRAY));
+			GL(glColorPointer(4, GL_UNSIGNED_BYTE, sizeof(PointVertex), (void*)offsetof(PointVertex, color)));
+
+			// draw the points
+			GL(glDrawArrays(GL_POINTS, 0, GRID_POINTS));
+	
+			// disable the buffer and camera
+			GL(glDisableClientState(GL_COLOR_ARRAY));
+			GL(glDisableClientState(GL_VERTEX_ARRAY));
+
+			buffer->Unbind();
+			camera->Deactivate();
+			display->ResetViewport();
+		}
+
+
+		// draw test texture
+		if( texture != NULL && font != NULL )
+		{
+			void* textureCUDA = texture->MapCUDA();
+
+			if( textureCUDA != NULL )
 			{
-				void* tex_map = texture->MapCUDA();
+				// clear the texture (from last frame)
+				//CUDA(cudaMemset(textureCUDA, 0, texture->GetSize()));
 
-				CUDA(cudaMemset(tex_map, 0, texture->GetSize()));
+				// test text
+				char str[256];
+				sprintf(str, "AaBbCcDdEeFfGgHhIiJjKkLlMmNn123456890");
 
-				if( tex_map != NULL )
-				{
-					if( font != NULL )
-					{
-						char str[256];
-						sprintf(str, "AaBbCcDdEeFfGgHhIiJjKkLlMmNn 123456890");
+				font->OverlayText((float4*)textureCUDA, texture->GetWidth(), texture->GetHeight(),
+							   str, 0, 0, make_float4(0.0f, 190.0f, 255.0f, 255.0f));
 
-						font->OverlayText((float4*)tex_map, texture->GetWidth(), texture->GetHeight(),
-									   str, 0, 0, make_float4(0.0f, 0.75f, 1.0f, 255.0f));
-					}
+				// FPS counter
+				sprintf(str, "%.0f FPS", display->GetFPS());
 
-					CUDA(cudaDeviceSynchronize());
-					texture->Unmap();
-				}
+				font->OverlayText((float4*)textureCUDA, texture->GetWidth(), texture->GetHeight(),
+							   str, 0, 36, make_float4(255.0f, 190.0f, 0.0f, 255.0f));
 
-				texture->Render(50,50);		
+				// rescale image pixel intensities for display
+				CUDA(cudaNormalizeRGBA((float4*)textureCUDA, make_float2(0.0f, 255.0f), 
+								   (float4*)textureCUDA, make_float2(0.0f, 1.0f), 
+		 						   texture->GetWidth(), texture->GetHeight()));
+
+				texture->Unmap();
 			}
 
-			display->EndRender();
+			texture->Render(TEXTURE_OFFSET, TEXTURE_OFFSET);		
 		}
+
+		display->EndRender();
 	}
 	
-	printf("\ngl-display:  un-initializing video device\n");
-	
-	
+
 	/*
 	 * close the window
 	 */
@@ -161,7 +226,8 @@ int main( int argc, char** argv )
 		display = NULL;
 	}
 	
-	printf("gl-display:  video device has been un-initialized.\n");
-	printf("gl-display:  this concludes the test of the video device.\n");
+	printf("gl-display-test:  OpenGL display has been un-initialized.\n");
+	printf("gl-display-test:  this concludes the test of the device.\n");
+
 	return 0;
 }
