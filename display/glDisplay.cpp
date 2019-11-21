@@ -48,27 +48,30 @@ const char* glDisplay::DEFAULT_TITLE = "NVIDIA Jetson";
 // Constructor
 glDisplay::glDisplay()
 {
-	mWindowX     = 0;
-	mScreenX     = NULL;
-	mVisualX     = NULL;
-	mContextGL   = NULL;
-	mDisplayX    = NULL;
-	mEnableDebug = false;
+	mWindowX      = 0;
+	mScreenX      = NULL;
+	mVisualX      = NULL;
+	mContextGL    = NULL;
+	mDisplayX     = NULL;
+	mRendering    = false;
+	mEnableDebug  = false;
+	mWindowClosed = false;
 
-	mWidth       = 0;
-	mHeight      = 0;
-	mAvgTime     = 1.0f;
+	mWidth        = 0;
+	mHeight       = 0;
+	mAvgTime      = 1.0f;
 
-	mBgColor[0]  = 0.0f;
-	mBgColor[1]  = 0.0f;
-	mBgColor[2]  = 0.0f;
-	mBgColor[3]  = 1.0f;
+	mBgColor[0]   = 0.0f;
+	mBgColor[1]   = 0.0f;
+	mBgColor[2]   = 0.0f;
+	mBgColor[3]   = 1.0f;
+
+	mMouseDrag[0] = -1;
+	mMouseDrag[1] = -1;
 
 	mNormalizedCUDA   = NULL;
 	mNormalizedWidth  = 0;
 	mNormalizedHeight = 0;
-
-	mWindowClosed = false;
 
 	// get the starting time for FPS counter
 	clock_gettime(CLOCK_REALTIME, &mLastTime);
@@ -198,7 +201,7 @@ bool glDisplay::initWindow()
 
 	if( !screen )
 	{
-		printf("failed to retrieve default Screen instance\n");
+		printf(LOG_GL "failed to retrieve default Screen instance\n");
 		return false;
 	}
 	
@@ -261,13 +264,18 @@ bool glDisplay::initWindow()
 	// show the window
 	XMapWindow(mDisplayX, win);
 
-	// cleanup
+	// store variables
 	mWindowX = win;
 	mScreenX = screen;
 	mVisualX = visual;
 	mWidth   = screenWidth;
 	mHeight  = screenHeight;
-	
+
+	mViewport[0] = 0; 
+	mViewport[1] = 0; 
+	mViewport[2] = mWidth; 
+	mViewport[3] = mHeight;
+
 	XFree(fbConfig);
 	return true;
 }
@@ -294,27 +302,63 @@ bool glDisplay::initGL()
 }
 
 
+// SetViewport
+void glDisplay::SetViewport( int x, int y, int width, int height )
+{
+	mViewport[0] = x;				  // glViewport expects bottom-left
+	mViewport[1] = mHeight - y - height; // (change to it from top-left)
+	mViewport[2] = width;
+	mViewport[3] = height;
+
+	if( mRendering )
+		activateViewport();
+}
+
+
+// ResetViewport
+void glDisplay::ResetViewport()
+{
+	mViewport[0] = 0;
+	mViewport[1] = 0;
+	mViewport[2] = mWidth;
+	mViewport[3] = mHeight;
+
+	if( mRendering )
+		activateViewport();
+}
+
+
+// activateViewport
+void glDisplay::activateViewport()
+{
+	GL(glViewport(mViewport[0], mViewport[1], mViewport[2], mViewport[3]));
+	GL(glMatrixMode(GL_PROJECTION));
+	GL(glLoadIdentity());
+	GL(glOrtho(0.0f, mViewport[2], mViewport[3], 0.0f, 0.0f, 1.0f));
+}
+
+
 // MakeCurrent
 void glDisplay::BeginRender( bool processEvents )
 {
 	if( processEvents )
 		ProcessEvents();
 
+	mRendering = true;
+
 	GL(glXMakeCurrent(mDisplayX, mWindowX, mContextGL));
 
 	GL(glClearColor(mBgColor[0], mBgColor[1], mBgColor[2], mBgColor[3]));
 	GL(glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT|GL_STENCIL_BUFFER_BIT));
 
-	GL(glViewport(0, 0, mWidth, mHeight));
-	GL(glMatrixMode(GL_PROJECTION));
-	GL(glLoadIdentity());
-	GL(glOrtho(0.0f, mWidth, mHeight, 0.0f, 0.0f, 1.0f));	
+	activateViewport();	
 }
 
 
 // EndRender
 void glDisplay::EndRender()
 {
+	// present the backbuffer
 	glXSwapBuffers(mDisplayX, mWindowX);
 
 	// measure framerate
@@ -324,8 +368,9 @@ void glDisplay::EndRender()
 	const timespec diffTime = timeDiff(mLastTime, currTime);
 	const float ns = 1000000000 * diffTime.tv_sec + diffTime.tv_nsec;
 
-	mAvgTime  = mAvgTime * 0.8f + ns * 0.2f;
-	mLastTime = currTime;
+	mAvgTime   = mAvgTime * 0.8f + ns * 0.2f;
+	mLastTime  = currTime;
+	mRendering = false;
 }
 
 
@@ -430,6 +475,16 @@ void glDisplay::RenderOnce( float* img, uint32_t width, uint32_t height, float x
 }
 
 
+// SetBackgroundColor
+void glDisplay::SetBackgroundColor( float r, float g, float b, float a )
+{
+	mBgColor[0] = r; 
+	mBgColor[1] = g; 
+	mBgColor[2] = b; 
+	mBgColor[3] = a; 
+}
+
+
 // EnableDebug
 void glDisplay::EnableDebug()
 {
@@ -479,21 +534,66 @@ void glDisplay::ProcessEvents()
 		else if( evt.type == ButtonPress || evt.type == ButtonRelease )
 		{
 			const int buttonPressed = (evt.type == ButtonPress) ? BUTTON_PRESSED : BUTTON_RELEASED;
+			
 			dispatchEvent(MOUSE_BUTTON, evt.xbutton.button, buttonPressed);
 
 			if( buttonPressed )
 			{
+				// handle mouse wheel scrolling
 				if( evt.xbutton.button == 4 )
 					dispatchEvent(MOUSE_WHEEL, -1, 0);
 				else if( evt.xbutton.button == 5 )
 					dispatchEvent(MOUSE_WHEEL, 1, 0);
 			}
+			else
+			{
+				// reset drag when left button released
+				if( evt.xbutton.button == 1 )
+				{
+					mMouseDrag[0] = -1;
+					mMouseDrag[1] = -1;
+				}
+			}
 		}
 		else if( evt.type == MotionNotify )
 		{
+			// relative coordinates
+			dispatchEvent(MOUSE_MOVE, evt.xmotion.x, evt.xmotion.y);
+
+			// absolute coordinates
 			XWindowAttributes attr;
 			XGetWindowAttributes(mDisplayX, evt.xmotion.root, &attr);
-			dispatchEvent(MOUSE_MOVE, evt.xmotion.x_root + attr.x, evt.xmotion.y_root + attr.y);
+
+			dispatchEvent(MOUSE_ABSOLUTE, evt.xmotion.x_root + attr.x, evt.xmotion.y_root + attr.y);
+
+			// handle drag events
+			if( evt.xmotion.state & Button1Mask )
+			{
+				if( mMouseDrag[0] >= 0 && mMouseDrag[1] >= 0 )
+				{
+					const int delta_x = evt.xmotion.x - mMouseDrag[0];
+					const int delta_y = evt.xmotion.y - mMouseDrag[1];
+
+					if( delta_x != 0 || delta_y != 0 )
+						dispatchEvent(MOUSE_DRAG, delta_x, delta_y);
+				}
+
+				mMouseDrag[0] = evt.xmotion.x;
+				mMouseDrag[1] = evt.xmotion.y;
+			}
+		}
+		else if( evt.type == ConfigureNotify )
+		{
+			if( evt.xconfigure.width != mWidth || evt.xconfigure.height != mHeight )
+			{
+				if( mViewport[2] == mWidth && mViewport[3] == mHeight )
+					SetViewport(0, 0, evt.xconfigure.width, evt.xconfigure.height);
+
+				mWidth = evt.xconfigure.width;
+				mHeight = evt.xconfigure.height;
+
+				dispatchEvent(WINDOW_RESIZE, mWidth, mHeight);
+			}
 		}
 		else if( evt.type == ClientMessage )
 		{
@@ -580,11 +680,25 @@ bool glDisplay::onEvent( uint16_t msg, int a, int b, void* user )
 
 			break;
 		}
+		case MOUSE_ABSOLUTE:
+		{
+			if( display->mEnableDebug )
+				printf(LOG_GL "glDisplay -- event MOUSE_ABSOLUTE (%i, %i)\n", a, b);
+
+			break;
+		}
 		case MOUSE_BUTTON:
 		{
 			if( display->mEnableDebug )
 				printf(LOG_GL "glDisplay -- event MOUSE_BUTTON %i (%s)\n", a, b ? "pressed" : "released");
 	
+			break;
+		}
+		case MOUSE_DRAG:
+		{
+			if( display->mEnableDebug )
+				printf(LOG_GL "glDisplay -- event MOUSE_DRAG (%i, %i)\n", a, b);
+
 			break;
 		}
 		case MOUSE_WHEEL:
@@ -614,6 +728,13 @@ bool glDisplay::onEvent( uint16_t msg, int a, int b, void* user )
 				printf(LOG_GL "glDisplay -- event KEY_CHAR %c (%i)\n", (char)a, a);
 
 			break;
+		}
+		case WINDOW_RESIZE:
+		{
+			if( display->mEnableDebug )
+				printf(LOG_GL "glDisplay -- event WINDOW_RESIZE (%i, %i)\n", a, b);
+
+			return true;
 		}
 		case WINDOW_CLOSED:
 		{

@@ -136,6 +136,11 @@ public:
 	inline bool IsClosed() const		{ return mWindowClosed; }
 
 	/**
+	 * Returns true if between BeginRender() and EndRender()
+	 */
+	inline bool IsRendering() const	{ return mRendering; }
+
+	/**
 	 * Get the average frame time (in milliseconds).
 	 */
 	inline float GetFPS() const		{ return 1000000000.0f / mAvgTime; }
@@ -172,7 +177,31 @@ public:
 	 * @param b background RGBA color, blue component (0.0-1.0f)
 	 * @param a background RGBA color, alpha component (0.0-1.0f)
 	 */
-	inline void SetBackgroundColor( float r, float g, float b, float a )	{ mBgColor[0] = r; mBgColor[1] = g; mBgColor[2] = b; mBgColor[3] = a; }
+	void SetBackgroundColor( float r, float g, float b, float a );
+
+	/**
+	 * Set the active viewport being rendered to.
+	 *
+	 * SetViewport() will update the GL_PROJECTION matrix
+	 * with a new ortho matrix to reflect these changes.
+	 *
+	 * After done rendering to this viewport, you should
+	 * reset it back to it's original with ResetViewport()
+	 *
+	 * @param x the left coordinate of the viewport
+	 * @param y the top coordinate of the viewport
+	 * @param width width of the viewport, in pixels
+	 * @param height height of the viewport, in pixels
+	 *
+	 * @note glViewport() uses bottom-left coordinate for `x,y`
+	 *       SetViewport() uses top-left coordinate for `x,y`
+	 */
+	void SetViewport( int x, int y, int width, int height );
+
+	/**
+	 * Reset to the full viewport (and change back GL_PROJECTION)
+	 */
+	void ResetViewport();
 
 	/**
 	 * Default title bar name
@@ -185,9 +214,11 @@ protected:
 	bool initWindow();
 	bool initGL();
 
-	glTexture* allocTexture( uint32_t width, uint32_t height );
+	glTexture* allocTexture( uint32_t width, uint32_t height );	
 
+	void activateViewport();
 	void dispatchEvent( glEventType msg, int a, int b );
+
 	static bool onEvent( uint16_t msg, int a, int b, void* user );
 
 	struct eventHandler
@@ -203,6 +234,7 @@ protected:
 	XVisualInfo* mVisualX;
 	Window       mWindowX;
 	GLXContext   mContextGL;
+	bool		   mRendering;
 	bool		   mEnableDebug;
 	bool		   mWindowClosed;
 	Atom		   mWindowClosedMsg;
@@ -214,6 +246,8 @@ protected:
 	timespec mLastTime;
 	float    mAvgTime;
 	float    mBgColor[4];
+	int      mViewport[4];
+	int	    mMouseDrag[2];
 
 	float*   mNormalizedCUDA;
 	uint32_t mNormalizedWidth;
