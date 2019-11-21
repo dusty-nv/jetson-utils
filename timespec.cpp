@@ -23,3 +23,5 @@
 #include "timespec.h"
 
 
+// reference timestamp of when the process started
+const timespec __apptime_begin__ = timestamp();
