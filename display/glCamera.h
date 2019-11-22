@@ -173,6 +173,9 @@ public:
 private:
 	glCamera( CameraMode mode );
 
+	bool mouseInViewport() const;
+
+	bool onEvent( uint16_t msg, int a, int b );
 	static bool onEvent( uint16_t msg, int a, int b, void* user );
 
 	CameraMode mMode;
@@ -195,6 +198,10 @@ private:
 
 	float mMovementSpeed;
 	bool  mMovementEnabled;
+	
+	void* mDisplay;
+	int   mViewport[4];
+	bool  mMouseActive;
 };
 
 #endif

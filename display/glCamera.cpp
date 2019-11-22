@@ -56,6 +56,10 @@ glCamera::glCamera( CameraMode mode )
 	mMovementSpeed   = 1.0f;
 	mMovementEnabled = false;
 
+	mDisplay     = NULL;
+	mMouseActive = false;
+
+	memset(mViewport, 0, sizeof(mViewport));
 	memset(mPrevModelView, 0, sizeof(mPrevModelView));
 	memset(mPrevProjection, 0, sizeof(mPrevProjection));
 
@@ -110,11 +114,10 @@ void glCamera::Activate()
 	glGetFloatv(GL_MODELVIEW_MATRIX, mPrevModelView);
 	glGetFloatv(GL_PROJECTION_MATRIX, mPrevProjection);
 
-	// get the viewport bounds
-	GLint viewport[4];					
-	glGetIntegerv(GL_VIEWPORT, viewport);
+	// get the viewport bounds				
+	glGetIntegerv(GL_VIEWPORT, mViewport);
 	//printf(LOG_GL "glCamera -- viewport %i %i %i %i\n", viewport[0], viewport[1], viewport[2], viewport[3]);
-	const float aspect = float(viewport[2]) / float(viewport[3]);	// TODO what if viewport origin is not (0,0)?
+	const float aspect = float(mViewport[2]) / float(mViewport[3]);
 
 	// set perspective matrix
 	glMatrixMode(GL_PROJECTION);
@@ -123,7 +126,7 @@ void glCamera::Activate()
 	if( mMode == YawPitchRoll || mMode == LookAt )
 		gluPerspective(mFoV, aspect, mNear, mFar);
 	else if( mMode == Ortho )
-		glOrtho(viewport[0], viewport[2], viewport[3], viewport[1], 0.0f, 1.0f);
+		glOrtho(mViewport[0], mViewport[2], mViewport[3], mViewport[1], 0.0f, 1.0f);
 
 	// set modelview matrix
 	glMatrixMode(GL_MODELVIEW);
@@ -191,7 +194,83 @@ void glCamera::StoreDefaults()
 void glCamera::RegisterEvents( uint32_t display )
 {
 	SetMovementEnabled(true);
-	glRegisterEvents(&onEvent, this);
+	glRegisterEvents(&onEvent, this, display);
+	mDisplay = glGetDisplay(display);
+}
+
+
+// onEvent
+bool glCamera::onEvent( uint16_t msg, int a, int b )
+{
+	if( !mMovementEnabled )
+		return false;
+
+	float movement_speed = mMovementSpeed;
+
+	if( msg == KEY_STATE && b == KEY_PRESSED )
+	{
+		const int key = a;
+
+		if( key == XK_Up || key == XK_Down || key == XK_w || key == XK_s )
+		{
+			if( key == XK_Up || key == XK_w )	
+				movement_speed *= -1.0;
+
+			mEye[0] -= sinf(mRotation[1]) * movement_speed;
+			mEye[1] += sinf(mRotation[0]) * movement_speed;
+			mEye[2] += cosf(mRotation[1]) * movement_speed;
+		}
+		else if( key == XK_Left || key == XK_Right || key == XK_a || key == XK_d )
+		{
+			if( key == XK_Left || key == XK_a )	
+				movement_speed *= -1.0;
+
+			mEye[0] += cosf(mRotation[1]) * movement_speed;
+			mEye[2] += sinf(mRotation[1]) * movement_speed;
+		}
+		else if( key == XK_q || key == XK_z || key == XK_e )
+		{
+			if( key == XK_z || key == XK_e )
+				movement_speed *= -1.0;
+
+			mEye[1] += movement_speed;
+		}
+		else if( key == XK_r )
+		{
+			Reset();
+		}
+	}
+	else if( msg == MOUSE_BUTTON )
+	{
+		if( a == MOUSE_LEFT )
+		{
+			if( b == MOUSE_PRESSED && mouseInViewport() )
+				mMouseActive = true;
+			else
+				mMouseActive = false;
+		}
+	}
+	else if( msg == MOUSE_DRAG )
+	{
+		if( mMouseActive )
+		{
+			mRotation[0] += float(b) * 0.0025f;
+			mRotation[1] += float(a) * 0.0025f;
+		}
+	}
+	else if( msg == MOUSE_WHEEL )
+	{
+		if( mMouseActive || mouseInViewport() )
+		{
+			movement_speed *= a;
+
+			mEye[0] -= sinf(mRotation[1]) * movement_speed;
+			mEye[1] += sinf(mRotation[0]) * movement_speed;
+			mEye[2] += cosf(mRotation[1]) * movement_speed;
+		}
+	}
+
+	return true;
 }
 
 
@@ -201,59 +280,32 @@ bool glCamera::onEvent( uint16_t msg, int a, int b, void* user )
 	if( !user )
 		return false;
 
-	glCamera* cam = (glCamera*)user;
+	return ((glCamera*)user)->onEvent(msg, a, b);
+}
 
-	if( !cam->mMovementEnabled )
+
+// mouseInViewport
+bool glCamera::mouseInViewport() const
+{
+	glDisplay* display = (glDisplay*)mDisplay;
+
+	if( !display )
 		return false;
 
-	if( msg == KEY_RAW && b == KEY_PRESSED )
-	{
-		float movement_speed = cam->mMovementSpeed;
+	int x = 0;
+	int y = 0;
 
-		if( a == XK_Up || a == XK_Down || a == XK_w || a == XK_s )
-		{
-			if( a == XK_Up || a == XK_w )	
-				movement_speed *= -1.0;
+	display->GetMousePosition(&x, &y);
 
-			cam->mEye[0] -= sinf(cam->mRotation[1]) * movement_speed;
-			cam->mEye[1] += sinf(cam->mRotation[0]) * movement_speed;
-			cam->mEye[2] += cosf(cam->mRotation[1]) * movement_speed;
-		}
-		else if( a == XK_Left || a == XK_Right || a == XK_a || a == XK_d )
-		{
-			if( a == XK_Left || a == XK_a )	
-				movement_speed *= -1.0;
+	const int viewLeft   = mViewport[0];
+	const int viewTop    = display->GetHeight() - mViewport[1] - mViewport[3];
+	const int viewRight  = viewLeft + mViewport[2];
+	const int viewBottom = viewTop + mViewport[3];
 
-			cam->mEye[0] += cosf(cam->mRotation[1]) * movement_speed;
-			cam->mEye[2] += sinf(cam->mRotation[1]) * movement_speed;
-		}
-		else if( a == XK_q || a == XK_z || a == XK_e )
-		{
-			if( a == XK_z || a == XK_e )
-				movement_speed *= -1.0;
+	if( x >= viewLeft && x <= viewRight && y >= viewTop && y <= viewBottom )
+		return true;
 
-			cam->mEye[1] += movement_speed;
-		}
-		else if( a == XK_r )
-		{
-			cam->Reset();
-		}
-	}
-	else if( msg == MOUSE_WHEEL )
-	{
-		const float movement_speed = cam->mMovementSpeed * a;
-
-		cam->mEye[0] -= sinf(cam->mRotation[1]) * movement_speed;
-		cam->mEye[1] += sinf(cam->mRotation[0]) * movement_speed;
-		cam->mEye[2] += cosf(cam->mRotation[1]) * movement_speed;
-	}
-	else if( msg == MOUSE_DRAG )
-	{
-		cam->mRotation[0] += float(b) * 0.0025f;
-		cam->mRotation[1] += float(a) * 0.0055f;
-	}
-	
-	return true;
+	return false;
 }
 
 
