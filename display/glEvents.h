@@ -25,20 +25,6 @@
 
 
 /**
- * Define for MOUSE_BUTTON event when button is pressed.
- * @see glEventType::MOUSE_BUTTON
- * @ingroup OpenGL
- */
-#define BUTTON_PRESSED 1
-
-/**
- * Define for MOUSE_BUTTON event when button is released.
- * @see glEventType::MOUSE_BUTTON
- * @ingroup OpenGL
- */
-#define BUTTON_RELEASED 0
-
-/**
  * Define for KEY_STATE and KEY_RAW events when key is pressed.
  * @see glEventType::KEY_STATE
  * @ingroup OpenGL
@@ -51,6 +37,61 @@
  * @ingroup OpenGL
  */
 #define KEY_RELEASED 0
+
+/**
+ * @internal Indicates the starting key symbol offset
+ * @ingroup OpenGL
+ */
+#define KEY_OFFSET   0xff00
+
+/**
+ * Define for MOUSE_BUTTON event when button is pressed.
+ * @see glEventType::MOUSE_BUTTON
+ * @ingroup OpenGL
+ */
+#define MOUSE_PRESSED     1
+
+/**
+ * Define for MOUSE_BUTTON event when button is released.
+ * @see glEventType::MOUSE_BUTTON
+ * @ingroup OpenGL
+ */
+#define MOUSE_RELEASED    0
+
+/**
+ * Define for the left mouse button number.
+ * @see glEventType::MOUSE_BUTTON
+ * @ingroup OpenGL
+ */
+#define MOUSE_LEFT        1
+
+/**
+ * Define for the middle mouse button (or scroll wheel button)
+ * @see glEventType::MOUSE_BUTTON
+ * @ingroup OpenGL
+ */
+#define MOUSE_MIDDLE      2
+
+/**
+ * Define for the right mouse button number.
+ * @see glEventType::MOUSE_BUTTON
+ * @ingroup OpenGL
+ */
+#define MOUSE_RIGHT       3
+
+/**
+ * Define for the mouse wheel scroll up button number.
+ * @see glEventType::MOUSE_BUTTON
+ * @ingroup OpenGL
+ */
+#define MOUSE_WHEEL_UP   4
+
+/**
+ * Define for the mouse wheel scroll down button number.
+ * @see glEventType::MOUSE_BUTTON
+ * @ingroup OpenGL
+ */
+#define MOUSE_WHEEL_DOWN 5
 
 
 /**
@@ -98,15 +139,15 @@ enum glEventType
 	 * Message when a mouse button has been pressed/released
 	 *
 	 * a = button ID
-	 * b = BUTTON_PRESSED or BUTTON_RELEASED
+	 * b = MOUSE_PRESSED or MOUSE_RELEASED
 	 *
 	 * Here is the mapping of the mouse buttons to their ID:
 	 *
-	 *	- 1 (left button)
-	 *   - 2 (middle button / scroll wheel button)
-	 *   - 3 (right button)
-	 *   - 4 (scroll wheel up)
-	 *   - 5 (scroll wheel down)
+	 *	- 1 MOUSE_LEFT       (left button)
+	 *   - 2 MOUSE_MIDDLE     (middle button / scroll wheel button)
+	 *   - 3 MOUSE_RIGHT      (right button)
+	 *   - 4 MOUSE_WHEEL_UP   (scroll wheel up)
+	 *   - 5 MOUSE_WHEEL_DOWN (scroll wheel down)
 	 */
 	MOUSE_BUTTON,
 
@@ -129,20 +170,7 @@ enum glEventType
 	MOUSE_WHEEL,
 
 	/**
-	 * Message when a key has been pressed or released (with modifiers applied)
-	 *
-	 * a = key symbol (with modifier translations)
-	 * b = KEY_PRESSED or KEY_RELEASED
-	 *
-	 * These symbols have modifiers applied (Shift, CapsLock, NumLock, ect),
-	 * so for example if you press Shift + a, it will be reported as XK_A (A)
-	 *
-	 * @see `/usr/include/X11/keysymdef.h` for the `XK_ KeySym` symbol definitions.
-	 */ 
-	KEY_STATE,
-
-	/**
-	 * Message when a key state has changed (raw, so no modifiers applied)
+	 * Message when a key state has changed (raw, without modifiers applied)
 	 *
 	 * a = raw key symbol (without modifier translation)
 	 * b = KEY_PRESSED or KEY_RELEASED
@@ -152,8 +180,21 @@ enum glEventType
 	 * For example if you press Shift + a, it will still be reported as XK_a (a)
 	 *
 	 * @see `/usr/include/X11/keysymdef.h` for the `XK_ KeySym` symbol definitions.
-	 */ 
-	KEY_RAW,
+	 */  
+	KEY_STATE,
+
+	/**
+	 * Message when a key has been pressed or released (with modifiers applied)
+	 *
+	 * a = key symbol (with modifier translations)
+	 * b = KEY_PRESSED or KEY_RELEASED
+	 *
+	 * These symbols have modifiers applied (Shift, CapsLock, NumLock, ect),
+	 * so for example if you press Shift + a, it will be reported as XK_A (A)
+	 *
+	 * @see `/usr/include/X11/keysymdef.h` for the `XK_ KeySym` symbol definitions.
+	 */
+	KEY_MODIFIED,
 
 	/**
 	 * Message when a keyboard ASCII character (0-255) was entered
