@@ -137,8 +137,9 @@ int main( int argc, char** argv )
 	while( !signal_recieved && display->IsOpen() )
 	{
 		display->BeginRender();
+		display->RenderRect(10, 100, 200, 200, 0.0f, 0.9f, 0.4f);
 
-		// draw test buffer
+		// draw point buffer
 		PointVertex* points = (PointVertex*)buffer->Map(GL_MAP_CUDA, GL_WRITE_DISCARD);
 
 		if( points != NULL )
@@ -150,11 +151,10 @@ int main( int argc, char** argv )
 			buffer->Unmap();
 
 			// change the viewport
-			const int viewportWidth = display->GetWidth() / 2;
-			const int viewportHeight = display->GetHeight() / 2;
+			display->SetViewport(display->GetWidth() / 2, display->GetHeight() / 2, 
+							 display->GetWidth(), display->GetHeight());
 
-			display->SetViewport(0, TEXTURE_HEIGHT + TEXTURE_OFFSET, display->GetWidth(), 
-							 display->GetHeight() - TEXTURE_HEIGHT - TEXTURE_OFFSET);
+			display->RenderRect(0.15f, 0.15f, 0.15f);
 
 			// enable the camera and buffer
 			camera->Activate();
@@ -177,7 +177,6 @@ int main( int argc, char** argv )
 			camera->Deactivate();
 			display->ResetViewport();
 		}
-
 
 		// draw test texture
 		if( texture != NULL && font != NULL )
