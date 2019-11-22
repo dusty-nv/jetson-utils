@@ -244,13 +244,13 @@ bool glTexture::init( uint32_t width, uint32_t height, uint32_t format, void* da
 	GL(glBufferDataARB(GL_PIXEL_UNPACK_BUFFER_ARB, size, NULL, GL_DYNAMIC_DRAW_ARB));
 	GL(glBindBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB, 0));
 	
-	
 	mID     = id;
 	mDMA    = dma;
 	mWidth  = width;
 	mHeight = height;
 	mFormat = format;
 	mSize   = size;
+
 	return true;
 }
 
@@ -374,20 +374,21 @@ void glTexture::Render( const float4& rect )
 		glColor4f(1.0f,1.0f,1.0f,1.0f);
 
 		glTexCoord2f(0.0f, 0.0f); 
-		glVertex2d(rect.x, rect.y);
+		glVertex2f(rect.x, rect.y);
 
 		glTexCoord2f(1.0f, 0.0f); 
-		glVertex2d(rect.z, rect.y);	
+		glVertex2f(rect.z, rect.y);	
 
 		glTexCoord2f(1.0f, 1.0f); 
-		glVertex2d(rect.z, rect.w);
+		glVertex2f(rect.z, rect.w);
 
 		glTexCoord2f(0.0f, 1.0f); 
-		glVertex2d(rect.x, rect.w);
+		glVertex2f(rect.x, rect.w);
 
 	glEnd();
 
 	GL(glBindTexture(GL_TEXTURE_2D, 0));
+	GL(glDisable(GL_TEXTURE_2D));
 }
 
 
