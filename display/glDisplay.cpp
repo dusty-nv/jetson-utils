@@ -66,13 +66,20 @@ glDisplay::glDisplay()
 	mBgColor[2]   = 0.0f;
 	mBgColor[3]   = 1.0f;
 
-	mMouseDrag[0] = -1;
-	mMouseDrag[1] = -1;
-
 	mNormalizedCUDA   = NULL;
 	mNormalizedWidth  = 0;
 	mNormalizedHeight = 0;
 
+	// initial input states
+	mMousePos[0]  = 0;
+	mMousePos[1]  = 0;
+
+	mMouseDrag[0] = -1;
+	mMouseDrag[1] = -1;
+
+	memset(mMouseButtons, 0, sizeof(mMouseButtons));
+	memset(mKeyStates, 0, sizeof(mKeyStates));
+ 
 	// get the starting time for FPS counter
 	clock_gettime(CLOCK_REALTIME, &mLastTime);
 	
@@ -303,10 +310,13 @@ bool glDisplay::initGL()
 
 
 // SetViewport
-void glDisplay::SetViewport( int x, int y, int width, int height )
+void glDisplay::SetViewport( int left, int top, int right, int bottom )
 {
-	mViewport[0] = x;				  // glViewport expects bottom-left
-	mViewport[1] = mHeight - y - height; // (change to it from top-left)
+	const int width  = right - left;
+	const int height = bottom - top;
+
+	mViewport[0] = left;
+	mViewport[1] = mHeight - bottom;
 	mViewport[2] = width;
 	mViewport[3] = height;
 
@@ -475,6 +485,29 @@ void glDisplay::RenderOnce( float* img, uint32_t width, uint32_t height, float x
 }
 
 
+// RenderRect
+void glDisplay::RenderRect( float left, float top, float right, float bottom, float r, float g, float b, float a )
+{
+	glBegin(GL_QUADS);
+
+		glColor4f(r, g, b, a);
+
+		glVertex2f(left, top);
+		glVertex2f(right, top);	
+		glVertex2f(right, bottom);
+		glVertex2f(left, bottom);
+
+	glEnd();
+}
+
+
+// RenderRect
+void glDisplay::RenderRect( float r, float g, float b, float a )
+{
+	RenderRect(0, 0, mViewport[2], mViewport[3], r, g, b, a);
+}
+
+
 // SetBackgroundColor
 void glDisplay::SetBackgroundColor( float r, float g, float b, float a )
 {
@@ -516,7 +549,14 @@ void glDisplay::ProcessEvents()
 			const KeySym keySymbolRaw = XLookupKeysym(&evt.xkey, 0);	
 
 			if( keySymbolRaw != NoSymbol )
-				dispatchEvent(KEY_RAW, (int)keySymbolRaw, keyPressed);
+			{
+				const uint32_t idx = (uint32_t)keySymbolRaw - KEY_OFFSET;
+
+				if( idx < sizeof(mKeyStates) )
+					mKeyStates[idx] = keyPressed;
+			
+				dispatchEvent(KEY_STATE, (int)keySymbolRaw, keyPressed);
+			}
 
 			// apply modifier translation
 			char keyStr[32];
@@ -525,7 +565,7 @@ void glDisplay::ProcessEvents()
 
 			if( keySymbol != NoSymbol )
 			{
-				dispatchEvent(KEY_STATE, (int)keySymbol, keyPressed);
+				dispatchEvent(KEY_MODIFIED, (int)keySymbol, keyPressed);
 
 				if( evt.type == KeyPress && strLen == 1 )
 					dispatchEvent(KEY_CHAR, (int)keyStr[0], 0);
@@ -533,22 +573,25 @@ void glDisplay::ProcessEvents()
 		}
 		else if( evt.type == ButtonPress || evt.type == ButtonRelease )
 		{
-			const int buttonPressed = (evt.type == ButtonPress) ? BUTTON_PRESSED : BUTTON_RELEASED;
-			
+			const int buttonPressed = (evt.type == ButtonPress) ? MOUSE_PRESSED : MOUSE_RELEASED;
+
+			if( evt.xbutton.button < sizeof(mMouseButtons) )
+				mMouseButtons[evt.xbutton.button] = buttonPressed;			
+		
 			dispatchEvent(MOUSE_BUTTON, evt.xbutton.button, buttonPressed);
 
 			if( buttonPressed )
 			{
 				// handle mouse wheel scrolling
-				if( evt.xbutton.button == 4 )
+				if( evt.xbutton.button == MOUSE_WHEEL_UP )
 					dispatchEvent(MOUSE_WHEEL, -1, 0);
-				else if( evt.xbutton.button == 5 )
+				else if( evt.xbutton.button == MOUSE_WHEEL_DOWN )
 					dispatchEvent(MOUSE_WHEEL, 1, 0);
 			}
 			else
 			{
 				// reset drag when left button released
-				if( evt.xbutton.button == 1 )
+				if( evt.xbutton.button == MOUSE_LEFT )
 				{
 					mMouseDrag[0] = -1;
 					mMouseDrag[1] = -1;
@@ -558,6 +601,9 @@ void glDisplay::ProcessEvents()
 		else if( evt.type == MotionNotify )
 		{
 			// relative coordinates
+			mMousePos[0] = evt.xmotion.x;
+			mMousePos[1] = evt.xmotion.y;
+
 			dispatchEvent(MOUSE_MOVE, evt.xmotion.x, evt.xmotion.y);
 
 			// absolute coordinates
@@ -586,11 +632,14 @@ void glDisplay::ProcessEvents()
 		{
 			if( evt.xconfigure.width != mWidth || evt.xconfigure.height != mHeight )
 			{
-				if( mViewport[2] == mWidth && mViewport[3] == mHeight )
-					SetViewport(0, 0, evt.xconfigure.width, evt.xconfigure.height);
+				const int prevWidth = mWidth;
+				const int prevHeight = mHeight;
 
 				mWidth = evt.xconfigure.width;
 				mHeight = evt.xconfigure.height;
+
+				if( mViewport[2] == prevWidth && mViewport[3] == prevHeight )
+					SetViewport(0, 0, evt.xconfigure.width, evt.xconfigure.height);
 
 				dispatchEvent(WINDOW_RESIZE, mWidth, mHeight);
 			}
@@ -715,10 +764,10 @@ bool glDisplay::onEvent( uint16_t msg, int a, int b, void* user )
 
 			break;
 		}
-		case KEY_RAW:
+		case KEY_MODIFIED:
 		{
 			if( display->mEnableDebug )
-				printf(LOG_GL "glDisplay -- event KEY_RAW %i %s (%s)\n", a, XKeysymToString(a), b ? "pressed" : "released");
+				printf(LOG_GL "glDisplay -- event KEY_MODIFIED %i %s (%s)\n", a, XKeysymToString(a), b ? "pressed" : "released");
 
 			break;
 		}
