@@ -181,7 +181,7 @@ int main( int argc, char** argv )
 		// draw test texture
 		if( texture != NULL && font != NULL )
 		{
-			void* textureCUDA = texture->MapCUDA();
+			void* textureCUDA = texture->Map(GL_MAP_CUDA, GL_WRITE_DISCARD);
 
 			if( textureCUDA != NULL )
 			{
