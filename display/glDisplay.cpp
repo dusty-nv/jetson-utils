@@ -462,7 +462,7 @@ void glDisplay::Render( float* img, uint32_t width, uint32_t height, float x, fl
 	}
 
 	// map from CUDA to openGL using GL interop
-	void* tex_map = interopTex->MapCUDA();
+	void* tex_map = interopTex->Map(GL_MAP_CUDA, GL_WRITE_DISCARD); //interopTex->MapCUDA();
 
 	if( tex_map != NULL )
 	{
@@ -761,6 +761,20 @@ bool glDisplay::onEvent( uint16_t msg, int a, int b, void* user )
 		{
 			if( display->mEnableDebug )
 				printf(LOG_GL "glDisplay -- event KEY_STATE %i %s (%s)\n", a, XKeysymToString(a), b ? "pressed" : "released");
+
+			if( a == XK_Escape && b == KEY_PRESSED )
+			{
+				XEvent ev;
+				memset(&ev, 0, sizeof(ev));
+
+				ev.xclient.type = ClientMessage;
+				ev.xclient.window = display->mWindowX;
+				ev.xclient.message_type = XInternAtom(display->mDisplayX, "WM_PROTOCOLS", true);
+				ev.xclient.format = 32;
+				ev.xclient.data.l[0] = XInternAtom(display->mDisplayX, "WM_DELETE_WINDOW", false);
+				ev.xclient.data.l[1] = CurrentTime;
+				XSendEvent(display->mDisplayX, display->mWindowX, False, NoEventMask, &ev);
+			}
 
 			break;
 		}
