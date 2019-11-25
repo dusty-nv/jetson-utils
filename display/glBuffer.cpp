@@ -175,6 +175,7 @@ void* glBuffer::Map( uint32_t device, uint32_t flags )
 		if( !ptr )
 		{
 			printf(LOG_GL "glMapBuffer() failed\n");
+			GL_CHECK("glMapBuffer()\n");			
 			return NULL;
 		}
 
@@ -203,6 +204,7 @@ void* glBuffer::Map( uint32_t device, uint32_t flags )
 		if( CUDA_FAILED(cudaGraphicsMapResources(1, &mInteropCUDA)) )
 			return NULL;
 
+		// map CUDA device pointer
 		void*  devPtr     = NULL;
 		size_t mappedSize = 0;
 
@@ -248,6 +250,7 @@ void glBuffer::Unmap()
 	}
 
 	mMapDevice = 0;
+	Unbind();
 }
 
 

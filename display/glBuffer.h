@@ -197,7 +197,8 @@ public:
 	void* Map( uint32_t device, uint32_t flags );
 
 	/**
-	 * Unmap the buffer from CPU/CUDA access
+	 * Unmap the buffer from CPU/CUDA access.
+	 * @note the buffer will be unbound after calling Unmap()
 	 */
 	void Unmap();
 
@@ -266,11 +267,13 @@ private:
 	bool init( uint32_t type, uint32_t size, void* data, uint32_t usage);
 	
 	uint32_t mID;
-	uint32_t mNumElements;
-	uint32_t mElementSize;
 	uint32_t mSize;
 	uint32_t mType;
 	uint32_t mUsage;
+
+	uint32_t mNumElements;
+	uint32_t mElementSize;
+
 	uint32_t mMapDevice;
 	uint32_t mMapFlags;
 
