@@ -200,11 +200,118 @@ void glCamera::RegisterEvents( uint32_t display )
 
 
 // onEvent
-bool glCamera::onEvent( uint16_t msg, int a, int b )
+bool glCamera::onEvent( uint16_t msg, int a, int b, void* user )
 {
-	if( !mMovementEnabled )
+	if( !user )
 		return false;
 
+	glCamera* cam = (glCamera*)user;
+
+	if( msg == KEY_STATE && a == XK_r && b == KEY_PRESSED )
+		cam->Reset();
+
+	if( !cam->mMovementEnabled )
+		return false;
+
+	if( msg == MOUSE_BUTTON )
+	{
+		if( a == MOUSE_LEFT )
+		{
+			if( b == MOUSE_PRESSED && cam->mouseInViewport() )
+				cam->mMouseActive = true;
+			else
+				cam->mMouseActive = false;
+		}
+	}
+
+	if( cam->mMode == glCamera::LookAt )
+		return cam->onEventLookAt(msg, a, b);
+	else if( cam->mMode == glCamera::YawPitchRoll )
+		return cam->onEventYawPitchRoll(msg, a, b);
+
+	return false;
+}
+
+
+// onEventLookAt
+bool glCamera::onEventLookAt( uint16_t msg, int a, int b )
+{
+	if( msg != KEY_STATE && msg != MOUSE_WHEEL && msg != MOUSE_DRAG )
+		return false;
+
+	float movement_speed = mMovementSpeed;
+	float angle_speed = movement_speed * 0.075f;
+
+	const float delta[] = { mEye[0] - mLookAt[0],
+					    mEye[1] - mLookAt[1],
+					    mEye[2] - mLookAt[2] };
+
+	// https://en.wikipedia.org/wiki/Spherical_coordinate_system#Cartesian_coordinates
+	float radius = sqrtf(delta[0] * delta[0] + delta[1] * delta[1] + delta[2] * delta[2]);
+	float phi    = atan2f(delta[2], delta[0]);
+	float theta  = acosf(delta[1] / radius);
+
+	if( msg == KEY_STATE && b == KEY_PRESSED )
+	{
+		const int key = a;
+
+		if( key == XK_Up || key == XK_Down || key == XK_w || key == XK_s )
+		{
+			if( key == XK_Up || key == XK_w )	
+				movement_speed *= -1.0;
+
+			radius += movement_speed;
+		}
+		else if( key == XK_Left || key == XK_Right || key == XK_a || key == XK_d )
+		{
+			if( key == XK_Right || key == XK_d )	
+				angle_speed *= -1.0;
+
+			phi += angle_speed;
+		}
+		else if( key == XK_q || key == XK_z || key == XK_e )
+		{
+			if( key == XK_q )
+				angle_speed *= -1.0;
+
+			theta += angle_speed * 0.6f;
+		}
+	}
+	else if( msg == MOUSE_DRAG )
+	{
+		if( mMouseActive )
+		{
+			phi += float(a) * 0.005f;
+			theta += float(b) * 0.005f;
+		}
+	}
+	else if( msg == MOUSE_WHEEL )
+	{
+		if( mMouseActive || mouseInViewport() )
+		{
+			radius += movement_speed * a;
+		}
+	}
+
+	// convert from spherical to cartesian
+	mEye[0] = radius * sinf(theta) * cosf(phi);
+	mEye[1] = radius * cos(theta);
+	mEye[2] = radius * sinf(theta) * sinf(phi);
+
+	mEye[0] += mLookAt[0];
+	mEye[1] += mLookAt[1];
+	mEye[2] += mLookAt[2];
+
+	//printf("radius %f  phi %f  theta %f\n", radius, phi, theta);
+	//printf("eye %f %f %f\n", mEye[0], mEye[1], mEye[2]);
+
+	return true;
+}
+
+
+// onEventYawPitchRoll
+bool glCamera::onEventYawPitchRoll( uint16_t msg, int a, int b )
+{
 	float movement_speed = mMovementSpeed;
 
 	if( msg == KEY_STATE && b == KEY_PRESSED )
@@ -235,20 +342,6 @@ bool glCamera::onEvent( uint16_t msg, int a, int b )
 
 			mEye[1] += movement_speed;
 		}
-		else if( key == XK_r )
-		{
-			Reset();
-		}
-	}
-	else if( msg == MOUSE_BUTTON )
-	{
-		if( a == MOUSE_LEFT )
-		{
-			if( b == MOUSE_PRESSED && mouseInViewport() )
-				mMouseActive = true;
-			else
-				mMouseActive = false;
-		}
 	}
 	else if( msg == MOUSE_DRAG )
 	{
@@ -271,16 +364,6 @@ bool glCamera::onEvent( uint16_t msg, int a, int b )
 	}
 
 	return true;
-}
-
-
-// onEvent
-bool glCamera::onEvent( uint16_t msg, int a, int b, void* user )
-{
-	if( !user )
-		return false;
-
-	return ((glCamera*)user)->onEvent(msg, a, b);
 }
 
 

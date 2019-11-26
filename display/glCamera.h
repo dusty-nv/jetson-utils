@@ -40,9 +40,9 @@ public:
 	 */
 	enum CameraMode
 	{
-		LookAt,
-		YawPitchRoll,
-		Ortho
+		LookAt,		/**< LookAt (orbit) */
+		YawPitchRoll,	/**< YawPitchRoll (first person */
+		Ortho		/**< Ortho (2D) */
 	};
 	
 	/**
@@ -175,7 +175,9 @@ private:
 
 	bool mouseInViewport() const;
 
-	bool onEvent( uint16_t msg, int a, int b );
+	bool onEventLookAt( uint16_t msg, int a, int b );
+	bool onEventYawPitchRoll( uint16_t msg, int a, int b );
+
 	static bool onEvent( uint16_t msg, int a, int b, void* user );
 
 	CameraMode mMode;
