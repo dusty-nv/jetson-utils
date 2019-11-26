@@ -100,7 +100,7 @@ public:
 	 * Render a rect in screen coordinates with the specified color
 	 * @note the RGBA color values are expected to be in the range of [0-1]
 	 */
-	void RenderRect( float left, float top, float right, float bottom, float r, float g, float b, float a=1.0f );
+	void RenderRect( float x, float y, float width, float height, float r, float g, float b, float a=1.0f );
 
 	/**
 	 * Render a rect covering the current viewport with the specified color

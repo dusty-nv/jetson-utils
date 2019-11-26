@@ -486,8 +486,11 @@ void glDisplay::RenderOnce( float* img, uint32_t width, uint32_t height, float x
 
 
 // RenderRect
-void glDisplay::RenderRect( float left, float top, float right, float bottom, float r, float g, float b, float a )
+void glDisplay::RenderRect( float left, float top, float width, float height, float r, float g, float b, float a )
 {
+	const float right = left + width;
+	const float bottom = top + height;
+
 	glBegin(GL_QUADS);
 
 		glColor4f(r, g, b, a);
