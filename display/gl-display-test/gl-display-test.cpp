@@ -107,7 +107,7 @@ int main( int argc, char** argv )
 	/*
 	 * create 3D camera
 	 */
-	glCamera* camera = glCamera::Create(glCamera::YawPitchRoll);
+	glCamera* camera = glCamera::Create(glCamera::LookAt);
 
 	if( !camera )
 	{
@@ -137,8 +137,11 @@ int main( int argc, char** argv )
 	while( !signal_recieved && display->IsOpen() )
 	{
 		display->BeginRender();
-		display->RenderRect(10, 100, 200, 200, 0.0f, 0.9f, 0.4f);
 
+		display->RenderRect( 10, 100, 200, 100, 0.9f, 0.0f, 0.2f);
+		display->RenderRect(210, 100, 200, 100, 0.0f, 0.9f, 0.4f);
+		display->RenderRect(410, 100, 200, 100, 0.0f, 0.4f, 0.9f);
+		
 		// draw point buffer
 		PointVertex* points = (PointVertex*)buffer->Map(GL_MAP_CUDA, GL_WRITE_DISCARD);
 
