@@ -21,13 +21,20 @@
  */
 
 #include "cudaPointCloud.h"
-#include "cudaMath.h"
+#include "cudaColormap.h"
+
+
+// float4 to uchar3
+inline __host__ __device__ uchar3 make_uchar3( float4 a )
+{
+    return make_uchar3(fminf(a.x, 255.0f), fminf(a.y, 255.0f), fminf(a.z, 255.0f));
+}
 
 
 // gpuPointCloudExtract
 template<bool useRGB>
-__global__ void gpuPointCloudExtract( float3* points, float* depth, float4* rgba, 
-							   int width, int height, float2 fx, float2 cx )
+__global__ void gpuPointCloudExtract( float* depth, float4* rgba, int width, int height, 
+							   float2 fx, float2 cx, cudaPointCloud::Vertex* points )
 {
 	const int x = blockIdx.x * blockDim.x + threadIdx.x;
 	const int y = blockIdx.y * blockDim.y + threadIdx.y;
@@ -39,23 +46,30 @@ __global__ void gpuPointCloudExtract( float3* points, float* depth, float4* rgba
 	// read depth map sample
 	const float depth_sample = depth[i];
 
-	// determine output address
-	float3* output = points + i * (useRGB + 1);
+	// create output point
+	cudaPointCloud::Vertex point;
+
+	point.classID = 0;	// not applied yet
 
 	// apply depth calibration
-	output[0] = make_float3((float(x) - cx.x) * depth_sample / fx.x,
+	point.pos = make_float3((float(x) - cx.x) * depth_sample / fx.x,
 				    	    (float(y) - cx.y) * depth_sample / fx.y * -1.0f,
 				     	depth_sample * -1.0f);
 
-	// output RGB if needed
+	// read RGB if needed
 	if( useRGB )
-		output[1] = make_float3(rgba[i]);
+		point.color = make_uchar3(rgba[i]);
+	else
+		point.color = make_uchar3(255,255,255);
+
+	// save the point
+	points[i] = point;
 }
 
 
 // Extract
-bool cudaPointCloud::Extract( float* depth, float4* rgba, uint32_t width, uint32_t height,
-					 	const float2& focalLength, const float2& principalPoint )
+bool cudaPointCloud::Extract( float* depth, uint32_t depth_width, uint32_t depth_height,
+						float4* rgba, uint32_t color_width, uint32_t color_height )
 {
 	if( !depth )
 	{
@@ -63,9 +77,15 @@ bool cudaPointCloud::Extract( float* depth, float4* rgba, uint32_t width, uint32
 		return false;
 	}
 
-	if( width == 0 || height == 0 )
+	if( depth_width == 0 || depth_height == 0 || color_width == 0 || color_height == 0 )
 	{
-		printf(LOG_CUDA "cudaPointCloud::Extract() -- width/height parameters are zero\n");
+		printf(LOG_CUDA "cudaPointCloud::Extract() -- depth width/height parameters are zero\n");
+		return false;
+	}
+
+	if( rgba != NULL && (color_width == 0 || color_height == 0) )
+	{
+		printf(LOG_CUDA "cudaPointCloud::Extract() -- color width/height parameters are zero\n");
 		return false;
 	}
 
@@ -73,20 +93,49 @@ bool cudaPointCloud::Extract( float* depth, float4* rgba, uint32_t width, uint32
 	if( rgba != NULL )
 		mHasRGB = true;
 
-	// allocate memory
-	const uint32_t numPoints = width * height;
+	// upsample depth if needed
+	if( mHasRGB && (depth_width != color_width || depth_height != color_height) )
+	{
+		if( !allocDepthResize(color_width * color_height * sizeof(float)) )
+			return false;
+
+		if( CUDA_FAILED(cudaColormap(depth, depth_width, depth_height,
+							    mDepthResize, color_width, color_height,
+							    make_float2(0.0f,0.0f), COLORMAP_NONE, FILTER_LINEAR)) ) 
+		{
+			printf(LOG_CUDA "cudaPointCloud::Extract() -- failed to resize depth image\n");
+			return false; 
+		}
+
+		depth        = mDepthResize;
+		depth_width  = color_width;
+		depth_height = color_height;
+	}
+
+	// allocate point cloud memory
+	const uint32_t numPoints = depth_width * depth_height;
 
 	if( !Reserve(numPoints) )
 		return false;
+		
+	// default calibration if needed
+	if( !mHasCalibration )
+	{
+		const float f_w = (float)depth_width;
+		const float f_h = (float)depth_height;
+
+		mFocalLength = make_float2(f_h, f_h);
+		mPrincipalPoint = make_float2(f_w * 0.5f, f_h * 0.5f);
+	}
 
 	// launch kernel
 	const dim3 blockDim(8, 8);
-	const dim3 gridDim(iDivUp(width,blockDim.x), iDivUp(height,blockDim.y));
+	const dim3 gridDim(iDivUp(depth_width,blockDim.x), iDivUp(depth_height,blockDim.y));
 
 	if( mHasRGB )
-		gpuPointCloudExtract<true><<<gridDim, blockDim>>>(mPointsGPU, depth, rgba, width, height, focalLength, principalPoint);
+		gpuPointCloudExtract<true><<<gridDim, blockDim>>>(depth, rgba, depth_width, depth_height, mFocalLength, mPrincipalPoint, mPointsGPU);
 	else
-		gpuPointCloudExtract<false><<<gridDim, blockDim>>>(mPointsGPU, depth, rgba, width, height, focalLength, principalPoint);
+		gpuPointCloudExtract<false><<<gridDim, blockDim>>>(depth, rgba, depth_width, depth_height, mFocalLength, mPrincipalPoint, mPointsGPU);
 
 	// check for launch errors
 	if( CUDA_FAILED(cudaGetLastError()) )
@@ -95,7 +144,17 @@ bool cudaPointCloud::Extract( float* depth, float4* rgba, uint32_t width, uint32
 		return false;
 	}
 	
+	mNumPoints = numPoints;
+	mHasNewPoints = true;
+
 	return true;
+}
+
+
+// Extract
+bool cudaPointCloud::Extract( float* depth, float4* rgba, uint32_t width, uint32_t height )
+{
+	return Extract(depth, width, height, rgba, width, height);
 }
 
 

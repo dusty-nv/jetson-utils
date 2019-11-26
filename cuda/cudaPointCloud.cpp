@@ -23,25 +23,47 @@
 #include "cudaPointCloud.h"
 #include "cudaMappedMemory.h"
 
+#include "glUtility.h"
+#include "glBuffer.h"
+#include "glCamera.h"
+
 #include "mat33.h"
 
 
 // constructor
 cudaPointCloud::cudaPointCloud()
 {
-	mPointsCPU = NULL;
-	mPointsGPU = NULL;
+	mPointsCPU   = NULL;
+	mPointsGPU   = NULL;
+	mBufferGL    = NULL;
+	mCameraGL    = NULL;
+	mDepthResize = NULL;
 
+	mDepthSize = 0;
 	mNumPoints = 0;
 	mMaxPoints = 0;
 
-	mHasRGB    = false;
+	mHasRGB         = false;
+	mHasNewPoints	 = false;
+	mHasCalibration = false;
 }
 
 
 // destructor
 cudaPointCloud::~cudaPointCloud()
 {
+	if( mDepthResize != NULL )
+	{
+		CUDA(cudaFree(mDepthResize));
+		mDepthResize = NULL;
+	}
+
+	if( mCameraGL != NULL )
+	{
+		delete mCameraGL;
+		mCameraGL = NULL;
+	}
+
 	Free();
 }
 
@@ -49,6 +71,12 @@ cudaPointCloud::~cudaPointCloud()
 // Free
 void cudaPointCloud::Free()
 {
+	if( mBufferGL != NULL )
+	{
+		delete mBufferGL;
+		mBufferGL = NULL;
+	}
+
 	if( mPointsCPU != NULL )
 	{
 		CUDA(cudaFreeHost(mPointsCPU));
@@ -58,6 +86,23 @@ void cudaPointCloud::Free()
 		mNumPoints = 0;
 		mMaxPoints = 0;
 	}
+}
+
+
+// Clear
+void cudaPointCloud::Clear()
+{
+	if( mPointsGPU != NULL )
+		CUDA(cudaMemset(mPointsGPU, 0, GetMaxSize()));
+
+	mNumPoints = 0;
+}
+
+
+// Create
+cudaPointCloud* cudaPointCloud::Create()
+{
+	return new cudaPointCloud();
 }
 
 
@@ -75,56 +120,152 @@ bool cudaPointCloud::Reserve( uint32_t maxPoints )
 	Free();
 
 	// determine size of new memory
-	mMaxPoints = maxPoints;
-	const size_t maxSize = GetMaxSize();
+	const size_t maxSize = maxPoints * sizeof(Vertex);
 
 	// allocate new memory
 	if( !cudaAllocMapped((void**)&mPointsCPU, (void**)&mPointsGPU, maxSize) )
 	{
 		printf(LOG_CUDA "failed to allocate %zu bytes for point cloud\n", maxSize);
-		mMaxPoints = 0;
 		return false;
 	}
+	
+	mMaxPoints = maxPoints;
+	return true;
+}
+
+
+// allocBufferGL
+bool cudaPointCloud::allocBufferGL()
+{
+	if( mBufferGL != NULL && mBufferGL->GetSize() == GetMaxSize() )
+		return true;
+
+	if( mBufferGL != NULL )
+	{
+		delete mBufferGL;
+		mBufferGL = NULL;
+	}
+
+	mBufferGL = glBuffer::Create(GL_VERTEX_BUFFER, GetMaxPoints(), sizeof(Vertex), NULL, GL_DYNAMIC_DRAW);
+
+	if( !mBufferGL )
+		return false;
+
+	return true;
+}
+
+
+// allocDepthResize
+bool cudaPointCloud::allocDepthResize( size_t size )
+{
+	if( size == 0 )
+		return false;
+
+	if( mDepthResize != NULL && mDepthSize == size )
+		return true;
+
+	if( mDepthResize != NULL )
+	{
+		CUDA(cudaFree(mDepthResize));
+		mDepthResize = NULL;
+	}
+
+	if( CUDA_FAILED(cudaMalloc(&mDepthResize, size)) )
+		return false;
+
+	mDepthSize = size;
+	return true;
+}
+
+
+// Render
+bool cudaPointCloud::Render()
+{
+	if( mNumPoints == 0 )
+		return false;
+
+	// make sure GL buffer is ready
+	if( !allocBufferGL() )
+		return false;
+
+	// make sure camera is ready
+	if( !mCameraGL )
+	{
+		mCameraGL = glCamera::Create(glCamera::YawPitchRoll);
+
+		if( !mCameraGL )
+			return false;
+
+		mCameraGL->SetEye(0.0f, 5.0f, 5.0f);
+		mCameraGL->StoreDefaults();
+	}
+
+	// copy to OpenGL if needed
+	if( mHasNewPoints )
+	{
+		void* ptr = mBufferGL->Map(GL_MAP_CUDA, GL_WRITE_DISCARD);
+
+		if( !ptr )
+			return false;
+
+		CUDA(cudaMemcpy(ptr, mPointsGPU, GetSize(), cudaMemcpyDeviceToDevice));
+		
+		mBufferGL->Unmap();		
+		mHasNewPoints = false;
+	}
+
+	// enable the camera and buffer
+	mCameraGL->Activate();
+	mBufferGL->Bind();
+
+	GL(glEnableClientState(GL_VERTEX_ARRAY));
+	GL(glVertexPointer(3, GL_FLOAT, sizeof(Vertex), 0));
+
+	GL(glEnableClientState(GL_COLOR_ARRAY));
+	GL(glColorPointer(3, GL_UNSIGNED_BYTE, sizeof(Vertex), (void*)offsetof(Vertex, color)));
+
+	// draw the points
+	GL(glDrawArrays(GL_POINTS, 0, mNumPoints));
+
+	// disable the buffer and camera
+	GL(glDisableClientState(GL_COLOR_ARRAY));
+	GL(glDisableClientState(GL_VERTEX_ARRAY));
+
+	mBufferGL->Unbind();
+	mCameraGL->Deactivate();
 	
 	return true;
 }
 
 
-// Extract
-bool cudaPointCloud::Extract( float* depth, float4* rgba, uint32_t width, uint32_t height )
+// SetCalibration
+void cudaPointCloud::SetCalibration( const float2& focalLength, const float2& principalPoint )
 {
-	const float f_w = (float)width;
-	const float f_h = (float)height;
-
-	return Extract(depth, rgba, width, height, 
-				make_float2(f_h, f_h),
-				make_float2(f_w * 0.5f, f_h * 0.5f));
+	mFocalLength 	 = focalLength;
+	mPrincipalPoint = principalPoint;
+	mHasCalibration = true;
 }
 
 
-// Extract
-bool cudaPointCloud::Extract( float* depth, float4* rgba, uint32_t width, uint32_t height,
-					 	const float intrinsicCalibration[3][3] )
+// SetCalibration
+void cudaPointCloud::SetCalibration( const float K[3][3] )
 {
-	return Extract(depth, rgba, width, height,
-				make_float2(intrinsicCalibration[0][0], intrinsicCalibration[1][1]),
-				make_float2(intrinsicCalibration[0][2], intrinsicCalibration[1][2]));
+	SetCalibration(make_float2(K[0][0], K[1][1]), make_float2(K[0][2], K[1][2]));
 }
 
 
-// Extract
-bool cudaPointCloud::Extract( float* depth, float4* rgba, uint32_t width, uint32_t height,
-					 	const char* intrinsicCalibrationPath )
+// SetCalibration
+bool cudaPointCloud::SetCalibration( const char* filename )
 {
-	if( !intrinsicCalibrationPath )
-		return Extract(depth, rgba, width, height);
+	if( !filename )
+		return false;
 
 	// open the camera calibration file
-	FILE* file = fopen(intrinsicCalibrationPath, "r");
+	FILE* file = fopen(filename, "r");
 
 	if( !file )
 	{
-		printf(LOG_CUDA "cudaPointCloud::Extract() -- failed to open calibration file %s\n", intrinsicCalibrationPath);
+		printf(LOG_CUDA "cudaPointCloud::Extract() -- failed to open calibration file %s\n", filename);
 		return false;
 	}
  
@@ -137,7 +278,7 @@ bool cudaPointCloud::Extract( float* depth, float4* rgba, uint32_t width, uint32
 
 		if( !fgets(str, 512, file) )
 		{
-			printf(LOG_CUDA "cudaPointCloud::Extract() -- failed to read line %i from calibration file %s\n", n+1, intrinsicCalibrationPath);
+			printf(LOG_CUDA "cudaPointCloud::Extract() -- failed to read line %i from calibration file %s\n", n+1, filename);
 			return false;
 		}
 
@@ -145,7 +286,7 @@ bool cudaPointCloud::Extract( float* depth, float4* rgba, uint32_t width, uint32
 
 		if( len <= 0 )
 		{
-			printf(LOG_CUDA "cudaPointCloud::Extract() -- invalid line %i from calibration file %s\n", n+1, intrinsicCalibrationPath);
+			printf(LOG_CUDA "cudaPointCloud::Extract() -- invalid line %i from calibration file %s\n", n+1, filename);
 			return false;
 		}
 
@@ -154,7 +295,7 @@ bool cudaPointCloud::Extract( float* depth, float4* rgba, uint32_t width, uint32
 
 		if( sscanf(str, "%f %f %f", &K[n][0], &K[n][1], &K[n][2]) != 3 )
 		{
-			printf(LOG_CUDA "cudaPointCloud::Extract() -- failed to parse line %i from calibration file %s\n", n+1, intrinsicCalibrationPath);
+			printf(LOG_CUDA "cudaPointCloud::Extract() -- failed to parse line %i from calibration file %s\n", n+1, filename);
 			return false;
 		}
 	}
@@ -163,11 +304,12 @@ bool cudaPointCloud::Extract( float* depth, float4* rgba, uint32_t width, uint32
 	fclose(file);
 
 	// dump the matrix
-	printf(LOG_CUDA "cudaPointCloud::Extract() -- loaded intrinsic camera calibration from %s\n", intrinsicCalibrationPath);
+	printf(LOG_CUDA "cudaPointCloud::Extract() -- loaded intrinsic camera calibration from %s\n", filename);
 	mat33_print(K, "K");
 
-	// proceed with extracting the point cloud
-	return Extract(depth, rgba, width, height, K);
+	// save the calibration
+	SetCalibration(K);
+	return true;
 }
 
 
@@ -216,21 +358,18 @@ bool cudaPointCloud::Save( const char* filename )
 	// write out points to the PCD file
 	for( size_t n=0; n < mNumPoints; n++ )
 	{
-		float3* point = GetData(n);
+		Vertex* point = GetData(n);
 
 		// output XYZ coordinates
-		const float3 xyz = point[0];
-		fprintf(file, "%f %f %f", xyz.x, xyz.y, xyz.z);
+		fprintf(file, "%f %f %f", point->pos.x, point->pos.y, point->pos.z);
 
 		// output RGB color
 		if( mHasRGB )
 		{
-			const float3 rgb = point[1];
-
 			// pack the color into 24 bits
-			const uint32_t rgb_packed = (uint32_t(rgb.x) << 16 |
-	      					         uint32_t(rgb.y) << 8 | 
-							         uint32_t(rgb.z));
+			const uint32_t rgb_packed = (uint32_t(point->color.x) << 16 |
+	      					         uint32_t(point->color.y) << 8 | 
+							         uint32_t(point->color.z));
 		
 			fprintf(file, " %u", rgb_packed);
 		}
