@@ -197,7 +197,7 @@ static unsigned char* loadImageIO( const char* filename, int* width, int* height
 	}
 
 	// validate dimensions for sanity
-	printf(LOG_IMAGE "loaded '%s'  (%i x %i, %i channels)\n", filename, imgWidth, imgHeight, imgChannels);
+	//printf(LOG_IMAGE "loaded '%s'  (%i x %i, %i channels)\n", filename, imgWidth, imgHeight, imgChannels);
 
 	if( imgWidth < 0 || imgHeight < 0 || imgChannels < 0 || imgChannels > 4 )
 	{
