@@ -34,7 +34,7 @@
 
 /**
  * csvData
- * @ingroup util
+ * @ingroup csv
  */
 class csvData
 {
