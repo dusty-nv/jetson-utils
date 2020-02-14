@@ -123,5 +123,24 @@ cudaError_t cudaRGBA32ToBGRA8( float4* input, uchar4* output, size_t width, size
 
 ///@}
 
+
+//////////////////////////////////////////////////////////////////////////////////
+/// @name Floating-point RGBA to 8-bit grayscale
+/// @ingroup colorspace
+//////////////////////////////////////////////////////////////////////////////////
+
+///@{
+
+/**
+ * Convert 32-bit floating-point RGBA image into 8-bit fixed-point MONO8 image.
+ * Assumes 0.0-255.0f input range, output range is 0-255.
+ * @ingroup colorspace
+ */
+cudaError_t cudaRGBA32ToMONO8( float4* srcDev, unsigned char* destDev, size_t width, size_t height, const float2& inputRange );
+
+cudaError_t cudaRGBA32ToMONO8( float4* srcDev, unsigned char* destDev, size_t width, size_t height );
+
+///@}
+
 #endif
 
