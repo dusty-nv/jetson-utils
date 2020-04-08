@@ -110,6 +110,21 @@ glDisplay::~glDisplay()
 		}
 	}
 
+	// release widgets from the window
+	const size_t numWidgets = mWidgets.size();
+
+	for( size_t n=0; n < numWidgets; n++ )
+	{
+		if( mWidgets[n] != NULL )
+		{
+			mWidgets[n]->setDisplay(NULL);
+			delete mWidgets[n];
+			mWidgets[n] = NULL;
+		}
+	}
+
+	mWidgets.clear();
+
 	// release textures used during rendering
 	const size_t numTextures = mTextures.size();
 
@@ -391,6 +406,12 @@ void glDisplay::BeginRender( bool processEvents )
 // EndRender
 void glDisplay::EndRender()
 {
+	// render widgets
+	const size_t numWidgets = mWidgets.size();
+
+	for( size_t n=0; n < numWidgets; n++ )
+		mWidgets[n]->Render();
+
 	// present the backbuffer
 	glXSwapBuffers(mDisplayX, mWindowX);
 
@@ -444,6 +465,7 @@ void glDisplay::Render( glTexture* texture, float x, float y )
 
 	texture->Render(x,y);
 }
+
 
 // Render
 void glDisplay::Render( float* img, uint32_t width, uint32_t height, float x, float y, bool normalize )
@@ -511,54 +533,21 @@ void glDisplay::RenderOnce( float* img, uint32_t width, uint32_t height, float x
 // RenderLine
 void glDisplay::RenderLine( float x1, float y1, float x2, float y2, float r, float g, float b, float a, float thickness )
 {
-	glLineWidth(thickness);
-	glBegin(GL_LINES);
-
-		glColor4f(r, g, b, a);
-		
-		glVertex2f(x1, y1);
-		glVertex2f(x2, y2);
-
-	glEnd();
+	glDrawLine(x1, y1, x2, y2, r, g, b, a);
 }
 
 
 // RenderOutline
 void glDisplay::RenderOutline( float left, float top, float width, float height, float r, float g, float b, float a, float thickness )
 {
-	const float right = left + width;
-	const float bottom = top + height;
-
-	glLineWidth(thickness);
-	glBegin(GL_LINE_LOOP);
-
-		glColor4f(r, g, b, a);
-		
-		glVertex2f(left, top);
-		glVertex2f(right, top);
-		glVertex2f(right, bottom);
-		glVertex2f(left, bottom);
-
-	glEnd();
+	glDrawOutline(left, top, width, height, r, g, b, a);
 }
 
 
 // RenderRect
 void glDisplay::RenderRect( float left, float top, float width, float height, float r, float g, float b, float a )
 {
-	const float right = left + width;
-	const float bottom = top + height;
-
-	glBegin(GL_QUADS);
-
-		glColor4f(r, g, b, a);
-
-		glVertex2f(left, top);
-		glVertex2f(right, top);	
-		glVertex2f(right, bottom);
-		glVertex2f(left, bottom);
-
-	glEnd();
+	glDrawRect(left, top, width, height, r, g, b, a);
 }
 
 
@@ -670,14 +659,11 @@ void glDisplay::SetSize( uint32_t width, uint32_t height )
 	if( mWidth == width && mHeight == height )
 		return;
 
+	// un-maximized the window if new size not fullscreen
 	if( width != mScreenWidth || height != mScreenHeight )
 		SetMaximized(false);
 
-	//XUnmapWindow(mDisplayX, mWindowX);
-
-	
-	//unsigned long isMaximized = XAtom("_NET_WM_STATE_MAXIMIZED_VERT");
-
+	// resize the window to the new resolution
 	const int error = XResizeWindow(mDisplayX, mWindowX, width, height);
 
 	if( error != 1 )
@@ -685,8 +671,6 @@ void glDisplay::SetSize( uint32_t width, uint32_t height )
 		printf(LOG_GL "glDisplay -- failed to set window size to %ux%u (error=%i)\n", width, height, error);
 		return;
 	}
-
-	XMapWindow(mDisplayX, mWindowX);
 
 	printf(LOG_GL "glDisplay -- set the window size to %ux%u\n", width, height); 
 
@@ -726,6 +710,33 @@ void glDisplay::SetCursor( uint32_t cursor )
 void glDisplay::ResetCursor()
 {
 	SetCursor(XC_arrow);
+}
+
+
+// AddWidget
+void glDisplay::AddWidget( glWidget* widget )
+{
+	if( !widget )
+		return;
+
+	mWidgets.push_back(widget);
+	widget->setDisplay(this);
+}
+
+
+// RemoveWidget
+void glDisplay::RemoveWidget( glWidget* widget )
+{
+	const size_t numWidgets = mWidgets.size();
+
+	for( size_t n=0; n < numWidgets; n++ )
+	{
+		if( mWidgets[n] == widget )
+		{
+			mWidgets.erase(mWidgets.begin()+n);
+			return;
+		}
+	}
 }
 
 
@@ -1016,6 +1027,17 @@ bool glDisplay::onEvent( uint16_t msg, int a, int b, void* user )
 			display->mWindowClosed = true;
 			return true;
 		}
+	}
+
+	// dispatch event to applicable widgets
+	const size_t numWidgets = display->mWidgets.size();
+
+	for( size_t n=0; n < numWidgets; n++ )
+	{
+		glWidget* widget = display->mWidgets[n];
+
+		if( widget->IsVisible() && widget->Contains(display->mMousePos[0], display->mMousePos[1]) )
+			widget->OnEvent(msg, a, b, user);
 	}
 
 	return false;

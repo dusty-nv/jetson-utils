@@ -26,6 +26,7 @@
 #include "glUtility.h"
 #include "glTexture.h"
 #include "glEvents.h"
+#include "glWidget.h"
 
 #include <time.h>
 #include <vector>
@@ -230,6 +231,26 @@ public:
 	void RemoveEventHandler( glEventHandler callback, void* user=NULL );
 
 	/**
+	 * Add a widget to the window that recieves events and is rendered.
+	 */
+	void AddWidget( glWidget* widget );
+
+	/**
+	 * Remove a widget from the window (it will not be deleted)
+	 */
+	void RemoveWidget( glWidget* widget );
+
+	/**
+	 * Retrieve the number of widgets.
+	 */
+	inline uint32_t GetNumWidgets() const					{ return mWidgets.size(); }
+
+	/**
+	 * Retrieve a widget.
+	 */
+	inline glWidget* GetWidget( const uint32_t index ) const	{ return mWidgets[index]; }
+
+	/**
 	 * Enable debugging of events.
 	 */
 	void EnableDebug();
@@ -362,6 +383,7 @@ protected:
 	uint32_t mNormalizedWidth;
 	uint32_t mNormalizedHeight;
 
+	std::vector<glWidget*> mWidgets;
 	std::vector<glTexture*> mTextures;
 	std::vector<eventHandler> mEventHandlers;
 };
