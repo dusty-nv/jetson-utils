@@ -24,6 +24,9 @@
 #include "cudaNormalize.h"
 #include "timespec.h"
 
+#include <X11/Xatom.h>
+#include <X11/cursorfont.h>
+
 
 //--------------------------------------------------------------
 std::vector<glDisplay*> gDisplays;
@@ -56,9 +59,13 @@ glDisplay::glDisplay()
 	mRendering    = false;
 	mEnableDebug  = false;
 	mWindowClosed = false;
+	mActiveCursor = -1;
 
+	mID		    = 0;
 	mWidth        = 0;
 	mHeight       = 0;
+	mScreenWidth  = 0;
+	mScreenHeight = 0;
 	mAvgTime      = 1.0f;
 
 	mBgColor[0]   = 0.0f;
@@ -130,14 +137,14 @@ glDisplay::~glDisplay()
 
 
 // Create
-glDisplay* glDisplay::Create( const char* title, float r, float g, float b, float a )
+glDisplay* glDisplay::Create( const char* title, int width, int height, float r, float g, float b, float a )
 {
 	glDisplay* vp = new glDisplay();
 	
 	if( !vp )
 		return NULL;
 		
-	if( !vp->initWindow() )
+	if( !vp->initWindow(width, height) )
 	{
 		printf(LOG_GL "failed to create X11 Window.\n");
 		delete vp;
@@ -164,22 +171,24 @@ glDisplay* glDisplay::Create( const char* title, float r, float g, float b, floa
 		vp->SetTitle(title);
 
 	vp->SetBackgroundColor(r, g, b, a);
+	
+	vp->mID = gDisplays.size();
+	gDisplays.push_back(vp);
 
 	printf(LOG_GL "glDisplay -- display device initialized\n");
-	gDisplays.push_back(vp);
 	return vp;
 }
 
 
 // Create
-glDisplay* glDisplay::Create( float r, float g, float b, float a )
+/*glDisplay* glDisplay::Create( float r, float g, float b, float a )
 {
 	return Create(DEFAULT_TITLE, r, g, b, a);
-}
+}*/
 
 
 // initWindow
-bool glDisplay::initWindow()
+bool glDisplay::initWindow( int width, int height )
 {
 	if( !mDisplayX )
 		mDisplayX = XOpenDisplay(0);
@@ -202,7 +211,14 @@ bool glDisplay::initWindow()
 	const int screenWidth = DisplayWidth(mDisplayX, screenIdx);
 	const int screenHeight = DisplayHeight(mDisplayX, screenIdx);
 	
+	if( width <= 0 )
+		width = screenWidth;
+
+	if( height <= 0 )
+		height = screenHeight;
+
 	printf(LOG_GL "glDisplay -- X screen %i resolution:  %ix%i\n", screenIdx, screenWidth, screenHeight);
+	printf(LOG_GL "glDisplay -- X window resolution:    %ix%i\n", width, height);
 	
 	Screen* screen = XScreenOfDisplay(mDisplayX, screenIdx);
 
@@ -254,8 +270,9 @@ bool glDisplay::initWindow()
 
 	
 	// create window
-	Window win = XCreateWindow(mDisplayX, winRoot, 0, 0, screenWidth, screenHeight, 0,
-						  visual->depth, InputOutput, visual->visual, CWBorderPixel|CWColormap|CWEventMask, &winAttr);
+	Window win = XCreateWindow(mDisplayX, winRoot, 0, 0, width, height, 0,
+						  visual->depth, InputOutput, visual->visual, 
+						  CWBorderPixel|CWColormap|CWEventMask, &winAttr);
 
 	if( !win )
 		return false;
@@ -275,8 +292,11 @@ bool glDisplay::initWindow()
 	mWindowX = win;
 	mScreenX = screen;
 	mVisualX = visual;
-	mWidth   = screenWidth;
-	mHeight  = screenHeight;
+	mWidth   = width;
+	mHeight  = height;
+
+	mScreenWidth  = screenWidth;
+	mScreenHeight = screenHeight;
 
 	mViewport[0] = 0; 
 	mViewport[1] = 0; 
@@ -304,6 +324,9 @@ bool glDisplay::initGL()
 		return false;
 
 	GL(glXMakeCurrent(mDisplayX, mWindowX, mContextGL));
+
+	GL(glEnable(GL_LINE_SMOOTH));
+	GL(glHint(GL_LINE_SMOOTH_HINT, GL_NICEST));
 
 	return true;
 }
@@ -485,6 +508,41 @@ void glDisplay::RenderOnce( float* img, uint32_t width, uint32_t height, float x
 }
 
 
+// RenderLine
+void glDisplay::RenderLine( float x1, float y1, float x2, float y2, float r, float g, float b, float a, float thickness )
+{
+	glLineWidth(thickness);
+	glBegin(GL_LINES);
+
+		glColor4f(r, g, b, a);
+		
+		glVertex2f(x1, y1);
+		glVertex2f(x2, y2);
+
+	glEnd();
+}
+
+
+// RenderOutline
+void glDisplay::RenderOutline( float left, float top, float width, float height, float r, float g, float b, float a, float thickness )
+{
+	const float right = left + width;
+	const float bottom = top + height;
+
+	glLineWidth(thickness);
+	glBegin(GL_LINE_LOOP);
+
+		glColor4f(r, g, b, a);
+		
+		glVertex2f(left, top);
+		glVertex2f(right, top);
+		glVertex2f(right, bottom);
+		glVertex2f(left, bottom);
+
+	glEnd();
+}
+
+
 // RenderRect
 void glDisplay::RenderRect( float left, float top, float width, float height, float r, float g, float b, float a )
 {
@@ -511,6 +569,23 @@ void glDisplay::RenderRect( float r, float g, float b, float a )
 }
 
 
+// GetBackgroundColor
+void glDisplay::GetBackgroundColor( float* r, float* g, float* b, float* a )
+{
+	if( r != NULL )
+		*r = mBgColor[0];
+
+	if( g != NULL )
+		*g = mBgColor[1];
+
+	if( b != NULL )
+		*b = mBgColor[2];
+
+	if( a != NULL )
+		*a = mBgColor[3];
+}
+
+
 // SetBackgroundColor
 void glDisplay::SetBackgroundColor( float r, float g, float b, float a )
 {
@@ -518,6 +593,139 @@ void glDisplay::SetBackgroundColor( float r, float g, float b, float a )
 	mBgColor[1] = g; 
 	mBgColor[2] = b; 
 	mBgColor[3] = a; 
+}
+
+
+// IsMaximied
+bool glDisplay::IsMaximized()
+{
+	Atom _NET_WM_STATE = XInternAtom(mDisplayX, "_NET_WM_STATE", False);
+	Atom _NET_WM_STATE_MAXIMIZED_VERT = XInternAtom(mDisplayX, "_NET_WM_STATE_MAXIMIZED_VERT", False);
+	Atom _NET_WM_STATE_MAXIMIZED_HORZ = XInternAtom(mDisplayX, "_NET_WM_STATE_MAXIMIZED_HORZ", False);
+
+	Atom actualType;
+	int actualFormat;
+	unsigned long numItems, bytesAfter;
+	unsigned char* propertyValue = NULL;
+	long maxLength = 1024;
+	bool maximized = false;
+
+	const int error = XGetWindowProperty(mDisplayX, mWindowX, _NET_WM_STATE,
+                        				  0, maxLength, False, XA_ATOM, &actualType,
+                        				  &actualFormat, &numItems, &bytesAfter,
+                        				  &propertyValue);
+
+	if( error != Success )
+	{
+		printf(LOG_GL "glDisplay -- failed to get window properties (error=%i)\n", error);
+		return false;
+	}
+
+	Atom* atoms = (Atom*)propertyValue;
+
+	for( unsigned long i = 0; i < numItems; i++ ) 
+	{
+		if( atoms[i] == _NET_WM_STATE_MAXIMIZED_VERT )
+			maximized = true;
+		else if( atoms[i] == _NET_WM_STATE_MAXIMIZED_HORZ)
+			maximized = true;
+ 	}
+
+	XFree(propertyValue);
+	return maximized;
+}
+
+
+// SetMaximized
+void glDisplay::SetMaximized( bool maximized )
+{
+	Atom _NET_WM_STATE = XInternAtom(mDisplayX, "_NET_WM_STATE", False);
+	Atom _NET_WM_STATE_MAXIMIZED_VERT = XInternAtom(mDisplayX, "_NET_WM_STATE_MAXIMIZED_VERT", False);
+	Atom _NET_WM_STATE_MAXIMIZED_HORZ = XInternAtom(mDisplayX, "_NET_WM_STATE_MAXIMIZED_HORZ", False);
+
+	XEvent e;
+	memset(&e, 0, sizeof(XEvent));
+
+	e.xany.type            = ClientMessage;
+	e.xclient.message_type = _NET_WM_STATE;
+	e.xclient.format       = 32;
+	e.xclient.window       = mWindowX;
+	e.xclient.data.l[0]    = maximized ? 1 : 0;
+	e.xclient.data.l[1]    = _NET_WM_STATE_MAXIMIZED_VERT;
+	e.xclient.data.l[2]    = _NET_WM_STATE_MAXIMIZED_HORZ;
+	e.xclient.data.l[3]    = 0;
+
+	const int error = XSendEvent(mDisplayX, RootWindow(mDisplayX, 0), 0,
+                   			    SubstructureNotifyMask | SubstructureRedirectMask, 
+						    &e);
+
+	if( error == 0 )
+		printf(LOG_GL "glDisplay -- failed to %s window\n", maximized ? "maximize" : "un-maximize");
+}
+	
+
+// SetSize
+void glDisplay::SetSize( uint32_t width, uint32_t height )
+{
+	if( mWidth == width && mHeight == height )
+		return;
+
+	if( width != mScreenWidth || height != mScreenHeight )
+		SetMaximized(false);
+
+	//XUnmapWindow(mDisplayX, mWindowX);
+
+	
+	//unsigned long isMaximized = XAtom("_NET_WM_STATE_MAXIMIZED_VERT");
+
+	const int error = XResizeWindow(mDisplayX, mWindowX, width, height);
+
+	if( error != 1 )
+	{
+		printf(LOG_GL "glDisplay -- failed to set window size to %ux%u (error=%i)\n", width, height, error);
+		return;
+	}
+
+	XMapWindow(mDisplayX, mWindowX);
+
+	printf(LOG_GL "glDisplay -- set the window size to %ux%u\n", width, height); 
+
+	mWidth = width;
+	mHeight = height;
+
+	ResetViewport();
+}
+
+
+// SetCursor
+void glDisplay::SetCursor( uint32_t cursor )
+{
+	if( cursor >= XC_num_glyphs )
+	{
+		printf(LOG_GL "glDisplay -- invalid mouse cursor '%u'\n", cursor);
+		return;
+	}
+
+	if( !mCursors[cursor] )
+		mCursors[cursor] = XCreateFontCursor(mDisplayX, cursor);
+
+	if( !mCursors[cursor] )
+	{
+		printf(LOG_GL "glDisplay -- failed to load mouse cursor '%u'\n", cursor);
+		return;
+	}
+
+	const int error = XDefineCursor(mDisplayX, mWindowX, mCursors[cursor]);
+
+	if( error != 1 )
+		printf(LOG_GL "glDisplay -- failed to set mouse cursor '%u' (error=%i)\n", cursor, error);
+}
+
+
+// ResetCursor
+void glDisplay::ResetCursor()
+{
+	SetCursor(XC_arrow);
 }
 
 

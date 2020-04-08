@@ -39,23 +39,18 @@ class glDisplay
 {
 public:
 	/**
-	 * Create a new maximized openGL display window.
+	 * Create a new OpenGL display window with the specified options.
+	 *
+	 * @param title window title bar string, or NULL for a default title
+	 * @param width desired width of the window, or -1 to be maximized
+	 * @param height desired height of the window, or -1 to be maximized
 	 * @param r default background RGBA color, red component (0.0-1.0f)
 	 * @param g default background RGBA color, green component (0.0-1.0f)
 	 * @param b default background RGBA color, blue component (0.0-1.0f)
 	 * @param a default background RGBA color, alpha component (0.0-1.0f)
 	 */
-	static glDisplay* Create( float r=0.05f, float g=0.05f, float b=0.05f, float a=1.0f );
-
-	/**
-	 * Create a new maximized openGL display window.
-	 * @param title window title bar label string
-	 * @param r default background RGBA color, red component (0.0-1.0f)
-	 * @param g default background RGBA color, green component (0.0-1.0f)
-	 * @param b default background RGBA color, blue component (0.0-1.0f)
-	 * @param a default background RGBA color, alpha component (0.0-1.0f)
-	 */
-	static glDisplay* Create( const char* title, float r=0.05f, float g=0.05f, float b=0.05f, float a=1.0f );
+	static glDisplay* Create( const char* title=NULL, int width=-1, int height=-1,
+						 float r=0.05f, float g=0.05f, float b=0.05f, float a=1.0f );
 
 	/**
 	 * Destroy window
@@ -97,13 +92,25 @@ public:
 	void RenderOnce( float* image, uint32_t width, uint32_t height, float x=5.0f, float y=30.0f, bool normalize=true );
 
 	/**
-	 * Render a rect in screen coordinates with the specified color
+	 * Render a line in screen coordinates with the specified color
+	 * @note the RGBA color values are expected to be in the range of [0-1]
+	 */
+	void RenderLine( float x1, float y1, float x2, float y2, float r, float g, float b, float a=1.0f, float thickness=2.0f );
+
+	/**
+	 * Render the outline of a rect in screen coordinates with the specified color
+	 * @note the RGBA color values are expected to be in the range of [0-1]
+	 */
+	void RenderOutline( float x, float y, float width, float height, float r, float g, float b, float a=1.0f, float thickness=2.0f );
+
+	/**
+	 * Render a filled rect in screen coordinates with the specified color
 	 * @note the RGBA color values are expected to be in the range of [0-1]
 	 */
 	void RenderRect( float x, float y, float width, float height, float r, float g, float b, float a=1.0f );
 
 	/**
-	 * Render a rect covering the current viewport with the specified color
+	 * Render a filled rect covering the current viewport with the specified color
 	 * @note the RGBA color values are expected to be in the range of [0-1]
 	 */
 	void RenderRect( float r, float g, float b, float a=1.0f );
@@ -233,13 +240,53 @@ public:
 	void SetTitle( const char* str );
 
 	/**
-	 * Set the background color.
+	 * Set the window's size.
+	 *
+	 * @param width the desired width of the window, in pixels.
+	 * @param height the desired height of the window, in pixels.
+	 *
+	 * @note modifying the window's size will reset the viewport
+	 *       to cover the full area of the new size of the window.
+	 */
+	void SetSize( uint32_t width, uint32_t height );
+
+	/**
+	 * Maximize or un-maximize the window.
+	 */
+	void SetMaximized( bool maximized );
+
+	/**
+	 * Determine if the window is maximized or not.
+	 */
+	bool IsMaximized();
+
+	/**
+	 * Retrieve the window's background color.
+	 */
+	void GetBackgroundColor( float* r, float* g, float* b, float* a=NULL );
+
+	/**
+	 * Set the window's background color.
+	 *
 	 * @param r background RGBA color, red component (0.0-1.0f)
 	 * @param g background RGBA color, green component (0.0-1.0f)
 	 * @param b background RGBA color, blue component (0.0-1.0f)
 	 * @param a background RGBA color, alpha component (0.0-1.0f)
 	 */
-	void SetBackgroundColor( float r, float g, float b, float a );
+	void SetBackgroundColor( float r, float g, float b, float a=1.0f );
+
+	/**
+	 * Set the active mouse cursor.
+	 *
+	 * @param cursor one of the cursor ID's from `X11/cursorfont.h`
+	 * @see ResetCursor() to restore the cursor back to default
+	 */
+	void SetCursor( uint32_t cursor );
+
+	/**
+	 * Reset the mouse cursor back to it's default.
+	 */
+	void ResetCursor();
 
 	/**
 	 * Set the active viewport being rendered to.
@@ -265,7 +312,7 @@ public:
 protected:
 	glDisplay();
 		
-	bool initWindow();
+	bool initWindow( int width, int height );
 	bool initGL();
 
 	glTexture* allocTexture( uint32_t width, uint32_t height );	
@@ -288,14 +335,18 @@ protected:
 	XVisualInfo* mVisualX;
 	Window       mWindowX;
 	GLXContext   mContextGL;
+	Cursor	   mCursors[256];
+	int	        mActiveCursor;
 	bool		   mRendering;
 	bool		   mEnableDebug;
 	bool		   mWindowClosed;
 	Atom		   mWindowClosedMsg;
 
+	uint32_t mID;
 	uint32_t mWidth;
 	uint32_t mHeight;
-	uint32_t mID;
+	uint32_t mScreenWidth;
+	uint32_t mScreenHeight;
 
 	timespec mLastTime;
 	float    mAvgTime;

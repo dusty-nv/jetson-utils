@@ -58,18 +58,20 @@ static int PyDisplay_Init( PyDisplay_Object* self, PyObject *args, PyObject *kwd
 	printf(LOG_PY_UTILS "PyDisplay_Init()\n");
 	
 	// parse arguments
+	int width = -1;
+	int height = -1;
 	float bg_color[] = { 0.05f, 0.05f, 0.05f, 1.0f };
 	const char* title = glDisplay::DEFAULT_TITLE;
-	static char* kwlist[] = {"title", "r", "g", "b", "a", NULL};
+	static char* kwlist[] = {"title", "width", "height", "r", "g", "b", "a", NULL};
 
-	if( !PyArg_ParseTupleAndKeywords(args, kwds, "|sffff", kwlist, &title, &bg_color[0], &bg_color[1], &bg_color[2], &bg_color[3]))
+	if( !PyArg_ParseTupleAndKeywords(args, kwds, "|siiffff", kwlist, &title, &width, &height, &bg_color[0], &bg_color[1], &bg_color[2], &bg_color[3]))
 	{
 		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "glDisplay.__init()__ failed to parse args tuple");
 		return -1;
 	}
   
 	// create the display object
-	glDisplay* display = glDisplay::Create(title, bg_color[0], bg_color[1], bg_color[2], bg_color[3]);
+	glDisplay* display = glDisplay::Create(title, width, height, bg_color[0], bg_color[1], bg_color[2], bg_color[3]);
 
 	if( !display )
 	{
