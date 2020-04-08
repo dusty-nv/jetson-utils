@@ -154,6 +154,68 @@ inline void glPrintFreeMem()
 }
 
 
+/**
+ * Render a line in screen coordinates with the specified color
+ * @note the RGBA color values are expected to be in the range of [0-1]
+ */
+inline void glDrawLine( float x1, float y1, float x2, float y2, float r, float g, float b, float a=1.0f, float thickness=2.0f )
+{
+	glLineWidth(thickness);
+	glBegin(GL_LINES);
+
+		glColor4f(r, g, b, a);
+		
+		glVertex2f(x1, y1);
+		glVertex2f(x2, y2);
+
+	glEnd();
+}
+
+
+/**
+ * Render the outline of a rect in screen coordinates with the specified color
+ * @note the RGBA color values are expected to be in the range of [0-1]
+ */
+inline void glDrawOutline( float x, float y, float width, float height, float r, float g, float b, float a=1.0f, float thickness=2.0f )
+{
+	const float right = x + width;
+	const float bottom = y + height;
+
+	glLineWidth(thickness);
+	glBegin(GL_LINE_LOOP);
+
+		glColor4f(r, g, b, a);
+		
+		glVertex2f(x, y);
+		glVertex2f(right, y);
+		glVertex2f(right, bottom);
+		glVertex2f(x, bottom);
+
+	glEnd();
+}
+
+
+/**
+ * Render a filled rect in screen coordinates with the specified color
+ * @note the RGBA color values are expected to be in the range of [0-1]
+ */
+inline void glDrawRect( float x, float y, float width, float height, float r, float g, float b, float a=1.0f )
+{
+	const float right = x + width;
+	const float bottom = y + height;
+
+	glBegin(GL_QUADS);
+
+		glColor4f(r, g, b, a);
+
+		glVertex2f(x, y);
+		glVertex2f(right, y);	
+		glVertex2f(right, bottom);
+		glVertex2f(x, bottom);
+
+	glEnd();
+}
+
 
 #endif
 
