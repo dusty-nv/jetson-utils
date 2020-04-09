@@ -233,7 +233,7 @@ public:
 	/**
 	 * Add a widget to the window that recieves events and is rendered.
 	 */
-	void AddWidget( glWidget* widget );
+	glWidget* AddWidget( glWidget* widget );
 
 	/**
 	 * Remove a widget from the window (it will not be deleted)

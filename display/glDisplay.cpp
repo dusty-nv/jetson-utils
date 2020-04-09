@@ -714,13 +714,15 @@ void glDisplay::ResetCursor()
 
 
 // AddWidget
-void glDisplay::AddWidget( glWidget* widget )
+glWidget* glDisplay::AddWidget( glWidget* widget )
 {
 	if( !widget )
-		return;
+		return NULL;
 
 	mWidgets.push_back(widget);
 	widget->setDisplay(this);
+
+	return widget;
 }
 
 
@@ -1036,7 +1038,10 @@ bool glDisplay::onEvent( uint16_t msg, int a, int b, void* user )
 	{
 		glWidget* widget = display->mWidgets[n];
 
-		if( widget->IsVisible() && widget->Contains(display->mMousePos[0], display->mMousePos[1]) )
+		if( !widget->IsVisible() )
+			continue;
+
+		if( widget->Contains(display->mMousePos[0], display->mMousePos[1]) || widget->mDragState != glWidget::DragNone )
 			widget->OnEvent(msg, a, b, user);
 	}
 

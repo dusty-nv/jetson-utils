@@ -23,6 +23,9 @@
 #include "glWidget.h"
 #include "glDisplay.h"
 
+#include <X11/cursorfont.h>
+#include <math.h>
+
 
 // constructor
 glWidget::glWidget( Shape shape )
@@ -65,10 +68,13 @@ void glWidget::initDefaults()
 	mLineColor[2] = 1.0f;
 	mLineColor[3] = 1.0f;
 
-	mLineWidth = 2.0f;
-	mVisible   = true;
-	mUserData  = NULL;
-	mDisplay   = NULL;
+	mLineWidth  = 2.0f;
+	mUserData   = NULL;
+	mDisplay    = NULL;
+	mDragState  = DragNone;
+	mMoveable   = false;
+	mResizeable = false;
+	mVisible    = true;
 }
 
 
@@ -93,7 +99,35 @@ bool glWidget::Contains( float x, float y ) const
 	return false;
 }
 
-	
+
+// GlobalToLocal
+void glWidget::GlobalToLocal( float x, float y, float* x_out, float* y_out ) const
+{
+	x -= mX;
+	y -= mY;
+
+	if( x_out != NULL )
+		*x_out = x;
+
+	if( y_out != NULL )
+		*y_out = y;
+}
+
+
+// LocalToGlobal
+void glWidget::LocalToGlobal( float x, float y, float* x_out, float* y_out ) const
+{
+	x += mX;
+	y += mY;
+
+	if( x_out != NULL )
+		*x_out = x;
+
+	if( y_out != NULL )
+		*y_out = y;
+}
+
+
 // Render
 void glWidget::Render()
 {
@@ -124,10 +158,159 @@ void glWidget::Render()
 // OnEvent
 bool glWidget::OnEvent( uint16_t event, int a, int b, void* user )
 {
+	if( event == MOUSE_BUTTON && a == MOUSE_LEFT )
+	{
+		if( b == MOUSE_PRESSED )
+		{
+			if( mMoveable || mResizeable )
+			{
+				mDragState = mMoveable ? DragMove : DragNone;
+
+				if( mResizeable )
+				{
+					const int* mouseCoords = mDisplay->GetMousePosition();
+					const DragState anchor = coordToBorder(mouseCoords[0], mouseCoords[1]);
+
+					if( anchor != DragNone )
+					{
+						setCursor(anchor);
+						mDragState = anchor;
+					}						
+				}
+			}
+		}
+		else
+		{
+			mDragState = DragNone;
+		}
+	}
+	else if( event == MOUSE_DRAG && mDragState != DragNone )
+	{
+		if( mDragState == DragMove )
+		{
+			Move(a, b);
+			return true;
+		}
+
+		// Y resize
+		if( mDragState == DragResizeN || mDragState == DragResizeNW || mDragState == DragResizeNE )
+		{
+			mHeight -= b;
+			mY += b;
+		}
+		else if( mDragState == DragResizeS || mDragState == DragResizeSW || mDragState == DragResizeSE )
+		{
+			mHeight += b;
+		}
+		
+		// X resize
+		if( mDragState == DragResizeW || mDragState == DragResizeNW || mDragState == DragResizeSW )
+		{
+			mWidth -= a;
+			mX += a;
+		}
+		else if( mDragState == DragResizeE || mDragState == DragResizeNE || mDragState == DragResizeSE )
+		{
+			mWidth += a;
+		}
+
+		if( mWidth < 1.0f )
+			mWidth = 1.0f;
+
+		if( mHeight < 1.0f )
+			mHeight = 1.0f;
+	}
+	else if( event == MOUSE_MOVE )
+	{
+		if( mResizeable && mDragState == DragNone )
+			setCursor(coordToBorder(a,b));
+	}
+
 	// TODO dispatch recursively, when child widgets are added
 	return false;
 }
 
+
+// within_distance
+inline static bool within_distance( float a, float b, float max_distance )
+{
+	return fabsf(a-b) <= max_distance;
+}
+		
+
+// coordToBorder
+glWidget::DragState glWidget::coordToBorder( float x, float y, float max_distance )
+{
+	const bool N = within_distance(y, mY, max_distance);
+	const bool S = within_distance(y, mY + mHeight, max_distance);
+	const bool W = within_distance(x, mX, max_distance);
+	const bool E = within_distance(x, mX + mWidth, max_distance);
+
+	if( N )
+	{
+		if( W )
+			return DragResizeNW;
+		else if( E )
+			return DragResizeNE;
+		else
+			return DragResizeN;
+	}
+	else if( S )
+	{
+		if( W )
+			return DragResizeSW;
+		else if( E )
+			return DragResizeSE;
+		else
+			return DragResizeS; 
+	}
+	else if( W )
+	{
+		return DragResizeW;
+	}
+	else if( E )
+	{
+		return DragResizeE;
+	}
+
+	return DragNone;	// interior point
+}
+
+
+// setCursor
+void glWidget::setCursor( DragState anchor )
+{
+	if( !mDisplay )
+		return;
+
+	if( anchor == DragNone || anchor == DragMove )
+	{
+		mDisplay->ResetCursor();
+		return;
+	}
+
+	uint32_t cursor = 0;
+
+	if( anchor == DragResizeN )
+		cursor = XC_top_side; 
+	else if( anchor == DragResizeS )
+		cursor = XC_bottom_side;
+	else if( anchor == DragResizeW )
+		cursor = XC_left_side;
+	else if( anchor == DragResizeE )
+		cursor = XC_right_side;
+	else if( anchor == DragResizeNW )
+		cursor = XC_top_left_corner;
+	else if( anchor == DragResizeNE )
+		cursor = XC_top_right_corner;
+	else if( anchor == DragResizeSW )
+		cursor = XC_ll_angle; //XC_bottom_left_corner;
+	else if( anchor == DragResizeSE )
+		cursor = XC_bottom_right_corner;
+
+	printf("set cursor: %u\n", cursor);
+	mDisplay->SetCursor(cursor);
+}
 
 // setDisplay
 void glWidget::setDisplay( glDisplay* display )
@@ -137,4 +320,5 @@ void glWidget::setDisplay( glDisplay* display )
 }
 
 	
+
 

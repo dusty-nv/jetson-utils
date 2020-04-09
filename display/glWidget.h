@@ -70,12 +70,27 @@ public:
 	bool Contains( float x, float y ) const;
 
 	/**
-	 * Get position
+	 * Convert from global window coordinates to local widget offset
+	 */
+	void GlobalToLocal( float x, float y, float* x_out, float* y_out ) const;
+
+	/**
+	 * Convert from local widget offset to global window coordinates
+	 */
+	void LocalToGlobal( float x, float y, float* x_out, float* y_out ) const;
+
+	/**
+	 * Move the widget's position by the specified offset
+	 */
+	inline void Move( float x, float y )					{ mX += x; mY += y; }
+
+	/**
+	 * Get position of widget in global window coordinates
 	 */
 	inline void GetPosition( float* x, float* y ) const		{ if(x) *x=mX; if(y) *y=mY; }
 	
 	/**
-	 * Set position
+	 * Set position of widget in global window coordinates
 	 */
 	inline void SetPosition( float x, float y )				{ mX = x; mY = y; }
 
@@ -145,6 +160,26 @@ public:
 	inline void SetLineWidth( float width ) 				{ mLineWidth = width; }
 
 	/**
+	 * Is the widget moveable/draggable by the user?
+	 */
+	inline bool IsMoveable() const						{ return mMoveable; }
+
+	/**
+	 * Toggle if the user can move/drag the widget
+	 */
+	inline void SetMoveable( bool moveable )				{ mMoveable = moveable; }
+
+	/**
+	 * Is the widget resizeable by the user?
+	 */
+	inline bool IsResizeable() const						{ return mResizeable; }
+
+	/**
+	 * Toggle if the user can resize the widget
+	 */
+	inline void SetResizeable( bool resizeable )				{ mResizeable = resizeable; }
+
+	/**
 	 * Is the widget visible
 	 */
 	inline bool IsVisible() const							{ return mVisible; }
@@ -183,9 +218,24 @@ public:
 protected:
 	friend class glDisplay;
 
-	void initDefaults();	
-	void setDisplay( glDisplay* display );
+	enum DragState
+	{
+		DragNone,
+		DragMove,
+		DragResizeN,
+		DragResizeNW,
+		DragResizeNE,
+		DragResizeS,
+		DragResizeSW,
+		DragResizeSE,
+		DragResizeW,
+		DragResizeE		
+	};
 
+	void initDefaults();
+	void setCursor( DragState cursor );	
+	void setDisplay( glDisplay* display );
+	
 	float mX;
 	float mY;
 	float mWidth;
@@ -194,12 +244,18 @@ protected:
 	float mFillColor[4];
 	float mLineColor[4];
 	float mLineWidth;
+
+	bool  mMoveable;
+	bool  mResizeable;
+	bool  mVisible;
 	
 	Shape mShape;
-	bool  mVisible;
 	void* mUserData;
 
 	glDisplay* mDisplay;
+	DragState  mDragState;
+
+	DragState coordToBorder( float x, float y, float max_distance=10.0f );
 };
 
 #endif
