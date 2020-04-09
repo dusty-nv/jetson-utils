@@ -133,11 +133,6 @@ inline bool glCheckError(const char* msg)
 }
 
 
-
-#define GL_GPU_MEM_INFO_TOTAL_AVAILABLE_MEM_NVX 0x9048
-#define GL_GPU_MEM_INFO_CURRENT_AVAILABLE_MEM_NVX 0x9049
-
-
 /**
  * Print the amount of free GPU memory.
  * @ingroup OpenGL
@@ -146,6 +141,9 @@ inline void glPrintFreeMem()
 {
 	GLint total_mem_kb = 0;
 	GLint cur_avail_mem_kb = 0;
+
+	const GLenum GL_GPU_MEM_INFO_TOTAL_AVAILABLE_MEM_NVX = 0x9048;
+	const GLenum GL_GPU_MEM_INFO_CURRENT_AVAILABLE_MEM_NVX = 0x9049;
 
 	glGetIntegerv(GL_GPU_MEM_INFO_TOTAL_AVAILABLE_MEM_NVX, &total_mem_kb);
 	glGetIntegerv(GL_GPU_MEM_INFO_CURRENT_AVAILABLE_MEM_NVX,&cur_avail_mem_kb);
@@ -157,6 +155,7 @@ inline void glPrintFreeMem()
 /**
  * Render a line in screen coordinates with the specified color
  * @note the RGBA color values are expected to be in the range of [0-1]
+ * @ingroup OpenGL
  */
 inline void glDrawLine( float x1, float y1, float x2, float y2, float r, float g, float b, float a=1.0f, float thickness=2.0f )
 {
@@ -175,6 +174,7 @@ inline void glDrawLine( float x1, float y1, float x2, float y2, float r, float g
 /**
  * Render the outline of a rect in screen coordinates with the specified color
  * @note the RGBA color values are expected to be in the range of [0-1]
+ * @ingroup OpenGL
  */
 inline void glDrawOutline( float x, float y, float width, float height, float r, float g, float b, float a=1.0f, float thickness=2.0f )
 {
@@ -198,6 +198,7 @@ inline void glDrawOutline( float x, float y, float width, float height, float r,
 /**
  * Render a filled rect in screen coordinates with the specified color
  * @note the RGBA color values are expected to be in the range of [0-1]
+ * @ingroup OpenGL
  */
 inline void glDrawRect( float x, float y, float width, float height, float r, float g, float b, float a=1.0f )
 {
