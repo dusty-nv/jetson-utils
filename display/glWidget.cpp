@@ -68,6 +68,16 @@ void glWidget::initDefaults()
 	mLineColor[2] = 1.0f;
 	mLineColor[3] = 1.0f;
 
+	mSelectedFillColor[0] = 1.0f; 
+	mSelectedFillColor[1] = 1.0f; 
+	mSelectedFillColor[2] = 1.0f;
+	mSelectedFillColor[3] = 0.0f;
+
+	mSelectedLineColor[0] = 1.0f;
+	mSelectedLineColor[1] = 1.0f; 
+	mSelectedLineColor[2] = 1.0f;
+	mSelectedLineColor[3] = 1.0f;
+
 	mLineWidth  = 2.0f;
 	mUserData   = NULL;
 	mDisplay    = NULL;
@@ -285,7 +295,11 @@ void glWidget::setCursor( DragState anchor )
 
 	if( anchor == DragNone || anchor == DragMove )
 	{
-		mDisplay->ResetCursor();
+		if( mMoveable )
+			mDisplay->SetCursor(XC_fleur);
+		else
+			mDisplay->ResetCursor();
+
 		return;
 	}
 

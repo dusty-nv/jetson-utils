@@ -27,6 +27,9 @@
 #include <X11/Xatom.h>
 #include <X11/cursorfont.h>
 
+#include <algorithm>
+#include <cstdlib>
+
 
 //--------------------------------------------------------------
 std::vector<glDisplay*> gDisplays;
@@ -47,31 +50,34 @@ uint32_t glGetNumDisplays()
 
 const char* glDisplay::DEFAULT_TITLE = "NVIDIA Jetson";
 
+#define OriginalCursor XC_arrow
 
 // Constructor
 glDisplay::glDisplay()
 {
-	mWindowX      = 0;
-	mScreenX      = NULL;
-	mVisualX      = NULL;
-	mContextGL    = NULL;
-	mDisplayX     = NULL;
-	mRendering    = false;
-	mEnableDebug  = false;
-	mWindowClosed = false;
-	mActiveCursor = -1;
+	mWindowX       = 0;
+	mScreenX       = NULL;
+	mVisualX       = NULL;
+	mContextGL     = NULL;
+	mDisplayX      = NULL;
+	mRendering     = false;
+	mEnableDebug   = false;
+	mWindowClosed  = false;
+	mActiveCursor  = -1;
+	mDefaultCursor = OriginalCursor;
+	mDragMode      = DragDefault;
 
-	mID		    = 0;
-	mWidth        = 0;
-	mHeight       = 0;
-	mScreenWidth  = 0;
-	mScreenHeight = 0;
-	mAvgTime      = 1.0f;
+	mID		     = 0;
+	mWidth         = 0;
+	mHeight        = 0;
+	mScreenWidth   = 0;
+	mScreenHeight  = 0;
+	mAvgTime       = 1.0f;
 
-	mBgColor[0]   = 0.0f;
-	mBgColor[1]   = 0.0f;
-	mBgColor[2]   = 0.0f;
-	mBgColor[3]   = 1.0f;
+	mBgColor[0]    = 0.0f;
+	mBgColor[1]    = 0.0f;
+	mBgColor[2]    = 0.0f;
+	mBgColor[3]    = 1.0f;
 
 	mNormalizedCUDA   = NULL;
 	mNormalizedWidth  = 0;
@@ -83,6 +89,9 @@ glDisplay::glDisplay()
 
 	mMouseDrag[0] = -1;
 	mMouseDrag[1] = -1;
+
+	mMouseDragOrigin[0] = -1;
+	mMouseDragOrigin[1] = -1;
 
 	memset(mMouseButtons, 0, sizeof(mMouseButtons));
 	memset(mKeyStates, 0, sizeof(mKeyStates));
@@ -412,6 +421,16 @@ void glDisplay::EndRender()
 	for( size_t n=0; n < numWidgets; n++ )
 		mWidgets[n]->Render();
 
+	// dragging rect (ignore if origin inside an existing widget)
+	if( (mDragMode == DragSelect || mDragMode == DragCreate) && IsDragging(mDragMode) )
+	{
+		int x, y;
+		int width, height;
+
+		if( GetDragRect(&x, &y, &width, &height) )
+			RenderOutline(x, y, width, height, 1, 1, 1);
+	}
+
 	// present the backbuffer
 	glXSwapBuffers(mDisplayX, mWindowX);
 
@@ -706,10 +725,77 @@ void glDisplay::SetCursor( uint32_t cursor )
 }
 
 
+// SetDefaultCursor
+void glDisplay::SetDefaultCursor( uint32_t cursor, bool activate )
+{
+	if( cursor >= XC_num_glyphs )
+	{
+		printf(LOG_GL "glDisplay -- invalid mouse cursor '%u'\n", cursor);
+		return;
+	}
+
+	mDefaultCursor = cursor;
+
+	if( activate )
+		ResetCursor();
+}
+
+
 // ResetCursor
 void glDisplay::ResetCursor()
 {
-	SetCursor(XC_arrow);
+	SetCursor(mDefaultCursor);
+}
+
+
+// ResetDefaultCursor
+void glDisplay::ResetDefaultCursor( bool activate )
+{
+	SetDefaultCursor(OriginalCursor, activate);
+}
+
+
+// GetDragRect
+bool glDisplay::GetDragRect( int* x, int* y, int* width, int* height )
+{
+	if( mDragMode == DragDisabled || !IsDragging() )
+		return false;
+
+	if( x != NULL )
+		*x = std::min(mMouseDragOrigin[0], mMouseDrag[0]);
+
+	if( y != NULL )
+		*y = std::min(mMouseDragOrigin[1], mMouseDrag[1]);
+
+	if( width != NULL )
+		*width = std::abs(mMouseDrag[0] - mMouseDragOrigin[0]);
+
+	if( height != NULL )
+		*height = std::abs(mMouseDrag[1] - mMouseDragOrigin[1]);
+
+	return true;
+}
+
+
+// GetDragCoords
+bool glDisplay::GetDragCoords( int* x1, int* y1, int* x2, int* y2 )
+{
+	if( mDragMode == DragDisabled || !IsDragging() )
+		return false;
+
+	if( x1 != NULL )
+		*x1 = std::min(mMouseDragOrigin[0], mMouseDrag[0]);
+
+	if( y1 != NULL )
+		*y1 = std::min(mMouseDragOrigin[1], mMouseDrag[1]);
+
+	if( x2 != NULL )
+		*x2 = std::max(mMouseDragOrigin[0], mMouseDrag[0]);
+
+	if( y2 != NULL )
+		*y2 = std::max(mMouseDragOrigin[1], mMouseDrag[1]);
+
+	return true;
 }
 
 
@@ -739,6 +825,21 @@ void glDisplay::RemoveWidget( glWidget* widget )
 			return;
 		}
 	}
+}
+
+
+// FindWidget
+glWidget* glDisplay::FindWidget( int x, int y )
+{
+	const size_t numWidgets = mWidgets.size();
+
+	for( size_t n=0; n < numWidgets; n++ )
+	{
+		if( mWidgets[n]->Contains(x,y) )
+			return mWidgets[n];
+	}
+
+	return NULL;
 }
 
 
@@ -808,17 +909,52 @@ void glDisplay::ProcessEvents()
 			{
 				// handle mouse wheel scrolling
 				if( evt.xbutton.button == MOUSE_WHEEL_UP )
+				{
 					dispatchEvent(MOUSE_WHEEL, -1, 0);
+				}
 				else if( evt.xbutton.button == MOUSE_WHEEL_DOWN )
+				{
 					dispatchEvent(MOUSE_WHEEL, 1, 0);
+				}
+				else if( evt.xbutton.button == MOUSE_LEFT && mDragMode != DragDisabled )
+				{
+					// kick off dragging (except when in Creation mode and inside another widget)
+					if( !(mDragMode == DragCreate && FindWidget(mMousePos[0], mMousePos[1]) != NULL) )
+					{
+						mMouseDragOrigin[0] = mMousePos[0];
+						mMouseDragOrigin[1] = mMousePos[1];
+					}
+				}
 			}
 			else
 			{
 				// reset drag when left button released
 				if( evt.xbutton.button == MOUSE_LEFT )
 				{
+					if( IsDragging(mDragMode) /*&& FindWidget(mMouseDragOrigin[0], mMouseDragOrigin[1]) == NULL*/ )
+					{
+						if( mDragMode == DragCreate )
+						{
+							int x, y;
+							int width, height;
+
+							GetDragRect(&x, &y, &width, &height);
+
+							glWidget* widget = new glWidget(x, y, width, height);
+
+							widget->SetMoveable(true);
+							widget->SetResizeable(true);
+
+							AddWidget(widget);
+							dispatchEvent(WIDGET_CREATED, GetNumWidgets()-1, 0);
+						}					
+					}
+
 					mMouseDrag[0] = -1;
 					mMouseDrag[1] = -1;
+
+					mMouseDragOrigin[0] = -1;
+					mMouseDragOrigin[1] = -1;
 				}
 			}
 		}
@@ -837,9 +973,9 @@ void glDisplay::ProcessEvents()
 			dispatchEvent(MOUSE_ABSOLUTE, evt.xmotion.x_root + attr.x, evt.xmotion.y_root + attr.y);
 
 			// handle drag events
-			if( evt.xmotion.state & Button1Mask )
+			if( mDragMode != DragDisabled && (evt.xmotion.state & Button1Mask) )
 			{
-				if( mMouseDrag[0] >= 0 && mMouseDrag[1] >= 0 )
+				if( IsDragging() )
 				{
 					const int delta_x = evt.xmotion.x - mMouseDrag[0];
 					const int delta_y = evt.xmotion.y - mMouseDrag[1];
@@ -851,6 +987,10 @@ void glDisplay::ProcessEvents()
 				mMouseDrag[0] = evt.xmotion.x;
 				mMouseDrag[1] = evt.xmotion.y;
 			}
+
+			// reset mouse cursor when outside of widgets
+			if( FindWidget(mMousePos[0], mMousePos[1]) == NULL )
+				ResetCursor();
 		}
 		else if( evt.type == ConfigureNotify )
 		{
@@ -1015,6 +1155,17 @@ bool glDisplay::onEvent( uint16_t msg, int a, int b, void* user )
 				printf(LOG_GL "glDisplay -- event KEY_CHAR %c (%i)\n", (char)a, a);
 
 			break;
+		}
+		case WIDGET_CREATED:
+		{
+			if( display->mEnableDebug )
+			{
+				float x1, y1;
+				float x2, y2;
+
+				display->GetWidget(a)->GetCoords(&x1, &y1, &x2, &y2);
+				printf(LOG_GL "glDisplay -- event WIDGET_CREATE (%i, %i) (%i, %i) (index=%i)\n", (int)x1, (int)y1, (int)x2, (int)y2, a);
+			}
 		}
 		case WINDOW_RESIZE:
 		{

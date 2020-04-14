@@ -95,6 +95,16 @@ public:
 	inline void SetPosition( float x, float y )				{ mX = x; mY = y; }
 
 	/**
+	 * Get the bounding coordinates of the widget
+	 */
+	inline void GetCoords( float* x1, float* y1, float* x2, float* y2 ) const	{ if(x1) *x1=mX; if(y1) *y1=mY; if(x2) *x2=mX+mWidth; if(y2) *y2=mY+mHeight; }
+
+	/**
+	 * Set the bounding coordinates of the widget
+	 */
+	inline void SetCoords( float x1, float y1, float x2, float y2 )			{ mX = x1; mY = y1; mWidth=x2-x1; mHeight=y2-y1; }
+
+	/**
 	 * Get size
 	 */
 	inline void GetSize( float* width, float* height ) const	{ if(width) *width=mWidth; if(height) *height=mHeight; }
@@ -140,16 +150,6 @@ public:
 	inline void SetFillAlpha( float a )					{ mFillColor[3] = a; }
 
 	/**
-	 * Set fill color
-	 */
-	inline void SetFillColor( float r, float g, float b, float a=1.0f )	{ mFillColor[0] = r; mFillColor[1] = g; mFillColor[2] = b; mFillColor[3] = a; }
-
-	/**
-	 * Set outline color
-	 */
-	inline void SetLineColor( float r, float g, float b, float a=1.0f )	{ mLineColor[0] = r; mLineColor[1] = g; mLineColor[2] = b; mLineColor[3] = a; }
-
-	/**
 	 * Set outline alpha
 	 */
 	inline void SetLineAlpha( float a )					{ mLineColor[3] = a; }
@@ -158,6 +158,26 @@ public:
 	 * Set outline width
 	 */
 	inline void SetLineWidth( float width ) 				{ mLineWidth = width; }
+
+	/**
+	 * Set fill color
+	 */
+	inline void SetFillColor( float r, float g, float b, float a=1.0f )			{ mFillColor[0] = r; mFillColor[1] = g; mFillColor[2] = b; mFillColor[3] = a; }
+
+	/**
+	 * Set outline color
+	 */
+	inline void SetLineColor( float r, float g, float b, float a=1.0f )			{ mLineColor[0] = r; mLineColor[1] = g; mLineColor[2] = b; mLineColor[3] = a; }
+
+	/**
+	 * Set selected fill color
+	 */
+	inline void SetSelectedFillColor( float r, float g, float b, float a=1.0f )	{ mSelectedFillColor[0] = r; mSelectedFillColor[1] = g; mSelectedFillColor[2] = b; mSelectedFillColor[3] = a; }
+
+	/**
+	 * Set selected outline color
+	 */
+	inline void SetSelectedLineColor( float r, float g, float b, float a=1.0f )	{ mSelectedLineColor[0] = r; mSelectedLineColor[1] = g; mSelectedLineColor[2] = b; mSelectedLineColor[3] = a; }
 
 	/**
 	 * Is the widget moveable/draggable by the user?
@@ -178,6 +198,16 @@ public:
 	 * Toggle if the user can resize the widget
 	 */
 	inline void SetResizeable( bool resizeable )				{ mResizeable = resizeable; }
+
+	/**
+	 * Is the widget selected?
+	 */
+	inline bool IsSelected() const						{ return mSelected; }
+
+	/**
+	 * Select/de-select the widget
+	 */
+	inline void SetSelected( bool selected )				{ mSelected = true; }
 
 	/**
 	 * Is the widget visible
@@ -241,12 +271,16 @@ protected:
 	float mWidth;
 	float mHeight;
 
+	float mSelectedFillColor[4];
+	float mSelectedLineColor[4];
+
 	float mFillColor[4];
 	float mLineColor[4];
 	float mLineWidth;
 
 	bool  mMoveable;
 	bool  mResizeable;
+	bool  mSelected;
 	bool  mVisible;
 	
 	Shape mShape;

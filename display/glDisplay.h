@@ -251,6 +251,11 @@ public:
 	inline glWidget* GetWidget( const uint32_t index ) const	{ return mWidgets[index]; }
 
 	/**
+	 * Find a widget by coordinate, or NULL if no widget overlaps with that coordinate.
+	 */
+	glWidget* FindWidget( int x, int y );
+
+	/**
 	 * Enable debugging of events.
 	 */
 	void EnableDebug();
@@ -297,19 +302,6 @@ public:
 	void SetBackgroundColor( float r, float g, float b, float a=1.0f );
 
 	/**
-	 * Set the active mouse cursor.
-	 *
-	 * @param cursor one of the cursor ID's from `X11/cursorfont.h`
-	 * @see ResetCursor() to restore the cursor back to default
-	 */
-	void SetCursor( uint32_t cursor );
-
-	/**
-	 * Reset the mouse cursor back to it's default.
-	 */
-	void ResetCursor();
-
-	/**
 	 * Set the active viewport being rendered to.
 	 *
 	 * SetViewport() will update the GL_PROJECTION matrix
@@ -322,8 +314,99 @@ public:
 
 	/**
 	 * Reset to the full viewport (and change back GL_PROJECTION)
+
 	 */
 	void ResetViewport();
+
+	/**
+	 * Set the active mouse cursor.
+	 *
+	 * @param cursor one of the cursor ID's from `X11/cursorfont.h`
+	 *
+	 * @see ResetCursor() to restore the cursor back to default
+	 * @see SetDefaultCursor() to change the default cursor
+	 */
+	void SetCursor( uint32_t cursor );
+
+	/**
+	 * Set the default mouse cursor that gets used by ResetCursor()
+	 *
+	 * @param cursor one of the cursor ID's from `X11/cursorfont.h`.
+	 *               This will be the default cursor that gets set
+	 *               when ResetCursor() is called.
+	 *
+	 * @param activate if `true` (default), the active cursor will be
+	 *                 changed to this new default cursor immediately.
+	 *                 If `false`, the active cursor will stay the same
+	 *                 until ResetCursor() gets called in the future.
+	 *
+	 * @see ResetCursor()
+	 * @see ResetDefaultCursor()
+	 * @see SetCursor()
+	 */
+	void SetDefaultCursor( uint32_t cursor, bool activate=true );
+
+	/**
+	 * Reset the mouse cursor back to it's default.
+	 * The default mouse cursor is defined by SetDefaultCursor().
+	 *
+	 * @see SetDefaultCursor()
+	 * @see SetCursor()
+	 */
+	void ResetCursor();
+
+	/**
+	 * Reset the default cursor back to it's original, the arrow.
+	 *
+	 * @param activate if `true` (default), the active cursor will be
+	 *                 changed to this new default cursor immediately.
+	 *                 If `false`, the active cursor will stay the same
+	 *                 until ResetCursor() gets called in the future.
+	 *
+	 * @see SetDefaultCursor()
+	 * @see SetCursor()
+	 * @see ResetCursor()
+	 */
+	void ResetDefaultCursor( bool activate=true );
+
+	/**
+	 * Drag behavior enum
+	 *
+	 * @see GetDragMode()
+	 * @see SetDragMode()
+	 */
+	enum DragMode
+	{
+		DragDefault,	/**< Issue MOUSE_DRAG events, but nothing else. */
+		DragDisabled,	/**< Disable issuing all MOUSE_DRAG events */
+		DragSelect,	/**< Select widgets from a dragging rectangle, and issue WIDGET_SELECTED events */
+		DragCreate	/**< Create a new widget from a dragging rectangle, and issue WIDGET_CREATED events */
+	};
+
+	/**
+	 * Get the dragging behavior mode.
+	 */
+	inline DragMode GetDragMode() const					{ return mDragMode; }
+
+	/**
+	 * Set the dragging behavior mode.
+	 */
+	inline void SetDragMode( DragMode mode )				{ mDragMode = mode; }
+
+	/**
+	 * Is the mouse currently dragging in the specified mode?
+	 */
+	inline bool IsDragging( DragMode mode=DragDefault ) const	{ return mode == DragCreate ? (mMouseDragOrigin[0] >= 0 && mMouseDragOrigin[1] >= 0) : (mMouseDrag[0] >= 0 && mMouseDrag[1] >= 0); }
+
+	/**
+	 * Get the dragging rectangle
+	 */
+	bool GetDragRect( int* x, int* y, int* width, int* height );
+
+	/**
+	 * Get the dragging coordinates
+	 */
+	bool GetDragCoords( int* x1, int* y1, int* x2, int* y2 );
 
 	/**
 	 * Default title bar name
@@ -358,10 +441,12 @@ protected:
 	GLXContext   mContextGL;
 	Cursor	   mCursors[256];
 	int	        mActiveCursor;
+	int          mDefaultCursor;
 	bool		   mRendering;
 	bool		   mEnableDebug;
 	bool		   mWindowClosed;
 	Atom		   mWindowClosedMsg;
+	DragMode	   mDragMode;
 
 	uint32_t mID;
 	uint32_t mWidth;
@@ -376,6 +461,7 @@ protected:
 
 	int	    mMousePos[2];
 	int	    mMouseDrag[2];
+	int      mMouseDragOrigin[2];
 	bool	    mMouseButtons[16];
 	bool     mKeyStates[1024];
 

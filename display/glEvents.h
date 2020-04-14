@@ -207,6 +207,18 @@ enum glEventType
 	KEY_CHAR,
 
 	/**
+	 * Message indicating that a widget has been created (e.g. from dragging)
+	 *  a = widget index into glDisplay::GetWidget()
+	 */
+	WIDGET_CREATED,
+
+	/**
+	 * Message indicating that a widget has been selected (e.g. from dragging)
+	 *  a = widget index into glDisplay::GetWidget()
+	 */
+	WIDGET_SELECTED,
+
+	/**
 	 * Message indicating that the window has been resized
 	 *
 	 * a = new width (in pixels)
