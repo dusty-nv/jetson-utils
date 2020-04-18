@@ -220,7 +220,7 @@ public:
 	 * @param user optional user-specified pointer that will be passed to all
 	 *             invocations of this event handler (typically an object)
 	 */
-	void RegisterEventHandler( glEventHandler callback, void* user=NULL );
+	void AddEventHandler( glEventHandler callback, void* user=NULL );
 
 	/**
 	 * Remove an event message handler from being called by ProcessEvents()
@@ -236,9 +236,19 @@ public:
 	glWidget* AddWidget( glWidget* widget );
 
 	/**
-	 * Remove a widget from the window (it will not be deleted)
+	 * Remove a widget from the window (and optionally delete it)
 	 */
-	void RemoveWidget( glWidget* widget );
+	void RemoveWidget( glWidget* widget, bool deleteWidget=true );
+
+	/**
+	 * Remove a widget from the window (and optionally delete it)
+	 */
+	void RemoveWidget( uint32_t index, bool deleteWidget=true );
+
+	/**
+	 * Remove all widgets from the window (and optionally delete them)
+	 */
+	void RemoveAllWidgets( bool deleteWidgets=true );
 
 	/**
 	 * Retrieve the number of widgets.
@@ -251,9 +261,19 @@ public:
 	inline glWidget* GetWidget( const uint32_t index ) const	{ return mWidgets[index]; }
 
 	/**
-	 * Find a widget by coordinate, or NULL if no widget overlaps with that coordinate.
+	 * Retrieve the index of a widget (or -1 if not found)
+	 */
+	int GetWidgetIndex( const glWidget* widget ) const;
+
+	/**
+	 * Find first widget by coordinate, or NULL if no widget overlaps with that coordinate.
 	 */
 	glWidget* FindWidget( int x, int y );
+
+	/**
+	 * Find all widgets by coordinate, or NULL if no widget overlaps with that coordinate.
+	 */
+	std::vector<glWidget*> FindWidgets( int x, int y );
 
 	/**
 	 * Enable debugging of events.
@@ -399,12 +419,12 @@ public:
 	inline bool IsDragging( DragMode mode=DragDefault ) const	{ return mode == DragCreate ? (mMouseDragOrigin[0] >= 0 && mMouseDragOrigin[1] >= 0) : (mMouseDrag[0] >= 0 && mMouseDrag[1] >= 0); }
 
 	/**
-	 * Get the dragging rectangle
+	 * Get the current dragging rectangle, or return false if not dragging.
 	 */
 	bool GetDragRect( int* x, int* y, int* width, int* height );
 
 	/**
-	 * Get the dragging coordinates
+	 * Get the current dragging coordinates, or return false if not dragging.
 	 */
 	bool GetDragCoords( int* x1, int* y1, int* x2, int* y2 );
 
@@ -422,8 +442,8 @@ protected:
 	glTexture* allocTexture( uint32_t width, uint32_t height );	
 
 	void activateViewport();
-	void dispatchEvent( glEventType msg, int a, int b );
 
+	void dispatchEvent( uint16_t msg, int a, int b );
 	static bool onEvent( uint16_t msg, int a, int b, void* user );
 
 	struct eventHandler

@@ -26,6 +26,7 @@
 
 #include <stdint.h>
 #include <stdio.h>
+#include <vector>
 
 
 // forward declarations
@@ -70,19 +71,49 @@ public:
 	bool Contains( float x, float y ) const;
 
 	/**
-	 * Convert from global window coordinates to local widget offset
-	 */
-	void GlobalToLocal( float x, float y, float* x_out, float* y_out ) const;
-
-	/**
-	 * Convert from local widget offset to global window coordinates
-	 */
-	void LocalToGlobal( float x, float y, float* x_out, float* y_out ) const;
-
-	/**
 	 * Move the widget's position by the specified offset
 	 */
 	inline void Move( float x, float y )					{ mX += x; mY += y; }
+
+	/**
+	 * Get the widget's X coordinate
+	 */
+	inline float X() const								{ return mX; }
+
+	/**
+	 * Get the widget's Y coordinate
+	 */
+	inline float Y() const								{ return mY; }
+
+	/**
+	 * Set the widget's X coordinate
+	 */
+	inline void SetX( float x )							{ mX = x; }
+
+	/**
+	 * Set the widget's Y coordinate
+	 */
+	inline void SetY( float y )							{ mY = y; }
+
+	/**
+	 * Get the widget's width
+	 */
+	inline float Width() const							{ return mWidth; }
+
+	/**
+	 * Get the widget's height
+	 */
+	inline float Height() const							{ return mHeight; }
+
+	/**
+	 * Set the widget's width
+	 */
+	inline void SetWidth( float width )					{ mWidth = width; }
+
+	/**
+	 * Set the widget's height
+	 */
+	inline void SetHeight( float height )					{ mHeight = height; }
 
 	/**
 	 * Get position of widget in global window coordinates
@@ -105,34 +136,14 @@ public:
 	inline void SetCoords( float x1, float y1, float x2, float y2 )			{ mX = x1; mY = y1; mWidth=x2-x1; mHeight=y2-y1; }
 
 	/**
-	 * Get size
+	 * Get the widget's size
 	 */
 	inline void GetSize( float* width, float* height ) const	{ if(width) *width=mWidth; if(height) *height=mHeight; }
 	
 	/**
-	 * Set size
+	 * Set the widget's size
 	 */
 	inline void SetSize( float width, float height )			{ mWidth = width; mHeight = height; }
-
-	/**
-	 * Get width
-	 */
-	inline float GetWidth() const							{ return mWidth; }
-
-	/**
-	 * Get height
-	 */
-	inline float GetHeight() const						{ return mHeight; }
-
-	/**
-	 * Set width
-	 */
-	inline void SetWidth( float width )					{ mWidth = width; }
-
-	/**
-	 * Set height
-	 */
-	inline void SetHeight( float height )					{ mHeight = height; }
 
 	/**
 	 * Get the shape
@@ -235,12 +246,58 @@ public:
 	inline glDisplay* GetDisplay() const					{ return mDisplay; }
 
 	/**
+	 * Get the index of the widget in the window (or -1 if none)
+	 */
+	int GetIndex() const;
+
+	/**
 	 * Render (automatically called by parent)
 	 */
 	void Render();
 
 	/**
-	 * Event handler (automatically called by parent)
+	 * Convert from global window coordinates to local widget offset
+	 */
+	void GlobalToLocal( float x, float y, float* x_out, float* y_out ) const;
+
+	/**
+	 * Convert from local widget offset to global window coordinates
+	 */
+	void LocalToGlobal( float x, float y, float* x_out, float* y_out ) const;
+
+	/**
+	 * Event message handler callback for recieving UI messages from widgets.
+	 *
+	 * Recieves 4 parameters - the widget that sent the event, the event type, 
+	 * 					  a & b message values (@see glEventType from glEvents.h),
+	 *                         and a user-specified pointer from registration.
+	 *
+	 * Event message handlers should return `true` if the message was 
+	 * handled, or `false` if the message was skipped or not handled.
+	 *
+	 * @see AddEventHandler
+	 * @see RemoveEventHandler
+	 */
+	typedef bool (*glWidgetEventHandler)(glWidget* widget, uint16_t event, int a, int b, void* user);
+
+	/**
+	 * Register an event message handler the widget will send events to.
+	 * @param callback function pointer to the event message handler callback
+	 * @param user optional user-specified pointer that will be passed to all
+	 *             invocations of this event handler (typically an object)
+	 */
+	void AddEventHandler( glWidgetEventHandler callback, void* user=NULL );
+
+	/**
+	 * Remove an event message handler from being called by the widget.
+	 * RemoveEventHandler() will search for previously registered event
+	 * handlers that have the same function pointer and/or user pointer,
+	 * and remove them for being called again in the future.
+	 */
+	void RemoveEventHandler( glWidgetEventHandler callback, void* user=NULL );
+
+	/**
+	 * @internal Event handler (automatically called by parent window)
 	 */
 	bool OnEvent( uint16_t event, int a, int b, void* user );
 
@@ -262,10 +319,19 @@ protected:
 		DragResizeE		
 	};
 
+	struct eventHandler
+	{
+		glWidgetEventHandler callback;
+		void* user;
+	};
+
 	void initDefaults();
 	void setCursor( DragState cursor );	
 	void setDisplay( glDisplay* display );
-	
+	void dispatchEvent( uint16_t msg, int a, int b );
+
+	DragState coordToBorder( float x, float y, float max_distance=10.0f );
+
 	float mX;
 	float mY;
 	float mWidth;
@@ -289,7 +355,7 @@ protected:
 	glDisplay* mDisplay;
 	DragState  mDragState;
 
-	DragState coordToBorder( float x, float y, float max_distance=10.0f );
+	std::vector<eventHandler> mEventHandlers;
 };
 
 #endif

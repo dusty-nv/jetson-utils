@@ -30,7 +30,7 @@ void glRegisterEvents( glEventHandler callback, void* user, uint32_t displayID )
 	glDisplay* display = glGetDisplay(displayID);
 
 	if( display != NULL )
-		display->RegisterEventHandler(callback, user);
+		display->AddEventHandler(callback, user);
 }
 
 

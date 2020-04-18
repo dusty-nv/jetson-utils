@@ -100,7 +100,7 @@ glDisplay::glDisplay()
 	clock_gettime(CLOCK_REALTIME, &mLastTime);
 	
 	// register default event handler
-	RegisterEventHandler(&onEvent, this);
+	AddEventHandler(&onEvent, this);
 }
 
 
@@ -120,19 +120,7 @@ glDisplay::~glDisplay()
 	}
 
 	// release widgets from the window
-	const size_t numWidgets = mWidgets.size();
-
-	for( size_t n=0; n < numWidgets; n++ )
-	{
-		if( mWidgets[n] != NULL )
-		{
-			mWidgets[n]->setDisplay(NULL);
-			delete mWidgets[n];
-			mWidgets[n] = NULL;
-		}
-	}
-
-	mWidgets.clear();
+	RemoveAllWidgets();
 
 	// release textures used during rendering
 	const size_t numTextures = mTextures.size();
@@ -813,18 +801,54 @@ glWidget* glDisplay::AddWidget( glWidget* widget )
 
 
 // RemoveWidget
-void glDisplay::RemoveWidget( glWidget* widget )
+void glDisplay::RemoveWidget( glWidget* widget, bool deleteWidget )
+{
+	const int index = GetWidgetIndex(widget);
+
+	if( index < 0 )
+		return;
+
+	RemoveWidget(index, deleteWidget);
+}
+
+
+// RemoveWidget
+void glDisplay::RemoveWidget( uint32_t n, bool deleteWidget )
+{
+	mWidgets[n]->setDisplay(NULL);
+	
+	if( deleteWidget )
+		delete mWidgets[n];
+
+	mWidgets[n] = NULL;
+	mWidgets.erase(mWidgets.begin()+n);
+}
+
+
+// RemoveAllWidgets
+void glDisplay::RemoveAllWidgets( bool deleteWidgets )
+{
+	const size_t numWidgets = mWidgets.size();
+
+	for( size_t n=0; n < numWidgets; n++ )
+		RemoveWidget(n, deleteWidgets);
+
+	mWidgets.clear();
+}
+
+
+// GetWidgetIndex
+int glDisplay::GetWidgetIndex( const glWidget* widget ) const
 {
 	const size_t numWidgets = mWidgets.size();
 
 	for( size_t n=0; n < numWidgets; n++ )
 	{
 		if( mWidgets[n] == widget )
-		{
-			mWidgets.erase(mWidgets.begin()+n);
-			return;
-		}
+			return n;
 	}
+
+	return -1;
 }
 
 
@@ -840,6 +864,23 @@ glWidget* glDisplay::FindWidget( int x, int y )
 	}
 
 	return NULL;
+}
+
+
+// FindWidgets
+std::vector<glWidget*> glDisplay::FindWidgets( int x, int y )
+{
+	std::vector<glWidget*> widgets;
+
+	const size_t numWidgets = mWidgets.size();
+
+	for( size_t n=0; n < numWidgets; n++ )
+	{
+		if( mWidgets[n]->Contains(x,y) )
+			widgets.push_back(mWidgets[n]);
+	}
+
+	return widgets;
 }
 
 
@@ -1005,7 +1046,7 @@ void glDisplay::ProcessEvents()
 				if( mViewport[2] == prevWidth && mViewport[3] == prevHeight )
 					SetViewport(0, 0, evt.xconfigure.width, evt.xconfigure.height);
 
-				dispatchEvent(WINDOW_RESIZE, mWidth, mHeight);
+				dispatchEvent(WINDOW_RESIZED, mWidth, mHeight);
 			}
 		}
 		else if( evt.type == ClientMessage )
@@ -1017,8 +1058,8 @@ void glDisplay::ProcessEvents()
 }
 
 
-// RegisterEventHandler
-void glDisplay::RegisterEventHandler( glEventHandler callback, void* user )
+// AddEventHandler
+void glDisplay::AddEventHandler( glEventHandler callback, void* user )
 {
 	if( !callback )
 		return;
@@ -1067,7 +1108,7 @@ void glDisplay::RemoveEventHandler( glEventHandler callback, void* user )
 }
 
 // dispatchEvent
-void glDisplay::dispatchEvent( glEventType msg, int a, int b )
+void glDisplay::dispatchEvent( uint16_t msg, int a, int b )
 {
 	const uint32_t numHandlers = mEventHandlers.size();
 
@@ -1166,11 +1207,13 @@ bool glDisplay::onEvent( uint16_t msg, int a, int b, void* user )
 				display->GetWidget(a)->GetCoords(&x1, &y1, &x2, &y2);
 				printf(LOG_GL "glDisplay -- event WIDGET_CREATE (%i, %i) (%i, %i) (index=%i)\n", (int)x1, (int)y1, (int)x2, (int)y2, a);
 			}
+
+			break;
 		}
-		case WINDOW_RESIZE:
+		case WINDOW_RESIZED:
 		{
 			if( display->mEnableDebug )
-				printf(LOG_GL "glDisplay -- event WINDOW_RESIZE (%i, %i)\n", a, b);
+				printf(LOG_GL "glDisplay -- event WINDOW_RESIZED (%i, %i)\n", a, b);
 
 			return true;
 		}

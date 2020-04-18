@@ -208,26 +208,66 @@ enum glEventType
 
 	/**
 	 * Message indicating that a widget has been created (e.g. from dragging)
-	 *  a = widget index into glDisplay::GetWidget()
+	 *
+	 *  a = widget index into glDisplay::GetWidget() or glWidget::GetIndex()
+	 *
+	 * @note this message is sent by both glWidget and glDisplay.
+	 * @see glWidget::AddEventHandler() to subscribe to widget events.
 	 */
 	WIDGET_CREATED,
 
 	/**
 	 * Message indicating that a widget has been selected (e.g. from dragging)
-	 *  a = widget index into glDisplay::GetWidget()
+	 *
+	 *  a = widget index into glDisplay::GetWidget() or glWidget::GetIndex()
+	 *
+	 * @note this message is sent by both glWidget and glDisplay.
+	 * @see glWidget::AddEventHandler() to subscribe to widget events.
 	 */
 	WIDGET_SELECTED,
 
 	/**
-	 * Message indicating that the window has been resized
+	 * Message from a widget indicating that it's been moved by the user.
+	 *
+	 * This event is only sent if the user moved the widget in the GUI 
+	 * (i.e. if glWidget::IsMoveable() was set), and not if the widget 
+	 * was moved programatically via glWidget::Move(), glWidget::SetPosition(), 
+	 * glWidget::SetX(), glWidget::SetY(), ect. 
+	 * 
+	 * a = new X coordinate
+	 * b = new Y coordinate
+	 *
+	 * @note this message is only sent by glWidget (not glDisplay).
+	 * @see glWidget::AddEventHandler() to subscribe to widget events.
+	 */
+	WIDGET_MOVED,
+
+	/**
+	 * Message from a widget indicating that it's been resized.
+	 * 
+	 * This event is only sent if the user resized the widget in the GUI 
+	 * (i.e. if glWidget::IsResizable() was set), and not if the widget 
+	 * was resized programatically via glWidget::SetSize(), 
+	 * glWidget::SetWidth(), or glWidget::SetHeight(). 
+	 *
+	 * a = new width
+	 * b = new height
+	 *
+	 * @note this message is only sent by glWidget (not glDisplay).
+	 * @see glWidget::AddEventHandler() to subscribe to widget events.
+	 */
+	WIDGET_RESIZED,
+
+	/**
+	 * Message indicating that the window has been resized.
 	 *
 	 * a = new width (in pixels)
 	 * b = new height (in pixels)
 	 */
-	WINDOW_RESIZE,
+	WINDOW_RESIZED,
 
 	/**
-	 * Message indicating that the window is closing
+	 * Message indicating that the window is closing.
 	 * (no parameters)
       */
 	WINDOW_CLOSED

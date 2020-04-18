@@ -92,7 +92,17 @@ void glWidget::initDefaults()
 glWidget::~glWidget()
 {
 	if( mDisplay != NULL )
-		mDisplay->RemoveWidget(this);
+		mDisplay->RemoveWidget(this, false);
+}
+
+
+// GetIndex
+int glWidget::GetIndex() const
+{
+	if( !mDisplay )
+		return -1;
+
+	return mDisplay->GetWidgetIndex(this);
 }
 
 
@@ -196,10 +206,13 @@ bool glWidget::OnEvent( uint16_t event, int a, int b, void* user )
 	}
 	else if( event == MOUSE_DRAG && mDragState != DragNone )
 	{
+		bool wasMoved = false;
+		bool wasResized = false;
+
 		if( mDragState == DragMove )
 		{
 			Move(a, b);
-			return true;
+			wasMoved = true;
 		}
 
 		// Y resize
@@ -207,10 +220,14 @@ bool glWidget::OnEvent( uint16_t event, int a, int b, void* user )
 		{
 			mHeight -= b;
 			mY += b;
+
+			wasMoved = true;
+			wasResized = true;
 		}
 		else if( mDragState == DragResizeS || mDragState == DragResizeSW || mDragState == DragResizeSE )
 		{
 			mHeight += b;
+			wasResized = true;
 		}
 		
 		// X resize
@@ -218,10 +235,14 @@ bool glWidget::OnEvent( uint16_t event, int a, int b, void* user )
 		{
 			mWidth -= a;
 			mX += a;
+
+			wasMoved = true;
+			wasResized = true;
 		}
 		else if( mDragState == DragResizeE || mDragState == DragResizeNE || mDragState == DragResizeSE )
 		{
 			mWidth += a;
+			wasResized = true;
 		}
 
 		if( mWidth < 1.0f )
@@ -229,6 +250,12 @@ bool glWidget::OnEvent( uint16_t event, int a, int b, void* user )
 
 		if( mHeight < 1.0f )
 			mHeight = 1.0f;
+
+		if( wasMoved )
+			dispatchEvent(WIDGET_MOVED, mX, mY);
+
+		if( wasResized )
+			dispatchEvent(WIDGET_RESIZED, mWidth, mHeight);
 	}
 	else if( event == MOUSE_MOVE )
 	{
@@ -322,7 +349,7 @@ void glWidget::setCursor( DragState anchor )
 	else if( anchor == DragResizeSE )
 		cursor = XC_bottom_right_corner;
 
-	printf("set cursor: %u\n", cursor);
+	//printf("set cursor: %u\n", cursor);
 	mDisplay->SetCursor(cursor);
 }
 
@@ -333,6 +360,64 @@ void glWidget::setDisplay( glDisplay* display )
 	mDisplay = display;
 }
 
-	
+
+// AddEventHandler
+void glWidget::AddEventHandler( glWidgetEventHandler callback, void* user )
+{
+	if( !callback )
+		return;
+
+	eventHandler handler;
+
+	handler.callback = callback;
+	handler.user = user;
+
+	mEventHandlers.push_back(handler);
+}
+
+
+// RemoveEventHandler
+void glWidget::RemoveEventHandler( glWidgetEventHandler callback, void* user )
+{
+	if( !callback && !user )
+		return;
+
+	for( int n=0; n < mEventHandlers.size(); n++ )
+	{
+		bool found = false;
+
+		if( callback != NULL && user != NULL )
+		{
+			if( mEventHandlers[n].callback == callback && mEventHandlers[n].user == user )
+				found = true;
+		}
+		else if( callback != NULL )
+		{
+			if( mEventHandlers[n].callback == callback )
+				found = true;
+		}
+		else if( user != NULL )
+		{
+			if( mEventHandlers[n].user == user )
+				found = true;
+		}
+
+		if( found )
+		{
+			mEventHandlers.erase(mEventHandlers.begin() + n);
+			n--;	// keep searching for more matches
+		}
+	}
+}
+
+
+// dispatchEvent
+void glWidget::dispatchEvent( uint16_t msg, int a, int b )
+{
+	const uint32_t numHandlers = mEventHandlers.size();
+
+	for( uint32_t n=0; n < numHandlers; n++ )
+		mEventHandlers[n].callback(this, msg, a, b, mEventHandlers[n].user);
+}
 
 
