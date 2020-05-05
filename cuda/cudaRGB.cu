@@ -239,5 +239,49 @@ cudaError_t cudaRGBA32ToBGR8( float4* srcDev, uchar3* destDev, size_t width, siz
 	return cudaRGBA32ToBGR8(srcDev, destDev, width, height, make_float2(0.0f, 255.0f));
 }
 
+//-------------------------------------------------------------------------------------------------------------------------
+__global__ void RGBAToMONO8(float4* srcImage,
+							unsigned char* dstImage,
+                           int width, int height,
+					  	   float scaling_factor)
+{
+	const int x = (blockIdx.x * blockDim.x) + threadIdx.x;
+	const int y = (blockIdx.y * blockDim.y) + threadIdx.y;
+	
+	const int pixel = y * width + x;
 
+	if( x >= width )
+		return; 
+
+	if( y >= height )
+		return;
+
+	const float4 px = srcImage[pixel];
+	const float val = ( px.x + px.y + px.z) * scaling_factor / 3;
+
+	dstImage[pixel] = (unsigned char)val;
+}
+
+cudaError_t cudaRGBA32ToMONO8( float4* srcDev, unsigned char* destDev, size_t width, size_t height, const float2& inputRange )
+{
+	if( !srcDev || !destDev )
+		return cudaErrorInvalidDevicePointer;
+
+	if( width == 0 || height == 0 )
+		return cudaErrorInvalidValue;
+
+	const float multiplier = 255.0f / inputRange.y;
+
+	const dim3 blockDim(8,8,1);
+	const dim3 gridDim(iDivUp(width,blockDim.x), iDivUp(height,blockDim.y), 1);
+
+	RGBAToMONO8<<<gridDim, blockDim>>>( srcDev, destDev, width, height, multiplier );
+	
+	return CUDA(cudaGetLastError());
+}
+
+cudaError_t cudaRGBA32ToMONO8( float4* srcDev, unsigned char* destDev, size_t width, size_t height )
+{
+	return cudaRGBA32ToMONO8(srcDev, destDev, width, height, make_float2(0.0f, 255.0f));
+}
 

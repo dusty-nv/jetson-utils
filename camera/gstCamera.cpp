@@ -62,6 +62,7 @@ gstCamera::gstCamera()
 	mDepth  = 0;
 	mSize   = 0;
 	mSource = GST_SOURCE_NVCAMERA;
+	mInverted = false;
 
 	mLatestRGBA       = 0;
 	mLatestRingbuffer = 0;
@@ -411,10 +412,10 @@ bool gstCamera::buildLaunchStr( gstCameraSrc src )
 		mSource = src;	 // store camera source method
 
 	#if NV_TENSORRT_MAJOR > 1 && NV_TENSORRT_MAJOR < 5	// if JetPack 3.1-3.3 (different flip-method)
-		const int flipMethod = 0;					// Xavier (w/TRT5) camera is mounted inverted
+		const int flipMethod = mInverted ? 2 : 0;					// Xavier (w/TRT5) camera is mounted inverted
 	#else
-		const int flipMethod = 2;
-	#endif	
+		const int flipMethod = mInverted ? 0 : 2;
+	#endif
 
 		if( src == GST_SOURCE_NVCAMERA )
 			ss << "nvcamerasrc fpsRange=\"30.0 30.0\" ! video/x-raw(memory:NVMM), width=(int)" << mWidth << ", height=(int)" << mHeight << ", format=(string)NV12 ! nvvidconv flip-method=" << flipMethod << " ! "; //'video/x-raw(memory:NVMM), width=(int)1920, height=(int)1080, format=(string)I420, framerate=(fraction)30/1' ! ";
@@ -483,7 +484,7 @@ bool gstCamera::parseCameraStr( const char* camera )
 
 
 // Create
-gstCamera* gstCamera::Create( uint32_t width, uint32_t height, const char* camera )
+gstCamera* gstCamera::Create( uint32_t width, uint32_t height, const char* camera, bool inverted)
 {
 	if( !gstreamerInit() )
 	{
@@ -503,6 +504,7 @@ gstCamera* gstCamera::Create( uint32_t width, uint32_t height, const char* camer
 	cam->mHeight     = height;
 	cam->mDepth      = cam->csiCamera() ? 12 : 24;	// NV12 or RGB
 	cam->mSize       = (width * height * cam->mDepth) / 8;
+	cam->mInverted   = inverted;
 
 	if( !cam->init(GST_SOURCE_NVARGUS) )
 	{
