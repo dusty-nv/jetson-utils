@@ -63,7 +63,7 @@ glDisplay::glDisplay()
 	mRendering     = false;
 	mEnableDebug   = false;
 	mWindowClosed  = false;
-	mActiveCursor  = -1;
+	mActiveCursor  = OriginalCursor;
 	mDefaultCursor = OriginalCursor;
 	mDragMode      = DragDefault;
 
@@ -697,6 +697,11 @@ void glDisplay::SetCursor( uint32_t cursor )
 		return;
 	}
 
+	if( cursor == mActiveCursor )
+		return;
+
+	printf(LOG_GL "glDisplay -- SetCursor(%u)\n", cursor);
+
 	if( !mCursors[cursor] )
 		mCursors[cursor] = XCreateFontCursor(mDisplayX, cursor);
 
@@ -709,7 +714,12 @@ void glDisplay::SetCursor( uint32_t cursor )
 	const int error = XDefineCursor(mDisplayX, mWindowX, mCursors[cursor]);
 
 	if( error != 1 )
+	{
 		printf(LOG_GL "glDisplay -- failed to set mouse cursor '%u' (error=%i)\n", cursor, error);
+		return;
+	}
+
+	mActiveCursor = cursor;
 }
 
 
