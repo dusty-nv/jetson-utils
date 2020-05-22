@@ -43,6 +43,7 @@ const char* gstCameraSrcToString( gstCameraSrc src )
 	if( src == GST_SOURCE_NVCAMERA )		return "GST_SOURCE_NVCAMERA";
 	else if( src == GST_SOURCE_NVARGUS )	return "GST_SOURCE_NVARGUS";
 	else if( src == GST_SOURCE_V4L2 )		return "GST_SOURCE_V4L2";
+	else if( src == GST_SOURCE_RTSP )		return "GST_SOURCE_RTSP";
 
 	return "UNKNOWN";
 }
@@ -404,12 +405,13 @@ bool gstCamera::buildLaunchStr( gstCameraSrc src )
 	// nvvidconv flip-method=2 ! 'video/x-raw(memory:NVMM), format=(string)I420' ! fakesink silent=false -v
 	// #define CAPS_STR "video/x-raw(memory:NVMM), width=(int)2592, height=(int)1944, format=(string)I420, framerate=(fraction)30/1"
 	// #define CAPS_STR "video/x-raw(memory:NVMM), width=(int)1920, height=(int)1080, format=(string)I420, framerate=(fraction)30/1"
+
+	//rtspsrc location=rtsp://10.0.1.103/Streaming/Channels/103 ! queue ! rtph264depay ! h264parse ! queue ! omxh264dec ! appsink name=mysink
+
 	std::ostringstream ss;
 
-	if( csiCamera() && src != GST_SOURCE_V4L2 )
+	if( csiCamera() && (src == GST_SOURCE_NVARGUS || src == GST_SOURCE_NVCAMERA) )
 	{
-		mSource = src;	 // store camera source method
-
 	#if NV_TENSORRT_MAJOR > 1 && NV_TENSORRT_MAJOR < 5	// if JetPack 3.1-3.3 (different flip-method)
 		const int flipMethod = 0;					// Xavier (w/TRT5) camera is mounted inverted
 	#else
@@ -423,7 +425,7 @@ bool gstCamera::buildLaunchStr( gstCameraSrc src )
 		
 		ss << "video/x-raw ! appsink name=mysink";
 	}
-	else
+	else if ( src == GST_SOURCE_V4L2 )
 	{
 		ss << "v4l2src device=" << mCameraStr << " ! ";
 		ss << "video/x-raw, width=(int)" << mWidth << ", height=(int)" << mHeight << ", "; 
@@ -435,8 +437,15 @@ bool gstCamera::buildLaunchStr( gstCameraSrc src )
 	#endif
 
 		ss << "appsink name=mysink";
-
-		mSource = GST_SOURCE_V4L2;
+	}
+	else if ( src == GST_SOURCE_RTSP )
+	{
+		ss << "rtspsrc location=" << mCameraStr << " ! ";
+		ss << "queue ! rtph264depay ! h264parse ! queue ! omxh264dec ! ";
+		ss << "videoconvert ! video/x-raw, format=RGB ! ";
+		//ss << "videoconvert ! videoscale ! video/x-raw, format=RGB, width=" << mWidth << ", height=" << mHeight << " ! ";
+		
+		ss << "appsink name=mysink";
 	}
 	
 	mLaunchStr = ss.str();
@@ -462,22 +471,30 @@ bool gstCamera::parseCameraStr( const char* camera )
 	// check if the string is a V4L2 device
 	const char* prefixV4L2 = "/dev/video";
 
-	const size_t prefixLength = strlen(prefixV4L2);
+	// check if the string is a rtsp streaming
+	const char* prefixRTSP = "rtsp://";
+
 	const size_t cameraLength = strlen(camera);
 
-	if( cameraLength < prefixLength )
-	{
+	if( cameraLength <= 2 )
+	{ 
 		const int result = sscanf(camera, "%i", &mSensorCSI);
 
 		if( result == 1 && mSensorCSI >= 0 )
 			return true;
 	}
-	else if( strncmp(camera, prefixV4L2, prefixLength) == 0 )
+	else if( strncmp(camera, prefixV4L2, strlen(prefixV4L2)) == 0 )
 	{
+		mSource = GST_SOURCE_V4L2;
+		return true;
+	} 
+	else if( strncmp(camera, prefixRTSP, strlen(prefixRTSP)) == 0 )
+	{
+		mSource = GST_SOURCE_RTSP;
 		return true;
 	}
 
-	printf(LOG_GSTREAMER "gstCamera::Create('%s') -- invalid camera device requested\n", camera);
+	printf(LOG_GSTREAMER "gstCamera::Create('%s') -- invalid camera device requested...  \n", camera);
 	return false;
 }
 
@@ -504,20 +521,25 @@ gstCamera* gstCamera::Create( uint32_t width, uint32_t height, const char* camer
 	cam->mDepth      = cam->csiCamera() ? 12 : 24;	// NV12 or RGB
 	cam->mSize       = (width * height * cam->mDepth) / 8;
 
-	if( !cam->init(GST_SOURCE_NVARGUS) )
-	{
-		printf(LOG_GSTREAMER "failed to init gstCamera (GST_SOURCE_NVARGUS, camera %s)\n", cam->mCameraStr.c_str());
-
-		if( !cam->init(GST_SOURCE_NVCAMERA) )
+	if(cam->mSource == GST_SOURCE_V4L2 || cam->mSource == GST_SOURCE_RTSP)
+	{	
+		if( cam->mSensorCSI >= 0 )
+ 			cam->mSensorCSI = -1;
+		if( !cam->init(cam->mSource) )
 		{
-			printf(LOG_GSTREAMER "failed to init gstCamera (GST_SOURCE_NVCAMERA, camera %s)\n", cam->mCameraStr.c_str());
-
-			if( cam->mSensorCSI >= 0 )
-				cam->mSensorCSI = -1;
-
-			if( !cam->init(GST_SOURCE_V4L2) )
+			printf(LOG_GSTREAMER "failed to init gstCamera (%s, camera %s)\n", gstCameraSrcToString(cam->mSource), cam->mCameraStr.c_str());
+			return NULL;
+		}
+	}
+	else
+	{
+		cam->mSource = GST_SOURCE_NVARGUS;
+		if( !cam->init(cam->mSource) )
+		{
+			cam->mSource = GST_SOURCE_NVCAMERA;
+			if( !cam->init(cam->mSource) )
 			{
-				printf(LOG_GSTREAMER "failed to init gstCamera (GST_SOURCE_V4L2, camera %s)\n", cam->mCameraStr.c_str());
+				printf(LOG_GSTREAMER "failed to init gstCamera (%s, camera %s)\n", gstCameraSrcToString(cam->mSource), cam->mCameraStr.c_str());
 				return NULL;
 			}
 		}
