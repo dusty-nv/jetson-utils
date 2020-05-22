@@ -700,7 +700,7 @@ void glDisplay::SetCursor( uint32_t cursor )
 	if( cursor == mActiveCursor )
 		return;
 
-	printf(LOG_GL "glDisplay -- SetCursor(%u)\n", cursor);
+	//printf(LOG_GL "glDisplay -- SetCursor(%u)\n", cursor);
 
 	if( !mCursors[cursor] )
 		mCursors[cursor] = XCreateFontCursor(mDisplayX, cursor);
