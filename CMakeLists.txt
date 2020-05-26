@@ -67,8 +67,8 @@ include_directories(${PROJECT_INCLUDE_DIR}/jetson-utils)
 include_directories(/usr/include/gstreamer-1.0 /usr/include/glib-2.0 /usr/include/libxml2 /usr/lib/aarch64-linux-gnu/gstreamer-1.0/include /usr/lib/x86_64-linux-gnu/gstreamer-1.0/include/ /usr/lib/aarch64-linux-gnu/glib-2.0/include/ /usr/lib/x86_64-linux-gnu/glib-2.0/include/)
 
 # build library
-file(GLOB jetsonUtilitySources *.cpp camera/*.cpp codec/*.cpp cuda/*.cu cuda/*.cpp display/*.cpp image/*.cpp input/*.cpp network/*.cpp threads/*.cpp)
-file(GLOB jetsonUtilityIncludes *.h *.hpp camera/*.h codec/*.h cuda/*.h cuda/*.cuh display/*.h image/*.h input/*.h network/*.h threads/*.h)
+file(GLOB jetsonUtilitySources *.cpp camera/*.cpp codec/*.cpp cuda/*.cu cuda/*.cpp display/*.cpp image/*.cpp input/*.cpp network/*.cpp threads/*.cpp video/*.cpp)
+file(GLOB jetsonUtilityIncludes *.h *.hpp camera/*.h codec/*.h cuda/*.h cuda/*.cuh display/*.h image/*.h input/*.h network/*.h threads/*.h video/*.h)
 
 cuda_add_library(jetson-utils SHARED ${jetsonUtilitySources})
 target_link_libraries(jetson-utils GL GLU GLEW gstreamer-1.0 gstapp-1.0)	
@@ -106,7 +106,8 @@ install(EXPORT jetson-utilsConfig DESTINATION share/jetson-utils/cmake)
 
 # build tests/sample executables
 add_subdirectory(camera/camera-viewer)
-add_subdirectory(camera/v4l2-console)
-add_subdirectory(camera/v4l2-display)
+add_subdirectory(video/video-viewer)
+#add_subdirectory(camera/v4l2-console)
+#add_subdirectory(camera/v4l2-display)
 add_subdirectory(display/gl-display-test)
 add_subdirectory(python)
