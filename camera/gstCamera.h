@@ -29,6 +29,8 @@
 #include "Mutex.h"
 #include "Event.h"
 
+#include "videoSource.h"
+
 
 // Forward declarations
 struct _GstAppSink;
@@ -67,9 +69,14 @@ const char* gstCameraSrcToString( gstCameraSrc src );
  *
  * @ingroup gstCamera
  */
-class gstCamera
+class gstCamera : public videoSource
 {
 public:
+	/**
+	 * Create a MIPI CSI or V4L2 camera device.
+	 */
+	static gstCamera* Create( const videoOptions& options );
+
 	/**
 	 * Create a MIPI CSI or V4L2 camera device.
 	 *
@@ -129,7 +136,7 @@ public:
 	 *
 	 * @returns `true` on success, `false` if an error occurred opening the stream.
 	 */
-	bool Open();
+	virtual bool Open();
 
 	/**
 	 * Stop streaming the camera.
@@ -137,16 +144,24 @@ public:
 	 * it gets deleted, so you do not explicitly need to call Close() before
 	 * exiting the program if you delete your camera object.
 	 */
-	void Close();
+	virtual void Close();
 	
 	/**
 	 * Check if the camera is streaming or not.
 	 * @returns `true` if the camera is streaming (open), or `false` if it's closed.
 	 */
-	inline bool IsStreaming() const	   { return mStreaming; }
+	//inline bool IsStreaming() const	   { return mStreaming; }
 
 	/**
 	 * Capture the next image frame from the camera.
+	 */
+	virtual bool Capture( void** image, imageFormat format, uint64_t timeout=UINT64_MAX );
+
+	/**
+	 * Capture the next image frame from the camera.
+	 *
+	 * @deprecated This overload of Capture() has been deprecated and is only
+	 *             provided for legacy compatibility.  Please use updated Capture().
 	 *
 	 * For MIPI CSI cameras, Capture() will provide an image in YUV (NV12) format.
 	 * For V4L2 devices, Capture() will provide an image in RGB (24-bit) format.
@@ -173,6 +188,9 @@ public:
 	/**
 	 * Capture the next image frame from the camera and convert it to float4 RGBA format,
 	 * with pixel intensities ranging between 0.0 and 255.0.
+	 *
+	 * @deprecated CaptureRGBA() has been deprecated and is only provided for legacy 
+	 *             compatibility. Please use the updated Capture() function instead.
 	 *
 	 * Internally, CaptureRGBA() first calls Capture() and then ConvertRGBA().
 	 * The ConvertRGBA() function uses CUDA, so if you want to capture from a different 
@@ -207,6 +225,9 @@ public:
 	 * This function uses CUDA to perform the colorspace conversion to float4 RGBA,
  	 * with pixel intensities ranging from 0.0 to 255.0.
 	 *
+	 * @deprecated ConvertRGBA() has been deprecated and is only provided for legacy 
+	 *             compatibility. Please use the updated Capture() function instead.
+	 *
 	 * @param[in] input Pointer to the input image, typically the pointer from Capture().
 	 *                  If this is a MIPI CSI camera, it's expected to be in YUV (NV12) format.
 	 *                  If this is a V4L2 device, it's expected to be in RGB (24-bit) format.
@@ -231,12 +252,12 @@ public:
 	/**
 	 * Return the width of the camera.
 	 */
-	inline uint32_t GetWidth() const	   { return mWidth; }
+	//inline uint32_t GetWidth() const	   { return mWidth; }
 
 	/**
 	 * Return the height of the camera.
 	 */
-	inline uint32_t GetHeight() const	   { return mHeight; }
+	//inline uint32_t GetHeight() const	   { return mHeight; }
 
 	/**
 	 * Return the pixel bit depth of the camera (measured in bits).
@@ -271,7 +292,7 @@ private:
 	static GstFlowReturn onPreroll(_GstAppSink* sink, void* user_data);
 	static GstFlowReturn onBuffer(_GstAppSink* sink, void* user_data);
 
-	gstCamera();
+	gstCamera( const videoOptions& options );
 
 	bool init( gstCameraSrc src );
 	bool buildLaunchStr( gstCameraSrc src );
@@ -288,8 +309,8 @@ private:
 	std::string  mLaunchStr;
 	std::string  mCameraStr;
 
-	uint32_t mWidth;
-	uint32_t mHeight;
+	//uint32_t mWidth;
+	//uint32_t mHeight;
 	uint32_t mDepth;
 	uint32_t mSize;
 
@@ -308,7 +329,7 @@ private:
 	
 	void*  mRGBA[NUM_RINGBUFFERS];
 	bool   mRGBAZeroCopy; // were the RGBA buffers allocated with zeroCopy?
-	bool   mStreaming;	  // true if the device is currently open
+	//bool   mStreaming;	  // true if the device is currently open
 	int    mSensorCSI;	  // -1 for V4L2, >=0 for MIPI CSI
 
 	inline bool csiCamera() const		{ return (mSensorCSI >= 0); }

@@ -49,16 +49,14 @@ const char* gstCameraSrcToString( gstCameraSrc src )
 
 
 // constructor
-gstCamera::gstCamera()
+gstCamera::gstCamera( const videoOptions& options ) : videoSource(options)
 {	
 	mAppSink    = NULL;
 	mBus        = NULL;
 	mPipeline   = NULL;	
 	mSensorCSI  = -1;
-	mStreaming  = false;
+	//mStreaming  = false;
 
-	mWidth  = 0;
-	mHeight = 0;
 	mDepth  = 0;
 	mSize   = 0;
 	mSource = GST_SOURCE_NVCAMERA;
@@ -138,6 +136,16 @@ GstFlowReturn gstCamera::onBuffer(_GstAppSink* sink, void* user_data)
 	return GST_FLOW_OK;
 }
 	
+
+// Capture
+bool gstCamera::Capture( void** image, imageFormat format, uint64_t timeout )
+{
+	if( format == FORMAT_RGBA32 )
+		return CaptureRGBA((float**)image, timeout, mOptions.zeroCopy);
+
+	return false;
+}
+
 
 // Capture
 bool gstCamera::Capture( void** cpu, void** cuda, uint64_t timeout )
@@ -226,7 +234,7 @@ bool gstCamera::ConvertRGBA( void* input, float** output, bool zeroCopy )
 	// check if the buffers need allocated
 	if( !mRGBA[0] )
 	{
-		const size_t size = mWidth * mHeight * sizeof(float4);
+		const size_t size = GetWidth() * GetHeight() * sizeof(float4);
 
 		for( uint32_t n=0; n < NUM_RINGBUFFERS; n++ )
 		{
@@ -237,7 +245,7 @@ bool gstCamera::ConvertRGBA( void* input, float** output, bool zeroCopy )
 
 				if( !cudaAllocMapped(&cpuPtr, &gpuPtr, size) )
 				{
-					printf(LOG_GSTREAMER "gstCamera -- failed to allocate zeroCopy memory for %ux%xu RGBA texture\n", mWidth, mHeight);
+					printf(LOG_GSTREAMER "gstCamera -- failed to allocate zeroCopy memory for %ux%xu RGBA texture\n", GetWidth(), GetHeight());
 					return false;
 				}
 
@@ -253,7 +261,7 @@ bool gstCamera::ConvertRGBA( void* input, float** output, bool zeroCopy )
 			{
 				if( CUDA_FAILED(cudaMalloc(&mRGBA[n], size)) )
 				{
-					printf(LOG_GSTREAMER "gstCamera -- failed to allocate memory for %ux%u RGBA texture\n", mWidth, mHeight);
+					printf(LOG_GSTREAMER "gstCamera -- failed to allocate memory for %ux%u RGBA texture\n", GetWidth(), GetHeight());
 					return false;
 				}
 			}
@@ -266,13 +274,13 @@ bool gstCamera::ConvertRGBA( void* input, float** output, bool zeroCopy )
 	if( csiCamera() )
 	{
 		// MIPI CSI camera is NV12
-		if( CUDA_FAILED(cudaNV12ToRGBA32((uint8_t*)input, (float4*)mRGBA[mLatestRGBA], mWidth, mHeight)) )
+		if( CUDA_FAILED(cudaNV12ToRGBA32((uint8_t*)input, (float4*)mRGBA[mLatestRGBA], GetWidth(), GetHeight())) )
 			return false;
 	}
 	else
 	{
 		// V4L2 webcam is RGB
-		if( CUDA_FAILED(cudaRGB8ToRGBA32((uchar3*)input, (float4*)mRGBA[mLatestRGBA], mWidth, mHeight)) )
+		if( CUDA_FAILED(cudaRGB8ToRGBA32((uchar3*)input, (float4*)mRGBA[mLatestRGBA], GetWidth(), GetHeight())) )
 			return false;
 	}
 	
@@ -359,10 +367,10 @@ void gstCamera::checkBuffer()
 	if( width < 1 || height < 1 )
 		release_return;
 	
-	mWidth  = width;
-	mHeight = height;
-	mDepth  = (gstSize * 8) / (width * height);
-	mSize   = gstSize;
+	mOptions.width  = width;
+	mOptions.height = height;
+	mDepth          = (gstSize * 8) / (width * height);
+	mSize           = gstSize;
 	
 	//printf(LOG_GSTREAMER "gstCamera recieved %ix%i frame (%u bytes, %u bpp)\n", width, height, gstSize, mDepth);
 	
@@ -417,16 +425,16 @@ bool gstCamera::buildLaunchStr( gstCameraSrc src )
 	#endif	
 
 		if( src == GST_SOURCE_NVCAMERA )
-			ss << "nvcamerasrc fpsRange=\"30.0 30.0\" ! video/x-raw(memory:NVMM), width=(int)" << mWidth << ", height=(int)" << mHeight << ", format=(string)NV12 ! nvvidconv flip-method=" << flipMethod << " ! "; //'video/x-raw(memory:NVMM), width=(int)1920, height=(int)1080, format=(string)I420, framerate=(fraction)30/1' ! ";
+			ss << "nvcamerasrc fpsRange=\"30.0 30.0\" ! video/x-raw(memory:NVMM), width=(int)" << GetWidth() << ", height=(int)" << GetHeight() << ", format=(string)NV12 ! nvvidconv flip-method=" << flipMethod << " ! "; //'video/x-raw(memory:NVMM), width=(int)1920, height=(int)1080, format=(string)I420, framerate=(fraction)30/1' ! ";
 		else if( src == GST_SOURCE_NVARGUS )
-			ss << "nvarguscamerasrc sensor-id=" << mSensorCSI << " ! video/x-raw(memory:NVMM), width=(int)" << mWidth << ", height=(int)" << mHeight << ", framerate=30/1, format=(string)NV12 ! nvvidconv flip-method=" << flipMethod << " ! ";
+			ss << "nvarguscamerasrc sensor-id=" << mSensorCSI << " ! video/x-raw(memory:NVMM), width=(int)" << GetWidth() << ", height=(int)" << GetHeight() << ", framerate=30/1, format=(string)NV12 ! nvvidconv flip-method=" << flipMethod << " ! ";
 		
 		ss << "video/x-raw ! appsink name=mysink";
 	}
 	else
 	{
 		ss << "v4l2src device=" << mCameraStr << " ! ";
-		ss << "video/x-raw, width=(int)" << mWidth << ", height=(int)" << mHeight << ", "; 
+		ss << "video/x-raw, width=(int)" << GetWidth() << ", height=(int)" << GetHeight() << ", "; 
 		
 	#if NV_TENSORRT_MAJOR >= 5
 		ss << "format=YUY2 ! videoconvert ! video/x-raw, format=RGB ! videoconvert !";
@@ -491,7 +499,17 @@ gstCamera* gstCamera::Create( uint32_t width, uint32_t height, const char* camer
 		return NULL;
 	}
 	
-	gstCamera* cam = new gstCamera();
+	// create options struct
+	videoOptions options;
+
+	options.width  = width;
+	options.height = height;
+
+	if( camera != NULL )
+		options.device = camera;
+
+	// create camera instance
+	gstCamera* cam = new gstCamera(options);
 	
 	if( !cam )
 		return NULL;
@@ -499,11 +517,10 @@ gstCamera* gstCamera::Create( uint32_t width, uint32_t height, const char* camer
 	if( !cam->parseCameraStr(camera) )
 		return NULL;
 
-	cam->mWidth      = width;
-	cam->mHeight     = height;
-	cam->mDepth      = cam->csiCamera() ? 12 : 24;	// NV12 or RGB
-	cam->mSize       = (width * height * cam->mDepth) / 8;
+	cam->mDepth = cam->csiCamera() ? 12 : 24;	// NV12 or RGB
+	cam->mSize  = (cam->GetWidth() * cam->GetHeight() * cam->mDepth) / 8;
 
+	// initialize camera (with fallback)
 	if( !cam->init(GST_SOURCE_NVARGUS) )
 	{
 		printf(LOG_GSTREAMER "failed to init gstCamera (GST_SOURCE_NVARGUS, camera %s)\n", cam->mCameraStr.c_str());
