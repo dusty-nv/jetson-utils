@@ -57,28 +57,31 @@ enum imageFormat
 /**
  * @ingroup image
  */
-const char* imageFormatToStr( imageFormat format );
+inline const char* imageFormatToStr( imageFormat format );
 
 /**
  * @ingroup image
  */
-imageFormat imageFormatFromStr( const char* str );
-
-/**
- * @ingroup image
- * @internal
- */
-template<typename T> struct assert_false : std::false_type { };
+inline imageFormat imageFormatFromStr( const char* str );
 
 /**
  * @ingroup image
  */
-template<typename T> inline imageFormat imageFormatFromType()	{ static_assert(assert_false<T>::value, "invalid image format type - supported types are uchar3, uchar4, float3, float4"); }
+inline size_t imageFormatSize( imageFormat format );
 
-template<> inline imageFormat imageFormatFromType<uchar3>()	{ return FORMAT_RGB8; }
-template<> inline imageFormat imageFormatFromType<uchar4>()	{ return FORMAT_RGBA8; }
-template<> inline imageFormat imageFormatFromType<float3>()	{ return FORMAT_RGB32; }
-template<> inline imageFormat imageFormatFromType<float4>()	{ return FORMAT_RGBA32; }
+/**
+ * @ingroup image
+ */
+template<typename T> inline imageFormat imageFormatFromType();
+
+template<> inline imageFormat imageFormatFromType<uchar3>();
+template<> inline imageFormat imageFormatFromType<uchar4>();
+template<> inline imageFormat imageFormatFromType<float3>();
+template<> inline imageFormat imageFormatFromType<float4>();
+
+
+// inline implementations
+#include "imageFormat.inl"
 
 
 #endif
