@@ -24,6 +24,9 @@
 #include "commandLine.h"
 #include "logging.h"
 
+#include "gstDecoder.h"
+#include "glDisplay.h"
+
 #include <signal.h>
 
 
@@ -73,4 +76,68 @@ int main( int argc, char** argv )
 	IMAGE_TYPE_TEST(float4);
 	
 	//IMAGE_TYPE_TEST(float);
+
+	/*
+	 * open video file
+	 */
+	videoOptions options;
+
+	options.device = "/media/nvidia/WD_NVME/datasets/test_videos/jellyfish-15-mbps-hd-h264.mkv";
+	options.codec = videoOptions::CODEC_H264;
+	options.numBuffers = 16;
+
+	gstDecoder* inputStream = gstDecoder::Create(options);
+
+	if( !inputStream )
+	{
+		LogError(LOG_GSTREAMER "failed to open gstDecoder\n");
+		return 0;
+	}
+
+	/*
+	 * create openGL window
+	 */
+	glDisplay* display = glDisplay::Create();
+	
+	if( !display )
+		printf("camera-viewer:  failed to create openGL display\n");
+	
+
+	uint32_t numFrames = 0;
+
+	while( !signal_recieved )
+	{
+		float4* nextFrame = NULL;
+
+		//if( !inputStream->Capture((void**)&nextFrame, FORMAT_RGBA32, 1000) )
+		if( !((videoSource*)inputStream)->Capture(&nextFrame, 1000) )
+		{
+			LogError(LOG_GSTREAMER "failed to capture next video frame\n");
+			continue;
+		}
+
+		numFrames++;
+
+		LogInfo("captured %u frames (%u x %u)\n", numFrames, inputStream->GetWidth(), inputStream->GetHeight());
+
+		if( display != NULL )
+		{
+			display->RenderOnce((float*)nextFrame, inputStream->GetWidth(), inputStream->GetHeight());
+
+			// update status bar
+			char str[256];
+			sprintf(str, "Video Viewer (%ux%u) | %.0f FPS", inputStream->GetWidth(), inputStream->GetHeight(), display->GetFPS());
+			display->SetTitle(str);	
+
+			// check if the user quit
+			if( display->IsClosed() )
+				signal_recieved = true;
+		}
+
+		if( inputStream->IsEOS() )
+			signal_recieved = true;
+	}
+
+	SAFE_DELETE(inputStream);
 }
+
