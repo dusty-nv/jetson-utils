@@ -29,40 +29,54 @@
 #include <gst/app/gstappsink.h>
 
 #include <sstream>
+#include <unistd.h>
 #include <string.h>
 #include <strings.h>
 
+#include "cudaYUV.h"
 
 
 // constructor
-gstDecoder::gstDecoder()
+gstDecoder::gstDecoder( const videoOptions& options ) : videoSource(options)
 {	
 	mAppSink    = NULL;
 	mBus        = NULL;
 	mPipeline   = NULL;
-	mPort       = 0;
-	mCodec      = GST_CODEC_H264;
+	mEOS        = false;
+	//mPort       = 0;
+	//mCodec      = GST_CODEC_H264;
+
+	mBufferColor.SetThreaded(false);
+	printf("mBufferColor flags:  %#08X\n", mBufferColor.GetFlags());
 }
 
 
 // destructor
 gstDecoder::~gstDecoder()
 {
-	// stop pipeline
-	printf(LOG_GSTREAMER "gstDecoder - shutting down pipeline\n");
-	printf(LOG_GSTREAMER "gstDecoder - transitioning pipeline to GST_STATE_NULL\n");
-
-	const GstStateChangeReturn result = gst_element_set_state(mPipeline, GST_STATE_NULL);
-
-	if( result != GST_STATE_CHANGE_SUCCESS )
-		printf(LOG_GSTREAMER "gstDecoder - failed to stop pipeline (error %u)\n", result);
-
-	sleepMs(250);
-	
-	printf(LOG_GSTREAMER "gstDecoder - pipeline shutdown complete\n");
+	Close();
 }
 
 
+// Create
+gstDecoder* gstDecoder::Create( const videoOptions& options )
+{
+	gstDecoder* dec = new gstDecoder(options);
+
+	if( !dec )
+		return NULL;
+
+	if( !dec->init() )
+	{
+		printf(LOG_GSTREAMER "gstDecoder::Create() failed\n");
+		return NULL;
+	}
+	
+	return dec;
+}
+
+
+#if 0
 // Create
 gstDecoder* gstDecoder::Create( gstCodec codec, const char* filename )
 {
@@ -104,24 +118,31 @@ gstDecoder* gstDecoder::Create( gstCodec codec, const char* multicastIP, uint16_
 	
 	return dec;
 }
-
+#endif
 
 // init
-bool gstDecoder::init( gstCodec codec, const char* filename, const char* multicastIP, uint16_t port )
+//bool gstDecoder::init( gstCodec codec, const char* filename, const char* multicastIP, uint16_t port )
+bool gstDecoder::init()
 {
-	mCodec 		 = codec;
+	/*mCodec 		 = codec;
 	mInputPath 	 = filename;
 	mMulticastIP = multicastIP;
-	mPort 		 = port;
+	mPort 		 = port;*/
 	GError* err  = NULL;
 	
-	if( !filename && !multicastIP )
-		return false;
+	if( !gstreamerInit() )
+	{
+		printf(LOG_GSTREAMER "failed to initialize gstreamer API\n");
+		return NULL;
+	}
+
+	//if( !filename && !multicastIP )
+	//	return false;
 
 	// build pipeline string
 	if( !buildLaunchStr() )
 	{
-		printf(LOG_GSTREAMER "gstDecoder - failed to build pipeline string\n");
+		printf(LOG_GSTREAMER "gstDecoder -- failed to build pipeline string\n");
 		return false;
 	}
 
@@ -130,7 +151,7 @@ bool gstDecoder::init( gstCodec codec, const char* filename, const char* multica
 
 	if( err != NULL )
 	{
-		printf(LOG_GSTREAMER "gstDecoder - failed to create pipeline\n");
+		printf(LOG_GSTREAMER "gstDecoder -- failed to create pipeline\n");
 		printf(LOG_GSTREAMER "   (%s)\n", err->message);
 		g_error_free(err);
 		return false;
@@ -140,7 +161,7 @@ bool gstDecoder::init( gstCodec codec, const char* filename, const char* multica
 
 	if( !pipeline )
 	{
-		printf(LOG_GSTREAMER "gstDecoder - failed to cast GstElement into GstPipeline\n");
+		printf(LOG_GSTREAMER "gstDecoder -- failed to cast GstElement into GstPipeline\n");
 		return false;
 	}	
 
@@ -149,7 +170,7 @@ bool gstDecoder::init( gstCodec codec, const char* filename, const char* multica
 
 	if( !mBus )
 	{
-		printf(LOG_GSTREAMER "gstDecoder - failed to retrieve GstBus from pipeline\n");
+		printf(LOG_GSTREAMER "gstDecoder -- failed to retrieve GstBus from pipeline\n");
 		return false;
 	}
 
@@ -162,7 +183,7 @@ bool gstDecoder::init( gstCodec codec, const char* filename, const char* multica
 
 	if( !appsinkElement || !appsink)
 	{
-		printf(LOG_GSTREAMER "gstDecoder - failed to retrieve AppSink element from pipeline\n");
+		printf(LOG_GSTREAMER "gstDecoder -- failed to retrieve AppSink element from pipeline\n");
 		return false;
 	}
 	
@@ -181,63 +202,42 @@ bool gstDecoder::init( gstCodec codec, const char* filename, const char* multica
 #endif
 	
 	gst_app_sink_set_callbacks(mAppSink, &cb, (void*)this, NULL);
-
-
-	// transition pipline to STATE_PLAYING
-	printf(LOG_GSTREAMER "gstDecoder - transitioning pipeline to GST_STATE_PLAYING\n");
-	
-	const GstStateChangeReturn result = gst_element_set_state(mPipeline, GST_STATE_PLAYING);
-
-	if( result == GST_STATE_CHANGE_ASYNC )
-	{
-#if 0
-		GstMessage* asyncMsg = gst_bus_timed_pop_filtered(mBus, 5 * GST_SECOND, 
-    	 					      (GstMessageType)(GST_MESSAGE_ASYNC_DONE|GST_MESSAGE_ERROR)); 
-
-		if( asyncMsg != NULL )
-		{
-			gst_message_print(mBus, asyncMsg, this);
-			gst_message_unref(asyncMsg);
-		}
-		else
-			printf(LOG_GSTREAMER "gstDecoder - NULL message after transitioning pipeline to PLAYING...\n");
-#endif
-	}
-	else if( result != GST_STATE_CHANGE_SUCCESS )
-	{
-		printf(LOG_GSTREAMER "gstDecoder - failed to set pipeline state to PLAYING (error %u)\n", result);
-		return false;
-	}
-
-	checkMsgBus();
-	sleepMs(100);
-	checkMsgBus();
 	
 	return true;
 }
 
 
+
 // buildLaunchStr
 bool gstDecoder::buildLaunchStr()
 {
+	// TODO implement smart parsing, RTP+RTSP support
+	std::ostringstream ss;
+
+#if 0
 	const size_t fileLen = mInputPath.size();
 	
 	if( fileLen > 0 && mPort != 0 )
 	{
-		printf(LOG_GSTREAMER "gstDecoder - can only use port %u or %s as input\n", mPort, mInputPath.c_str());
+		printf(LOG_GSTREAMER "gstDecoder -- can only use port %u or %s as input\n", mPort, mInputPath.c_str());
 		return false;
 	}
-	
-	std::ostringstream ss;
-	
+
 	if( fileLen > 0 )
 	{
-		ss << "filesrc location=" << mInputPath << " ! matroskademux ! queue ! ";
+#endif
+		ss << "filesrc location=" << mOptions.device << " ! matroskademux ! queue ! ";
 		
-		if( mCodec == GST_CODEC_H264 )
+		if( mOptions.codec == videoOptions::CODEC_H264 )
 			ss << "h264parse ! ";
-		else if( mCodec == GST_CODEC_H265 )
+		else if( mOptions.codec == videoOptions::CODEC_H265 )
 			ss << "h265parse ! ";
+		else
+		{
+			printf(LOG_GSTREAMER "gstDecoder -- unsupported codec requested (should be H.264/H.265)\n");
+			return false;
+		}
+#if 0
 	}
 	else if( mPort != 0 )
 	{
@@ -255,28 +255,31 @@ bool gstDecoder::buildLaunchStr()
 	}
 	else
 		return false;
-	
+#endif
+
 #if GST_CHECK_VERSION(1,0,0)
-	if( mCodec == GST_CODEC_H264 )
+	if( mOptions.codec == videoOptions::CODEC_H264 )
 		ss << "omxh264dec ! ";
-	else if( mCodec == GST_CODEC_H265 )
+	else if( mOptions.codec == videoOptions::CODEC_H265 )
 		ss << "omxh265dec ! ";
 #else
-	if( mCodec == GST_CODEC_H264 )
+	if( mOptions.codec == videoOptions::CODEC_H264 )
 		ss << "nv_omx_h264dec ! ";
-	else if( mCodec == GST_CODEC_H265 )
+	else if( mOptions.codec == videoOptions::CODEC_H265 )
 		ss << "nv_omx_h265dec ! ";
 #endif
 
-#define CAPS_STR "video/x-raw,format=(string)RGBA"
+//#define CAPS_STR "video/x-raw,format=(string)RGBA"
 //#define CAPS_STR "video/x-raw-yuv,format=(fourcc)NV12"
 
-	ss << "nvvidconv ! \"" << CAPS_STR << "\" ! ";
-	ss << "appsink name=mysink caps=\"" << CAPS_STR << "\"";
+	//ss << "nvvidconv ! \"" << CAPS_STR << "\" ! ";
+	//ss << "appsink name=mysink caps=\"" << CAPS_STR << "\"";
 	
+	ss << "video/x-raw ! appsink name=mysink";
+
 	mLaunchStr = ss.str();
 
-	printf(LOG_GSTREAMER "gstDecoder - pipeline string:\n");
+	printf(LOG_GSTREAMER "gstDecoder -- pipeline string:\n");
 	printf("%s\n", mLaunchStr.c_str());
 	return true;
 }
@@ -285,14 +288,23 @@ bool gstDecoder::buildLaunchStr()
 // onEOS
 void gstDecoder::onEOS( _GstAppSink* sink, void* user_data )
 {
-	printf(LOG_GSTREAMER "gstDecoder - onEOS()\n");
+	printf(LOG_GSTREAMER "gstDecoder -- onEOS()\n");
+
+	if( !user_data )
+		return;
+
+	gstDecoder* dec = (gstDecoder*)user_data;
+
+	dec->mEOS = true;	
+	dec->mStreaming = false;
+	//dec->Close();
 }
 
 
 // onPreroll
 GstFlowReturn gstDecoder::onPreroll( _GstAppSink* sink, void* user_data )
 {
-	printf(LOG_GSTREAMER "gstDecoder - onPreroll()\n");
+	printf(LOG_GSTREAMER "gstDecoder -- onPreroll()\n");
 	return GST_FLOW_OK;
 }
 
@@ -300,7 +312,7 @@ GstFlowReturn gstDecoder::onPreroll( _GstAppSink* sink, void* user_data )
 // onBuffer
 GstFlowReturn gstDecoder::onBuffer(_GstAppSink* sink, void* user_data)
 {
-	printf(LOG_GSTREAMER "gstDecoder - onBuffer()\n");
+	//printf(LOG_GSTREAMER "gstDecoder -- onBuffer()\n");
 	
 	if( !user_data )
 		return GST_FLOW_OK;
@@ -331,7 +343,7 @@ void gstDecoder::checkBuffer()
 	
 	if( !gstSample )
 	{
-		printf(LOG_GSTREAMER "gstDecoder - app_sink_pull_sample() returned NULL...\n");
+		printf(LOG_GSTREAMER "gstDecoder -- app_sink_pull_sample() returned NULL...\n");
 		return;
 	}
 	
@@ -340,7 +352,7 @@ void gstDecoder::checkBuffer()
 	
 	if( !gstCaps )
 	{
-		printf(LOG_GSTREAMER "gstDecoder - gst_sample had NULL caps...\n");
+		printf(LOG_GSTREAMER "gstDecoder -- gst_sample had NULL caps...\n");
 		release_return;
 	}
 	
@@ -349,7 +361,7 @@ void gstDecoder::checkBuffer()
 	
 	if( !gstBuffer )
 	{
-		printf(LOG_GSTREAMER "gstDecoder - app_sink_pull_sample() returned NULL...\n");
+		printf(LOG_GSTREAMER "gstDecoder -- app_sink_pull_sample() returned NULL...\n");
 		release_return;
 	}
 	
@@ -358,7 +370,7 @@ void gstDecoder::checkBuffer()
 	
 	if( !gst_buffer_map(gstBuffer, &map, GST_MAP_READ) ) 
 	{ 
-		printf(LOG_GSTREAMER "gstDecoder - failed to map gstreamer buffer memory\n");
+		printf(LOG_GSTREAMER "gstDecoder -- failed to map gstreamer buffer memory\n");
 		release_return;
 	}
 	
@@ -370,7 +382,7 @@ void gstDecoder::checkBuffer()
 	
 	if( !gstBuffer )
 	{
-		printf(LOG_GSTREAMER "gstDecoder - app_sink_pull_buffer() returned NULL...\n");
+		printf(LOG_GSTREAMER "gstDecoder -- app_sink_pull_buffer() returned NULL...\n");
 		return;
 	}
 	
@@ -380,7 +392,7 @@ void gstDecoder::checkBuffer()
 	
 	if( !gstData )
 	{
-		printf(LOG_GSTREAMER "gstDecoder - gst_buffer had NULL data pointer...\n");
+		printf(LOG_GSTREAMER "gstDecoder -- gst_buffer had NULL data pointer...\n");
 		release_return;
 	}
 	
@@ -389,7 +401,7 @@ void gstDecoder::checkBuffer()
 	
 	if( !gstCaps )
 	{
-		printf(LOG_GSTREAMER "gstDecoder - gst_buffer had NULL caps...\n");
+		printf(LOG_GSTREAMER "gstDecoder -- gst_buffer had NULL caps...\n");
 		release_return;
 	}
 #endif
@@ -398,7 +410,7 @@ void gstDecoder::checkBuffer()
 	
 	if( !gstCapsStruct )
 	{
-		printf(LOG_GSTREAMER "gstDecoder - gst_caps had NULL structure...\n");
+		printf(LOG_GSTREAMER "gstDecoder -- gst_caps had NULL structure...\n");
 		release_return;
 	}
 	
@@ -409,29 +421,162 @@ void gstDecoder::checkBuffer()
 	if( !gst_structure_get_int(gstCapsStruct, "width", &width) ||
 		!gst_structure_get_int(gstCapsStruct, "height", &height) )
 	{
-		printf(LOG_GSTREAMER "gstDecoder - gst_caps missing width/height...\n");
+		printf(LOG_GSTREAMER "gstDecoder -- gst_caps missing width/height...\n");
 		release_return;
 	}
 	
-	printf(LOG_GSTREAMER "gstDecoder - recieved %ix%i frame\n", width, height);
+	//printf(LOG_GSTREAMER "gstDecoder -- recieved %ix%i frame\n", width, height);
 		
 	if( width < 1 || height < 1 )
 		release_return;
 	
-	/*// alloc ringbuffer
-	const DataType type(12, 1, false, false);	// NV12
-	
-	if( !AllocRingbuffer2D(width, height, type) )
+	mOptions.width = width;
+	mOptions.height = height;
+
+	// allocate ringbuffer
+	if( !mBufferRaw.Alloc(mOptions.numBuffers, gstSize, RingBuffer::ZeroCopy) )
 	{
-		printf(LOG_GASKET "gstreamer decoder -- failed to alloc %ix%i ringbuffer\n", width, height);
+		printf(LOG_GSTREAMER "gstDecoder -- failed to allocate %u buffers of %u bytes\n", mOptions.numBuffers, gstSize);
 		release_return;
-	}*/
-	
+	}
+
+	// copy to next ringbuffer
+	void* nextBuffer = mBufferRaw.Peek(RingBuffer::Write);
+
+	if( !nextBuffer )
+	{
+		printf(LOG_GSTREAMER "gstDecoder -- failed to retrieve next ringbuffer for writing\n");
+		release_return;
+	}
+
+	memcpy(nextBuffer, gstData, gstSize);
+	mBufferRaw.Next(RingBuffer::Write);
+	mWaitEvent.Wake();
+
 #if GST_CHECK_VERSION(1,0,0)
 	gst_buffer_unmap(gstBuffer, &map);
 #endif
 	
 	release_return;
+}
+
+
+// Capture
+bool gstDecoder::Capture( void** output, imageFormat format, uint64_t timeout )
+{
+	// verify the output pointer exists
+	if( !output )
+		return false;
+
+	// confirm the camera is streaming
+	if( !mStreaming )
+	{
+		if( !Open() )
+			return false;
+	}
+
+	// wait until a new frame is recieved
+	if( !mWaitEvent.Wait(timeout) )
+		return false;
+
+	// get the latest ringbuffer
+	void* latestRaw = mBufferRaw.Next(RingBuffer::ReadLatestOnce);
+
+	if( !latestRaw )
+		return false;
+
+	// allocate ringbuffer for colorspace conversion
+	const size_t colorBufferSize = GetWidth() * GetHeight() * imageFormatSize(format);
+
+	if( !mBufferColor.Alloc(mOptions.numBuffers, colorBufferSize, mOptions.zeroCopy ? RingBuffer::ZeroCopy : 0) )
+	{
+		printf(LOG_GSTREAMER "gstDecoder -- failed to allocate %u buffers of %zu bytes\n", mOptions.numBuffers, colorBufferSize);
+		return false;
+	}
+
+	// perform colorspace conversion
+	void* nextColor = mBufferColor.Next(RingBuffer::Write);
+
+	if( format == FORMAT_RGBA32 )
+	{
+		if( CUDA_FAILED(cudaNV12ToRGBA32((uint8_t*)latestRaw, (float4*)nextColor, GetWidth(), GetHeight())) )
+			return false;
+	}
+	else
+	{
+		printf(LOG_GSTREAMER "gstCamera -- unsupported format requested for Capture()\n");
+		return false;
+	}
+
+	*output = nextColor;
+	return true;
+}
+
+
+// Open
+bool gstDecoder::Open()
+{
+	if( mEOS )
+	{
+		printf(LOG_GSTREAMER "gstDecoder -- End of Stream (EOS) has been reached, stream has been closed\n");
+		return false;
+	}
+
+	if( mStreaming )
+		return true;
+
+	// transition pipline to STATE_PLAYING
+	printf(LOG_GSTREAMER "opening gstDecoder for streaming, transitioning pipeline to GST_STATE_PLAYING\n");
+	
+	const GstStateChangeReturn result = gst_element_set_state(mPipeline, GST_STATE_PLAYING);
+
+	if( result == GST_STATE_CHANGE_ASYNC )
+	{
+#if 0
+		GstMessage* asyncMsg = gst_bus_timed_pop_filtered(mBus, 5 * GST_SECOND, 
+    	 					      (GstMessageType)(GST_MESSAGE_ASYNC_DONE|GST_MESSAGE_ERROR)); 
+
+		if( asyncMsg != NULL )
+		{
+			gst_message_print(mBus, asyncMsg, this);
+			gst_message_unref(asyncMsg);
+		}
+		else
+			printf(LOG_GSTREAMER "gstDecoder -- NULL message after transitioning pipeline to PLAYING...\n");
+#endif
+	}
+	else if( result != GST_STATE_CHANGE_SUCCESS )
+	{
+		printf(LOG_GSTREAMER "gstDecoder -- failed to set pipeline state to PLAYING (error %u)\n", result);
+		return false;
+	}
+
+	checkMsgBus();
+	usleep(100 * 1000);
+	checkMsgBus();
+
+	mStreaming = true;
+	return true;
+}
+
+
+// Close
+void gstDecoder::Close()
+{
+	if( !mStreaming )
+		return;
+
+	// stop pipeline
+	printf(LOG_GSTREAMER "closing gstDecoder for streaming, transitioning pipeline to GST_STATE_NULL\n");
+
+	const GstStateChangeReturn result = gst_element_set_state(mPipeline, GST_STATE_NULL);
+
+	if( result != GST_STATE_CHANGE_SUCCESS )
+		printf(LOG_GSTREAMER "gstDecoder -- failed to stop pipeline (error %u)\n", result);
+
+	usleep(250*1000);
+	mStreaming = false;
+	printf(LOG_GSTREAMER "gstDecoder -- pipeline stopped\n");
 }
 
 
@@ -449,4 +594,6 @@ void gstDecoder::checkMsgBus()
 		gst_message_unref(msg);
 	}
 }
+
+
 
