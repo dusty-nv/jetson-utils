@@ -56,7 +56,7 @@ public:
 	/**
 	 *
 	 */
-	uint32_t numRingbuffers;
+	uint32_t numBuffers;
 	
 	/**
 	 *
@@ -72,8 +72,9 @@ public:
 		DEVICE_GSTREAMER = (1 << 0),
 		DEVICE_V4L2      = (1 << 1),
 		DEVICE_CSI       = (1 << 2),
-		DEVICE_RTP	  = (1 << 3),
-		DEVICE_FILE      = (1 << 4)
+		DEVICE_RTP       = (1 << 3),
+		DEVICE_RTSP      = (1 << 4),
+		DEVICE_FILE      = (1 << 5)
 	};
 
 	/**
@@ -119,18 +120,35 @@ public:
 	 *
 	 */
 	FlipMethod flipMethod;
+
+	/**
+	 *
+	 */
+	enum Codec
+	{
+		CODEC_UNKNOWN = 0,
+		CODEC_RAW,
+		CODEC_JPEG,
+		CODEC_H264,
+		CODEC_H265,
+	};
+
+	/**
+	 *
+	 */
+	Codec codec;
 };
 
 
 // videoOptions constructor
-videoOptions::videoOptions()
+inline videoOptions::videoOptions()
 {
 	width 		= 0;
 	height 		= 0;
 	frameRate 	= 30;
-	numRingbuffers = 16;
-	zeroCopy 		= true;
-	apiType 		= DEVICE_DEFAULT;
+	numBuffers  = 4;
+	zeroCopy    = true;
+	apiType     = DEVICE_DEFAULT;
 	deviceType 	= DEVICE_DEFAULT;
 	flipMethod 	= FLIP_DEFAULT;
 }
