@@ -320,7 +320,6 @@ private:
 	void* mRingbufferGPU[NUM_RINGBUFFERS];
 	
 	Event mWaitEvent;
-	Mutex mWaitMutex;
 	Mutex mRingMutex;
 	
 	uint32_t mLatestRGBA;

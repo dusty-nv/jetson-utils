@@ -143,6 +143,7 @@ bool gstCamera::Capture( void** image, imageFormat format, uint64_t timeout )
 	if( format == FORMAT_RGBA32 )
 		return CaptureRGBA((float**)image, timeout, mOptions.zeroCopy);
 
+	printf(LOG_GSTREAMER "gstCamera -- unsupported format requested for Capture()\n");
 	return false;
 }
 
