@@ -37,63 +37,63 @@ public:
 	 * Event constructor. By default, it will automatically be reset when it's raised.
 	 * @param auto_reset Once this event has been raised, should it automatically be reset?
 	 */
-	Event( bool auto_reset=true );
+	inline Event( bool auto_reset=true );
 
 	/**
 	 * Destructor
 	 */
-	~Event();
+	inline ~Event();
 
 	/**
 	 * Raise the event.  Any threads waiting on this event will be woken up.
 	 */
-	void Wake();
+	inline void Wake();
 
 	/**
 	 * Reset the event status to un-raised.
 	 */
-	inline void Reset()							{ mQueryMutex.Lock(); mQuery = false; mQueryMutex.Unlock(); }
+	inline void Reset();
 
 	/**
 	 * Query the status of this event.
 	 * @return True if the event is raised, false if not.
 	 */
-	bool Query();
+	inline bool Query();
 
 	/**
 	 * Wait until this event is raised.  It is likely this will block this thread (and will never timeout).
 	 * @see Wake
 	 */
-	bool Wait();
+	inline bool Wait();
 
 	/**
 	 * Wait for a specified amount of time until this event is raised or timeout occurs.
 	 * @see Wake
 	 */
-	bool Wait( const timespec& timeout );
+	inline bool Wait( const timespec& timeout );
 	
 	/**
 	 * Wait for a specified number of milliseconds until this event is raised or timeout occurs.
 	 * @see Wake
 	 */
-	inline bool Wait( uint64_t timeout )		{ return (timeout == UINT64_MAX) ? Wait() : Wait(timeNew(timeout*1000*1000)); }
+	inline bool Wait( uint64_t timeout );
 	
 	/**
 	 * Wait for a specified number of nanoseconds until this event is raised or timeout occurs.
 	 * @see Wake
 	 */
-	inline bool WaitNs( uint64_t timeout )		{ return (timeout == UINT64_MAX) ? Wait() : Wait(timeNew(timeout)); }
+	inline bool WaitNs( uint64_t timeout );
 	
 	/**
 	 * Wait for a specified number of microseconds until this event is raised or timeout occurs.
 	 * @see Wake
 	 */
-	inline bool WaitUs( uint64_t timeout )		{ return (timeout == UINT64_MAX) ? Wait() : Wait(timeNew(timeout*1000)); }
+	inline bool WaitUs( uint64_t timeout );
 	
 	/**
 	 * Get the Event object
 	 */
-	inline pthread_cond_t* GetID()			{ return &mID; }
+	inline pthread_cond_t* GetID();
 
 protected:
 
@@ -104,5 +104,7 @@ protected:
 	bool  mAutoReset;
 };
 
+// inline implementations
+#include "Event.inl"
 
 #endif
