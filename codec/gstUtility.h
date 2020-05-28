@@ -28,17 +28,6 @@
 
 
 /**
- * Video codec (H.264/H.265) enumeration.
- * @ingroup codec
- */
-enum gstCodec
-{
-	GST_CODEC_H264 = 0,
-	GST_CODEC_H265
-};
-
-
-/**
  * LOG_GSTREAMER logging prefix
  * @ingroup codec
  */
