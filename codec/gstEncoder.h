@@ -27,6 +27,17 @@
 
 
 /**
+ * Video codec (H.264/H.265) enumeration.
+ * @ingroup codec
+ */
+enum gstCodec
+{
+	GST_CODEC_H264 = 0,
+	GST_CODEC_H265
+};
+
+
+/**
  * Hardware-accelerated H.264/H.265 video encoder for Jetson using GStreamer.
  * The encoder can write the encoded video to disk in .mkv or .h264/.h265 formats,
  * or handle streaming network transmission to remote host(s) via RTP/RTSP protocol.
