@@ -23,8 +23,8 @@
 #ifndef __VIDEO_OPTIONS_H_
 #define __VIDEO_OPTIONS_H_
 
-#include "imageFormat.h"		
-#include <string>
+#include "imageFormat.h"	
+#include "URI.h"	
 
 
 /**
@@ -37,7 +37,7 @@ public:
 	 *
 	 */
 	inline videoOptions();
-	
+
 	/**
 	 *
 	 */
@@ -90,7 +90,7 @@ public:
 	/**
 	 *
 	 */
-	std::string device;
+	URI resource;
 
 	/**
 	 * (0): none             - Identity (no rotation)
@@ -137,10 +137,16 @@ public:
 	 *
 	 */
 	Codec codec;
+
+
+	/**
+	 *
+	 */
+	inline void print();
 };
 
 
-// videoOptions constructor
+// constructor
 inline videoOptions::videoOptions()
 {
 	width 		= 0;
@@ -151,6 +157,21 @@ inline videoOptions::videoOptions()
 	apiType     = DEVICE_DEFAULT;
 	deviceType 	= DEVICE_DEFAULT;
 	flipMethod 	= FLIP_DEFAULT;
+}
+
+
+// print
+inline void videoOptions::print()
+{
+	printf("videoOptions\n");
+	resource.print("  ");
+	printf("  -- width:      %i\n", width);
+	printf("  -- height:     %i\n", width);
+	printf("  -- frameRate:  %i\n", frameRate);
+	printf("  -- numBuffers: %i\n", numBuffers);
+	printf("  -- zeroCopy:   %i\n", (int)zeroCopy);
+	printf("  -- codec:      %i\n", (int)codec);
+	printf("  -- flipMethod: %i\n", (int)flipMethod);
 }
 
 #endif
