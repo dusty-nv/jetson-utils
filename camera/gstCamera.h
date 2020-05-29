@@ -158,6 +158,11 @@ public:
 	virtual bool Capture( void** image, imageFormat format, uint64_t timeout=UINT64_MAX );
 
 	/**
+	 *
+	 */
+	template<typename T> inline bool Capture( T** image, uint64_t timeout=UINT64_MAX )		{ return Capture((void**)image, imageFormatFromType<T>(), timeout); }
+	
+	/**
 	 * Capture the next image frame from the camera.
 	 *
 	 * @deprecated This overload of Capture() has been deprecated and is only
