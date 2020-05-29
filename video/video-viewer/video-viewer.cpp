@@ -82,9 +82,16 @@ int main( int argc, char** argv )
 	 */
 	videoOptions options;
 
-	options.device = "/media/nvidia/WD_NVME/datasets/test_videos/jellyfish-15-mbps-hd-h264.mkv";
+	//options.resource = "/media/nvidia/WD_NVME/datasets/test_videos/jellyfish-15-mbps-hd-h264.mkv";
+	options.resource = "rtp://5000";	
 	options.codec = videoOptions::CODEC_H264;
 	options.numBuffers = 16;
+	//options.width = 1280;
+	//options.height = 720;
+	options.flipMethod = videoOptions::FLIP_NONE;
+
+	options.resource.print();
+	options.print();
 
 	gstDecoder* inputStream = gstDecoder::Create(options);
 
@@ -109,8 +116,7 @@ int main( int argc, char** argv )
 	{
 		float4* nextFrame = NULL;
 
-		//if( !inputStream->Capture((void**)&nextFrame, FORMAT_RGBA32, 1000) )
-		if( !((videoSource*)inputStream)->Capture(&nextFrame, 1000) )
+		if( !inputStream->Capture(&nextFrame, 1000) )
 		{
 			LogError(LOG_GSTREAMER "failed to capture next video frame\n");
 			continue;
