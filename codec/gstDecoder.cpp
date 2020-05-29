@@ -211,22 +211,37 @@ bool gstDecoder::init()
 // buildLaunchStr
 bool gstDecoder::buildLaunchStr()
 {
-	// TODO implement smart parsing, RTP+RTSP support
 	std::ostringstream ss;
 
-#if 0
-	const size_t fileLen = mInputPath.size();
-	
-	if( fileLen > 0 && mPort != 0 )
-	{
-		printf(LOG_GSTREAMER "gstDecoder -- can only use port %u or %s as input\n", mPort, mInputPath.c_str());
-		return false;
-	}
+	// determine the requested protocol to use
+	const URI& uri = GetResource();
 
-	if( fileLen > 0 )
+	if( uri.protocol == "file" )
 	{
-#endif
-		ss << "filesrc location=" << mOptions.device << " ! matroskademux ! queue ! ";
+		ss << "filesrc location=" << mOptions.resource.path << " ! ";
+
+		if( uri.extension == "mkv" )
+			ss << "matroskademux ! ";
+		else if( uri.extension == "mp4" || uri.extension == "qt" )
+			ss << "qtdemux ! ";
+		else if( uri.extension == "flv" )
+			ss << "flvdemux ! ";
+		else if( uri.extension == "avi" )
+			ss << "avidemux ! ";
+		else if( uri.extension != "h264" && uri.extension != "h265" )
+		{
+			printf(LOG_GSTREAMER "gstDecoder -- unsupported video file extension (%s)\n", uri.extension.c_str());
+			printf(LOG_GSTREAMER "              supported video extensions are:\n");
+			printf(LOG_GSTREAMER "                 * mkv\n");
+			printf(LOG_GSTREAMER "                 * mp4, qt\n");
+			printf(LOG_GSTREAMER "                 * flv\n");
+			printf(LOG_GSTREAMER "                 * avi\n");
+			printf(LOG_GSTREAMER "                 * h264, h265\n");
+
+			return false;
+		}
+
+		ss << "queue ! ";
 		
 		if( mOptions.codec == videoOptions::CODEC_H264 )
 			ss << "h264parse ! ";
@@ -237,25 +252,46 @@ bool gstDecoder::buildLaunchStr()
 			printf(LOG_GSTREAMER "gstDecoder -- unsupported codec requested (should be H.264/H.265)\n");
 			return false;
 		}
-#if 0
 	}
-	else if( mPort != 0 )
+	else if( uri.protocol == "rtp" )
 	{
-		ss << "udpsrc port=" << mPort;
+		if( uri.port <= 0 )
+		{
+			printf(LOG_GSTREAMER "gstDecoder -- invalid RTP port (%i)\n", uri.port);
+			return false;
+		}
 
-		if( mMulticastIP.length() > 0 )
-			ss << " multicast-group=" << mMulticastIP << " auto-multicast=true";
+		ss << "udpsrc port=" << uri.port;
+		//ss << " multicast-group=" << uri.path << " auto-multicast=true";
 
 		ss << " caps=\"" << "application/x-rtp,media=(string)video,clock-rate=(int)90000,encoding-name=(string)";
 		
-		if( mCodec == GST_CODEC_H264 )
-			ss << "H264\" ! rtph264depay ! ";
-		else if( mCodec == GST_CODEC_H265 )
-			ss << "H265\" ! rtph265depay ! ";
+		if( mOptions.codec == videoOptions::CODEC_H264 )
+			ss << "H264\" ! rtph264depay ! h264parse ! ";
+		else if( mOptions.codec == videoOptions::CODEC_H265 )
+			ss << "H265\" ! rtph265depay ! h265parse ! ";
+	}
+	else if( uri.protocol == "rtsp" )
+	{
+		ss << "rtspsrc location=" << uri.string;
+		//ss << " latency=200 drop-on-latency=true";
+		ss << " ! queue ! ";
+		
+		if( mOptions.codec == videoOptions::CODEC_H264 )
+			ss << "rtph264depay ! h264parse ! ";
+		else if( mOptions.codec == videoOptions::CODEC_H265 )
+			ss << "rtph265depay ! h265parse ! ";
 	}
 	else
+	{
+		printf(LOG_GSTREAMER "gstDecoder -- unsupported protocol (%s)\n", uri.protocol.c_str());
+		printf(LOG_GSTREAMER "              supported protocols are:\n");
+		printf(LOG_GSTREAMER "                 * file://\n");
+		printf(LOG_GSTREAMER "                 * rtp://\n");
+		printf(LOG_GSTREAMER "                 * rtsp://\n");
+
 		return false;
-#endif
+	}
 
 #if GST_CHECK_VERSION(1,0,0)
 	if( mOptions.codec == videoOptions::CODEC_H264 )
@@ -269,13 +305,25 @@ bool gstDecoder::buildLaunchStr()
 		ss << "nv_omx_h265dec ! ";
 #endif
 
-//#define CAPS_STR "video/x-raw,format=(string)RGBA"
-//#define CAPS_STR "video/x-raw-yuv,format=(fourcc)NV12"
+	// resize if requested
+	if( mOptions.width != 0 && mOptions.height != 0 || mOptions.flipMethod != videoOptions::FLIP_NONE )
+	{
+		ss << "nvvidconv";
 
-	//ss << "nvvidconv ! \"" << CAPS_STR << "\" ! ";
-	//ss << "appsink name=mysink caps=\"" << CAPS_STR << "\"";
-	
-	ss << "video/x-raw ! appsink name=mysink";
+		if( mOptions.flipMethod != videoOptions::FLIP_NONE )
+			ss << " flip-method=" << (int)mOptions.flipMethod;
+
+		ss << " ! video/x-raw";
+
+		if( mOptions.width != 0 && mOptions.height != 0 )
+			ss << ", width=(int)" << mOptions.width << ", height=(int)" << mOptions.height << ", format=(string)NV12";
+
+		ss <<" ! ";
+	}
+	else
+		ss << "video/x-raw ! ";
+
+	ss << "appsink name=mysink";
 
 	mLaunchStr = ss.str();
 

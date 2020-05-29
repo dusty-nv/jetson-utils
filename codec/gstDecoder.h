@@ -76,6 +76,11 @@ public:
 	/**
 	 *
 	 */
+	template<typename T> inline bool Capture( T** image, uint64_t timeout=UINT64_MAX )		{ return Capture((void**)image, imageFormatFromType<T>(), timeout); }
+	
+	/**
+	 *
+	 */
 	virtual bool Open();
 
 	/**
