@@ -1,0 +1,108 @@
+/*
+ * Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a
+ * copy of this software and associated documentation files (the "Software"),
+ * to deal in the Software without restriction, including without limitation
+ * the rights to use, copy, modify, merge, publish, distribute, sublicense,
+ * and/or sell copies of the Software, and to permit persons to whom the
+ * Software is furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL
+ * THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+ * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+ * DEALINGS IN THE SOFTWARE.
+ */
+ 
+#ifndef __URI_RESOURCE_H_
+#define __URI_RESOURCE_H_
+
+
+#include <string> 
+
+
+/**
+ * @ingroup util
+ */
+struct URI
+{
+public:
+	/**
+	 *
+	 */
+	URI();
+
+	/**
+	 *
+	 */
+	URI( const char* uri );
+
+	/**
+	 *
+	 */
+	bool parse( const char* uri );
+
+	/**
+	 *
+	 */
+	void print( const char* prefix="" ) const;
+
+	/**
+	 *
+	 */
+	inline const char* c_str() const				{ return string.c_str(); }
+
+	/**
+	 *
+	 */
+	operator const char* () const					{ return string.c_str(); }
+
+	/**
+	 *
+	 */
+	operator std::string () const					{ return string; }
+
+	/**
+	 *
+	 */
+	inline void operator = (const char* uri ) 		{ parse(uri); }
+
+	/**
+	 *
+	 */
+	inline void operator = (const std::string& uri ) 	{ parse(uri.c_str()); }
+
+	/**
+	 * Full resource URI
+	 */
+	std::string string;
+
+	/**
+	 * Protocol string
+	 */
+	std::string protocol;
+
+	/**
+	 * Path string
+	 */
+	std::string path;
+
+	/**
+	 * File extension
+	 */
+	std::string extension;
+
+	/**
+	 * IP port, camera port, ect.
+	 */
+	int port;
+};
+
+#endif
+
