@@ -45,10 +45,10 @@ videoSource* videoSource::Create( const videoOptions& options )
 
 
 // Create
-videoSource* videoSource::Create( const char* device, const videoOptions& options )
+videoSource* videoSource::Create( const char* resource, const videoOptions& options )
 {
 	videoOptions opt = options;
-	opt.device = device;
+	opt.resource = resource;
 	return Create(opt);
 }
 

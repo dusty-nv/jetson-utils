@@ -43,7 +43,7 @@ public:
 	/**
 	 *
 	 */
-	static videoSource* Create( const char* device, const videoOptions& options=videoOptions() );
+	static videoSource* Create( const char* resource, const videoOptions& options=videoOptions() );
 
 	/**
 	 *
@@ -126,7 +126,7 @@ public:
 	/**
 	 *
 	 */
-	inline const char* GetDevice() const			{ return mOptions.device.c_str(); }
+	inline const URI& GetResource() const			{ return mOptions.resource; }
 
 	/**
 	 *
