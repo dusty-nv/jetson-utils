@@ -83,7 +83,7 @@ int main( int argc, char** argv )
 	videoOptions options;
 
 	//options.resource = "/media/nvidia/WD_NVME/datasets/test_videos/jellyfish-15-mbps-hd-h264.mkv";
-	options.resource = "rtp://5000";	
+	options.resource = "rtp://@:5000";	//"rtsp://127.0.0.1:8554/test"; 
 	options.codec = videoOptions::CODEC_H264;
 	options.numBuffers = 16;
 	//options.width = 1280;
