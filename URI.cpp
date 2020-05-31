@@ -122,17 +122,18 @@ bool URI::parse( const char* uri )
 		std::string port_str;
 		pos = path.find(":");		
 
-		if( pos != std::string::npos )
+		if( pos != std::string::npos )	// "xxx.xxx.xxx.xxx:port"
 		{
 			port_str = path.substr(pos+1, std::string::npos);
 			path = path.substr(0, pos);
 		}
-		else if( std::count(path.begin(), path.end(), '.') == 0 )
+		else if( std::count(path.begin(), path.end(), '.') == 0 ) // "port"
 		{
 			port_str = path;
-			path = "0.0.0.0";
+			path = "127.0.0.1";
 		}
 
+		// parse the port number
 		if( port_str.size() != 0 )
 		{
 			if( sscanf(port_str.c_str(), "%i", &port) != 1 )
@@ -141,6 +142,10 @@ bool URI::parse( const char* uri )
 				return false;
 			}
 		}
+
+		// convert "@:port" format to localhost
+		if( path == "@" )
+			path = "127.0.0.1";
 	}
 		
 	return true;
