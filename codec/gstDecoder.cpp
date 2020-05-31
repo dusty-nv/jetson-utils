@@ -36,6 +36,20 @@
 #include "cudaYUV.h"
 
 
+// 
+// RTP test source pipeline:
+//  $ gst-launch-1.0 -v videotestsrc ! video/x-raw,framerate=30/1 ! videoscale ! videoconvert ! x264enc tune=zerolatency bitrate=500 speed-preset=superfast ! rtph264pay ! udpsink host=127.0.0.1 port=5000
+//  rtp://@:5000
+//
+// RSTP test server installation:
+//  $ git clone https://github.com/GStreamer/gst-rtsp-server && cd gst-rtsp-server
+//  $ git checkout 1.14.5
+//  $ ./autogen.sh --noconfigure && ./configure && make
+//  $ cd examples && ./test-launch "( videotestsrc ! x264enc ! rtph264pay name=pay0 pt=96 )"
+//  rtsp://127.0.0.1:8554/test
+//
+
+
 // constructor
 gstDecoder::gstDecoder( const videoOptions& options ) : videoSource(options)
 {	
@@ -262,7 +276,7 @@ bool gstDecoder::buildLaunchStr()
 		}
 
 		ss << "udpsrc port=" << uri.port;
-		//ss << " multicast-group=" << uri.path << " auto-multicast=true";
+		ss << " multicast-group=" << uri.path << " auto-multicast=true";
 
 		ss << " caps=\"" << "application/x-rtp,media=(string)video,clock-rate=(int)90000,encoding-name=(string)";
 		
