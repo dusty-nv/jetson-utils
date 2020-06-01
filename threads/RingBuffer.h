@@ -50,12 +50,12 @@ public:
 	/**
 	 *
 	 */
-	RingBuffer( uint32_t flags=Threaded );
+	inline RingBuffer( uint32_t flags=Threaded );
 
 	/**
 	 * Destructor
 	 */
-	~RingBuffer();
+	inline ~RingBuffer();
 
 	/**
 	 *
