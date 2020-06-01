@@ -24,7 +24,7 @@
 #include "commandLine.h"
 #include "logging.h"
 
-#include "gstDecoder.h"
+#include "videoSource.h"
 #include "glDisplay.h"
 
 #include <signal.h>
@@ -53,53 +53,19 @@ int main( int argc, char** argv )
 		LogError("can't catch SIGINT\n");
 
 
-	LogError(LOG_CUDA "test error\n");
-	LogWarning(LOG_CUDA "test warning\n");
-	LogInfo(LOG_CUDA "test info\n");
-	LogVerbose(LOG_CUDA "test verbose\n");
-	LogDebug(LOG_CUDA "test debug\n");
-
-	Log::SetLevel(Log::INFO);
-	
-	LogError(LOG_CUDA "test error\n");
-	LogWarning(LOG_CUDA "test warning\n");
-	LogInfo(LOG_CUDA "test info\n");
-	LogVerbose(LOG_CUDA "test verbose\n");
-	LogDebug(LOG_CUDA "test debug\n");
-
-	#define IMAGE_TYPE_TEST(type)	LogInfo(#type " type => %i\n", (int)imageFormatFromType<type>())
-	
-	IMAGE_TYPE_TEST(uchar3);
-	IMAGE_TYPE_TEST(uchar4);
-	
-	IMAGE_TYPE_TEST(float3);
-	IMAGE_TYPE_TEST(float4);
-	
-	//IMAGE_TYPE_TEST(float);
-
 	/*
-	 * open video file
+	 * open video stream
 	 */
-	videoOptions options;
-
-	//options.resource = "/media/nvidia/WD_NVME/datasets/test_videos/jellyfish-15-mbps-hd-h264.mkv";
-	options.resource = "rtp://@:5000";	//"rtsp://127.0.0.1:8554/test"; 
-	options.codec = videoOptions::CODEC_H264;
-	options.numBuffers = 16;
-	//options.width = 1280;
-	//options.height = 720;
-	options.flipMethod = videoOptions::FLIP_NONE;
-
-	options.resource.print();
-	options.print();
-
-	gstDecoder* inputStream = gstDecoder::Create(options);
+	videoSource* inputStream = videoSource::Create(cmdLine);
 
 	if( !inputStream )
 	{
-		LogError(LOG_GSTREAMER "failed to open gstDecoder\n");
+		LogError("video-viewer:  failed to create input stream\n");
 		return 0;
 	}
+
+	inputStream->GetOptions().Print();
+
 
 	/*
 	 * create openGL window
@@ -107,9 +73,12 @@ int main( int argc, char** argv )
 	glDisplay* display = glDisplay::Create();
 	
 	if( !display )
-		printf("camera-viewer:  failed to create openGL display\n");
+		printf("video-viewer:  failed to create openGL display\n");
 	
 
+	/*
+	 * capture/display loop
+	 */
 	uint32_t numFrames = 0;
 
 	while( !signal_recieved )
@@ -118,13 +87,11 @@ int main( int argc, char** argv )
 
 		if( !inputStream->Capture(&nextFrame, 1000) )
 		{
-			LogError(LOG_GSTREAMER "failed to capture next video frame\n");
+			LogError("video-viewer:  failed to capture video frame\n");
 			continue;
 		}
 
-		numFrames++;
-
-		LogInfo("captured %u frames (%u x %u)\n", numFrames, inputStream->GetWidth(), inputStream->GetHeight());
+		LogInfo("video-viewer:  captured %u frames (%u x %u)\n", ++numFrames, inputStream->GetWidth(), inputStream->GetHeight());
 
 		if( display != NULL )
 		{
@@ -140,10 +107,19 @@ int main( int argc, char** argv )
 				signal_recieved = true;
 		}
 
-		if( inputStream->IsEOS() )
+		if( !inputStream->IsStreaming() )
 			signal_recieved = true;
 	}
 
+
+	/*
+	 * destroy resources
+	 */
+	printf("video-viewer:  shutting down...\n");
+	
 	SAFE_DELETE(inputStream);
+	SAFE_DELETE(display);
+
+	printf("video-viewer:  shutdown complete\n");
 }
 
