@@ -57,11 +57,8 @@ gstDecoder::gstDecoder( const videoOptions& options ) : videoSource(options)
 	mBus        = NULL;
 	mPipeline   = NULL;
 	mEOS        = false;
-	//mPort       = 0;
-	//mCodec      = GST_CODEC_H264;
 
 	mBufferColor.SetThreaded(false);
-	printf("mBufferColor flags:  %#08X\n", mBufferColor.GetFlags());
 }
 
 
@@ -261,11 +258,8 @@ bool gstDecoder::buildLaunchStr()
 			ss << "h264parse ! ";
 		else if( mOptions.codec == videoOptions::CODEC_H265 )
 			ss << "h265parse ! ";
-		else
-		{
-			printf(LOG_GSTREAMER "gstDecoder -- unsupported codec requested (should be H.264/H.265)\n");
-			return false;
-		}
+
+		mOptions.deviceType = videoOptions::DEVICE_FILE;
 	}
 	else if( uri.protocol == "rtp" )
 	{
@@ -284,6 +278,12 @@ bool gstDecoder::buildLaunchStr()
 			ss << "H264\" ! rtph264depay ! h264parse ! ";
 		else if( mOptions.codec == videoOptions::CODEC_H265 )
 			ss << "H265\" ! rtph265depay ! h265parse ! ";
+		else if( mOptions.codec == videoOptions::CODEC_VP8 )
+			ss << "VP8\" ! rtpvp8depay ! ";
+		else if( mOptions.codec == videoOptions::CODEC_VP9 )
+			ss << "VP9\" ! rtpvp9depay ! ";
+
+		mOptions.deviceType = videoOptions::DEVICE_IP;
 	}
 	else if( uri.protocol == "rtsp" )
 	{
@@ -295,6 +295,12 @@ bool gstDecoder::buildLaunchStr()
 			ss << "rtph264depay ! h264parse ! ";
 		else if( mOptions.codec == videoOptions::CODEC_H265 )
 			ss << "rtph265depay ! h265parse ! ";
+		else if( mOptions.codec == videoOptions::CODEC_VP8 )
+			ss << "rtpvp8depay ! ";
+		else if( mOptions.codec == videoOptions::CODEC_VP9 )
+			ss << "rtpvp9depay ! ";
+
+		mOptions.deviceType = videoOptions::DEVICE_IP;
 	}
 	else
 	{
@@ -312,12 +318,25 @@ bool gstDecoder::buildLaunchStr()
 		ss << "omxh264dec ! ";
 	else if( mOptions.codec == videoOptions::CODEC_H265 )
 		ss << "omxh265dec ! ";
+	else if( mOptions.codec == videoOptions::CODEC_VP8 )
+		ss << "omxvp8dec ! ";
+	else if( mOptions.codec == videoOptions::CODEC_VP9 )
+		ss << "omxvp9dec ! ";
 #else
 	if( mOptions.codec == videoOptions::CODEC_H264 )
 		ss << "nv_omx_h264dec ! ";
 	else if( mOptions.codec == videoOptions::CODEC_H265 )
 		ss << "nv_omx_h265dec ! ";
+	else if( mOptions.codec == videoOptions::CODEC_VP8 )
+		ss << "nv_omx_vp8dec ! ";
+	else if( mOptions.codec == videoOptions::CODEC_VP9 )
+		ss << "nv_omx_vp9dec ! ";
 #endif
+	else
+	{
+		printf(LOG_GSTREAMER "gstDecoder -- unsupported codec requested (should be H.264/H.265/VP8/VP9)\n");
+		return false;
+	}
 
 	// resize if requested
 	if( mOptions.width != 0 && mOptions.height != 0 || mOptions.flipMethod != videoOptions::FLIP_NONE )
