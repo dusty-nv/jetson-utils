@@ -96,6 +96,18 @@ int commandLine::GetInt( const char* string_ref, int default_value ) const
 }
 
 
+// GetUnsignedInt
+uint32_t commandLine::GetUnsignedInt( const char* argName, uint32_t defaultValue ) const
+{
+	const int val = GetInt(argName, (int)defaultValue);
+
+	if( val < 0 )
+		return defaultValue;
+
+	return val;
+} 
+
+
 // GetFloat
 float commandLine::GetFloat( const char* string_ref, float default_value ) const
 {

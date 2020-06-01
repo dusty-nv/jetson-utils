@@ -25,6 +25,7 @@
 
 
 #include <stdlib.h>	
+#include <stdint.h>
 
 
 /**
@@ -66,6 +67,15 @@ public:
 	 *          Otherwise, returns the value of the argument. 
 	 */
 	int GetInt( const char* argName, int defaultValue=0 ) const; 
+
+	/**
+	 * Get unsigned integer argument.  For example if argv contained `--foo=100`, 
+	 * then `GetUnsignedInt("foo")` would return `100`
+	 *
+	 * @returns `defaultValue` if the argument couldn't be found, or if the value
+	 *          was negative (`0` by default). Otherwise, returns the parsed value.
+	 */
+	uint32_t GetUnsignedInt( const char* argName, uint32_t defaultValue=0 ) const; 
 
 	/**
 	 * Get string argument.  For example if argv contained `--foo=bar`,
