@@ -494,20 +494,27 @@ bool gstCamera::parseCameraStr( const char* camera )
 // Create
 gstCamera* gstCamera::Create( uint32_t width, uint32_t height, const char* camera )
 {
+	videoOptions opt;
+
+	if( !camera )
+		camera = "csi://0";
+
+	opt.resource = camera;
+	opt.width    = width;
+	opt.height   = height;
+
+	return Create(opt);
+}
+
+
+// Create
+gstCamera* gstCamera::Create( const videoOptions& options )
+{
 	if( !gstreamerInit() )
 	{
 		printf(LOG_GSTREAMER "failed to initialize gstreamer API\n");
 		return NULL;
 	}
-	
-	// create options struct
-	videoOptions options;
-
-	options.width  = width;
-	options.height = height;
-
-	if( camera != NULL )
-		options.resource = camera;
 
 	// create camera instance
 	gstCamera* cam = new gstCamera(options);
@@ -515,7 +522,7 @@ gstCamera* gstCamera::Create( uint32_t width, uint32_t height, const char* camer
 	if( !cam )
 		return NULL;
 	
-	if( !cam->parseCameraStr(camera) )
+	if( !cam->parseCameraStr(options.resource.path.c_str()) )
 		return NULL;
 
 	cam->mDepth = cam->csiCamera() ? 12 : 24;	// NV12 or RGB
@@ -619,6 +626,12 @@ bool gstCamera::init( gstCameraSrc src )
 	
 	gst_app_sink_set_callbacks(mAppSink, &cb, (void*)this, NULL);
 	
+	// set device flags
+	if( src == GST_SOURCE_NVCAMERA || src == GST_SOURCE_NVARGUS )
+		mOptions.deviceType = videoOptions::DEVICE_CSI;
+	else if( src == GST_SOURCE_V4L2 )
+		mOptions.deviceType = videoOptions::DEVICE_V4L2;
+
 	return true;
 }
 
