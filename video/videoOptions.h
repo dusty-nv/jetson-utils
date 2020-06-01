@@ -24,6 +24,8 @@
 #define __VIDEO_OPTIONS_H_
 
 #include "imageFormat.h"	
+#include "commandLine.h"
+
 #include "URI.h"	
 
 
@@ -36,7 +38,12 @@ public:
 	/**
 	 *
 	 */
-	inline videoOptions();
+	videoOptions();
+	
+	/**
+	 *
+	 */
+	URI resource;
 
 	/**
 	 *
@@ -68,29 +75,31 @@ public:
 	 */
 	enum DeviceType
 	{
-		DEVICE_DEFAULT   = 0,
-		DEVICE_GSTREAMER = (1 << 0),
-		DEVICE_V4L2      = (1 << 1),
-		DEVICE_CSI       = (1 << 2),
-		DEVICE_RTP       = (1 << 3),
-		DEVICE_RTSP      = (1 << 4),
-		DEVICE_FILE      = (1 << 5)
+		DEVICE_DEFAULT = 0,
+		DEVICE_V4L2,
+		DEVICE_CSI,
+		DEVICE_IP,
+		DEVICE_FILE
 	};
 
 	/**
 	 *
 	 */
-	DeviceType apiType;
+	DeviceType deviceType;
 
 	/**
 	 *
 	 */
-	DeviceType deviceType;
-	
+	enum IoType
+	{
+		INPUT = 0,
+		OUTPUT,
+	};
+
 	/**
 	 *
 	 */
-	URI resource;
+	IoType ioType;
 
 	/**
 	 * (0): none             - Identity (no rotation)
@@ -131,6 +140,8 @@ public:
 		CODEC_JPEG,
 		CODEC_H264,
 		CODEC_H265,
+		CODEC_VP8,
+		CODEC_VP9
 	};
 
 	/**
@@ -138,41 +149,62 @@ public:
 	 */
 	Codec codec;
 
+	/**
+	 *
+	 */
+	void Print() const;
 
 	/**
 	 *
 	 */
-	inline void print();
+	bool Parse( const int argc, char** argv, IoType ioType );
+
+	/**
+	 *
+	 */
+	bool Parse( const commandLine& cmdLine, IoType ioType );
+
+	/**
+	 *
+	 */
+	static const char* IoTypeToStr( IoType type );
+
+	/**
+	 * 
+	 */
+	static IoType IoTypeFromStr( const char* str );
+
+	/**
+	 *
+	 */
+	static const char* DeviceTypeToStr( DeviceType type );
+
+	/**
+	 * 
+	 */
+	static DeviceType DeviceTypeFromStr( const char* str );
+
+	/**
+	 *
+	 */
+	static const char* FlipMethodToStr( FlipMethod flip );
+
+	/**
+	 * 
+	 */
+	static FlipMethod FlipMethodFromStr( const char* str );
+
+	/**
+	 *
+	 */
+	static const char* CodecToStr( Codec codec );
+
+	/**
+	 * 
+	 */
+	static Codec CodecFromStr( const char* str );
 };
 
-
-// constructor
-inline videoOptions::videoOptions()
-{
-	width 		= 0;
-	height 		= 0;
-	frameRate 	= 30;
-	numBuffers  = 4;
-	zeroCopy    = true;
-	apiType     = DEVICE_DEFAULT;
-	deviceType 	= DEVICE_DEFAULT;
-	flipMethod 	= FLIP_DEFAULT;
-}
-
-
-// print
-inline void videoOptions::print()
-{
-	printf("videoOptions\n");
-	resource.print("  ");
-	printf("  -- width:      %i\n", width);
-	printf("  -- height:     %i\n", width);
-	printf("  -- frameRate:  %i\n", frameRate);
-	printf("  -- numBuffers: %i\n", numBuffers);
-	printf("  -- zeroCopy:   %i\n", (int)zeroCopy);
-	printf("  -- codec:      %i\n", (int)codec);
-	printf("  -- flipMethod: %i\n", (int)flipMethod);
-}
 
 #endif
 
