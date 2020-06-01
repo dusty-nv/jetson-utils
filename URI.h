@@ -46,12 +46,12 @@ public:
 	/**
 	 *
 	 */
-	bool parse( const char* uri );
+	bool Parse( const char* uri );
 
 	/**
 	 *
 	 */
-	void print( const char* prefix="" ) const;
+	void Print( const char* prefix="" ) const;
 
 	/**
 	 *
@@ -71,12 +71,12 @@ public:
 	/**
 	 *
 	 */
-	inline void operator = (const char* uri ) 		{ parse(uri); }
+	inline void operator = (const char* uri ) 		{ Parse(uri); }
 
 	/**
 	 *
 	 */
-	inline void operator = (const std::string& uri ) 	{ parse(uri.c_str()); }
+	inline void operator = (const std::string& uri ) 	{ Parse(uri.c_str()); }
 
 	/**
 	 * Full resource URI

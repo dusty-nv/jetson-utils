@@ -49,12 +49,12 @@ URI::URI()
 // constructor
 URI::URI( const char* uri )
 {
-	parse(uri);
+	Parse(uri);
 }
 
 
 // Parse
-bool URI::parse( const char* uri )
+bool URI::Parse( const char* uri )
 {
 	if( !uri )
 		return false;
@@ -83,6 +83,10 @@ bool URI::parse( const char* uri )
 		{
 			protocol = "csi";
 		}
+		else if( string == "display" )
+		{
+			protocol = "display";
+		}
 		else
 		{
 			printf("URI -- invalid resource, or file not found:  %s\n", string.c_str());
@@ -110,6 +114,14 @@ bool URI::parse( const char* uri )
 		{
 			printf("URI -- failed to parse MIPI CSI device ID from %s\n", path.c_str());
 			return false;
+		}
+	}
+	else if( protocol == "display" )
+	{
+		if( sscanf(path.c_str(), "%i", &port) != 1 )
+		{
+			printf("URI -- using default display device 0\n");
+			port = 0;
 		}
 	}
 	else if( protocol == "file" )
@@ -152,7 +164,8 @@ bool URI::parse( const char* uri )
 }
 
 
-void URI::print( const char* prefix ) const
+// Print
+void URI::Print( const char* prefix ) const
 {
 	if( !prefix )
 		prefix = "";
