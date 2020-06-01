@@ -22,6 +22,9 @@
  
 #include "videoSource.h"
 
+#include "gstCamera.h"
+#include "gstDecoder.h"
+
 
 // constructor
 videoSource::videoSource( const videoOptions& options ) : mOptions(options)
@@ -40,6 +43,14 @@ videoSource::~videoSource()
 // Create
 videoSource* videoSource::Create( const videoOptions& options )
 {
+	const URI& uri = options.resource;
+
+	if( uri.protocol == "csi" || uri.protocol == "v4l2" )
+		return gstCamera::Create(options);
+	else if( uri.protocol == "file" || uri.protocol == "rtp" || uri.protocol == "rtsp" )
+		return gstDecoder::Create(options);
+
+	printf("videoSource -- unsupported protocol (%s)\n", uri.protocol.size() > 0 ? uri.protocol.c_str() : "null");
 	return NULL;
 }
 
@@ -69,7 +80,11 @@ videoSource* videoSource::Create( const commandLine& cmdLine )
 {
 	videoOptions opt;
 
-	// TODO parse videoOptions
+	if( !opt.Parse(cmdLine, videoOptions::INPUT) )
+	{
+		printf("videoSource -- failed to parse command line options\n");
+		return NULL;
+	}
 
 	return Create(opt);
 }
