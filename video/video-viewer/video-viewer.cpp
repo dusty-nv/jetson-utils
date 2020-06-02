@@ -25,7 +25,7 @@
 #include "logging.h"
 
 #include "videoSource.h"
-#include "glDisplay.h"
+#include "videoOutput.h"
 
 #include <signal.h>
 
@@ -54,7 +54,7 @@ int main( int argc, char** argv )
 
 
 	/*
-	 * open video stream
+	 * create input video stream
 	 */
 	videoSource* inputStream = videoSource::Create(cmdLine);
 
@@ -68,12 +68,12 @@ int main( int argc, char** argv )
 
 
 	/*
-	 * create openGL window
+	 * create output video stream
 	 */
-	glDisplay* display = glDisplay::Create();
+	videoOutput* outputStream = videoOutput::Create(cmdLine);
 	
-	if( !display )
-		printf("video-viewer:  failed to create openGL display\n");
+	if( !outputStream )
+		printf("video-viewer:  failed to create output stream\n");
 	
 
 	/*
@@ -93,17 +93,17 @@ int main( int argc, char** argv )
 
 		LogInfo("video-viewer:  captured %u frames (%u x %u)\n", ++numFrames, inputStream->GetWidth(), inputStream->GetHeight());
 
-		if( display != NULL )
+		if( outputStream != NULL )
 		{
-			display->RenderOnce((float*)nextFrame, inputStream->GetWidth(), inputStream->GetHeight());
+			outputStream->Render(nextFrame, inputStream->GetWidth(), inputStream->GetHeight());
 
 			// update status bar
 			char str[256];
-			sprintf(str, "Video Viewer (%ux%u) | %.0f FPS", inputStream->GetWidth(), inputStream->GetHeight(), display->GetFPS());
-			display->SetTitle(str);	
+			sprintf(str, "Video Viewer (%ux%u) | %u FPS", inputStream->GetWidth(), inputStream->GetHeight(), outputStream->GetFrameRate());
+			outputStream->SetStatus(str);	
 
 			// check if the user quit
-			if( display->IsClosed() )
+			if( !outputStream->IsStreaming() )
 				signal_recieved = true;
 		}
 
@@ -118,7 +118,7 @@ int main( int argc, char** argv )
 	printf("video-viewer:  shutting down...\n");
 	
 	SAFE_DELETE(inputStream);
-	SAFE_DELETE(display);
+	SAFE_DELETE(outputStream);
 
 	printf("video-viewer:  shutdown complete\n");
 }
