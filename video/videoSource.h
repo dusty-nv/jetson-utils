@@ -70,23 +70,6 @@ public:
 	 */
 	template<typename T> inline bool Capture( T** image, uint64_t timeout=UINT64_MAX )		{ return Capture((void**)image, imageFormatFromType<T>(), timeout); }
 	
-	//inline bool Capture( uchar3** image, uint64_t timeout=UINT64_MAX )		{ return Capture((void**)image, FORMAT_RGB8, timeout); }
-
-	/**
-	 *
-	 */
-	//inline bool Capture( uchar4** image, uint64_t timeout=UINT64_MAX );		{ return Capture((void**)image, FORMAT_RGBA8, timeout); }
-
-	/**
-	 *
-	 */
-	//inline bool Capture( float3** image, uint64_t timeout=UINT64_MAX );		{ return Capture((void**)image, FORMAT_RGB32, timeout); }
-
-	/**
-	 *
-	 */
-	//inline bool Capture( float4** image, uint64_t timeout=UINT64_MAX );		{ return Capture((void**)image, FORMAT_RGBA32, timeout); }
-
 	/**
 	 * Begin streaming the camera.
 	 * After Open() is called, frames from the camera will begin to be captured.
@@ -123,6 +106,11 @@ public:
 	 */
 	inline uint32_t GetHeight() const				{ return mOptions.height; }
 	
+	/**
+	 *
+	 */
+	inline uint32_t GetFrameRate() const			{ return mOptions.frameRate; }
+
 	/**
 	 *
 	 */
