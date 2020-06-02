@@ -525,6 +525,13 @@ gstCamera* gstCamera::Create( const videoOptions& options )
 	if( !cam->parseCameraStr(options.resource.path.c_str()) )
 		return NULL;
 
+	// check desired frame sizes
+	if( cam->mOptions.width == 0 )
+		cam->mOptions.width = DefaultWidth;
+
+	if( cam->mOptions.height == 0 )
+		cam->mOptions.height = DefaultHeight;
+
 	cam->mDepth = cam->csiCamera() ? 12 : 24;	// NV12 or RGB
 	cam->mSize  = (cam->GetWidth() * cam->GetHeight() * cam->mDepth) / 8;
 
