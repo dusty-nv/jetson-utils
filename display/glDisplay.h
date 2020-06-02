@@ -23,6 +23,8 @@
 #ifndef __GL_VIEWPORT_H__
 #define __GL_VIEWPORT_H__
 
+#include "videoOutput.h"
+
 #include "glUtility.h"
 #include "glTexture.h"
 #include "glEvents.h"
@@ -36,7 +38,7 @@
  * OpenGL display window / video viewer
  * @ingroup OpenGL
  */
-class glDisplay
+class glDisplay : public videoOutput
 {
 public:
 	/**
@@ -52,6 +54,11 @@ public:
 	 */
 	static glDisplay* Create( const char* title=NULL, int width=-1, int height=-1,
 						 float r=0.05f, float g=0.05f, float b=0.05f, float a=1.0f );
+
+	/**
+	 * Create a new OpenGL display window with the specified options.
+	 */
+	static glDisplay* Create( const videoOptions& options );
 
 	/**
 	 * Destroy window
@@ -83,6 +90,16 @@ public:
 	 */
 	void Render( float* image, uint32_t width, uint32_t height, float x=0.0f, float y=30.0f, bool normalize=true );
 
+	/**
+	 *
+	 */
+	virtual bool Render( void* image, imageFormat format, uint32_t width, uint32_t height );
+
+	/**
+	 *
+	 */
+	template<typename T> inline bool Render( T* image, uint32_t width, uint32_t height )		{ return Render((void**)image, imageFormatFromType<T>(), width, height); }
+	
 	/**
 	 * Begin the frame, render one CUDA float4 image using OpenGL interop, and end the frame.
 	 * Note that this function is only useful if you are rendering a single texture per frame.
@@ -119,12 +136,12 @@ public:
 	/**
 	 * Returns true if the window is open.
 	 */
-	inline bool IsOpen() const 		{ return !mWindowClosed; }
+	inline bool IsOpen() const 		{ return mStreaming; }
 
 	/**
 	 * Returns true if the window has been closed.
 	 */
-	inline bool IsClosed() const		{ return mWindowClosed; }
+	inline bool IsClosed() const		{ return !mStreaming; }
 
 	/**
 	 * Returns true if between BeginRender() and EndRender()
@@ -139,12 +156,12 @@ public:
 	/**
 	 * Get the width of the window (in pixels)
 	 */
-	inline uint32_t GetWidth() const	{ return mWidth; }
+	//inline uint32_t GetWidth() const	{ return mWidth; }
 
 	/**
 	 * Get the height of the window (in pixels)
 	 */
-	inline uint32_t GetHeight() const	{ return mHeight; }
+	//inline uint32_t GetHeight() const	{ return mHeight; }
 
 	/**
 	 * Get the ID of this display instance into glGetDisplay()
@@ -231,51 +248,6 @@ public:
 	void RemoveEventHandler( glEventHandler callback, void* user=NULL );
 
 	/**
-	 * Add a widget to the window that recieves events and is rendered.
-	 */
-	glWidget* AddWidget( glWidget* widget );
-
-	/**
-	 * Remove a widget from the window (and optionally delete it)
-	 */
-	void RemoveWidget( glWidget* widget, bool deleteWidget=true );
-
-	/**
-	 * Remove a widget from the window (and optionally delete it)
-	 */
-	void RemoveWidget( uint32_t index, bool deleteWidget=true );
-
-	/**
-	 * Remove all widgets from the window (and optionally delete them)
-	 */
-	void RemoveAllWidgets( bool deleteWidgets=true );
-
-	/**
-	 * Retrieve the number of widgets.
-	 */
-	inline uint32_t GetNumWidgets() const					{ return mWidgets.size(); }
-
-	/**
-	 * Retrieve a widget.
-	 */
-	inline glWidget* GetWidget( const uint32_t index ) const	{ return mWidgets[index]; }
-
-	/**
-	 * Retrieve the index of a widget (or -1 if not found)
-	 */
-	int GetWidgetIndex( const glWidget* widget ) const;
-
-	/**
-	 * Find first widget by coordinate, or NULL if no widget overlaps with that coordinate.
-	 */
-	glWidget* FindWidget( int x, int y );
-
-	/**
-	 * Find all widgets by coordinate, or NULL if no widget overlaps with that coordinate.
-	 */
-	std::vector<glWidget*> FindWidgets( int x, int y );
-
-	/**
 	 * Enable debugging of events.
 	 */
 	void EnableDebug();
@@ -284,6 +256,11 @@ public:
 	 * Set the window title string.
 	 */
 	void SetTitle( const char* str );
+
+	/**
+	 * Set the window title string.
+	 */
+	virtual void SetStatus( const char* str );
 
 	/**
 	 * Set the window's size.
@@ -334,7 +311,6 @@ public:
 
 	/**
 	 * Reset to the full viewport (and change back GL_PROJECTION)
-
 	 */
 	void ResetViewport();
 
@@ -429,14 +405,59 @@ public:
 	bool GetDragCoords( int* x1, int* y1, int* x2, int* y2 );
 
 	/**
+	 * Add a widget to the window that recieves events and is rendered.
+	 */
+	glWidget* AddWidget( glWidget* widget );
+
+	/**
+	 * Remove a widget from the window (and optionally delete it)
+	 */
+	void RemoveWidget( glWidget* widget, bool deleteWidget=true );
+
+	/**
+	 * Remove a widget from the window (and optionally delete it)
+	 */
+	void RemoveWidget( uint32_t index, bool deleteWidget=true );
+
+	/**
+	 * Remove all widgets from the window (and optionally delete them)
+	 */
+	void RemoveAllWidgets( bool deleteWidgets=true );
+
+	/**
+	 * Retrieve the number of widgets.
+	 */
+	inline uint32_t GetNumWidgets() const					{ return mWidgets.size(); }
+
+	/**
+	 * Retrieve a widget.
+	 */
+	inline glWidget* GetWidget( const uint32_t index ) const	{ return mWidgets[index]; }
+
+	/**
+	 * Retrieve the index of a widget (or -1 if not found)
+	 */
+	int GetWidgetIndex( const glWidget* widget ) const;
+
+	/**
+	 * Find first widget by coordinate, or NULL if no widget overlaps with that coordinate.
+	 */
+	glWidget* FindWidget( int x, int y );
+
+	/**
+	 * Find all widgets by coordinate, or NULL if no widget overlaps with that coordinate.
+	 */
+	std::vector<glWidget*> FindWidgets( int x, int y );
+
+	/**
 	 * Default title bar name
 	 */
 	static const char* DEFAULT_TITLE;
 
 protected:
-	glDisplay();
+	glDisplay( const videoOptions& options );
 		
-	bool initWindow( int width, int height );
+	bool initWindow();
 	bool initGL();
 
 	glTexture* allocTexture( uint32_t width, uint32_t height );	
@@ -464,13 +485,13 @@ protected:
 	int          mDefaultCursor;
 	bool		   mRendering;
 	bool		   mEnableDebug;
-	bool		   mWindowClosed;
+	//bool		   mWindowClosed;
 	Atom		   mWindowClosedMsg;
 	DragMode	   mDragMode;
 
 	uint32_t mID;
-	uint32_t mWidth;
-	uint32_t mHeight;
+	//uint32_t mWidth;
+	//uint32_t mHeight;
 	uint32_t mScreenWidth;
 	uint32_t mScreenHeight;
 

@@ -53,7 +53,7 @@ const char* glDisplay::DEFAULT_TITLE = "NVIDIA Jetson";
 #define OriginalCursor XC_arrow
 
 // Constructor
-glDisplay::glDisplay()
+glDisplay::glDisplay( const videoOptions& options ) : videoOutput(options)
 {
 	mWindowX       = 0;
 	mScreenX       = NULL;
@@ -62,14 +62,13 @@ glDisplay::glDisplay()
 	mDisplayX      = NULL;
 	mRendering     = false;
 	mEnableDebug   = false;
-	mWindowClosed  = false;
 	mActiveCursor  = OriginalCursor;
 	mDefaultCursor = OriginalCursor;
 	mDragMode      = DragDefault;
 
 	mID		     = 0;
-	mWidth         = 0;
-	mHeight        = 0;
+	//mWidth         = 0;
+	//mHeight        = 0;
 	mScreenWidth   = 0;
 	mScreenHeight  = 0;
 	mAvgTime       = 1.0f;
@@ -151,12 +150,41 @@ glDisplay::~glDisplay()
 // Create
 glDisplay* glDisplay::Create( const char* title, int width, int height, float r, float g, float b, float a )
 {
-	glDisplay* vp = new glDisplay();
+	videoOptions opt;
+
+	opt.resource = "display://0";
+	opt.width    = (width < 0) ? 0 : width;
+	opt.height   = (height < 0) ? 0 : height;
+
+	// create window
+	glDisplay* window = Create(opt);
+
+	if( !window )
+	{
+		printf(LOG_GL "failed to create OpenGL window\n");
+		delete window;
+		return NULL;
+	}
+
+	// set extra options
+	if( title != NULL )
+		window->SetTitle(title);
+
+	window->SetBackgroundColor(r, g, b, a);
+	
+	return window;
+}
+
+
+// Create
+glDisplay* glDisplay::Create( const videoOptions& options )
+{
+	glDisplay* vp = new glDisplay(options);
 	
 	if( !vp )
 		return NULL;
 		
-	if( !vp->initWindow(width, height) )
+	if( !vp->initWindow() )
 	{
 		printf(LOG_GL "failed to create X11 Window.\n");
 		delete vp;
@@ -178,12 +206,8 @@ glDisplay* glDisplay::Create( const char* title, int width, int height, float r,
 		delete vp;
 		return NULL;
 	}
-
-	if( title != NULL )
-		vp->SetTitle(title);
-
-	vp->SetBackgroundColor(r, g, b, a);
 	
+	vp->mStreaming = true;
 	vp->mID = gDisplays.size();
 	gDisplays.push_back(vp);
 
@@ -200,7 +224,7 @@ glDisplay* glDisplay::Create( const char* title, int width, int height, float r,
 
 
 // initWindow
-bool glDisplay::initWindow( int width, int height )
+bool glDisplay::initWindow()
 {
 	if( !mDisplayX )
 		mDisplayX = XOpenDisplay(0);
@@ -223,14 +247,14 @@ bool glDisplay::initWindow( int width, int height )
 	const int screenWidth = DisplayWidth(mDisplayX, screenIdx);
 	const int screenHeight = DisplayHeight(mDisplayX, screenIdx);
 	
-	if( width <= 0 )
-		width = screenWidth;
+	if( mOptions.width == 0 )
+		mOptions.width = screenWidth;
 
-	if( height <= 0 )
-		height = screenHeight;
+	if( mOptions.height == 0 )
+		mOptions.height = screenHeight;
 
 	printf(LOG_GL "glDisplay -- X screen %i resolution:  %ix%i\n", screenIdx, screenWidth, screenHeight);
-	printf(LOG_GL "glDisplay -- X window resolution:    %ix%i\n", width, height);
+	printf(LOG_GL "glDisplay -- X window resolution:    %ux%u\n", mOptions.width, mOptions.height);
 	
 	Screen* screen = XScreenOfDisplay(mDisplayX, screenIdx);
 
@@ -282,8 +306,8 @@ bool glDisplay::initWindow( int width, int height )
 
 	
 	// create window
-	Window win = XCreateWindow(mDisplayX, winRoot, 0, 0, width, height, 0,
-						  visual->depth, InputOutput, visual->visual, 
+	Window win = XCreateWindow(mDisplayX, winRoot, 0, 0, mOptions.width, mOptions.height, 
+						  0, visual->depth, InputOutput, visual->visual, 
 						  CWBorderPixel|CWColormap|CWEventMask, &winAttr);
 
 	if( !win )
@@ -304,26 +328,17 @@ bool glDisplay::initWindow( int width, int height )
 	mWindowX = win;
 	mScreenX = screen;
 	mVisualX = visual;
-	mWidth   = width;
-	mHeight  = height;
 
 	mScreenWidth  = screenWidth;
 	mScreenHeight = screenHeight;
 
 	mViewport[0] = 0; 
 	mViewport[1] = 0; 
-	mViewport[2] = mWidth; 
-	mViewport[3] = mHeight;
+	mViewport[2] = mOptions.width; 
+	mViewport[3] = mOptions.height;
 
 	XFree(fbConfig);
 	return true;
-}
-
-
-// SetTitle
-void glDisplay::SetTitle( const char* str )
-{
-	XStoreName(mDisplayX, mWindowX, str);
 }
 
 
@@ -344,6 +359,20 @@ bool glDisplay::initGL()
 }
 
 
+// SetTitle
+void glDisplay::SetTitle( const char* str )
+{
+	XStoreName(mDisplayX, mWindowX, str);
+}
+
+
+// SetStatus
+void glDisplay::SetStatus( const char* str )
+{
+	SetTitle(str);
+}
+
+
 // SetViewport
 void glDisplay::SetViewport( int left, int top, int right, int bottom )
 {
@@ -351,7 +380,7 @@ void glDisplay::SetViewport( int left, int top, int right, int bottom )
 	const int height = bottom - top;
 
 	mViewport[0] = left;
-	mViewport[1] = mHeight - bottom;
+	mViewport[1] = GetHeight() - bottom;
 	mViewport[2] = width;
 	mViewport[3] = height;
 
@@ -365,8 +394,8 @@ void glDisplay::ResetViewport()
 {
 	mViewport[0] = 0;
 	mViewport[1] = 0;
-	mViewport[2] = mWidth;
-	mViewport[3] = mHeight;
+	mViewport[2] = GetWidth();
+	mViewport[3] = GetHeight();
 
 	if( mRendering )
 		activateViewport();
@@ -432,6 +461,8 @@ void glDisplay::EndRender()
 	mAvgTime   = mAvgTime * 0.8f + ns * 0.2f;
 	mLastTime  = currTime;
 	mRendering = false;
+
+	mOptions.frameRate = (int)GetFPS();
 }
 
 
@@ -534,6 +565,29 @@ void glDisplay::RenderOnce( float* img, uint32_t width, uint32_t height, float x
 	BeginRender();
 	Render(img, width, height, x, y, normalize);
 	EndRender();
+}
+
+
+// Render
+bool glDisplay::Render( void* image, imageFormat format, uint32_t width, uint32_t height )
+{
+	if( !image )
+		return false;
+
+	if( format == FORMAT_RGBA32 )
+	{
+		RenderOnce((float*)image, width, height, 0, 0);
+	}
+	else
+	{
+		printf(LOG_GL "glDisplay::Render() -- unsupported image format (%s)\n", imageFormatToStr(format));
+		printf(LOG_GL "                       supported formats are:\n");
+		printf(LOG_GL "                           * rgba32\n");
+		
+		return false;
+	}
+
+	return true;
 }
 
 
@@ -663,7 +717,7 @@ void glDisplay::SetMaximized( bool maximized )
 // SetSize
 void glDisplay::SetSize( uint32_t width, uint32_t height )
 {
-	if( mWidth == width && mHeight == height )
+	if( mOptions.width == width && mOptions.height == height )
 		return;
 
 	// un-maximized the window if new size not fullscreen
@@ -681,8 +735,8 @@ void glDisplay::SetSize( uint32_t width, uint32_t height )
 
 	printf(LOG_GL "glDisplay -- set the window size to %ux%u\n", width, height); 
 
-	mWidth = width;
-	mHeight = height;
+	mOptions.width = width;
+	mOptions.height = height;
 
 	ResetViewport();
 }
@@ -1045,18 +1099,18 @@ void glDisplay::ProcessEvents()
 		}
 		else if( evt.type == ConfigureNotify )
 		{
-			if( evt.xconfigure.width != mWidth || evt.xconfigure.height != mHeight )
+			if( evt.xconfigure.width != mOptions.width || evt.xconfigure.height != mOptions.height )
 			{
-				const int prevWidth = mWidth;
-				const int prevHeight = mHeight;
+				const int prevWidth = mOptions.width;
+				const int prevHeight = mOptions.height;
 
-				mWidth = evt.xconfigure.width;
-				mHeight = evt.xconfigure.height;
+				mOptions.width = evt.xconfigure.width;
+				mOptions.height = evt.xconfigure.height;
 
 				if( mViewport[2] == prevWidth && mViewport[3] == prevHeight )
 					SetViewport(0, 0, evt.xconfigure.width, evt.xconfigure.height);
 
-				dispatchEvent(WINDOW_RESIZED, mWidth, mHeight);
+				dispatchEvent(WINDOW_RESIZED, mOptions.width, mOptions.height);
 			}
 		}
 		else if( evt.type == ClientMessage )
@@ -1230,7 +1284,7 @@ bool glDisplay::onEvent( uint16_t msg, int a, int b, void* user )
 		case WINDOW_CLOSED:
 		{
 			printf(LOG_GL "glDisplay -- the window has been closed\n");
-			display->mWindowClosed = true;
+			display->mStreaming = false;
 			return true;
 		}
 	}
