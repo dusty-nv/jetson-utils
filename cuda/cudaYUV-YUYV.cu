@@ -52,18 +52,37 @@ struct __align__(8) uchar8
 {
    uint8_t a0, a1, a2, a3, a4, a5, a6, a7;
 };
-static __host__ __device__ __forceinline__ uchar8 make_uchar8(uint8_t a0, uint8_t a1, uint8_t a2, uint8_t a3, uint8_t a4, uint8_t a5, uint8_t a6, uint8_t a7)
+
+struct __align__(32) float8
+{
+   float a0, a1, a2, a3, a4, a5, a6, a7;
+};
+
+template<typename T, typename BaseT> __device__ __forceinline__ T make_vec8(BaseT a0, BaseT a1, BaseT a2, BaseT a3, BaseT a4, BaseT a5, BaseT a6, BaseT a7)
+{
+   T val = {a0, a1, a2, a3, a4, a5, a6, a7};
+   return val;
+}
+
+/*static __host__ __device__ __forceinline__ uchar8 make_uchar8(uint8_t a0, uint8_t a1, uint8_t a2, uint8_t a3, uint8_t a4, uint8_t a5, uint8_t a6, uint8_t a7)
 {
    uchar8 val = {a0, a1, a2, a3, a4, a5, a6, a7};
    return val;
 }
 
 
+static __host__ __device__ __forceinline__ float8 make_float8(float a0, float a1, float a2, float a3, float a4, float a5, float a6, float a7)
+{
+   float8 val = {a0, a1, a2, a3, a4, a5, a6, a7};
+   return val;
+}*/
+
+
 //-----------------------------------------------------------------------------------
 // YUYV/UYVY to RGBA
 //-----------------------------------------------------------------------------------
-template <bool formatUYVY>
-__global__ void yuyvToRgba( uchar4* src, int srcAlignedWidth, uchar8* dst, int dstAlignedWidth, int width, int height )
+template <typename T, typename BaseT, bool formatUYVY>
+__global__ void yuyvToRgba( uchar4* src, int srcAlignedWidth, T* dst, int dstAlignedWidth, int width, int height )
 {
 	const int x = blockIdx.x * blockDim.x + threadIdx.x;
 	const int y = blockIdx.y * blockDim.y + threadIdx.y;
@@ -90,18 +109,18 @@ __global__ void yuyvToRgba( uchar4* src, int srcAlignedWidth, uchar8* dst, int d
 							  y1 - 0.3455f * u - 0.7169f * v,
 							  y1 + 1.7790f * u, 255.0f );
 
-	dst[y * dstAlignedWidth + x] = make_uchar8( clamp(px0.x, 0.0f, 255.0f), 
+	dst[y * dstAlignedWidth + x] = make_vec8<T, BaseT>(clamp(px0.x, 0.0f, 255.0f), 
 									    clamp(px0.y, 0.0f, 255.0f),
 									    clamp(px0.z, 0.0f, 255.0f),
 									    clamp(px0.w, 0.0f, 255.0f),
 									    clamp(px1.x, 0.0f, 255.0f),
 									    clamp(px1.y, 0.0f, 255.0f),
 									    clamp(px1.z, 0.0f, 255.0f),
-									    clamp(px1.w, 0.0f, 255.0f) );
+									    clamp(px1.w, 0.0f, 255.0f));
 } 
 
-template<bool formatUYVY>
-cudaError_t launchYUYV( uchar2* input, size_t inputPitch, uchar4* output, size_t outputPitch, size_t width, size_t height)
+template<typename T, typename BaseT, bool formatUYVY>
+cudaError_t launchYUYV( void* input, size_t inputPitch, T* output, size_t outputPitch, size_t width, size_t height)
 {
 	if( !input || !inputPitch || !output || !outputPitch || !width || !height )
 		return cudaErrorInvalidValue;
@@ -110,34 +129,62 @@ cudaError_t launchYUYV( uchar2* input, size_t inputPitch, uchar4* output, size_t
 	const dim3 grid(iDivUp(width/2, block.x), iDivUp(height, block.y));
 
 	const int srcAlignedWidth = inputPitch / sizeof(uchar4);	// normally would be uchar2, but we're doubling up pixels
-	const int dstAlignedWidth = outputPitch / sizeof(uchar8);	// normally would be uchar4 ^^^
+	const int dstAlignedWidth = outputPitch / sizeof(T);	// normally would be uchar4 ^^^
 
 	//printf("yuyvToRgba %zu %zu %i %i %i %i %i\n", width, height, (int)formatUYVY, srcAlignedWidth, dstAlignedWidth, grid.x, grid.y);
 
-	yuyvToRgba<formatUYVY><<<grid, block>>>((uchar4*)input, srcAlignedWidth, (uchar8*)output, dstAlignedWidth, width, height);
+	yuyvToRgba<T, BaseT, formatUYVY><<<grid, block>>>((uchar4*)input, srcAlignedWidth, output, dstAlignedWidth, width, height);
 
 	return CUDA(cudaGetLastError());
 }
 
 
-cudaError_t cudaUYVYToRGBA( uchar2* input, uchar4* output, size_t width, size_t height )
+// cudaUYVYToRGBA (uchar4)
+cudaError_t cudaUYVYToRGBA( void* input, uchar4* output, size_t width, size_t height )
 {
 	return cudaUYVYToRGBA(input, width * sizeof(uchar2), output, width * sizeof(uchar4), width, height);
 }
 
-cudaError_t cudaUYVYToRGBA( uchar2* input, size_t inputPitch, uchar4* output, size_t outputPitch, size_t width, size_t height )
+// cudaUYVYToRGBA (uchar4)
+cudaError_t cudaUYVYToRGBA( void* input, size_t inputPitch, uchar4* output, size_t outputPitch, size_t width, size_t height )
 {
-	return launchYUYV<true>(input, inputPitch, output, outputPitch, width, height);
+	return launchYUYV<uchar8, uint8_t, true>(input, inputPitch, (uchar8*)output, outputPitch, width, height);
 }
 
-cudaError_t cudaYUYVToRGBA( uchar2* input, uchar4* output, size_t width, size_t height )
+// cudaYUYVToRGBA (uchar4)
+cudaError_t cudaYUYVToRGBA( void* input, uchar4* output, size_t width, size_t height )
 {
 	return cudaYUYVToRGBA(input, width * sizeof(uchar2), output, width * sizeof(uchar4), width, height);
 }
 
-cudaError_t cudaYUYVToRGBA( uchar2* input, size_t inputPitch, uchar4* output, size_t outputPitch, size_t width, size_t height )
+// cudaYUYVToRGBA (uchar4)
+cudaError_t cudaYUYVToRGBA( void* input, size_t inputPitch, uchar4* output, size_t outputPitch, size_t width, size_t height )
 {
-	return launchYUYV<false>(input, inputPitch, output, outputPitch, width, height);
+	return launchYUYV<uchar8, uint8_t, false>(input, inputPitch, (uchar8*)output, outputPitch, width, height);
+}
+
+// cudaUYVYToRGBA (float4)
+cudaError_t cudaUYVYToRGBA( void* input, float4* output, size_t width, size_t height )
+{
+	return cudaUYVYToRGBA(input, width * sizeof(uchar2), output, width * sizeof(float4), width, height);
+}
+
+// cudaUYVYToRGBA (float4)
+cudaError_t cudaUYVYToRGBA( void* input, size_t inputPitch, float4* output, size_t outputPitch, size_t width, size_t height )
+{
+	return launchYUYV<float8, float, true>(input, inputPitch, (float8*)output, outputPitch, width, height);
+}
+
+// cudaYUYVToRGBA (float4)
+cudaError_t cudaYUYVToRGBA( void* input, float4* output, size_t width, size_t height )
+{
+	return cudaYUYVToRGBA(input, width * sizeof(uchar2), output, width * sizeof(float4), width, height);
+}
+
+// cudaYUYVToRGBA (float4)
+cudaError_t cudaYUYVToRGBA( void* input, size_t inputPitch, float4* output, size_t outputPitch, size_t width, size_t height )
+{
+	return launchYUYV<float8, float, false>(input, inputPitch, (float8*)output, outputPitch, width, height);
 }
 
 
@@ -163,7 +210,7 @@ __global__ void yuyvToGray( uchar4* src, int srcAlignedWidth, float2* dst, int d
 } 
 
 template<bool formatUYVY>
-cudaError_t launchGrayYUYV( uchar2* input, size_t inputPitch, float* output, size_t outputPitch, size_t width, size_t height)
+cudaError_t launchGrayYUYV( void* input, size_t inputPitch, float* output, size_t outputPitch, size_t width, size_t height)
 {
 	if( !input || !inputPitch || !output || !outputPitch || !width || !height )
 		return cudaErrorInvalidValue;
@@ -179,22 +226,22 @@ cudaError_t launchGrayYUYV( uchar2* input, size_t inputPitch, float* output, siz
 	return CUDA(cudaGetLastError());
 }
 
-cudaError_t cudaUYVYToGray( uchar2* input, float* output, size_t width, size_t height )
+cudaError_t cudaUYVYToGray( void* input, float* output, size_t width, size_t height )
 {
 	return cudaUYVYToGray(input, width * sizeof(uchar2), output, width * sizeof(uint8_t), width, height);
 }
 
-cudaError_t cudaUYVYToGray( uchar2* input, size_t inputPitch, float* output, size_t outputPitch, size_t width, size_t height )
+cudaError_t cudaUYVYToGray( void* input, size_t inputPitch, float* output, size_t outputPitch, size_t width, size_t height )
 {
 	return launchGrayYUYV<true>(input, inputPitch, output, outputPitch, width, height);
 }
 
-cudaError_t cudaYUYVToGray( uchar2* input, float* output, size_t width, size_t height )
+cudaError_t cudaYUYVToGray( void* input, float* output, size_t width, size_t height )
 {
 	return cudaYUYVToGray(input, width * sizeof(uchar2), output, width * sizeof(float), width, height);
 }
 
-cudaError_t cudaYUYVToGray( uchar2* input, size_t inputPitch, float* output, size_t outputPitch, size_t width, size_t height )
+cudaError_t cudaYUYVToGray( void* input, size_t inputPitch, float* output, size_t outputPitch, size_t width, size_t height )
 {
 	return launchGrayYUYV<false>(input, inputPitch, output, outputPitch, width, height);
 }

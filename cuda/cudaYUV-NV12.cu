@@ -33,12 +33,14 @@
 #define MUL(x,y)    (x*y)
 
 
+bool nv12ColorspaceSetup = false;
 
 __constant__ uint32_t constAlpha;
 __constant__ float  constHueColorSpaceMat[9];
 
 
 
+// YUV2RGB
 __device__ void YUV2RGB(uint32_t *yuvi, float *red, float *green, float *blue)
 {
    
@@ -240,11 +242,10 @@ __global__ void NV12ToARGB(uint32_t *srcImage,     size_t nSourcePitch,
 }
 
 
-bool nv12ColorspaceSetup = false;
 
 
-// cudaNV12ToARGB32
-cudaError_t cudaNV12ToRGBA( uint8_t* srcDev, size_t srcPitch, uchar4* destDev, size_t destPitch, size_t width, size_t height )
+// cudaNV12ToRGBA (uchar4)
+cudaError_t cudaNV12ToRGBA( void* srcDev, size_t srcPitch, uchar4* destDev, size_t destPitch, size_t width, size_t height )
 {
 	if( !srcDev || !destDev )
 		return cudaErrorInvalidDevicePointer;
@@ -263,7 +264,8 @@ cudaError_t cudaNV12ToRGBA( uint8_t* srcDev, size_t srcPitch, uchar4* destDev, s
 	return CUDA(cudaGetLastError());
 }
 
-cudaError_t cudaNV12ToRGBA( uint8_t* srcDev, uchar4* destDev, size_t width, size_t height )
+// cudaNV12ToRGBA (uchar4)
+cudaError_t cudaNV12ToRGBA( void* srcDev, uchar4* destDev, size_t width, size_t height )
 {
 	return cudaNV12ToRGBA(srcDev, width * sizeof(uint8_t), destDev, width * sizeof(uchar4), width, height);
 }
@@ -362,9 +364,8 @@ __global__ void NV12ToRGBAf(uint32_t* srcImage,  size_t nSourcePitch,
 }
 
 
-
-// cudaNV12ToRGBA
-cudaError_t cudaNV12ToRGBA32( uint8_t* srcDev, size_t srcPitch, float4* destDev, size_t destPitch, size_t width, size_t height )
+// cudaNV12ToRGBA (float4)
+cudaError_t cudaNV12ToRGBA( void* srcDev, size_t srcPitch, float4* destDev, size_t destPitch, size_t width, size_t height )
 {
 	if( !srcDev || !destDev )
 		return cudaErrorInvalidDevicePointer;
@@ -384,9 +385,10 @@ cudaError_t cudaNV12ToRGBA32( uint8_t* srcDev, size_t srcPitch, float4* destDev,
 	return CUDA(cudaGetLastError());
 }
 
-cudaError_t cudaNV12ToRGBA32( uint8_t* srcDev, float4* destDev, size_t width, size_t height )
+// cudaNV12ToRGBA (float4)
+cudaError_t cudaNV12ToRGBA( void* srcDev, float4* destDev, size_t width, size_t height )
 {
-	return cudaNV12ToRGBA32(srcDev, width * sizeof(uint8_t), destDev, width * sizeof(float4), width, height);
+	return cudaNV12ToRGBA(srcDev, width * sizeof(uint8_t), destDev, width * sizeof(float4), width, height);
 }
 
 
