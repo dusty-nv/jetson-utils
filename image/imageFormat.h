@@ -44,6 +44,14 @@ enum imageFormat
 	FORMAT_RGBA8,
 	FORMAT_RGBA32,
 
+	// YUV
+	FORMAT_YUYV,
+	FORMAT_YUY2=FORMAT_YUYV,
+	FORMAT_UYVY,		
+	FORMAT_I420,
+	FORMAT_YV12,
+	FORMAT_NV12,
+	
 	// grayscale
 	FORMAT_GRAY8,	
 	FORMAT_GRAY32,
@@ -65,9 +73,16 @@ inline const char* imageFormatToStr( imageFormat format );
 inline imageFormat imageFormatFromStr( const char* str );
 
 /**
+ * Pixel bit depth (in bits, not bytes)
  * @ingroup image
  */
-inline size_t imageFormatSize( imageFormat format );
+inline size_t imageFormatDepth( imageFormat format );
+
+/**
+ * Size of an image (in bytes)
+ * @ingroup image
+ */
+inline size_t imageFormatSize( imageFormat format, size_t width, size_t height );
 
 /**
  * @ingroup image

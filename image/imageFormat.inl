@@ -35,6 +35,11 @@ inline const char* imageFormatToStr( imageFormat format )
 		case FORMAT_RGBA8:	 return "rgba8";
 		case FORMAT_RGB32:	 return "rgb32";
 		case FORMAT_RGBA32:	 return "rgba32";
+		case FORMAT_I420:	 return "i420";
+		case FORMAT_YV12:	 return "yv12";
+		case FORMAT_NV12:	 return "nv12";
+		case FORMAT_UYVY:	 return "uyvy";
+		case FORMAT_YUYV:	 return "yuyv";
 		case FORMAT_GRAY8:	 return "gray8";
 		case FORMAT_GRAY32:  return "gray32";
 		case FORMAT_UNKNOWN: return "unknown";
@@ -56,24 +61,39 @@ inline imageFormat imageFormatFromStr( const char* str )
 			return fmt;
 	}
 
+	if( strcasecmp(str, "yuy2") == 0 )
+		return FORMAT_YUY2;
+
 	return FORMAT_UNKNOWN;
 }
 
 
-// imageFormatSize
-inline size_t imageFormatSize( imageFormat format )
+// imageFormatDepth
+inline size_t imageFormatDepth( imageFormat format )
 {
 	switch(format)
 	{
-		case FORMAT_RGB8:	return sizeof(uchar3);
-		case FORMAT_RGBA8:	return sizeof(uchar4);
-		case FORMAT_RGB32:	return sizeof(float3);
-		case FORMAT_RGBA32: return sizeof(float4);
-		case FORMAT_GRAY8:	return sizeof(unsigned char);
-		case FORMAT_GRAY32:	return sizeof(float);
+		case FORMAT_RGB8:	return sizeof(uchar3) * 8;
+		case FORMAT_RGBA8:	return sizeof(uchar4) * 8;
+		case FORMAT_RGB32:	return sizeof(float3) * 8;
+		case FORMAT_RGBA32: return sizeof(float4) * 8;
+		case FORMAT_GRAY8:	return sizeof(unsigned char) * 8;
+		case FORMAT_GRAY32:	return sizeof(float) * 8;
+		case FORMAT_I420:	return 12;
+		case FORMAT_YV12:	return 12;
+		case FORMAT_NV12:	return 12;
+		case FORMAT_UYVY:	return 16;
+		case FORMAT_YUYV:	return 16;
 	}
 
 	return 0;
+}
+
+
+// imageFormatSize
+inline size_t imageFormatSize( imageFormat format, size_t width, size_t height )
+{
+	return (width * height * imageFormatDepth(format)) / 8;
 }
 
 
