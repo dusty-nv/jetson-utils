@@ -24,17 +24,8 @@
 #define __GSTREAMER_ENCODER_H__
 
 #include "gstUtility.h"
-
-
-/**
- * Video codec (H.264/H.265) enumeration.
- * @ingroup codec
- */
-enum gstCodec
-{
-	GST_CODEC_H264 = 0,
-	GST_CODEC_H265
-};
+#include "videoOutput.h"
+#include "RingBuffer.h"
 
 
 /**
@@ -43,29 +34,44 @@ enum gstCodec
  * or handle streaming network transmission to remote host(s) via RTP/RTSP protocol.
  * @ingroup codec
  */
-class gstEncoder
+class gstEncoder : public videoOutput
 {
 public:
 	/**
-	 * Create an encoder instance that outputs to a file on disk.
+	 * Create an encoder from the provided video options.
 	 */
-	static gstEncoder* Create( gstCodec codec, uint32_t width, uint32_t height, const char* filename );
-	
+	static gstEncoder* Create( const videoOptions& options );
+
 	/**
-	 * Create an encoder instance that streams over the network.
+	 * Create an encoder instance from resource URI and codec.
 	 */
-	static gstEncoder* Create( gstCodec codec, uint32_t width, uint32_t height, const char* ipAddress, uint16_t port );
-	
-	/**
-	 * Create an encoder instance that outputs to a file on disk and streams over the network.
-	 */
-	static gstEncoder* Create( gstCodec codec, uint32_t width, uint32_t height, const char* filename, const char* ipAddress, uint16_t port );
+	static gstEncoder* Create( const URI& resource, videoOptions::Codec codec );
 	
 	/**
 	 * Destructor
 	 */
 	~gstEncoder();
 	
+	/**
+	 *
+	 */
+	virtual bool Render( void* image, imageFormat format, uint32_t width, uint32_t height );
+
+	/**
+	 *
+	 */
+	template<typename T> inline bool Render( T* image, uint32_t width, uint32_t height )		{ return Render((void**)image, imageFormatFromType<T>(), width, height); }
+	
+	/**
+	 * 
+	 */
+	//virtual bool Open();
+
+	/**
+	 * 
+	 */
+	//virtual void Close();
+
 	/**
 	 * Encode the next fixed-point RGBA frame.
 	 * Expects 8-bit per channel, 32-bit per pixel unsigned image, range 0-255.
@@ -75,7 +81,7 @@ public:
 	 * buffer pointer is expected to be CUDA memory allocated on the GPU.
 	 * @param buffer CUDA pointer to the RGBA image.
 	 */
-	bool EncodeRGBA( uint8_t* buffer );
+	//bool EncodeRGBA( uint8_t* buffer );
 
 	/**
 	 * Encode the next floating-point RGBA frame.
@@ -86,34 +92,18 @@ public:
 	 * @param buffer CUDA pointer to the RGBA image.
 	 * @param maxPixelValue indicates the maximum pixel intensity (typically 255.0f or 1.0f)
 	 */
-	bool EncodeRGBA( float* buffer, float maxPixelValue=255.0f );
-
-	/**
-	 * Encode the next I420 frame provided by the user.
-	 * Expects 12-bpp (bit per pixel) image in YUV I420 format.
-	 * This image is passed to GStreamer, so CPU pointer should be used.
-	 * @param buffer CPU pointer to the I420 image
-	 */
-	bool EncodeI420( void* buffer, size_t size );
-	
-	/**
-	 * Retrieve the width that the encoder was created for, in pixels.
-	 */
-	inline uint32_t GetWidth() const			{ return mWidth; }
-
-	/**
-	 * Retrieve the height that the encoder was created for, in pixels.
-	 */
-	inline uint32_t GetHeight() const			{ return mHeight; }
+	//bool EncodeRGBA( float* buffer, float maxPixelValue=255.0f );
 
 protected:
-	gstEncoder();
+	gstEncoder( const videoOptions& options );
 	
+	bool init();
+
 	bool buildCapsStr();
 	bool buildLaunchStr();
 	
-	bool init( gstCodec codec, uint32_t width, uint32_t height, const char* filename, const char* ipAddress, uint16_t port );
-	
+	bool encodeYUV( void* buffer, size_t size );
+
 	static void onNeedData( _GstElement* pipeline, uint32_t size, void* user_data );
 	static void onEnoughData( _GstElement* pipeline, void* user_data );
 
@@ -121,10 +111,7 @@ protected:
 	_GstCaps*    mBufferCaps;
 	_GstElement* mAppSrc;
 	_GstElement* mPipeline;
-	gstCodec     mCodec;
 	bool         mNeedData;
-	uint32_t     mWidth;
-	uint32_t     mHeight;
 	
 	std::string  mCapsStr;
 	std::string  mLaunchStr;
@@ -137,6 +124,8 @@ protected:
 	void* mGpuRGBA;
 	void* mCpuI420;
 	void* mGpuI420;
+
+	RingBuffer mBufferYUV;
 };
  
  
