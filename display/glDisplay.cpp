@@ -574,6 +574,9 @@ bool glDisplay::Render( void* image, imageFormat format, uint32_t width, uint32_
 	if( !image )
 		return false;
 
+	bool display_success = true;
+
+	// determine input format
 	if( format == FORMAT_RGBA32 )
 	{
 		RenderOnce((float*)image, width, height, 0, 0);
@@ -584,10 +587,12 @@ bool glDisplay::Render( void* image, imageFormat format, uint32_t width, uint32_
 		printf(LOG_GL "                       supported formats are:\n");
 		printf(LOG_GL "                           * rgba32\n");
 		
-		return false;
+		display_success = false;
 	}
 
-	return true;
+	// render sub-streams
+	const bool substreams_success = videoOutput::Render(image, format, width, height);
+	return display_success & substreams_success;
 }
 
 
