@@ -79,7 +79,7 @@ gstDecoder* gstDecoder::Create( const videoOptions& options )
 
 	if( !dec->init() )
 	{
-		printf(LOG_GSTREAMER "gstDecoder::Create() failed\n");
+		printf(LOG_GSTREAMER "gstDecoder -- failed to create decoder engine\n");
 		return NULL;
 	}
 	
@@ -87,58 +87,22 @@ gstDecoder* gstDecoder::Create( const videoOptions& options )
 }
 
 
-#if 0
 // Create
-gstDecoder* gstDecoder::Create( gstCodec codec, const char* filename )
+gstDecoder* gstDecoder::Create( const URI& resource, videoOptions::Codec codec )
 {
-	gstDecoder* dec = new gstDecoder();
-	
-	if( !dec )
-		return NULL;
-	
-	if( !dec->init(codec, filename, NULL, 0) )
-	{
-		printf(LOG_GSTREAMER "gstDecoder::Create() failed\n");
-		return NULL;
-	}
-	
-	return dec;
-}
-	
+	videoOptions opt;
 
-// Create
-gstDecoder* gstDecoder::Create( gstCodec codec, uint16_t port )
-{
-	return Create(codec, NULL, port);
-}
-	
+	opt.resource = resource;
+	opt.codec    = codec;
+	opt.ioType   = videoOptions::INPUT;
 
-// Create
-gstDecoder* gstDecoder::Create( gstCodec codec, const char* multicastIP, uint16_t port )
-{
-	gstDecoder* dec = new gstDecoder();
-	
-	if( !dec )
-		return NULL;
-	
-	if( !dec->init(codec, NULL, multicastIP, port) )
-	{
-		printf(LOG_GSTREAMER "gstDecoder::Create() failed\n");
-		return NULL;
-	}
-	
-	return dec;
+	return Create(opt);
 }
-#endif
+	
 
 // init
-//bool gstDecoder::init( gstCodec codec, const char* filename, const char* multicastIP, uint16_t port )
 bool gstDecoder::init()
 {
-	/*mCodec 		 = codec;
-	mInputPath 	 = filename;
-	mMulticastIP = multicastIP;
-	mPort 		 = port;*/
 	GError* err  = NULL;
 	
 	if( !gstreamerInit() )
@@ -146,9 +110,6 @@ bool gstDecoder::init()
 		printf(LOG_GSTREAMER "failed to initialize gstreamer API\n");
 		return NULL;
 	}
-
-	//if( !filename && !multicastIP )
-	//	return false;
 
 	// build pipeline string
 	if( !buildLaunchStr() )
@@ -567,7 +528,7 @@ bool gstDecoder::Capture( void** output, imageFormat format, uint64_t timeout )
 		return false;
 
 	// allocate ringbuffer for colorspace conversion
-	const size_t colorBufferSize = GetWidth() * GetHeight() * imageFormatSize(format);
+	const size_t colorBufferSize = imageFormatSize(format, GetWidth(), GetHeight());
 
 	if( !mBufferColor.Alloc(mOptions.numBuffers, colorBufferSize, mOptions.zeroCopy ? RingBuffer::ZeroCopy : 0) )
 	{
@@ -580,7 +541,12 @@ bool gstDecoder::Capture( void** output, imageFormat format, uint64_t timeout )
 
 	if( format == FORMAT_RGBA32 )
 	{
-		if( CUDA_FAILED(cudaNV12ToRGBA32((uint8_t*)latestRaw, (float4*)nextColor, GetWidth(), GetHeight())) )
+		if( CUDA_FAILED(cudaNV12ToRGBA((uint8_t*)latestRaw, (float4*)nextColor, GetWidth(), GetHeight())) )
+			return false;
+	}
+	else if( format == FORMAT_RGBA8 )
+	{
+		if( CUDA_FAILED(cudaNV12ToRGBA((uint8_t*)latestRaw, (uchar4*)nextColor, GetWidth(), GetHeight())) )
 			return false;
 	}
 	else

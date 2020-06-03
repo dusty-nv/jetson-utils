@@ -41,55 +41,42 @@ class gstDecoder : public videoSource
 {
 public:
 	/**
-	 * Create an decoder instance that reads from a video file on disk.
+	 * Create a decoder from the provided video options.
 	 */
 	static gstDecoder* Create( const videoOptions& options );
 
-#if 0
 	/**
-	 * Create an decoder instance that reads from a video file on disk.
+	 * Create a decoder instance from resource URI and codec.
 	 */
-	static gstDecoder* Create( gstCodec codec, const char* filename );
-	
-	/**
-	 * Create an decoder instance that streams over the network.
-	 */
-	static gstDecoder* Create( gstCodec codec, uint16_t port );
-	
-	/**
-	 * Create an decoder instance that streams over the network using multicast.
-	 */
-	static gstDecoder* Create( gstCodec codec, const char* multicastIP, uint16_t port );
-#endif
+	static gstDecoder* Create( const URI& resource, videoOptions::Codec codec );
 	
 	/**
 	 * Destructor
 	 */
 	~gstDecoder();
 	
-
 	/**
 	 * Capture
 	 */
 	virtual bool Capture( void** image, imageFormat format, uint64_t timeout=UINT64_MAX );
 
 	/**
-	 *
+	 * Capture
 	 */
 	template<typename T> inline bool Capture( T** image, uint64_t timeout=UINT64_MAX )		{ return Capture((void**)image, imageFormatFromType<T>(), timeout); }
 	
 	/**
-	 *
+	 * Open
 	 */
 	virtual bool Open();
 
 	/**
-	 * 
+	 * Close
 	 */
 	virtual void Close();
 
 	/**
-	 *
+	 * IsEOS
 	 */
 	inline bool IsEOS() const	{ return mEOS; }
 
