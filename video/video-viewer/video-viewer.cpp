@@ -30,6 +30,8 @@
 #include <signal.h>
 
 
+#include "gstDecoder.h"
+
 bool signal_recieved = false;
 
 void sig_handler(int signo)
