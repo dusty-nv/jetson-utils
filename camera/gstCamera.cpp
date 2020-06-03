@@ -275,7 +275,7 @@ bool gstCamera::ConvertRGBA( void* input, float** output, bool zeroCopy )
 	if( csiCamera() )
 	{
 		// MIPI CSI camera is NV12
-		if( CUDA_FAILED(cudaNV12ToRGBA32((uint8_t*)input, (float4*)mRGBA[mLatestRGBA], GetWidth(), GetHeight())) )
+		if( CUDA_FAILED(cudaNV12ToRGBA((uint8_t*)input, (float4*)mRGBA[mLatestRGBA], GetWidth(), GetHeight())) )
 			return false;
 	}
 	else
@@ -502,6 +502,7 @@ gstCamera* gstCamera::Create( uint32_t width, uint32_t height, const char* camer
 	opt.resource = camera;
 	opt.width    = width;
 	opt.height   = height;
+	opt.ioType   = videoOptions::INPUT;
 
 	return Create(opt);
 }
