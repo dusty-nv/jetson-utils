@@ -77,8 +77,14 @@ void rilog_debug_function(GstDebugCategory* category, GstDebugLevel level,
 }
 
 
+// gstreamerInit
 bool gstreamerInit()
 {
+	static bool gstreamer_initialized = false;
+
+	if( gstreamer_initialized )
+		return true;
+
 	int argc = 0;
 	//char* argv[] = { "none" };
 
@@ -87,6 +93,8 @@ bool gstreamerInit()
 		printf(LOG_GSTREAMER "failed to initialize gstreamer library with gst_init()\n");
 		return false;
 	}
+
+	gstreamer_initialized = true;
 
 	uint32_t ver[] = { 0, 0, 0, 0 };
 	gst_version( &ver[0], &ver[1], &ver[2], &ver[3] );
