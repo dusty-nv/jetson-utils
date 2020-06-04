@@ -66,6 +66,24 @@ gstDecoder::gstDecoder( const videoOptions& options ) : videoSource(options)
 gstDecoder::~gstDecoder()
 {
 	Close();
+
+	if( mAppSink != NULL )
+	{
+		gst_object_unref(mAppSink);
+		mAppSink = NULL;
+	}
+
+	if( mBus != NULL )
+	{
+		gst_object_unref(mBus);
+		mBus = NULL;
+	}
+
+	if( mPipeline != NULL )
+	{
+		gst_object_unref(mPipeline);
+		mPipeline = NULL;
+	}
 }
 
 
@@ -166,7 +184,7 @@ bool gstDecoder::init()
 	memset(&cb, 0, sizeof(GstAppSinkCallbacks));
 	
 	cb.eos         = onEOS;
-	cb.new_preroll = onPreroll;
+	cb.new_preroll = onPreroll;	// disabled b/c preroll sometimes occurs during Close() and crashes
 #if GST_CHECK_VERSION(1,0,0)
 	cb.new_sample  = onBuffer;
 #else
@@ -317,7 +335,7 @@ bool gstDecoder::buildLaunchStr()
 	else
 		ss << "video/x-raw ! ";
 
-	ss << "appsink name=mysink";
+	ss << "appsink name=mysink"; // wait-on-eos=false;
 
 	mLaunchStr = ss.str();
 
@@ -347,6 +365,27 @@ void gstDecoder::onEOS( _GstAppSink* sink, void* user_data )
 GstFlowReturn gstDecoder::onPreroll( _GstAppSink* sink, void* user_data )
 {
 	printf(LOG_GSTREAMER "gstDecoder -- onPreroll()\n");
+
+	if( !user_data )
+		return GST_FLOW_OK;
+		
+	gstDecoder* dec = (gstDecoder*)user_data;
+	
+#if GST_CHECK_VERSION(1,0,0)
+	// onPreroll gets called sometimes, just pull and free the buffer
+	// otherwise the pipeline may hang during shutdown
+	GstSample* gstSample = gst_app_sink_pull_preroll(dec->mAppSink);
+	
+	if( !gstSample )
+	{
+		printf(LOG_GSTREAMER "gstDecoder -- app_sink_pull_sample() returned NULL...\n");
+		return GST_FLOW_OK;
+	}
+
+	gst_sample_unref(gstSample);
+#endif
+
+	dec->checkMsgBus();
 	return GST_FLOW_OK;
 }
 
@@ -378,7 +417,6 @@ void gstDecoder::checkBuffer()
 	if( !mAppSink )
 		return;
 
-	
 #if GST_CHECK_VERSION(1,0,0)
 	// block waiting for the sample
 	GstSample* gstSample = gst_app_sink_pull_sample(mAppSink);
@@ -510,7 +548,7 @@ bool gstDecoder::Capture( void** output, imageFormat format, uint64_t timeout )
 	if( !output )
 		return false;
 
-	// confirm the camera is streaming
+	// confirm the stream is open
 	if( !mStreaming )
 	{
 		if( !Open() )
@@ -610,11 +648,11 @@ bool gstDecoder::Open()
 // Close
 void gstDecoder::Close()
 {
-	if( !mStreaming )
+	if( !mStreaming && !mEOS )  // if EOS was set, the pipeline is actually open
 		return;
 
 	// stop pipeline
-	printf(LOG_GSTREAMER "closing gstDecoder for streaming, transitioning pipeline to GST_STATE_NULL\n");
+	printf(LOG_GSTREAMER "gstDecoder -- stopping pipeline, transitioning to GST_STATE_NULL\n");
 
 	const GstStateChangeReturn result = gst_element_set_state(mPipeline, GST_STATE_NULL);
 
@@ -622,6 +660,7 @@ void gstDecoder::Close()
 		printf(LOG_GSTREAMER "gstDecoder -- failed to stop pipeline (error %u)\n", result);
 
 	usleep(250*1000);
+	checkMsgBus();
 	mStreaming = false;
 	printf(LOG_GSTREAMER "gstDecoder -- pipeline stopped\n");
 }

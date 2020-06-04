@@ -78,7 +78,17 @@ public:
 	/**
 	 * IsEOS
 	 */
-	inline bool IsEOS() const	{ return mEOS; }
+	inline bool IsEOS() const				{ return mEOS; }
+
+	/**
+	 *
+	 */
+	virtual inline uint32_t GetType() const		{ return Type; }
+
+	/**
+	 *
+	 */
+	static const uint32_t Type = (1 << 1);
 
 protected:
 	gstDecoder( const videoOptions& options );
