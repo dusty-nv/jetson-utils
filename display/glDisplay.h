@@ -450,6 +450,16 @@ public:
 	std::vector<glWidget*> FindWidgets( int x, int y );
 
 	/**
+	 *
+	 */
+	virtual inline uint32_t GetType() const		{ return Type; }
+
+	/**
+	 *
+	 */
+	static const uint32_t Type = (1 << 3);
+
+	/**
 	 * Default title bar name
 	 */
 	static const char* DEFAULT_TITLE;
