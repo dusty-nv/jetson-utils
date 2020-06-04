@@ -253,23 +253,13 @@ public:
 	 * @returns `true` on success, `false` if an error occurred.
 	 */
 	bool ConvertRGBA( void* input, float** output, bool zeroCopy=false );
-	
-	/**
-	 * Return the width of the camera.
-	 */
-	//inline uint32_t GetWidth() const	   { return mWidth; }
-
-	/**
-	 * Return the height of the camera.
-	 */
-	//inline uint32_t GetHeight() const	   { return mHeight; }
 
 	/**
 	 * Return the pixel bit depth of the camera (measured in bits).
 	 * This will be 12 for MIPI CSI cameras (YUV NV12 format)
 	 * or 24 for VL42 cameras (RGB 24-bit).
 	 */
-	inline uint32_t GetPixelDepth() const { return mDepth; }
+	inline uint32_t GetPixelDepth() const 		{ return mDepth; }
 
 	/**
 	 * Return the size (in bytes) of a camera frame from Capture().
@@ -280,8 +270,18 @@ public:
 	 *       To calculate the size of the converted float4 RGBA image,
 	 *       take:  `GetWidth() * GetHeight() * sizeof(float) * 4`
 	 */
-	inline uint32_t GetSize() const	   { return mSize; }
+	inline uint32_t GetSize() const	   		{ return mSize; }
 	
+	/**
+	 *
+	 */
+	virtual inline uint32_t GetType() const		{ return Type; }
+
+	/**
+	 *
+	 */
+	static const uint32_t Type = (1 << 0);
+
 	/**
 	 * Default camera width, unless otherwise specified during Create()
  	 */

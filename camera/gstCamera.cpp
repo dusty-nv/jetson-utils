@@ -81,6 +81,24 @@ gstCamera::~gstCamera()
 {
 	Close();
 
+	if( mAppSink != NULL )
+	{
+		gst_object_unref(mAppSink);
+		mAppSink = NULL;
+	}
+
+	if( mBus != NULL )
+	{
+		gst_object_unref(mBus);
+		mBus = NULL;
+	}
+
+	if( mPipeline != NULL )
+	{
+		gst_object_unref(mPipeline);
+		mPipeline = NULL;
+	}
+
 	for( uint32_t n=0; n < NUM_RINGBUFFERS; n++ )
 	{
 		// free capture buffer
@@ -419,16 +437,19 @@ bool gstCamera::buildLaunchStr( gstCameraSrc src )
 	{
 		mSource = src;	 // store camera source method
 
-	#if NV_TENSORRT_MAJOR > 1 && NV_TENSORRT_MAJOR < 5	// if JetPack 3.1-3.3 (different flip-method)
-		const int flipMethod = 0;					// Xavier (w/TRT5) camera is mounted inverted
-	#else
-		const int flipMethod = mOptions.flipMethod; //2;
+	#if NV_TENSORRT_MAJOR > 4
+		// on newer JetPack's, it's common for CSI camera to need flipped
+		// so here we reverse FLIP_NONE with FLIP_ROTATE_180
+		if( mOptions.flipMethod == videoOptions::FLIP_NONE )
+			mOptions.flipMethod = videoOptions::FLIP_ROTATE_180;
+		else if( mOptions.flipMethod == videoOptions::FLIP_ROTATE_180 )
+			mOptions.flipMethod = videoOptions::FLIP_NONE;
 	#endif	
 
 		if( src == GST_SOURCE_NVCAMERA )
-			ss << "nvcamerasrc fpsRange=\"30.0 30.0\" ! video/x-raw(memory:NVMM), width=(int)" << GetWidth() << ", height=(int)" << GetHeight() << ", format=(string)NV12 ! nvvidconv flip-method=" << flipMethod << " ! "; //'video/x-raw(memory:NVMM), width=(int)1920, height=(int)1080, format=(string)I420, framerate=(fraction)30/1' ! ";
+			ss << "nvcamerasrc fpsRange=\"" << mOptions.frameRate << " " << mOptions.frameRate << "\" ! video/x-raw(memory:NVMM), width=(int)" << GetWidth() << ", height=(int)" << GetHeight() << ", format=(string)NV12 ! nvvidconv flip-method=" << mOptions.flipMethod << " ! "; //'video/x-raw(memory:NVMM), width=(int)1920, height=(int)1080, format=(string)I420, framerate=(fraction)30/1' ! ";
 		else if( src == GST_SOURCE_NVARGUS )
-			ss << "nvarguscamerasrc sensor-id=" << mSensorCSI << " ! video/x-raw(memory:NVMM), width=(int)" << GetWidth() << ", height=(int)" << GetHeight() << ", framerate=30/1, format=(string)NV12 ! nvvidconv flip-method=" << flipMethod << " ! ";
+			ss << "nvarguscamerasrc sensor-id=" << mSensorCSI << " ! video/x-raw(memory:NVMM), width=(int)" << GetWidth() << ", height=(int)" << GetHeight() << ", framerate=" << mOptions.frameRate << "/1, format=(string)NV12 ! nvvidconv flip-method=" << mOptions.flipMethod << " ! ";
 		
 		ss << "video/x-raw ! appsink name=mysink";
 	}
@@ -692,15 +713,17 @@ void gstCamera::Close()
 		return;
 
 	// stop pipeline
-	printf(LOG_GSTREAMER "closing gstCamera for streaming, transitioning pipeline to GST_STATE_NULL\n");
+	printf(LOG_GSTREAMER "gstCamera -- stopping pipeline, transitioning to GST_STATE_NULL\n");
 
 	const GstStateChangeReturn result = gst_element_set_state(mPipeline, GST_STATE_NULL);
 
 	if( result != GST_STATE_CHANGE_SUCCESS )
 		printf(LOG_GSTREAMER "gstCamera failed to set pipeline state to PLAYING (error %u)\n", result);
 
-	usleep(250*1000);
+	usleep(250*1000);	
+	checkMsgBus();
 	mStreaming = false;
+	printf(LOG_GSTREAMER "gstCamera -- pipeline stopped\n");
 }
 
 
