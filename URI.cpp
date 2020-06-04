@@ -59,7 +59,13 @@ bool URI::Parse( const char* uri )
 	if( !uri )
 		return false;
 
-	string = uri;
+	string    = uri;
+	protocol  = "";
+	extension = "";
+	path      = "";
+     port      = -1;
+	
+	// look for protocol
 	std::size_t pos = string.find("://");
 
 	if( pos != std::string::npos )
@@ -69,13 +75,14 @@ bool URI::Parse( const char* uri )
 	}
 	else
 	{
+		// check for some formats without specified protocol
 		pos = string.find("/dev/video");
 
 		if( pos == 0 )
 		{
 			protocol = "v4l2";
 		}
-		else if( fileExists(string.c_str()) )
+		else if( string.find(".") != std::string::npos || string.find("/") != std::string::npos ) //fileExists(string.c_str()) )
 		{
 			protocol = "file";
 		}
@@ -89,7 +96,7 @@ bool URI::Parse( const char* uri )
 		}
 		else
 		{
-			printf("URI -- invalid resource, or file not found:  %s\n", string.c_str());
+			printf("URI -- invalid resource or file path:  %s\n", string.c_str());
 			return false;
 		}
 
@@ -150,7 +157,7 @@ bool URI::Parse( const char* uri )
 		{
 			if( sscanf(port_str.c_str(), "%i", &port) != 1 )
 			{
-				printf("URI -- failed to IP port from %s\n", string.c_str());
+				printf("URI -- failed to parse IP port from %s\n", string.c_str());
 				return false;
 			}
 		}
@@ -171,10 +178,10 @@ void URI::Print( const char* prefix ) const
 		prefix = "";
 
 	printf("%s-- URI: %s\n", prefix, string.c_str());
-	printf("%s      - protocol:  %s\n", prefix, protocol.c_str());
-	printf("%s      - path:      %s\n", prefix, path.c_str());
-	printf("%s      - extension: %s\n", prefix, extension.c_str());
-	printf("%s      - port:      %i\n", prefix, port);
+	printf("%s   - protocol:  %s\n", prefix, protocol.c_str());
+	printf("%s   - path:      %s\n", prefix, path.c_str());
+	printf("%s   - extension: %s\n", prefix, extension.c_str());
+	printf("%s   - port:      %i\n", prefix, port);
 }
 
 
