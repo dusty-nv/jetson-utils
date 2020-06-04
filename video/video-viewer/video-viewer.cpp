@@ -66,8 +66,6 @@ int main( int argc, char** argv )
 		return 0;
 	}
 
-	inputStream->GetOptions().Print();
-
 
 	/*
 	 * create output video stream
@@ -75,8 +73,11 @@ int main( int argc, char** argv )
 	videoOutput* outputStream = videoOutput::Create(cmdLine);
 	
 	if( !outputStream )
-		printf("video-viewer:  failed to create output stream\n");
-	
+	{
+		LogError("video-viewer:  failed to create output stream\n");
+		return 0;
+	}
+
 
 	/*
 	 * capture/display loop
