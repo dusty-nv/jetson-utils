@@ -46,11 +46,6 @@ gstEncoder::gstEncoder( const videoOptions& options ) : videoOutput(options)
 	mNeedData   = false;
 	mOutputPort = 0;
 
-	mCpuRGBA    = NULL;
-	mGpuRGBA    = NULL;
-	mCpuI420    = NULL;
-	mGpuI420    = NULL;
-
 	mBufferYUV.SetThreaded(false);
 }
 
@@ -58,28 +53,25 @@ gstEncoder::gstEncoder( const videoOptions& options ) : videoOutput(options)
 // destructor	
 gstEncoder::~gstEncoder()
 {
-	// send EOS
-	mNeedData = false;
-	
-	printf(LOG_GSTREAMER "gstEncoder -- shutting down pipeline, sending EOS\n");
-	GstFlowReturn eos_result = gst_app_src_end_of_stream(GST_APP_SRC(mAppSrc));
+	Close();
 
-	if( eos_result != 0 )
-		printf(LOG_GSTREAMER "gstEncoder -- failed sending appsrc EOS (result %u)\n", eos_result);
+	if( mAppSrc != NULL )
+	{
+		gst_object_unref(mAppSrc);
+		mAppSrc = NULL;
+	}
 
-	sleep(1);
+	if( mBus != NULL )
+	{
+		gst_object_unref(mBus);
+		mBus = NULL;
+	}
 
-	// stop pipeline
-	printf(LOG_GSTREAMER "gstEncoder -- transitioning pipeline to GST_STATE_NULL\n");
-
-	const GstStateChangeReturn result = gst_element_set_state(mPipeline, GST_STATE_NULL);
-
-	if( result != GST_STATE_CHANGE_SUCCESS )
-		printf(LOG_GSTREAMER "gstEncoder -- failed to set pipeline state to NULL (error %u)\n", result);
-
-	sleep(1);
-	
-	printf(LOG_GSTREAMER "gstEncoder -- pipeline shutdown complete\n");	
+	if( mPipeline != NULL )
+	{
+		gst_object_unref(mPipeline);
+		mPipeline = NULL;
+	}
 }
 
 
@@ -125,6 +117,7 @@ bool gstEncoder::init()
 	}
 
 	// build caps string
+#if 0
 	if( !buildCapsStr() )
 	{
 		printf(LOG_GSTREAMER "gstEncoder -- failed to build caps string\n");
@@ -138,6 +131,7 @@ bool gstEncoder::init()
 		printf(LOG_GSTREAMER "gstEncoder -- failed to parse caps from string\n");
 		return false;
 	}
+#endif
 
 	// build pipeline string
 	if( !buildLaunchStr() )
@@ -184,7 +178,7 @@ bool gstEncoder::init()
 
 	if( !appsrcElement || !appsrc )
 	{
-		printf(LOG_GSTREAMER "gstEncoder -- failed to retrieve AppSrc element from pipeline\n");
+		printf(LOG_GSTREAMER "gstEncoder -- failed to retrieve appsrc element from pipeline\n");
 		return false;
 	}
 	
@@ -197,38 +191,14 @@ bool gstEncoder::init()
 	//gst_app_src_set_caps(appsrc, mBufferCaps);
 #endif
 	
-	// set stream properties
+#if 0
+	// set stream properties (note: these are now set in the pipeline)
 	gst_app_src_set_stream_type(appsrc, GST_APP_STREAM_TYPE_STREAM);
 	
 	g_object_set(G_OBJECT(mAppSrc), "is-live", TRUE, NULL); 
 	g_object_set(G_OBJECT(mAppSrc), "do-timestamp", TRUE, NULL); 
-	
-	// transition pipline to STATE_PLAYING
-	printf(LOG_GSTREAMER "gstEncoder -- transitioning pipeline to GST_STATE_PLAYING\n");
-	
-	const GstStateChangeReturn result = gst_element_set_state(mPipeline, GST_STATE_PLAYING);
-
-	if( result == GST_STATE_CHANGE_ASYNC )
-	{
-#if 0
-		GstMessage* asyncMsg = gst_bus_timed_pop_filtered(mBus, 5 * GST_SECOND, 
-    	 					      (GstMessageType)(GST_MESSAGE_ASYNC_DONE|GST_MESSAGE_ERROR)); 
-
-		if( asyncMsg != NULL )
-		{
-			gst_message_print(mBus, asyncMsg, this);
-			gst_message_unref(asyncMsg);
-		}
-		else
-			printf(LOG_GSTREAMER "gstEncoder -- NULL message after transitioning pipeline to PLAYING...\n");
 #endif
-	}
-	else if( result != GST_STATE_CHANGE_SUCCESS )
-	{
-		printf(LOG_GSTREAMER "gstEncoder -- failed to set pipeline state to PLAYING (error %u)\n", result);
-		return false;
-	}
-	
+
 	return true;
 }
 	
@@ -240,10 +210,10 @@ bool gstEncoder::buildCapsStr()
 
 #if GST_CHECK_VERSION(1,0,0)
 	ss << "video/x-raw";
-	ss << ",width=" << GetWidth();
-	ss << ",height=" << GetHeight();
-	ss << ",format=(string)I420";
-	ss << ",framerate=30/1";
+	ss << ", width=" << GetWidth();
+	ss << ", height=" << GetHeight();
+	ss << ", format=(string)I420";
+	ss << ", framerate=30/1";
 #else
 	ss << "video/x-raw-yuv";
 	ss << ",width=" << GetWidth();
@@ -253,9 +223,7 @@ bool gstEncoder::buildCapsStr()
 #endif
 	
 	mCapsStr = ss.str();
-	
-	printf(LOG_GSTREAMER "gstEncoder -- buffer caps string:\n");
-	printf("%s\n", mCapsStr.c_str());
+	printf(LOG_GSTREAMER "gstEncoder -- new caps: %s\n", mCapsStr.c_str());
 	return true;
 }
 	
@@ -264,22 +232,28 @@ bool gstEncoder::buildCapsStr()
 bool gstEncoder::buildLaunchStr()
 {
 	std::ostringstream ss;
-	ss << "appsrc name=mysource ! ";
+
+	// setup appsrc input element
+	ss << "appsrc name=mysource is-live=true do-timestamp=true format=3 ! ";
+
+	// set default bitrate (if needed)
+	if( mOptions.bitRate == 0 )
+		mOptions.bitRate = 4000000; 
 	
 	// determine the requested protocol to use
 	const URI& uri = GetResource();
 
 #if GST_CHECK_VERSION(1,0,0)
-	ss << mCapsStr << " ! ";
+	//ss << mCapsStr << " ! ";
 
 	if( mOptions.codec == videoOptions::CODEC_H264 )
-		ss << "omxh264enc ! video/x-h264 !  ";	// TODO:  investigate quality-level setting
+		ss << "omxh264enc bitrate=" << mOptions.bitRate << " ! video/x-h264 !  ";	// TODO:  investigate quality-level setting
 	else if( mOptions.codec == videoOptions::CODEC_H265 )
-		ss << "omxh265enc ! video/x-h265 ! ";
+		ss << "omxh265enc bitrate=" << mOptions.bitRate << " ! video/x-h265 ! ";
 	else if( mOptions.codec == videoOptions::CODEC_VP8 )
-		ss << "omxvp8enc ! video/x-vp8 ! ";
+		ss << "omxvp8enc bitrate=" << mOptions.bitRate << " ! video/x-vp8 ! ";
 	else if( mOptions.codec == videoOptions::CODEC_VP9 )
-		ss << "omxvp9enc ! video/x-vp9 ! ";
+		ss << "omxvp9enc bitrate=" << mOptions.bitRate << " ! video/x-vp9 ! ";
 #else
 	if( mOptions.codec == videoOptions::CODEC_H264 )
 		ss << "nv_omx_h264enc quality-level=2 ! video/x-h264 ! ";
@@ -358,7 +332,7 @@ bool gstEncoder::buildLaunchStr()
 // onNeedData
 void gstEncoder::onNeedData( GstElement* pipeline, guint size, gpointer user_data )
 {
-	printf(LOG_GSTREAMER "gstEncoder -- AppSrc requesting data (%u bytes)\n", size);
+	printf(LOG_GSTREAMER "gstEncoder -- appsrc requesting data (%u bytes)\n", size);
 	
 	if( !user_data )
 		return;
@@ -371,7 +345,7 @@ void gstEncoder::onNeedData( GstElement* pipeline, guint size, gpointer user_dat
 // onEnoughData
 void gstEncoder::onEnoughData( GstElement* pipeline, gpointer user_data )
 {
-	printf(LOG_GSTREAMER "gstEncoder -- AppSrc signalling enough data\n");
+	printf(LOG_GSTREAMER "gstEncoder -- appsrc signalling enough data\n");
 
 	if( !user_data )
 		return;
@@ -387,13 +361,43 @@ bool gstEncoder::encodeYUV( void* buffer, size_t size )
 	if( !buffer || size == 0 )
 		return false;
 	
+	// confirm the stream is open
+	if( !mStreaming )
+	{
+		if( !Open() )
+			return false;
+	}
+
+	// check to see if data can be accepted
 	if( !mNeedData )
 	{
 		printf(LOG_GSTREAMER "gstEncoder -- pipeline full, skipping frame (%zu bytes)\n", size);
 		return true;
 	}
 
-	
+	// construct the buffer caps for this size image
+	if( !mBufferCaps )
+	{
+		if( !buildCapsStr() )
+		{
+			printf(LOG_GSTREAMER "gstEncoder -- failed to build caps string\n");
+			return false;
+		}
+
+		mBufferCaps = gst_caps_from_string(mCapsStr.c_str());
+
+		if( !mBufferCaps )
+		{
+			printf(LOG_GSTREAMER "gstEncoder -- failed to parse caps from string:\n");
+			printf(LOG_GSTREAMER "   %s\n", mCapsStr.c_str());
+			return false;
+		}
+
+	#if GST_CHECK_VERSION(1,0,0)
+		gst_app_src_set_caps(GST_APP_SRC(mAppSrc), mBufferCaps);
+	#endif
+	}
+
 #if GST_CHECK_VERSION(1,0,0)
 	// allocate gstreamer buffer memory
 	GstBuffer* gstBuffer = gst_buffer_new_allocate(NULL, size, NULL);
@@ -419,7 +423,6 @@ bool gstEncoder::encodeYUV( void* buffer, size_t size )
 		gst_buffer_unref(gstBuffer);
 		return false;
 	}
-
 #else
 	// convert memory to GstBuffer
 	GstBuffer* gstBuffer = gst_buffer_new();	
@@ -428,7 +431,7 @@ bool gstEncoder::encodeYUV( void* buffer, size_t size )
 	GST_BUFFER_DATA(gstBuffer) = GST_BUFFER_MALLOCDATA(gstBuffer);
 	GST_BUFFER_SIZE(gstBuffer) = size;
 	
-		//static size_t num_frame = 0;
+	//static size_t num_frame = 0;
 	//GST_BUFFER_TIMESTAMP(gstBuffer) = (GstClockTime)((num_frame / 30.0) * 1e9);	// for 1.0, use GST_BUFFER_PTS or GST_BUFFER_DTS instead
 	//num_frame++;
 
@@ -444,20 +447,9 @@ bool gstEncoder::encodeYUV( void* buffer, size_t size )
 	gst_buffer_unref(gstBuffer);
 
 	if( ret != 0 )
-		printf(LOG_GSTREAMER "gstEncoder -- AppSrc pushed buffer abnormally (result %u)\n", ret);
-
-	// check for any messages
-	while(true)
-	{
-		GstMessage* msg = gst_bus_pop(mBus);
-
-		if( !msg )
-			break;
-
-		gst_message_print(mBus, msg, this);
-		gst_message_unref(msg);
-	}
+		printf(LOG_GSTREAMER "gstEncoder -- appsrc pushed buffer abnormally (result %u)\n", ret);
 	
+	checkMsgBus();
 	return true;
 }
 
@@ -465,11 +457,22 @@ bool gstEncoder::encodeYUV( void* buffer, size_t size )
 // Render
 bool gstEncoder::Render( void* image, imageFormat format, uint32_t width, uint32_t height )
 {
-	if( !image )
+	if( !image || width == 0 || height == 0 )
 		return false;
 
 	if( mOptions.width != width || mOptions.height != height )
+	{
 		printf(LOG_GSTREAMER "gstEncoder::Render() -- warning, input dimensions (%ux%u) are different than expected (%ux%u)\n", width, height, mOptions.width, mOptions.height);
+		
+		mOptions.width  = width;
+		mOptions.height = height;
+
+		if( mBufferCaps != NULL )
+		{
+			gst_object_unref(mBufferCaps);
+			mBufferCaps = NULL;
+		}
+	}
 
 	// error checking / return
 	bool enc_success = false;
@@ -501,7 +504,7 @@ bool gstEncoder::Render( void* image, imageFormat format, uint32_t width, uint32
 		render_end();
 	}
 
-	CUDA(cudaDeviceSynchronize());
+	CUDA(cudaDeviceSynchronize());	// TODO replace with cudaStream?
 	
 	// encode YUV buffer
 	enc_success = encodeYUV(nextYUV, i420Size);
@@ -510,59 +513,94 @@ bool gstEncoder::Render( void* image, imageFormat format, uint32_t width, uint32
 	render_end();	
 }
 
+
+// Open
+bool gstEncoder::Open()
+{
+	if( mStreaming )
+		return true;
+
+	// transition pipline to STATE_PLAYING
+	printf(LOG_GSTREAMER "gstEncoder-- stopping pipeline, transitioning to GST_STATE_NULL\n");
+
+	const GstStateChangeReturn result = gst_element_set_state(mPipeline, GST_STATE_PLAYING);
+
+	if( result == GST_STATE_CHANGE_ASYNC )
+	{
 #if 0
-// EncodeRGBA
-bool gstEncoder::EncodeRGBA( uint8_t* buffer )
-{
-	if( !buffer )
-		return false;
+		GstMessage* asyncMsg = gst_bus_timed_pop_filtered(mBus, 5 * GST_SECOND, 
+    	 					      (GstMessageType)(GST_MESSAGE_ASYNC_DONE|GST_MESSAGE_ERROR)); 
 
-	const size_t i420Size = (mWidth * mHeight * 12) / 8;
-
-	if( !mCpuI420 || !mGpuI420 )
-	{
-		if( !cudaAllocMapped(&mCpuI420, &mGpuI420, i420Size) )
+		if( asyncMsg != NULL )
 		{
-			printf(LOG_GSTREAMER "gstEncoder -- failed to allocate CUDA memory for YUV I420 conversion\n");
-			return false;
+			gst_message_print(mBus, asyncMsg, this);
+			gst_message_unref(asyncMsg);
 		}
-	}
-
-	if( CUDA_FAILED(cudaRGBAToI420((uchar4*)buffer, (uint8_t*)mGpuI420, mWidth, mHeight)) )
-	{
-		printf(LOG_GSTREAMER "gstEncoder -- failed convert RGBA image to I420\n");
-		return false;
-	}
-
-	CUDA(cudaDeviceSynchronize());
-
-	return EncodeI420(mCpuI420, i420Size);
-}
-
-
-// EncodeRGBA
-bool gstEncoder::EncodeRGBA( float* buffer, float maxPixelValue )
-{
-	if( !buffer )
-		return false;
-
-	if( !mCpuRGBA || !mGpuRGBA )
-	{
-		if( !cudaAllocMapped(&mCpuRGBA, &mGpuRGBA, mWidth * mHeight * 4 * sizeof(uint8_t)) )
-		{
-			printf(LOG_GSTREAMER "gstEncoder -- failed to allocate CUDA memory for RGBA8 conversion\n");
-			return false;
-		}
-	}
-
-	if( CUDA_FAILED(cudaRGBA32ToRGBA8((float4*)buffer, (uchar4*)mGpuRGBA, mWidth, mHeight, make_float2(0.0f, maxPixelValue))) )
-	{
-		printf(LOG_GSTREAMER "gstEncoder -- failed convert RGBA32f image to RGBA8\n");
-		return false;
-	}
-
-	return EncodeRGBA((uint8_t*)mGpuRGBA);
-}
+		else
+			printf(LOG_GSTREAMER "gstEncoder -- NULL message after transitioning pipeline to PLAYING...\n");
 #endif
+	}
+	else if( result != GST_STATE_CHANGE_SUCCESS )
+	{
+		printf(LOG_GSTREAMER "gstEncoder -- failed to set pipeline state to PLAYING (error %u)\n", result);
+		return false;
+	}
+
+	checkMsgBus();
+	usleep(100 * 1000);
+	checkMsgBus();
+
+	mStreaming = true;
+	return true;
+}
+	
+
+// Close
+void gstEncoder::Close()
+{
+	if( !mStreaming )
+		return;
+
+	// send EOS
+	mNeedData = false;
+	
+	printf(LOG_GSTREAMER "gstEncoder -- shutting down pipeline, sending EOS\n");
+	GstFlowReturn eos_result = gst_app_src_end_of_stream(GST_APP_SRC(mAppSrc));
+
+	if( eos_result != 0 )
+		printf(LOG_GSTREAMER "gstEncoder -- failed sending appsrc EOS (result %u)\n", eos_result);
+
+	sleep(1);
+
+	// stop pipeline
+	printf(LOG_GSTREAMER "gstEncoder -- transitioning pipeline to GST_STATE_NULL\n");
+
+	const GstStateChangeReturn result = gst_element_set_state(mPipeline, GST_STATE_NULL);
+
+	if( result != GST_STATE_CHANGE_SUCCESS )
+		printf(LOG_GSTREAMER "gstEncoder -- failed to set pipeline state to NULL (error %u)\n", result);
+
+	sleep(1);
+	checkMsgBus();	
+	mStreaming = false;
+	printf(LOG_GSTREAMER "gstEncoder -- pipeline stopped\n");
+}
+
+
+// checkMsgBus
+void gstEncoder::checkMsgBus()
+{
+	while(true)
+	{
+		GstMessage* msg = gst_bus_pop(mBus);
+
+		if( !msg )
+			break;
+
+		gst_message_print(mBus, msg, this);
+		gst_message_unref(msg);
+	}
+}
+
 
 

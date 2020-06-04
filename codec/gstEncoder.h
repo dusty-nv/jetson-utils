@@ -65,40 +65,29 @@ public:
 	/**
 	 * 
 	 */
-	//virtual bool Open();
+	virtual bool Open();
 
 	/**
 	 * 
 	 */
-	//virtual void Close();
+	virtual void Close();
 
 	/**
-	 * Encode the next fixed-point RGBA frame.
-	 * Expects 8-bit per channel, 32-bit per pixel unsigned image, range 0-255.
-	 * It is assumed the width of the buffer is equal to GetWidth(),
-	 * and that the height of the buffer is equal to GetHeight().
-	 * This function performs colorspace conversion using CUDA, so the
-	 * buffer pointer is expected to be CUDA memory allocated on the GPU.
-	 * @param buffer CUDA pointer to the RGBA image.
+	 *
 	 */
-	//bool EncodeRGBA( uint8_t* buffer );
+	virtual inline uint32_t GetType() const		{ return Type; }
 
 	/**
-	 * Encode the next floating-point RGBA frame.
-	 * It is assumed the width of the buffer is equal to GetWidth(),
-	 * and that the height of the buffer is equal to GetHeight().
-	 * This function performs colorspace conversion using CUDA, so the
-	 * buffer pointer is expected to be CUDA memory allocated on the GPU.
-	 * @param buffer CUDA pointer to the RGBA image.
-	 * @param maxPixelValue indicates the maximum pixel intensity (typically 255.0f or 1.0f)
+	 *
 	 */
-	//bool EncodeRGBA( float* buffer, float maxPixelValue=255.0f );
+	static const uint32_t Type = (1 << 2);
 
 protected:
 	gstEncoder( const videoOptions& options );
 	
 	bool init();
 
+	void checkMsgBus();
 	bool buildCapsStr();
 	bool buildLaunchStr();
 	
