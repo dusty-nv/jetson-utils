@@ -30,6 +30,7 @@ videoOptions::videoOptions()
 	width 	  = 0;
 	height 	  = 0;
 	frameRate   = 30;
+	bitRate     = 0;
 	numBuffers  = 4;
 	zeroCopy    = true;
 	ioType      = INPUT;
@@ -40,20 +41,29 @@ videoOptions::videoOptions()
 
 
 // Print
-void videoOptions::Print() const
+void videoOptions::Print( const char* prefix ) const
 {
-	printf("videoOptions\n");
+	printf("------------------------------------------------\n");
 
+	if( prefix != NULL )
+		printf("%s video options:\n", prefix);
+	else
+		printf("video options:\n");
+
+	printf("------------------------------------------------\n");
 	resource.Print("  ");
 
-	printf("  -- width:      %i\n", width);
-	printf("  -- height:     %i\n", width);
-	printf("  -- frameRate:  %i\n", frameRate);
-	printf("  -- numBuffers: %i\n", numBuffers);
-	printf("  -- zeroCopy:   %i\n", (int)zeroCopy);
-	printf("  -- codec:      %i\n", (int)codec);
-	printf("  -- flipMethod: %i\n", (int)flipMethod);
-	printf("  -- ioType:     %i\n", (int)ioType);
+	printf("  -- width:      %u\n", width);
+	printf("  -- height:     %u\n", height);
+	printf("  -- frameRate:  %u\n", frameRate);
+	printf("  -- bitRate:    %u\n", bitRate);
+	printf("  -- numBuffers: %u\n", numBuffers);
+	printf("  -- zeroCopy:   %s\n", zeroCopy ? "true" : "false");
+	printf("  -- codec:      %s\n", CodecToStr(codec));
+	printf("  -- flipMethod: %s\n", FlipMethodToStr(flipMethod));
+	printf("  -- ioType:     %s\n", IoTypeToStr(ioType));
+
+	printf("------------------------------------------------\n");
 }
 
 
@@ -70,9 +80,18 @@ bool videoOptions::Parse( const commandLine& cmdLine, videoOptions::IoType type 
 {
 	ioType = type;
 
+	// check for headless output
+	const bool headless = cmdLine.GetFlag("no-display") | cmdLine.GetFlag("headless");
+
 	// parse input/output URI
-	resource = (type == INPUT) ? cmdLine.GetString("input", "csi://0")
-						  : cmdLine.GetString("output", "display://0");
+	const char* resourceStr = (type == INPUT) ? cmdLine.GetString("input", "csi://0")
+						                 : cmdLine.GetString("output", headless ? NULL : "display://0");
+
+	if( !resource.Parse(resourceStr) )
+	{
+		printf("videoOptions -- failed to parse %s resource URI (%s)\n", IoTypeToStr(type), resourceStr != NULL ? resourceStr : "null");
+		return false;
+	}
 
 	// parse stream settings
 	width 	 = cmdLine.GetUnsignedInt("width");
@@ -85,6 +104,9 @@ bool videoOptions::Parse( const commandLine& cmdLine, videoOptions::IoType type 
 	flipMethod = videoOptions::FlipMethodFromStr(cmdLine.GetString("flip-method"));
 	codec 	 = videoOptions::CodecFromStr(cmdLine.GetString("codec"));
 		
+	if( type == OUTPUT )
+		bitRate = cmdLine.GetUnsignedInt("bitrate", bitRate);
+
 	return true;
 }
 

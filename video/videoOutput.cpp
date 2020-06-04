@@ -23,7 +23,7 @@
 #include "videoOutput.h"
 
 #include "glDisplay.h"
-//#include "gstEncoder.h"
+#include "gstEncoder.h"
 
 
 // constructor
@@ -46,15 +46,21 @@ videoOutput::~videoOutput()
 // Create
 videoOutput* videoOutput::Create( const videoOptions& options )
 {
+	videoOutput* output = NULL;
 	const URI& uri = options.resource;
-
+	
 	if( uri.protocol == "display" )
-		return glDisplay::Create(options);
-//	else if( uri.protocol == "file" || uri.protocol == "rtp" )
-//		return gstEncoder::Create(options);
+		output = glDisplay::Create(options);
+	else if( uri.protocol == "file" || uri.protocol == "rtp" )
+		output = gstEncoder::Create(options);
+	else
+		printf("videoOutput -- unsupported protocol (%s)\n", uri.protocol.size() > 0 ? uri.protocol.c_str() : "null");
 
-	printf("videoOutput -- unsupported protocol (%s)\n", uri.protocol.size() > 0 ? uri.protocol.c_str() : "null");
-	return NULL;
+	if( !output )
+		return NULL;
+
+	output->GetOptions().Print(output->TypeToStr());
+	return output;
 }
 
 
@@ -89,7 +95,25 @@ videoOutput* videoOutput::Create( const commandLine& cmdLine )
 		return NULL;
 	}
 
-	return Create(opt);
+	// create requested output interface
+	videoOutput* output = Create(opt);
+
+	// determine if display should also be created
+	const bool headless = cmdLine.GetFlag("no-display") | cmdLine.GetFlag("headless");
+
+	if( opt.resource.protocol != "display" && !headless )
+	{
+		opt.resource = "display://0";
+		videoOutput* display = Create(opt);
+
+		if( !display )
+			return output;
+
+		display->AddOutput(output);
+		return display;
+	}
+
+	return output;
 }
 
 
@@ -128,6 +152,18 @@ bool videoOutput::Render( void* image, imageFormat format, uint32_t width, uint3
 void videoOutput::SetStatus( const char* str )
 {
 
+}
+
+
+// TypeToStr
+const char* videoOutput::TypeToStr( uint32_t type )
+{
+	if( type == glDisplay::Type )
+		return "glDisplay";
+	else if( type == gstEncoder::Type )
+		return "gstEncoder";
+
+	return "(unknown)";
 }
 
 

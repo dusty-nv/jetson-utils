@@ -63,6 +63,11 @@ public:
 	/**
 	 *
 	 */
+	uint32_t bitRate;
+
+	/**
+	 *
+	 */
 	uint32_t numBuffers;
 	
 	/**
@@ -122,7 +127,7 @@ public:
 		FLIP_UPPER_RIGHT_DIAGONAL,
 		FLIP_VERTICAL,
 		FLIP_UPPER_LEFT_DIAGONAL,
-		FLIP_DEFAULT = FLIP_ROTATE_180
+		FLIP_DEFAULT = FLIP_NONE
 	};
 
 	/**
@@ -152,7 +157,7 @@ public:
 	/**
 	 *
 	 */
-	void Print() const;
+	void Print( const char* prefix=NULL ) const;
 
 	/**
 	 *

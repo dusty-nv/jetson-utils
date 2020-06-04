@@ -43,15 +43,21 @@ videoSource::~videoSource()
 // Create
 videoSource* videoSource::Create( const videoOptions& options )
 {
+	videoSource* src = NULL;
 	const URI& uri = options.resource;
 
 	if( uri.protocol == "csi" || uri.protocol == "v4l2" )
-		return gstCamera::Create(options);
+		src = gstCamera::Create(options);
 	else if( uri.protocol == "file" || uri.protocol == "rtp" || uri.protocol == "rtsp" )
-		return gstDecoder::Create(options);
+		src = gstDecoder::Create(options);
+	else
+		printf("videoSource -- unsupported protocol (%s)\n", uri.protocol.size() > 0 ? uri.protocol.c_str() : "null");
+	
+	if( !src )
+		return NULL;
 
-	printf("videoSource -- unsupported protocol (%s)\n", uri.protocol.size() > 0 ? uri.protocol.c_str() : "null");
-	return NULL;
+	src->GetOptions().Print(src->TypeToStr());
+	return src;
 }
 
 
@@ -102,6 +108,18 @@ bool videoSource::Open()
 void videoSource::Close()
 {
 	mStreaming = false;
+}
+
+
+// TypeToStr
+const char* videoSource::TypeToStr( uint32_t type )
+{
+	if( type == gstCamera::Type )
+		return "gstCamera";
+	else if( type == gstDecoder::Type )
+		return "gstDecoder";
+
+	return "(unknown)";
 }
 
 

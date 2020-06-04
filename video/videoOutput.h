@@ -115,7 +115,7 @@ public:
 	/**
 	 *
 	 */
-	inline void AddOutput( videoOutput* output )				{ mOutputs.push_back(output); }
+	inline void AddOutput( videoOutput* output )				{ if(output != NULL) mOutputs.push_back(output); }
 
 	/**
 	 *
@@ -131,6 +131,31 @@ public:
 	 *
 	 */
 	virtual void SetStatus( const char* str );
+
+	/**
+	 *
+	 */
+	virtual inline uint32_t GetType() const			{ return 0; }
+
+	/**
+	 *
+	 */
+	inline bool IsType( uint32_t type ) const		{ return (type == GetType()); }
+
+	/**
+	 *
+	 */
+	template<typename T> bool IsType() const		{ return IsType(T::Type); }
+
+	/**
+	 *
+	 */
+	inline const char* TypeToStr() const			{ return TypeToStr(GetType()); }
+
+	/**
+	 *
+	 */
+	static const char* TypeToStr( uint32_t type );
 
 protected:
 	videoOutput( const videoOptions& options );
