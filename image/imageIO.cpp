@@ -334,19 +334,19 @@ bool loadImage( const char* filename, void** output, imageFormat format, int* wi
 
 
 // loadImageRGB
-bool loadImageRGB( const char* filename, uchar3** output, int* width, int* height, const float3& mean )
+bool loadImageRGB( const char* filename, uchar3** output, int* width, int* height )
 {
 	return loadImage(filename, (void**)output, FORMAT_RGB8, width, height);
 }
 
 // loadImageRGBA
-bool loadImageRGBA( const char* filename, uchar4** output, int* width, int* height, const float3& mean )
+bool loadImageRGBA( const char* filename, uchar4** output, int* width, int* height )
 {
 	return loadImage(filename, (void**)output, FORMAT_RGBA8, width, height);
 }
 
 // loadImageRGB
-bool loadImageRGB( const char* filename, float3** output, int* width, int* height, const float3& mean )
+bool loadImageRGB( const char* filename, float3** output, int* width, int* height )
 {
 	return loadImage(filename, (void**)output, FORMAT_RGB32, width, height);
 }
@@ -355,6 +355,20 @@ bool loadImageRGB( const char* filename, float3** output, int* width, int* heigh
 bool loadImageRGBA( const char* filename, float4** output, int* width, int* height )
 {
 	return loadImage(filename, (void**)output, FORMAT_RGBA32, width, height);
+}
+
+// loadImageRGBA
+bool loadImageRGBA( const char* filename, float4** cpu, float4** gpu, int* width, int* height )
+{
+	const bool result = loadImageRGBA(filename, gpu, width, height);
+
+	if( !result )
+		return false;
+
+	if( cpu != NULL )
+		*cpu = *gpu;
+
+	return true;
 }
 
 

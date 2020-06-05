@@ -94,6 +94,15 @@ bool loadImageRGBA( const char* filename, uchar4** ptr, int* width, int* height 
 bool loadImageRGBA( const char* filename, float4** ptr, int* width, int* height );
 
 /**
+ * Load a color image from disk into CUDA memory with alpha, in float4 RGBA format with pixel values 0-255.
+ * @see loadImage() for more details about parameters and supported image formats.
+ * @deprecated this overload of loadImageRGBA() is deprecated and provided for legacy compatbility.
+ *             having separate CPU and GPU pointers for shared memory is no longer needed, as they are the same.
+ * @ingroup image
+ */
+bool loadImageRGBA( const char* filename, float4** cpu, float4** gpu, int* width, int* height );
+
+/**
  * Save a float4 RGBA image to disk.
  *
  * Supported image file formats by saveImageRGBA() include:  
