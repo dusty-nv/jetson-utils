@@ -20,8 +20,8 @@
  *    Thanks to Linh Hah for additions and fixes.
  */
 
-#ifndef HELPER_MATH_H
-#define HELPER_MATH_H
+#ifndef __CUDA_HELPER_MATH_H_
+#define __CUDA_HELPER_MATH_H_
 
 #include "cuda_runtime.h"
 
