@@ -28,11 +28,35 @@
 
 
 //////////////////////////////////////////////////////////////////////////////////
-/// @name RGBA to YUV 4:2:0 planar (I420 & YV12)
+/// @name RGBA to YUV I420 4:2:0 planar
 /// @ingroup colorspace
 //////////////////////////////////////////////////////////////////////////////////
 
 ///@{
+
+/**
+ * Convert an RGB uchar3 buffer into YUV I420 planar.
+ * @ingroup colorspace
+ */
+cudaError_t cudaRGBToI420( uchar3* input, void* output, size_t width, size_t height );
+
+/**
+ * Convert an RGB uchar3 texture into YUV I420 planar.
+ * @ingroup colorspace
+ */
+cudaError_t cudaRGBToI420( uchar3* input, size_t inputPitch, void* output, size_t outputPitch, size_t width, size_t height );
+
+/**
+ * Convert an RGB float3 buffer into YUV I420 planar.
+ * @ingroup colorspace
+ */
+cudaError_t cudaRGBToI420( float3* input, void* output, size_t width, size_t height );
+
+/**
+ * Convert an RGB float3 texture into YUV I420 planar.
+ * @ingroup colorspace
+ */
+cudaError_t cudaRGBToI420( float3* input, size_t inputPitch, void* output, size_t outputPitch, size_t width, size_t height );
 
 /**
  * Convert an RGBA uchar4 buffer into YUV I420 planar.
@@ -57,6 +81,40 @@ cudaError_t cudaRGBAToI420( float4* input, void* output, size_t width, size_t he
  * @ingroup colorspace
  */
 cudaError_t cudaRGBAToI420( float4* input, size_t inputPitch, void* output, size_t outputPitch, size_t width, size_t height );
+
+///@}
+
+
+//////////////////////////////////////////////////////////////////////////////////
+/// @name RGBA to YUV YV12 4:2:0 planar
+/// @ingroup colorspace
+//////////////////////////////////////////////////////////////////////////////////
+
+///@{
+
+/**
+ * Convert an RGB uchar3 buffer into YUV YV12 planar.
+ * @ingroup colorspace
+ */
+cudaError_t cudaRGBToYV12( uchar3* input, void* output, size_t width, size_t height );
+
+/**
+ * Convert an RGB uchar3 texture into YUV YV12 planar.
+ * @ingroup colorspace
+ */
+cudaError_t cudaRGBToYV12( uchar3* input, size_t inputPitch, void* output, size_t outputPitch, size_t width, size_t height );
+
+/**
+ * Convert an RGB float3 buffer into YUV YV12 planar.
+ * @ingroup colorspace
+ */
+cudaError_t cudaRGBToYV12( float3* input, void* output, size_t width, size_t height );
+
+/**
+ * Convert an RGB float3 texture into YUV YV12 planar.
+ * @ingroup colorspace
+ */
+cudaError_t cudaRGBToYV12( float3* input, size_t inputPitch, void* output, size_t outputPitch, size_t width, size_t height );
 
 /**
  * Convert an RGBA uchar4 buffer into YUV YV12 planar.
@@ -185,6 +243,34 @@ cudaError_t cudaYUYVToGray( void* input, size_t inputPitch, float* output, size_
 ///@{
 
 /**
+ * Convert an NV12 texture (semi-planar 4:2:0) to RGB uchar3 format.
+ * NV12 = 8-bit Y plane followed by an interleaved U/V plane with 2x2 subsampling.
+ * @ingroup colorspace
+ */
+cudaError_t cudaNV12ToRGB( void* input, uchar3* output, size_t width, size_t height );
+
+/**
+ * Convert an NV12 texture (semi-planar 4:2:0) to RGB uchar3 format.
+ * NV12 = 8-bit Y plane followed by an interleaved U/V plane with 2x2 subsampling.
+ * @ingroup colorspace
+ */
+cudaError_t cudaNV12ToRGB( void* input, size_t inputPitch, uchar3* output, size_t outputPitch, size_t width, size_t height );
+
+/**
+ * Convert an NV12 texture (semi-planar 4:2:0) to RGB float3 format.
+ * NV12 = 8-bit Y plane followed by an interleaved U/V plane with 2x2 subsampling.
+ * @ingroup colorspace
+ */
+cudaError_t cudaNV12ToRGB( void* input, float3* output, size_t width, size_t height );
+
+/**
+ * Convert an NV12 texture (semi-planar 4:2:0) to RGB float3 format.
+ * NV12 = 8-bit Y plane followed by an interleaved U/V plane with 2x2 subsampling.
+ * @ingroup colorspace
+ */
+cudaError_t cudaNV12ToRGB( void* input, size_t inputPitch, float3* output, size_t outputPitch, size_t width, size_t height );
+
+/**
  * Convert an NV12 texture (semi-planar 4:2:0) to RGBA uchar4 format.
  * NV12 = 8-bit Y plane followed by an interleaved U/V plane with 2x2 subsampling.
  * @ingroup colorspace
@@ -211,16 +297,6 @@ cudaError_t cudaNV12ToRGBA( void* input, float4* output, size_t width, size_t he
  * @ingroup colorspace
  */
 cudaError_t cudaNV12ToRGBA( void* input, size_t inputPitch, float4* output, size_t outputPitch, size_t width, size_t height );
-
-/**
- * Setup NV12 color conversion constants.
- * cudaNV12SetupColorspace() isn't necessary for the user to call, it will be
- * called automatically by cudaNV12ToRGBA() with a hue of 0.0.
- * However if you want to setup custom constants (ie with a hue different than 0),
- * then you can call cudaNV12SetupColorspace() at any time, overriding the default.
- * @ingroup colorspace
- */
-cudaError_t cudaNV12SetupColorspace( float hue = 0.0f ); 
 
 ///@}
 
