@@ -110,8 +110,8 @@ protected:
 	//gstCodec     mCodec;
 	
 	Event	   mWaitEvent;
-	RingBuffer   mBufferRaw;
-	RingBuffer   mBufferColor;
+	RingBuffer   mBufferYUV;
+	RingBuffer   mBufferRGB;
 
 	std::string  mLaunchStr;
 	bool         mEOS;

@@ -21,9 +21,7 @@
  */
 
 #include "gstDecoder.h"
-
-#include "filesystem.h"
-#include "timespec.h"
+#include "cudaColorspace.h"
 
 #include <gst/gst.h>
 #include <gst/app/gstappsink.h>
@@ -33,7 +31,6 @@
 #include <string.h>
 #include <strings.h>
 
-#include "cudaYUV.h"
 
 
 // 
@@ -58,7 +55,7 @@ gstDecoder::gstDecoder( const videoOptions& options ) : videoSource(options)
 	mPipeline   = NULL;
 	mEOS        = false;
 
-	mBufferColor.SetThreaded(false);
+	mBufferRGB.SetThreaded(false);
 }
 
 
@@ -514,14 +511,14 @@ void gstDecoder::checkBuffer()
 	mOptions.height = height;
 
 	// allocate ringbuffer
-	if( !mBufferRaw.Alloc(mOptions.numBuffers, gstSize, RingBuffer::ZeroCopy) )
+	if( !mBufferYUV.Alloc(mOptions.numBuffers, gstSize, RingBuffer::ZeroCopy) )
 	{
-		printf(LOG_GSTREAMER "gstDecoder -- failed to allocate %u buffers of %u bytes\n", mOptions.numBuffers, gstSize);
+		printf(LOG_GSTREAMER "gstDecoder -- failed to allocate %u buffers (%u bytes each)\n", mOptions.numBuffers, gstSize);
 		release_return;
 	}
 
 	// copy to next ringbuffer
-	void* nextBuffer = mBufferRaw.Peek(RingBuffer::Write);
+	void* nextBuffer = mBufferYUV.Peek(RingBuffer::Write);
 
 	if( !nextBuffer )
 	{
@@ -530,7 +527,7 @@ void gstDecoder::checkBuffer()
 	}
 
 	memcpy(nextBuffer, gstData, gstSize);
-	mBufferRaw.Next(RingBuffer::Write);
+	mBufferYUV.Next(RingBuffer::Write);
 	mWaitEvent.Wake();
 
 #if GST_CHECK_VERSION(1,0,0)
@@ -560,40 +557,36 @@ bool gstDecoder::Capture( void** output, imageFormat format, uint64_t timeout )
 		return false;
 
 	// get the latest ringbuffer
-	void* latestRaw = mBufferRaw.Next(RingBuffer::ReadLatestOnce);
+	void* latestYUV = mBufferYUV.Next(RingBuffer::ReadLatestOnce);
 
-	if( !latestRaw )
+	if( !latestYUV )
 		return false;
 
 	// allocate ringbuffer for colorspace conversion
-	const size_t colorBufferSize = imageFormatSize(format, GetWidth(), GetHeight());
+	const size_t rgbBufferSize = imageFormatSize(format, GetWidth(), GetHeight());
 
-	if( !mBufferColor.Alloc(mOptions.numBuffers, colorBufferSize, mOptions.zeroCopy ? RingBuffer::ZeroCopy : 0) )
+	if( !mBufferRGB.Alloc(mOptions.numBuffers, rgbBufferSize, mOptions.zeroCopy ? RingBuffer::ZeroCopy : 0) )
 	{
-		printf(LOG_GSTREAMER "gstDecoder -- failed to allocate %u buffers of %zu bytes\n", mOptions.numBuffers, colorBufferSize);
+		printf(LOG_GSTREAMER "gstDecoder -- failed to allocate %u buffers (%zu bytes each)\n", mOptions.numBuffers, rgbBufferSize);
 		return false;
 	}
 
 	// perform colorspace conversion
-	void* nextColor = mBufferColor.Next(RingBuffer::Write);
+	void* nextRGB = mBufferRGB.Next(RingBuffer::Write);
 
-	if( format == FORMAT_RGBA32 )
+	if( CUDA_FAILED(cudaConvertColor(latestYUV, FORMAT_NV12, nextRGB, format, GetWidth(), GetHeight())) )
 	{
-		if( CUDA_FAILED(cudaNV12ToRGBA((uint8_t*)latestRaw, (float4*)nextColor, GetWidth(), GetHeight())) )
-			return false;
-	}
-	else if( format == FORMAT_RGBA8 )
-	{
-		if( CUDA_FAILED(cudaNV12ToRGBA((uint8_t*)latestRaw, (uchar4*)nextColor, GetWidth(), GetHeight())) )
-			return false;
-	}
-	else
-	{
-		printf(LOG_GSTREAMER "gstCamera -- unsupported format requested for Capture()\n");
+		printf(LOG_GSTREAMER "gstDecoder::Capture() -- unsupported image format (%s)\n", imageFormatToStr(format));
+		printf(LOG_GSTREAMER "                         supported formats are:\n");
+		printf(LOG_GSTREAMER "                             * rgb8\n");		
+		printf(LOG_GSTREAMER "                             * rgba8\n");		
+		printf(LOG_GSTREAMER "                             * rgb32\n");		
+		printf(LOG_GSTREAMER "                             * rgba32\n");
+
 		return false;
 	}
 
-	*output = nextColor;
+	*output = nextRGB;
 	return true;
 }
 
