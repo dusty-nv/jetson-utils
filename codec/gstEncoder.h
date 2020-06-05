@@ -108,12 +108,6 @@ protected:
 	std::string  mOutputIP;
 	uint16_t     mOutputPort;
 
-	// format conversion buffers
-	void* mCpuRGBA;
-	void* mGpuRGBA;
-	void* mCpuI420;
-	void* mGpuI420;
-
 	RingBuffer mBufferYUV;
 };
  

@@ -486,7 +486,7 @@ bool gstEncoder::Render( void* image, imageFormat format, uint32_t width, uint32
 
 	if( !mBufferYUV.Alloc(2, i420Size, RingBuffer::ZeroCopy) )
 	{
-		printf(LOG_GSTREAMER "gstEncoder -- failed to allocate buffers of %zu bytes\n", i420Size);
+		printf(LOG_GSTREAMER "gstEncoder -- failed to allocate buffers (%zu bytes each)\n", i420Size);
 		enc_success = false;
 		render_end();
 	}
@@ -498,6 +498,9 @@ bool gstEncoder::Render( void* image, imageFormat format, uint32_t width, uint32
 	{
 		printf(LOG_GSTREAMER "gstEncoder::Render() -- unsupported image format (%s)\n", imageFormatToStr(format));
 		printf(LOG_GSTREAMER "                        supported formats are:\n");
+		printf(LOG_GSTREAMER "                            * rgb8\n");		
+		printf(LOG_GSTREAMER "                            * rgba8\n");		
+		printf(LOG_GSTREAMER "                            * rgb32\n");		
 		printf(LOG_GSTREAMER "                            * rgba32\n");
 		
 		enc_success = false;
