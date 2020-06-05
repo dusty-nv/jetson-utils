@@ -31,6 +31,53 @@ cudaGraphicsRegisterFlags cudaGraphicsRegisterFlagsFromGL( uint32_t flags );
 
 
 //-----------------------------------------------------------------------------------
+inline const char* glTextureFormatToStr( uint32_t format )
+{
+	#define GL_FORMAT_STR(x) case x: return #x
+
+	switch(format)
+	{
+		GL_FORMAT_STR(GL_LUMINANCE8);
+		GL_FORMAT_STR(GL_LUMINANCE16);
+		GL_FORMAT_STR(GL_LUMINANCE32UI_EXT);
+		GL_FORMAT_STR(GL_LUMINANCE8I_EXT);
+		GL_FORMAT_STR(GL_LUMINANCE16I_EXT);
+		GL_FORMAT_STR(GL_LUMINANCE32I_EXT);
+		GL_FORMAT_STR(GL_LUMINANCE16F_ARB);
+		GL_FORMAT_STR(GL_LUMINANCE32F_ARB);
+
+		GL_FORMAT_STR(GL_LUMINANCE8_ALPHA8);
+		GL_FORMAT_STR(GL_LUMINANCE16_ALPHA16);
+		GL_FORMAT_STR(GL_LUMINANCE_ALPHA32UI_EXT);
+		GL_FORMAT_STR(GL_LUMINANCE_ALPHA8I_EXT);
+		GL_FORMAT_STR(GL_LUMINANCE_ALPHA16I_EXT);
+		GL_FORMAT_STR(GL_LUMINANCE_ALPHA32I_EXT);
+		GL_FORMAT_STR(GL_LUMINANCE_ALPHA16F_ARB);
+		GL_FORMAT_STR(GL_LUMINANCE_ALPHA32F_ARB);
+
+		GL_FORMAT_STR(GL_RGB8);
+		GL_FORMAT_STR(GL_RGB16);
+		GL_FORMAT_STR(GL_RGB32UI);
+		GL_FORMAT_STR(GL_RGB8I);
+		GL_FORMAT_STR(GL_RGB16I);
+		GL_FORMAT_STR(GL_RGB32I);
+		GL_FORMAT_STR(GL_RGB16F_ARB);
+
+		GL_FORMAT_STR(GL_RGBA8);
+		GL_FORMAT_STR(GL_RGBA16);
+		GL_FORMAT_STR(GL_RGBA32UI);
+		GL_FORMAT_STR(GL_RGBA8I);
+		GL_FORMAT_STR(GL_RGBA16I);
+		GL_FORMAT_STR(GL_RGBA32I);
+		GL_FORMAT_STR(GL_RGBA16F_ARB);
+
+		case GL_RGB32F_ARB:   return "GL_RGB32F";
+		case GL_RGBA32F_ARB:  return "GL_RGBA32F";
+	}
+
+	return "unknown";
+}
+
 inline uint32_t glTextureLayout( uint32_t format )
 {
 	switch(format)
@@ -227,7 +274,7 @@ glTexture* glTexture::Create( uint32_t width, uint32_t height, uint32_t format, 
 	
 	if( !tex->init(width, height, format, data) )
 	{
-		printf(LOG_GL "failed to create %ux%u texture\n", width, height);
+		printf(LOG_GL "failed to create %ux%u texture (%s)\n", width, height, glTextureFormatToStr(format));
 		return NULL;
 	}
 	
@@ -257,7 +304,7 @@ bool glTexture::init( uint32_t width, uint32_t height, uint32_t format, void* da
 	GL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR));
 	GL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR));
 
-	printf(LOG_GL "creating %ux%u texture\n", width, height);
+	printf(LOG_GL "creating %ux%u texture (%s format, %u bytes)\n", width, height, glTextureFormatToStr(format), size);
 	
 	// allocate texture
 	GL_VERIFY(glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, glTextureLayout(format), glTextureType(format), data));
@@ -318,7 +365,7 @@ cudaGraphicsResource* glTexture::allocInterop( uint32_t type, uint32_t flags )
 	else if( type == GL_PIXEL_UNPACK_BUFFER_ARB )
 		mInteropUnpack = interop;
 
-	printf(LOG_CUDA "registered openGL texture for interop access (%ux%u, %u bytes)\n", mWidth, mHeight, mSize);
+	printf(LOG_CUDA "registered openGL texture for interop access (%ux%u, %s, %u bytes)\n", mWidth, mHeight, glTextureFormatToStr(mFormat), mSize);
 	return interop;
 }
 
