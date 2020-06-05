@@ -96,7 +96,7 @@ inline bool RingBuffer::Alloc( uint32_t numBuffers, size_t size, uint32_t flags 
 		}
 	}
 		
-	printf("RingBuffer -- allocated %u buffers of %zu bytes\n", numBuffers, size);
+	printf("RingBuffer -- allocated %u buffers (%zu bytes each, %zu bytes total)\n", numBuffers, size, size * numBuffers);
 	
 	mNumBuffers = numBuffers;
 	mBufferSize = size;
