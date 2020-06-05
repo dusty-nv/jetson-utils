@@ -24,6 +24,7 @@
 #define __IMAGE_FORMAT_INLINE_H_
 
 #include <strings.h>
+#include <type_traits>
 
 
 // imageFormatToStr

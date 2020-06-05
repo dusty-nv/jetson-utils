@@ -27,9 +27,6 @@
 // include vector types (float4, float3, uchar4, uchar3, ect.)
 #include "cudaUtility.h"		
 
-// static assertion
-#include <type_traits>
-
 
 /**
  * @ingroup image
