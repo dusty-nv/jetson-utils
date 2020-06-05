@@ -25,49 +25,13 @@
 
 
 #include "cudaUtility.h"
+#include "imageFormat.h"
 
 
 /**
- * Load a color image from disk into CUDA memory with alpha, in float4 RGBA format with pixel values 0-255.
+ * Load a color image from disk into CUDA memory, in uchar3/uchar4/float3/float4 formats with pixel values 0-255.
  *
- * Supported image file formats by loadImageRGBA() include:
- * 
- *   - JPEG
- *   - PNG
- *   - TGA
- *   - BMP
- *   - GIF
- *   - PSD
- *   - HDR
- *   - PIC
- *   - PNM (PPM/PGM binary)
- *
- * This function loads the image into shared CPU/GPU memory, using the functions from cudaMappedMemory.h
- *
- * @param[in] filename Path to the image file to load from disk.
- * @param[out] cpu Reference to pointer that will be set to the CPU buffer containing the image that will be allocated.
- *                 This buffer will be allocated by loadImageRGBA() in CUDA mapped memory, so it is shared between CPU/GPU.
- *                 cpu will be the pointer to this shared buffer in the CPU's address space.  There is physically one buffer in memory.
- * @param[out] gpu Reference to pointer that will be set to the GPU buffer containing the image that will be allocated.
- *                 This buffer will be allocated by loadImageRGBA() in CUDA mapped memory, so it is shared between CPU/GPU.
- *                 gpu will be the pointer to this shared buffer in the GPU's address space.  There is physically one buffer in memory.
- * @param[in,out] width Pointer to int variable that gets set to the width of the image in pixels.
- *                      If the width variable contains a non-zero value when it's passed in, the image is resized to this desired width.
- *                      Otherwise if the value of width is 0, the image will be loaded with it's dimensions from the file on disk.
- * @param[in,out] height Pointer to int variable that gets set to the height of the image in pixels.
- *                       If the height variable contains a non-zero value when it's passed in, the image is resized to this desired height.
- *                       Otherwise if the value of height is 0, the image will be loaded with it's dimensions from the file on disk.
- * @param[in] mean_pixel Mean pixel subtraction is applied using this specified color (mean pixel subtraction is typically performed before
- *                       processing an image with neural networks).  By default the value is zero, so no mean pixel subtraction is done.  
- * @ingroup image
- */
-bool loadImageRGBA( const char* filename, float4** cpu, float4** gpu, int* width, int* height, const float4& mean_pixel=make_float4(0,0,0,0) );
-
-
-/**
- * Load a color image from disk into CUDA memory with alpha, in float4 RGBA format with pixel values 0-255.
- *
- * Supported image file formats by loadImageRGBA() include:
+ * Supported image file formats by loadImageRGB include:
  * 
  *   - JPEG
  *   - PNG
@@ -84,18 +48,50 @@ bool loadImageRGBA( const char* filename, float4** cpu, float4** gpu, int* width
  * @param[in] filename Path to the image file to load from disk.
  * @param[out] ptr Reference to pointer that will be set to the shared CPU/GPU buffer containing the image that will be allocated.
  *                 This buffer will be allocated by loadImageRGBA() in CUDA mapped memory, so it is shared between CPU/GPU.
+ *                 gpu will be the pointer to this shared buffer in the GPU's address space.  There is physically one buffer in memory.
  * @param[in,out] width Pointer to int variable that gets set to the width of the image in pixels.
  *                      If the width variable contains a non-zero value when it's passed in, the image is resized to this desired width.
  *                      Otherwise if the value of width is 0, the image will be loaded with it's dimensions from the file on disk.
  * @param[in,out] height Pointer to int variable that gets set to the height of the image in pixels.
  *                       If the height variable contains a non-zero value when it's passed in, the image is resized to this desired height.
  *                       Otherwise if the value of height is 0, the image will be loaded with it's dimensions from the file on disk.
- * @param[in] mean_pixel Mean pixel subtraction is applied using this specified color (mean pixel subtraction is typically performed before
- *                       processing an image with neural networks).  By default the value is zero, so no mean pixel subtraction is done.  
  * @ingroup image
  */
-bool loadImageRGBA( const char* filename, float4** ptr, int* width, int* height, const float4& mean_pixel=make_float4(0,0,0,0) );
+bool loadImage( const char* filename, void** output, imageFormat format, int* width, int* height );
 
+/**
+ * TODO
+ * @ingroup image
+ */
+template<typename T> inline bool loadImage( const char* filename, T** ptr, int* width, int* height )		{ return loadImage((void**)ptr, imageFormatFromType<T>(), width, height); }
+	
+/**
+ * Load a color image from disk into CUDA memory, in uchar3 RGB format with pixel values 0-255.
+ * @see loadImage() for more details about parameters and supported image formats.
+ * @ingroup image
+ */
+bool loadImageRGB( const char* filename, uchar4** ptr, int* width, int* height );
+
+/**
+ * Load a color image from disk into CUDA memory, in float3 RGB format with pixel values 0-255.
+ * @see loadImage() for more details about parameters and supported image formats.
+ * @ingroup image
+ */
+bool loadImageRGB( const char* filename, float3** ptr, int* width, int* height );
+
+/**
+ * Load a color image from disk into CUDA memory with alpha, in uchar4 RGBA format with pixel values 0-255.
+ * @see loadImage() for more details about parameters and supported image formats.
+ * @ingroup image
+ */
+bool loadImageRGBA( const char* filename, uchar4** ptr, int* width, int* height );
+ 
+/**
+ * Load a color image from disk into CUDA memory with alpha, in float4 RGBA format with pixel values 0-255.
+ * @see loadImage() for more details about parameters and supported image formats.
+ * @ingroup image
+ */
+bool loadImageRGBA( const char* filename, float4** ptr, int* width, int* height );
 
 /**
  * Save a float4 RGBA image to disk.
@@ -123,81 +119,6 @@ bool loadImageRGBA( const char* filename, float4** ptr, int* width, int* height,
  * @ingroup image
  */
 bool saveImageRGBA( const char* filename, float4* cpu, int width, int height, float max_pixel=255.0f, int quality=100 );
-
-
-/**
- * Load a color image from disk into CUDA memory, in float3 RGB format with pixel values 0-255.
- *
- * Supported image file formats by loadImageRGB include:
- * 
- *   - JPEG
- *   - PNG
- *   - TGA
- *   - BMP
- *   - GIF
- *   - PSD
- *   - HDR
- *   - PIC
- *   - PNM (PPM/PGM binary)
- *
- * This function loads the image into shared CPU/GPU memory, using the functions from cudaMappedMemory.h
- *
- * @param[in] filename Path to the image file to load from disk.
- * @param[out] cpu Reference to pointer that will be set to the CPU buffer containing the image that will be allocated.
- *                 This buffer will be allocated by loadImageRGBA() in CUDA mapped memory, so it is shared between CPU/GPU.
- *                 cpu will be the pointer to this shared buffer in the CPU's address space.  There is physically one buffer in memory.
- * @param[out] gpu Reference to pointer that will be set to the GPU buffer containing the image that will be allocated.
- *                 This buffer will be allocated by loadImageRGBA() in CUDA mapped memory, so it is shared between CPU/GPU.
- *                 gpu will be the pointer to this shared buffer in the GPU's address space.  There is physically one buffer in memory.
- * @param[in,out] width Pointer to int variable that gets set to the width of the image in pixels.
- *                      If the width variable contains a non-zero value when it's passed in, the image is resized to this desired width.
- *                      Otherwise if the value of width is 0, the image will be loaded with it's dimensions from the file on disk.
- * @param[in,out] height Pointer to int variable that gets set to the height of the image in pixels.
- *                       If the height variable contains a non-zero value when it's passed in, the image is resized to this desired height.
- *                       Otherwise if the value of height is 0, the image will be loaded with it's dimensions from the file on disk.
- * @param[in] mean_pixel Mean pixel subtraction is applied using this specified color (mean pixel subtraction is typically performed before
- *                       processing an image with neural networks).  By default the value is zero, so no mean pixel subtraction is done.  
- * @ingroup image
- */
-bool loadImageRGB( const char* filename, float3** cpu, float3** gpu, int* width, int* height, const float3& mean_pixel=make_float3(0,0,0) );
-
-
-/**
- * Load a color image from disk into CUDA memory, in float3 BGR format with pixel values 0-255.
- *
- * Supported image file formats by loadImageBGR() include:
- * 
- *   - JPEG
- *   - PNG
- *   - TGA
- *   - BMP
- *   - GIF
- *   - PSD
- *   - HDR
- *   - PIC
- *   - PNM (PPM/PGM binary)
- *
- * This function loads the image into shared CPU/GPU memory, using the functions from cudaMappedMemory.h
- *
- * @param[in] filename Path to the image file to load from disk.
- * @param[out] cpu Reference to pointer that will be set to the CPU buffer containing the image that will be allocated.
- *                 This buffer will be allocated by loadImageRGBA() in CUDA mapped memory, so it is shared between CPU/GPU.
- *                 cpu will be the pointer to this shared buffer in the CPU's address space.  There is physically one buffer in memory.
- * @param[out] gpu Reference to pointer that will be set to the GPU buffer containing the image that will be allocated.
- *                 This buffer will be allocated by loadImageRGBA() in CUDA mapped memory, so it is shared between CPU/GPU.
- *                 gpu will be the pointer to this shared buffer in the GPU's address space.  There is physically one buffer in memory.
- * @param[in,out] width Pointer to int variable that gets set to the width of the image in pixels.
- *                      If the width variable contains a non-zero value when it's passed in, the image is resized to this desired width.
- *                      Otherwise if the value of width is 0, the image will be loaded with it's dimensions from the file on disk.
- * @param[in,out] height Pointer to int variable that gets set to the height of the image in pixels.
- *                       If the height variable contains a non-zero value when it's passed in, the image is resized to this desired height.
- *                       Otherwise if the value of height is 0, the image will be loaded with it's dimensions from the file on disk.
- * @param[in] mean_pixel Mean pixel subtraction is applied using this specified color (mean pixel subtraction is typically performed before
- *                       processing an image with neural networks).  By default the value is zero, so no mean pixel subtraction is done.  
- * @ingroup image
- */
-bool loadImageBGR( const char* filename, float3** cpu, float3** gpu, int* width, int* height, const float3& mean=make_float3(0,0,0) );
-
 
 
 #endif

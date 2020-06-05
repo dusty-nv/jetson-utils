@@ -22,6 +22,7 @@
  
 #include "imageIO.h"
 #include "cudaMappedMemory.h"
+#include "cudaColorspace.h"
 #include "filesystem.h"
 
 #define STB_IMAGE_IMPLEMENTATION
@@ -167,7 +168,7 @@ bool saveImageRGBA( const char* filename, float4* cpu, int width, int height, fl
 static unsigned char* loadImageIO( const char* filename, int* width, int* height, int* channels )
 {
 	// validate parameters
-	if( !filename || !width || !height )
+	if( !filename || !width || !height || !channels )
 	{
 		printf(LOG_IMAGE "loadImageIO() - invalid parameter(s)\n");
 		return NULL;
@@ -187,7 +188,7 @@ static unsigned char* loadImageIO( const char* filename, int* width, int* height
 	int imgHeight = 0;
 	int imgChannels = 0;
 
-	unsigned char* img = stbi_load(path.c_str(), &imgWidth, &imgHeight, &imgChannels, 0);
+	unsigned char* img = stbi_load(path.c_str(), &imgWidth, &imgHeight, &imgChannels, *channels);
 
 	if( !img )
 	{
@@ -195,6 +196,9 @@ static unsigned char* loadImageIO( const char* filename, int* width, int* height
 		printf(LOG_IMAGE "(error:  %s)\n", stbi_failure_reason());
 		return NULL;
 	}
+
+	if( *channels != 0 )
+		imgChannels = *channels;
 
 	// validate dimensions for sanity
 	//printf(LOG_IMAGE "loaded '%s'  (%i x %i, %i channels)\n", filename, imgWidth, imgHeight, imgChannels);
@@ -249,253 +253,108 @@ static unsigned char* loadImageIO( const char* filename, int* width, int* height
 }
 
 
-// loadImageRGBA
-bool loadImageRGBA( const char* filename, float4** cpu, float4** gpu, int* width, int* height, const float4& mean )
+// loadImage
+bool loadImage( const char* filename, void** output, imageFormat format, int* width, int* height )
 {
 	// validate parameters
-	if( !filename || !cpu || !gpu || !width || !height )
+	if( !filename || !output || !width || !height )
 	{
-		printf(LOG_IMAGE "loadImageRGBA() - invalid parameter(s)\n");
+		printf(LOG_IMAGE "loadImage() - invalid parameter(s)\n");
+		return NULL;
+	}
+
+	// check that the requested format is supported
+	if( format != FORMAT_RGB8 && format != FORMAT_RGBA8 && format != FORMAT_RGB32 && format != FORMAT_RGBA32 )
+	{
+		printf(LOG_IMAGE "loadImage() -- unsupported output image format requested (%s)\n", imageFormatToStr(format));
+		printf(LOG_IMAGE "               supported output formats are:\n");
+		printf(LOG_IMAGE "                   * rgb8\n");		
+		printf(LOG_IMAGE "                   * rgba8\n");		
+		printf(LOG_IMAGE "                   * rgb32\n");		
+		printf(LOG_IMAGE "                   * rgba32\n");
+
 		return NULL;
 	}
 
 	// attempt to load the data from disk
 	int imgWidth = *width;
 	int imgHeight = *height;
-	int imgChannels = 0;
+	int imgChannels = imageFormatChannels(format);
 
 	unsigned char* img = loadImageIO(filename, &imgWidth, &imgHeight, &imgChannels);
 	
 	if( !img )
-		return false;
-	
+		return false;	
 
 	// allocate CUDA buffer for the image
-	const size_t imgSize = imgWidth * imgHeight * sizeof(float) * 4;
+	const size_t imgSize = imageFormatSize(format, imgWidth, imgHeight);
 
-	if( !cudaAllocMapped((void**)cpu, (void**)gpu, imgSize) )
+	if( !cudaAllocMapped((void**)output, imgSize) )
 	{
-		printf(LOG_CUDA "failed to allocate %zu bytes for image '%s'\n", imgSize, filename);
+		printf(LOG_IMAGE "loadImage() -- failed to allocate %zu bytes for image '%s'\n", imgSize, filename);
 		return false;
 	}
 
-
-	// convert uint8 image to float4
-	float4* cpuPtr = *cpu;
-	
-	for( int y=0; y < imgHeight; y++ )
+	// convert from uint8 to float
+	if( format == FORMAT_RGB32 || format == FORMAT_RGBA32 )
 	{
-		const size_t yOffset = y * imgWidth * imgChannels * sizeof(unsigned char);
+		const imageFormat inputFormat = (imgChannels == 3) ? FORMAT_RGB8 : FORMAT_RGBA8;
+		const size_t inputImageSize = imageFormatSize(inputFormat, imgWidth, imgHeight);
 
-		for( int x=0; x < imgWidth; x++ )
+		void* inputImgGPU = NULL;
+
+		if( !cudaAllocMapped(&inputImgGPU, inputImageSize) )
 		{
-			#define GET_PIXEL(channel)	    float(img[offset + channel])
-			#define SET_PIXEL_FLOAT4(r,g,b,a) cpuPtr[y*imgWidth+x] = make_float4(r,g,b,a)
-
-			const size_t offset = yOffset + x * imgChannels * sizeof(unsigned char);
-					
-			switch(imgChannels)
-			{
-				case 1:	
-				{
-					const float grey = GET_PIXEL(0);
-					SET_PIXEL_FLOAT4(grey - mean.x, grey - mean.y, grey - mean.z, 255.0f - mean.w); 
-					break;
-				}
-				case 2:	
-				{
-					const float grey = GET_PIXEL(0);
-					SET_PIXEL_FLOAT4(grey - mean.x, grey - mean.y, grey - mean.z, GET_PIXEL(1) - mean.w);
-					break;
-				}
-				case 3:
-				{
-					SET_PIXEL_FLOAT4(GET_PIXEL(0) - mean.x, GET_PIXEL(1) - mean.y, GET_PIXEL(2) - mean.z, 255.0f - mean.w);
-					break;
-				}
-				case 4:
-				{
-					SET_PIXEL_FLOAT4(GET_PIXEL(0) - mean.x, GET_PIXEL(1) - mean.y, GET_PIXEL(2) - mean.z, GET_PIXEL(3) - mean.w);
-					break;
-				}
-			}
+			printf(LOG_IMAGE "loadImage() -- failed to allocate %zu bytes for image '%s'\n", inputImageSize, filename);
+			return false;
 		}
+
+		memcpy(inputImgGPU, img, imageFormatSize(inputFormat, imgWidth, imgHeight));
+
+		if( CUDA_FAILED(cudaConvertColor(inputImgGPU, inputFormat, *output, format, imgWidth, imgHeight)) )
+		{
+			printf(LOG_IMAGE "loadImage() -- failed to convert image from %s to %s ('%s')\n", imageFormatToStr(inputFormat), imageFormatToStr(format), filename);
+			return false;
+		}
+
+		CUDA(cudaFreeHost(inputImgGPU));
 	}
-	
+	else
+	{
+		// uint8 output can be straight copied to GPU memory
+		memcpy(*output, img, imgSize);
+	}
+
 	*width  = imgWidth;
 	*height = imgHeight;
 	
 	free(img);
 	return true;
-}
-
-
-// loadImageRGBA
-bool loadImageRGBA( const char* filename, float4** ptr, int* width, int* height, const float4& mean )
-{
-	return loadImageRGBA(filename, ptr, ptr, width, height, mean);
 }
 
 
 // loadImageRGB
-bool loadImageRGB( const char* filename, float3** cpu, float3** gpu, int* width, int* height, const float3& mean )
+bool loadImageRGB( const char* filename, uchar3** output, int* width, int* height, const float3& mean )
 {
-	// validate parameters
-	if( !filename || !cpu || !gpu || !width || !height )
-	{
-		printf(LOG_IMAGE "loadImageRGB() - invalid parameter(s)\n");
-		return NULL;
-	}
-
-	// attempt to load the data from disk
-	int imgWidth = *width;
-	int imgHeight = *height;
-	int imgChannels = 0;
-
-	unsigned char* img = loadImageIO(filename, &imgWidth, &imgHeight, &imgChannels);
-	
-	if( !img )
-		return false;
-	
-
-	// allocate CUDA buffer for the image
-	const size_t imgSize = imgWidth * imgHeight * sizeof(float) * 3;
-
-	if( !cudaAllocMapped((void**)cpu, (void**)gpu, imgSize) )
-	{
-		printf(LOG_CUDA "failed to allocate %zu bytes for image '%s'\n", imgSize, filename);
-		return false;
-	}
-
-
-	// convert uint8 image to float4
-	float3* cpuPtr = *cpu;
-	
-	for( int y=0; y < imgHeight; y++ )
-	{
-		const size_t yOffset = y * imgWidth * imgChannels * sizeof(unsigned char);
-
-		for( int x=0; x < imgWidth; x++ )
-		{
-			#define SET_PIXEL_FLOAT3(r,g,b) cpuPtr[y*imgWidth+x] = make_float3(r,g,b)
-
-			const size_t offset = yOffset + x * imgChannels * sizeof(unsigned char);
-					
-			switch(imgChannels)
-			{
-				case 1:	
-				{
-					const float grey = GET_PIXEL(0);
-					SET_PIXEL_FLOAT3(grey - mean.x, grey - mean.y, grey - mean.z); 
-					break;
-				}
-				case 2:	
-				{
-					const float grey = GET_PIXEL(0);
-					SET_PIXEL_FLOAT3(grey - mean.x, grey - mean.y, grey - mean.z);
-					break;
-				}
-				case 3:
-				case 4:
-				{
-					SET_PIXEL_FLOAT3(GET_PIXEL(0) - mean.x, GET_PIXEL(1) - mean.y, GET_PIXEL(2) - mean.z);
-					break;
-				}
-			}
-		}
-	}
-	
-	*width  = imgWidth;
-	*height = imgHeight;
-	
-	free(img);
-	return true;
+	return loadImage(filename, (void**)output, FORMAT_RGB8, width, height);
 }
 
-
-// loadImageBGR
-bool loadImageBGR( const char* filename, float3** cpu, float3** gpu, int* width, int* height, const float3& mean )
+// loadImageRGBA
+bool loadImageRGBA( const char* filename, uchar4** output, int* width, int* height, const float3& mean )
 {
-	// validate parameters
-	if( !filename || !cpu || !gpu || !width || !height )
-	{
-		printf(LOG_IMAGE "loadImageRGB() - invalid parameter(s)\n");
-		return NULL;
-	}
-
-	// attempt to load the data from disk
-	int imgWidth = *width;
-	int imgHeight = *height;
-	int imgChannels = 0;
-
-	unsigned char* img = loadImageIO(filename, &imgWidth, &imgHeight, &imgChannels);
-	
-	if( !img )
-		return false;
-	
-
-	// allocate CUDA buffer for the image
-	const size_t imgSize = imgWidth * imgHeight * sizeof(float) * 3;
-
-	if( !cudaAllocMapped((void**)cpu, (void**)gpu, imgSize) )
-	{
-		printf(LOG_CUDA "failed to allocate %zu bytes for image '%s'\n", imgSize, filename);
-		return false;
-	}
-
-
-	// convert uint8 image to float4
-	float3* cpuPtr = *cpu;
-	
-	for( int y=0; y < imgHeight; y++ )
-	{
-		const size_t yOffset = y * imgWidth * imgChannels * sizeof(unsigned char);
-
-		for( int x=0; x < imgWidth; x++ )
-		{
-			#define SET_PIXEL_FLOAT3(r,g,b) cpuPtr[y*imgWidth+x] = make_float3(r,g,b)
-
-			const size_t offset = yOffset + x * imgChannels * sizeof(unsigned char);
-					
-			switch(imgChannels)
-			{
-				case 1:	
-				{
-					const float grey = GET_PIXEL(0);
-					SET_PIXEL_FLOAT3(grey - mean.x, grey - mean.y, grey - mean.z); 
-					break;
-				}
-				case 2:	
-				{
-					const float grey = GET_PIXEL(0);
-					SET_PIXEL_FLOAT3(grey - mean.x, grey - mean.y, grey - mean.z);
-					break;
-				}
-				case 3:
-				case 4:
-				{
-					SET_PIXEL_FLOAT3(GET_PIXEL(2) - mean.x, GET_PIXEL(1) - mean.y, GET_PIXEL(0) - mean.z);
-					break;
-				}
-			}
-		}
-	}
-	
-	*width  = imgWidth;
-	*height = imgHeight;
-	
-	free(img);
-	return true;
+	return loadImage(filename, (void**)output, FORMAT_RGBA8, width, height);
 }
 
-/*
-  TODO:  implement band-sequential mode
+// loadImageRGB
+bool loadImageRGB( const char* filename, float3** output, int* width, int* height, const float3& mean )
+{
+	return loadImage(filename, (void**)output, FORMAT_RGB32, width, height);
+}
 
-	// note:  caffe/GIE is band-sequential (as opposed to the typical Band Interleaved by Pixel)
-	const uint32_t imgPixels = imgWidth * imgHeight;
+// loadImageRGBA
+bool loadImageRGBA( const char* filename, float4** output, int* width, int* height )
+{
+	return loadImage(filename, (void**)output, FORMAT_RGBA32, width, height);
+}
 
-	cpuPtr[imgPixels * 0 + y * imgWidth + x] = px.x; 
-	cpuPtr[imgPixels * 1 + y * imgWidth + x] = px.y; 
-	cpuPtr[imgPixels * 2 + y * imgWidth + x] = px.z; 
-*/
 
