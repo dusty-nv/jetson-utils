@@ -21,12 +21,12 @@
  */
 
 #include "cudaNormalize.h"
-
+#include "cudaVector.h"
 
 
 // gpuNormalize
 template <typename T>
-__global__ void gpuNormalize( T* input, T* output, int width, int height, float scaling_factor )
+__global__ void gpuNormalize( T* input, T* output, int width, int height, float scaling_factor, float max_input )
 {
 	const int x = blockIdx.x * blockDim.x + threadIdx.x;
 	const int y = blockIdx.y * blockDim.y + threadIdx.y;
@@ -36,17 +36,16 @@ __global__ void gpuNormalize( T* input, T* output, int width, int height, float 
 
 	const T px = input[ y * width + x ];
 
-	output[y*width+x] = make_float4(px.x * scaling_factor,
+	output[y*width+x] = make_vec<T>(px.x * scaling_factor,
 							  px.y * scaling_factor,
 							  px.z * scaling_factor,
-							  px.w * scaling_factor);
+							  alpha(px, max_input) * scaling_factor);
 }
 
-
-// cudaNormalizeRGBA
-cudaError_t cudaNormalizeRGBA( float4* input, const float2& input_range,
-						 float4* output, const float2& output_range,
-						 size_t  width,  size_t height )
+template<typename T>
+cudaError_t launchNormalizeRGB( T* input, const float2& input_range,
+						  T* output, const float2& output_range,
+						  size_t  width,  size_t height )
 {
 	if( !input || !output )
 		return cudaErrorInvalidDevicePointer;
@@ -57,12 +56,30 @@ cudaError_t cudaNormalizeRGBA( float4* input, const float2& input_range,
 	const float multiplier = output_range.y / input_range.y;
 
 	// launch kernel
-	const dim3 blockDim(8, 8);
+	const dim3 blockDim(32,8);
 	const dim3 gridDim(iDivUp(width,blockDim.x), iDivUp(height,blockDim.y));
 
-	gpuNormalize<float4><<<gridDim, blockDim>>>(input, output, width, height, multiplier);
+	gpuNormalize<T><<<gridDim, blockDim>>>(input, output, width, height, multiplier, input_range.y);
 
 	return CUDA(cudaGetLastError());
+}
+
+
+// cudaNormalizeRGB
+cudaError_t cudaNormalizeRGB( float3* input, const float2& input_range,
+						float3* output, const float2& output_range,
+						size_t  width,  size_t height )
+{
+	return launchNormalizeRGB<float3>(input, input_range, output, output_range, width, height);
+}
+
+
+// cudaNormalizeRGBA
+cudaError_t cudaNormalizeRGBA( float4* input, const float2& input_range,
+						 float4* output, const float2& output_range,
+						 size_t  width,  size_t height )
+{
+	return launchNormalizeRGB<float4>(input, input_range, output, output_range, width, height);
 }
 
 

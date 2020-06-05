@@ -28,7 +28,18 @@
 
 
 /**
- * Rebase the pixel intensities of an image between two scales.
+ * Normalize the pixel intensities of a float3 RGBA image between two scales.
+ * For example, convert an image with values between `[0,1]` to `[0,255]`
+ * @param input_range the range of pixel values of the input image (e.g. `[0,1]`)
+ * @param output_range the desired range of pixel values of the output image (e.g. `[0,255]`)
+ * @ingroup cuda
+ */
+cudaError_t cudaNormalizeRGB( float3* input,  const float2& input_range,
+						float3* output, const float2& output_range,
+						size_t  width,  size_t height );
+
+/**
+ * Normalize the pixel intensities of a float4 RGBA image between two scales.
  * For example, convert an image with values between `[0,1]` to `[0,255]`
  * @param input_range the range of pixel values of the input image (e.g. `[0,1]`)
  * @param output_range the desired range of pixel values of the output image (e.g. `[0,255]`)
