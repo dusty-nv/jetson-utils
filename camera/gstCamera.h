@@ -26,8 +26,8 @@
 #include <gst/gst.h>
 #include <string>
 
-#include "Mutex.h"
 #include "Event.h"
+#include "RingBuffer.h"
 
 #include "videoSource.h"
 
@@ -145,12 +145,6 @@ public:
 	 * exiting the program if you delete your camera object.
 	 */
 	virtual void Close();
-	
-	/**
-	 * Check if the camera is streaming or not.
-	 * @returns `true` if the camera is streaming (open), or `false` if it's closed.
-	 */
-	//inline bool IsStreaming() const	   { return mStreaming; }
 
 	/**
 	 * Capture the next image frame from the camera.
@@ -158,38 +152,10 @@ public:
 	virtual bool Capture( void** image, imageFormat format, uint64_t timeout=UINT64_MAX );
 
 	/**
-	 *
+	 * Capture the next image frame from the camera.
 	 */
 	template<typename T> inline bool Capture( T** image, uint64_t timeout=UINT64_MAX )		{ return Capture((void**)image, imageFormatFromType<T>(), timeout); }
 	
-	/**
-	 * Capture the next image frame from the camera.
-	 *
-	 * @deprecated This overload of Capture() has been deprecated and is only
-	 *             provided for legacy compatibility.  Please use updated Capture().
-	 *
-	 * For MIPI CSI cameras, Capture() will provide an image in YUV (NV12) format.
-	 * For V4L2 devices, Capture() will provide an image in RGB (24-bit) format.
-	 *
-	 * The captured images reside in shared CPU/GPU memory, also known as CUDA
-	 * mapped memory or zero-copy memory.  Hence it is unnessary to copy them to GPU.
-	 * This memory is managed internally by gstCamera, so don't attempt to free it.
-	 *
-	 * @param[out] cpu Pointer that gets returned to the image in CPU address space.
-	 * @param[out] cuda Pointer that gets returned to the image in GPU address space.
-	 *
-	 * @param[in] timeout The time in milliseconds for the calling thread to wait to
-	 *                    return if a new camera frame isn't recieved by that time.
-	 *                    If timeout is 0, the calling thread will return immediately
-	 *                    if a new frame isn't already available.
-	 *                    If timeout is UINT64_MAX, the calling thread will wait
-	 *                    indefinetly for a new frame to arrive (this is the default behavior).
-	 *
-	 * @returns `true` if a frame was successfully captured, otherwise `false` if a timeout
-	 *               or error occurred, or if timeout was 0 and a frame wasn't ready.
-	 */
-	bool Capture( void** cpu, void** cuda, uint64_t timeout=UINT64_MAX );
-
 	/**
 	 * Capture the next image frame from the camera and convert it to float4 RGBA format,
 	 * with pixel intensities ranging between 0.0 and 255.0.
@@ -225,35 +191,6 @@ public:
 	 */
 	bool CaptureRGBA( float** image, uint64_t timeout=UINT64_MAX, bool zeroCopy=false );
 	
-	/**
-	 * Convert an image to float4 RGBA that was previously aquired with Capture().
-	 * This function uses CUDA to perform the colorspace conversion to float4 RGBA,
- 	 * with pixel intensities ranging from 0.0 to 255.0.
-	 *
-	 * @deprecated ConvertRGBA() has been deprecated and is only provided for legacy 
-	 *             compatibility. Please use the updated Capture() function instead.
-	 *
-	 * @param[in] input Pointer to the input image, typically the pointer from Capture().
-	 *                  If this is a MIPI CSI camera, it's expected to be in YUV (NV12) format.
-	 *                  If this is a V4L2 device, it's expected to be in RGB (24-bit) format.
-	 *                  In both cases, these are the formats that Capture() provides the image in.
-	 *
-	 * @param[out] output Pointer that gets returned to the image in GPU address space,
-	 *                    or if the zeroCopy parameter is true, then the pointer is valid
-	 *                    in both CPU and GPU address spaces.  Do not manually free the image memory, 
-	 *                   it is managed internally.  The image is in float4 RGBA format.
-	 *                   The size of the image is:  `GetWidth() * GetHeight() * sizeof(float) * 4`
-	 *
-	 * @param[in] zeroCopy If `true`, the image will reside in shared CPU/GPU memory.
-	 *                     If `false`, the image will only be accessible from the GPU.
-	 *                     You would need to set zeroCopy to `true` if you wanted to
-	 *                     access the image pixels from the CPU.  Since this isn't
-	 *                     generally the case, the default is `false` (GPU only).
-	 * 
-	 * @returns `true` on success, `false` if an error occurred.
-	 */
-	bool ConvertRGBA( void* input, float** output, bool zeroCopy=false );
-
 	/**
 	 * Return the pixel bit depth of the camera (measured in bits).
 	 * This will be 12 for MIPI CSI cameras (YUV NV12 format)
@@ -314,27 +251,14 @@ private:
 	std::string  mLaunchStr;
 	std::string  mCameraStr;
 
-	//uint32_t mWidth;
-	//uint32_t mHeight;
 	uint32_t mDepth;
 	uint32_t mSize;
 
-	static const uint32_t NUM_RINGBUFFERS = 16;
-	
-	void* mRingbufferCPU[NUM_RINGBUFFERS];
-	void* mRingbufferGPU[NUM_RINGBUFFERS];
-	
+	RingBuffer mBufferYUV;
+	RingBuffer mBufferRGB;
+
 	Event mWaitEvent;
-	Mutex mRingMutex;
-	
-	uint32_t mLatestRGBA;
-	uint32_t mLatestRingbuffer;
-	bool     mLatestRetrieved;
-	
-	void*  mRGBA[NUM_RINGBUFFERS];
-	bool   mRGBAZeroCopy; // were the RGBA buffers allocated with zeroCopy?
-	//bool   mStreaming;	  // true if the device is currently open
-	int    mSensorCSI;	  // -1 for V4L2, >=0 for MIPI CSI
+	int   mSensorCSI;	  // -1 for V4L2, >=0 for MIPI CSI
 
 	inline bool csiCamera() const		{ return (mSensorCSI >= 0); }
 };
