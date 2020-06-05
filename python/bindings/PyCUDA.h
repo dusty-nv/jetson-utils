@@ -34,6 +34,7 @@
 PyObject* PyCUDA_RegisterMemory( void* gpuPtr, bool freeOnDelete=true );
 
 // Create mapped memory capsule
+PyObject* PyCUDA_RegisterMappedMemory( void* gpuPtr, bool freeOnDelete=true );
 PyObject* PyCUDA_RegisterMappedMemory( void* cpuPtr, void* gpuPtr, bool freeOnDelete=true );
 
 // Register functions

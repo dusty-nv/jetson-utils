@@ -162,6 +162,13 @@ PyObject* PyCUDA_RegisterMappedMemory( void* cpuPtr, void* gpuPtr, bool freeOnDe
 }
 
 
+// PyCUDA_RegisterMappedMemory
+PyObject* PyCUDA_RegisterMappedMemory( void* gpuPtr, bool freeOnDelete )
+{
+	return PyCUDA_RegisterMappedMemory(gpuPtr, gpuPtr, freeOnDelete);
+}
+
+
 // PyCUDA_AllocMapped
 PyObject* PyCUDA_AllocMapped( PyObject* self, PyObject* args )
 {

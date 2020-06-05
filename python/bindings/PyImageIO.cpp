@@ -38,20 +38,18 @@ PyObject* PyImageIO_LoadRGBA( PyObject* self, PyObject* args )
 	}
 		
 	// load the image
-	void* cpuPtr = NULL;
-	void* gpuPtr = NULL;
+	void* imgPtr = NULL;
+	int   width  = 0;
+	int   height = 0;
 
-	int width  = 0;
-	int height = 0;
-
-	if( !loadImageRGBA(filename, (float4**)&cpuPtr, (float4**)&gpuPtr, &width, &height) )
+	if( !loadImageRGBA(filename, (float4**)&imgPtr, &width, &height) )
 	{
 		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "loadImageRGBA() failed to load the image");
 		return NULL;
 	}
 		
 	// register memory container
-	PyObject* capsule = PyCUDA_RegisterMappedMemory(cpuPtr, gpuPtr);
+	PyObject* capsule = PyCUDA_RegisterMappedMemory(imgPtr);
 
 	if( !capsule )
 		return NULL;
