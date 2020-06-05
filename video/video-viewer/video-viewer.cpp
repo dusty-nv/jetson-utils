@@ -86,7 +86,7 @@ int main( int argc, char** argv )
 
 	while( !signal_recieved )
 	{
-		float4* nextFrame = NULL;
+		uchar3* nextFrame = NULL;
 
 		if( !inputStream->Capture(&nextFrame, 1000) )
 		{
