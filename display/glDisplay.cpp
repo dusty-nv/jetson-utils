@@ -467,22 +467,46 @@ void glDisplay::EndRender()
 
 
 // allocTexture
-glTexture* glDisplay::allocTexture( uint32_t width, uint32_t height )
+glTexture* glDisplay::allocTexture( uint32_t width, uint32_t height, imageFormat format )
 {
 	if( width == 0 || height == 0 )
 		return NULL;
 
+	// convert imageFormat to GL format
+	uint32_t glFormat = 0;
+
+	if( format == FORMAT_RGB8 )
+		glFormat = GL_RGB8;
+	else if( format == FORMAT_RGBA8 )
+		glFormat = GL_RGBA8;
+	else if( format == FORMAT_RGB32 )
+		glFormat = GL_RGB32F_ARB;
+	else if( format == FORMAT_RGBA32 )
+		glFormat = GL_RGBA32F_ARB;
+	else
+	{
+		printf(LOG_GL "glDisplay::Render() -- unsupported image format (%s)\n", imageFormatToStr(format));
+		printf(LOG_GL "                       supported formats are:\n");
+		printf(LOG_GL "                           * rgb8\n");		
+		printf(LOG_GL "                           * rgba8\n");		
+		printf(LOG_GL "                           * rgb32\n");		
+		printf(LOG_GL "                           * rgba32\n");
+
+		return NULL;
+	}
+		
+	// check to see if a compatible texture has already been allocated
 	const size_t numTextures = mTextures.size();
 
 	for( size_t n=0; n < numTextures; n++ )
 	{
 		glTexture* tex = mTextures[n];
 
-		if( tex->GetWidth() == width && tex->GetHeight() == height )
+		if( tex->GetWidth() == width && tex->GetHeight() == height && tex->GetFormat() == glFormat )
 			return tex;
 	}
 
-	glTexture* tex = glTexture::Create(width, height, GL_RGBA32F_ARB);
+	glTexture* tex = glTexture::Create(width, height, glFormat);
 
 	if( !tex )
 	{
@@ -505,20 +529,20 @@ void glDisplay::Render( glTexture* texture, float x, float y )
 }
 
 
-// Render
-void glDisplay::Render( float* img, uint32_t width, uint32_t height, float x, float y, bool normalize )
+// RenderImage
+void glDisplay::RenderImage( void* img, imageFormat format, uint32_t width, uint32_t height, float x, float y, bool normalize )
 {
 	if( !img || width == 0 || height == 0 )
 		return;
 	
 	// obtain the OpenGL texture to use
-	glTexture* interopTex = allocTexture(width, height);
+	glTexture* interopTex = allocTexture(width, height, format);
 
 	if( !interopTex )
 		return;
 	
 	// normalize pixels from [0,255] -> [0,1]
-	if( normalize )
+	if( normalize && (format == FORMAT_RGB32 || format == FORMAT_RGBA32) )
 	{
 		if( !mNormalizedCUDA || mNormalizedWidth < width || mNormalizedHeight < height )
 		{
@@ -528,7 +552,7 @@ void glDisplay::Render( float* img, uint32_t width, uint32_t height, float x, fl
 				mNormalizedCUDA = NULL;
 			}
 
-			if( CUDA_FAILED(cudaMalloc(&mNormalizedCUDA, width * height * sizeof(float) * 4)) )
+			if( CUDA_FAILED(cudaMalloc(&mNormalizedCUDA, width * height * sizeof(float) * 4)) )	// just allocate this as float4 for simplicity
 			{
 				printf(LOG_GL "glDisplay.Render() failed to allocate CUDA memory for normalization\n");
 				return;
@@ -539,9 +563,20 @@ void glDisplay::Render( float* img, uint32_t width, uint32_t height, float x, fl
 		}
 
 		// rescale image pixel intensities for display
-		CUDA(cudaNormalizeRGBA((float4*)img, make_float2(0.0f, 255.0f), 
-						   (float4*)mNormalizedCUDA, make_float2(0.0f, 1.0f), 
- 						   width, height));
+		if( format == FORMAT_RGB32 )
+		{
+			CUDA(cudaNormalizeRGB((float3*)img, make_float2(0.0f, 255.0f), 
+							  (float3*)mNormalizedCUDA, make_float2(0.0f, 1.0f), 
+	 						  width, height));
+		}
+		else if( format == FORMAT_RGBA32 )
+		{
+			CUDA(cudaNormalizeRGBA((float4*)img, make_float2(0.0f, 255.0f), 
+							   (float4*)mNormalizedCUDA, make_float2(0.0f, 1.0f), 
+	 						   width, height));
+		}
+
+		img = mNormalizedCUDA;
 	}
 
 	// map from CUDA to openGL using GL interop
@@ -549,7 +584,7 @@ void glDisplay::Render( float* img, uint32_t width, uint32_t height, float x, fl
 
 	if( tex_map != NULL )
 	{
-		CUDA(cudaMemcpy(tex_map, normalize ? mNormalizedCUDA : img, interopTex->GetSize(), cudaMemcpyDeviceToDevice));
+		CUDA(cudaMemcpy(tex_map, img, interopTex->GetSize(), cudaMemcpyDeviceToDevice));
 		//CUDA(cudaDeviceSynchronize());
 		interopTex->Unmap();
 	}
@@ -559,12 +594,26 @@ void glDisplay::Render( float* img, uint32_t width, uint32_t height, float x, fl
 }
 
 
+// Render
+void glDisplay::Render( float* img, uint32_t width, uint32_t height, float x, float y, bool normalize )
+{
+	RenderImage((void*)img, FORMAT_RGBA32, width, height, x, y, normalize);
+}
+
+
+// RenderOnce
+void glDisplay::RenderOnce( void* img, imageFormat format, uint32_t width, uint32_t height, float x, float y, bool normalize )
+{
+	BeginRender();
+	RenderImage(img, format, width, height, x, y, normalize);
+	EndRender();
+}
+
+
 // RenderOnce
 void glDisplay::RenderOnce( float* img, uint32_t width, uint32_t height, float x, float y, bool normalize )
 {
-	BeginRender();
-	Render(img, width, height, x, y, normalize);
-	EndRender();
+	RenderOnce((void*)img, FORMAT_RGBA32, width, height, x, y, normalize);
 }
 
 
@@ -577,14 +626,17 @@ bool glDisplay::Render( void* image, imageFormat format, uint32_t width, uint32_
 	bool display_success = true;
 
 	// determine input format
-	if( format == FORMAT_RGBA32 )
+	if( format == FORMAT_RGB8 || format == FORMAT_RGBA8 || format == FORMAT_RGB32 || format == FORMAT_RGBA32 )
 	{
-		RenderOnce((float*)image, width, height, 0, 0);
+		RenderOnce(image, format, width, height, 0, 0);
 	}
 	else
 	{
 		printf(LOG_GL "glDisplay::Render() -- unsupported image format (%s)\n", imageFormatToStr(format));
 		printf(LOG_GL "                       supported formats are:\n");
+		printf(LOG_GL "                           * rgb8\n");		
+		printf(LOG_GL "                           * rgba8\n");		
+		printf(LOG_GL "                           * rgb32\n");		
 		printf(LOG_GL "                           * rgba32\n");
 		
 		display_success = false;

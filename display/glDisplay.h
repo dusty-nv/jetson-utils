@@ -101,6 +101,23 @@ public:
 	template<typename T> inline bool Render( T* image, uint32_t width, uint32_t height )		{ return Render((void**)image, imageFormatFromType<T>(), width, height); }
 	
 	/**
+	 * Render a CUDA image (uchar3, uchar4, float3, float4) using OpenGL interop.
+	 * If normalize is true, the image's pixel values will be rescaled from the range of [0-255] to [0-1]
+	 * If normalize is false, the image's pixel values are assumed to already be in the range of [0-1]
+	 * Note that if normalization is selected to be performed, it will be done in-place on the image
+	 */
+	void RenderImage( void* image, imageFormat format, uint32_t width, uint32_t height, float x=0.0f, float y=30.0f, bool normalize=true );
+
+	/**
+	 * Begin the frame, render one CUDA image using OpenGL interop, and end the frame.
+	 * Note that this function is only useful if you are rendering a single texture per frame.
+	 * If normalize is true, the image's pixel values will be rescaled from the range of [0-255] to [0-1]
+	 * If normalize is false, the image's pixel values are assumed to already be in the range of [0-1]
+	 * Note that if normalization is selected to be performed, it will be done in-place on the image
+	 */
+	void RenderOnce( void* image, imageFormat format, uint32_t width, uint32_t height, float x=5.0f, float y=30.0f, bool normalize=true );
+
+	/**
 	 * Begin the frame, render one CUDA float4 image using OpenGL interop, and end the frame.
 	 * Note that this function is only useful if you are rendering a single texture per frame.
 	 * If normalize is true, the image's pixel values will be rescaled from the range of [0-255] to [0-1]
@@ -152,16 +169,6 @@ public:
 	 * Get the average frame time (in milliseconds).
 	 */
 	inline float GetFPS() const		{ return 1000000000.0f / mAvgTime; }
-
-	/**
-	 * Get the width of the window (in pixels)
-	 */
-	//inline uint32_t GetWidth() const	{ return mWidth; }
-
-	/**
-	 * Get the height of the window (in pixels)
-	 */
-	//inline uint32_t GetHeight() const	{ return mHeight; }
 
 	/**
 	 * Get the ID of this display instance into glGetDisplay()
@@ -470,7 +477,7 @@ protected:
 	bool initWindow();
 	bool initGL();
 
-	glTexture* allocTexture( uint32_t width, uint32_t height );	
+	glTexture* allocTexture( uint32_t width, uint32_t height, imageFormat format );	
 
 	void activateViewport();
 
