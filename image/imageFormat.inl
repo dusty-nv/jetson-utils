@@ -45,6 +45,8 @@ inline const char* imageFormatToStr( imageFormat format )
 		case FORMAT_GRAY32:  return "gray32";
 		case FORMAT_UNKNOWN: return "unknown";
 	};
+
+	return "unknown";
 }
 
 
@@ -66,6 +68,28 @@ inline imageFormat imageFormatFromStr( const char* str )
 		return FORMAT_YUY2;
 
 	return FORMAT_UNKNOWN;
+}
+
+
+// imageFormatChannels
+inline size_t imageFormatChannels( imageFormat format )
+{
+	switch(format)
+	{
+		case FORMAT_RGB8:	return 3;
+		case FORMAT_RGBA8:	return 4;
+		case FORMAT_RGB32:	return 3;
+		case FORMAT_RGBA32: return 4;
+		case FORMAT_GRAY8:	return 1;
+		case FORMAT_GRAY32:	return 1;
+		case FORMAT_I420:	return 3;
+		case FORMAT_YV12:	return 3;
+		case FORMAT_NV12:	return 3;
+		case FORMAT_UYVY:	return 3;
+		case FORMAT_YUYV:	return 3;
+	}
+
+	return 0;
 }
 
 

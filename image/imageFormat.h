@@ -70,6 +70,12 @@ inline const char* imageFormatToStr( imageFormat format );
 inline imageFormat imageFormatFromStr( const char* str );
 
 /**
+ * Number of image channels in format
+ * @ingroup image
+ */
+inline size_t imageFormatChannels( imageFormat format );
+
+/**
  * Pixel bit depth (in bits, not bytes)
  * @ingroup image
  */
