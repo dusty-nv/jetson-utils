@@ -33,33 +33,14 @@ cudaError_t cudaConvertColor( void* input, imageFormat inputFormat,
 {
 	if( inputFormat == FORMAT_NV12 )
 	{
-		if( outputFormat == FORMAT_RGBA8 )
+		if( outputFormat == FORMAT_RGB8 )
+			return CUDA(cudaNV12ToRGB(input, (uchar3*)output, width, height));
+		else if( outputFormat == FORMAT_RGB32 )
+			return CUDA(cudaNV12ToRGB(input, (float3*)output, width, height));
+		else if( outputFormat == FORMAT_RGBA8 )
 			return CUDA(cudaNV12ToRGBA(input, (uchar4*)output, width, height));
 		else if( outputFormat == FORMAT_RGBA32 )
 			return CUDA(cudaNV12ToRGBA(input, (float4*)output, width, height));
-	}
-	else if( inputFormat == FORMAT_RGBA32 )
-	{
-		if( outputFormat == FORMAT_I420 )
-			return CUDA(cudaRGBAToI420((float4*)input, output, width, height));
-		else if( outputFormat == FORMAT_YV12 )
-			return CUDA(cudaRGBAToYV12((float4*)input, output, width, height));
-		else if( outputFormat == FORMAT_RGBA8 )
-			return CUDA(cudaRGBA32ToRGBA8((float4*)input, (uchar4*)output, width, height));
-		else if( outputFormat == FORMAT_RGB8 )
-			return CUDA(cudaRGBA32ToRGB8((float4*)input, (uchar3*)output, width, height));
-	}
-	else if( inputFormat == FORMAT_RGBA8 )
-	{
-		if( outputFormat == FORMAT_I420 )
-			return CUDA(cudaRGBAToI420((uchar4*)input, output, width, height));
-		else if( outputFormat == FORMAT_YV12 )
-			return CUDA(cudaRGBAToYV12((uchar4*)input, output, width, height));
-	}
-	else if( inputFormat == FORMAT_RGB8 )
-	{
-		if( outputFormat == FORMAT_RGBA8 )
-			return CUDA(cudaRGB8ToRGBA32((uchar3*)input, (float4*)output, width, height));
 	}
 	else if( inputFormat == FORMAT_YUYV )
 	{
@@ -74,6 +55,67 @@ cudaError_t cudaConvertColor( void* input, imageFormat inputFormat,
 			return CUDA(cudaUYVYToRGBA(input, (uchar4*)output, width, height));
 		else if( outputFormat == FORMAT_RGBA32 )
 			return CUDA(cudaUYVYToRGBA(input, (float4*)output, width, height));
+	}
+	else if( inputFormat == FORMAT_RGB8 )
+	{
+		if( outputFormat == FORMAT_RGB8 )
+			return CUDA(cudaMemcpy(output, input, imageFormatSize(inputFormat, width, height), cudaMemcpyDeviceToDevice));
+		else if( outputFormat == FORMAT_RGBA8 )
+			return CUDA(cudaRGB8ToRGBA8((uchar3*)input, (uchar4*)output, width, height));
+		else if( outputFormat == FORMAT_RGB32 )
+			return CUDA(cudaRGB8ToRGB32((uchar3*)input, (float3*)output, width, height));
+		else if( outputFormat == FORMAT_RGBA32 )
+			return CUDA(cudaRGB8ToRGBA32((uchar3*)input, (float4*)output, width, height));
+		else if( outputFormat == FORMAT_I420 )
+			return CUDA(cudaRGBToI420((uchar3*)input, output, width, height));
+		else if( outputFormat == FORMAT_YV12 )
+			return CUDA(cudaRGBToYV12((uchar3*)input, output, width, height)); 
+	}
+	else if( inputFormat == FORMAT_RGBA8 )
+	{
+		if( outputFormat == FORMAT_RGB8 )
+			return CUDA(cudaRGBA8ToRGB8((uchar4*)input, (uchar3*)output, width, height));
+		else if( outputFormat == FORMAT_RGBA8 )
+			return CUDA(cudaMemcpy(output, input, imageFormatSize(inputFormat, width, height), cudaMemcpyDeviceToDevice));
+		else if( outputFormat == FORMAT_RGB32 )
+			return CUDA(cudaRGBA8ToRGB32((uchar4*)input, (float3*)output, width, height));
+		else if( outputFormat == FORMAT_RGBA32 )
+			return CUDA(cudaRGBA8ToRGBA32((uchar4*)input, (float4*)output, width, height));
+		else if( outputFormat == FORMAT_I420 )
+			return CUDA(cudaRGBAToI420((uchar4*)input, output, width, height));
+		else if( outputFormat == FORMAT_YV12 )
+			return CUDA(cudaRGBAToYV12((uchar4*)input, output, width, height));
+	}
+	else if( inputFormat == FORMAT_RGB32 )
+	{
+		if( outputFormat == FORMAT_RGB8 )
+			return CUDA(cudaRGB32ToRGB8((float3*)input, (uchar3*)output, width, height));	
+		else if( outputFormat == FORMAT_RGBA8 )
+			return CUDA(cudaRGB32ToRGBA8((float3*)input, (uchar4*)output, width, height));	
+		else if( outputFormat == FORMAT_RGB32 )
+			return CUDA(cudaMemcpy(output, input, imageFormatSize(inputFormat, width, height), cudaMemcpyDeviceToDevice));
+		else if( outputFormat == FORMAT_RGBA32 )
+			return CUDA(cudaRGB32ToRGBA32((float3*)input, (float4*)output, width, height));
+		else if( outputFormat == FORMAT_I420 )
+			return CUDA(cudaRGBToI420((float3*)input, output, width, height));
+		else if( outputFormat == FORMAT_YV12 )
+			return CUDA(cudaRGBToYV12((float3*)input, output, width, height));
+	}
+	else if( inputFormat == FORMAT_RGBA32 )
+	{
+		if( outputFormat == FORMAT_RGB8 )
+			return CUDA(cudaRGBA32ToRGB8((float4*)input, (uchar3*)output, width, height));	
+		else if( outputFormat == FORMAT_RGBA8 )
+			return CUDA(cudaRGBA32ToRGBA8((float4*)input, (uchar4*)output, width, height));	
+		else if( outputFormat == FORMAT_RGB32 )
+			return CUDA(cudaRGBA32ToRGB32((float4*)input, (float3*)output, width, height));
+		else if( outputFormat == FORMAT_RGBA32 )
+			return CUDA(cudaMemcpy(output, input, imageFormatSize(inputFormat, width, height), cudaMemcpyDeviceToDevice));
+		else if( outputFormat == FORMAT_I420 )
+			return CUDA(cudaRGBAToI420((float4*)input, output, width, height));
+		else if( outputFormat == FORMAT_YV12 )
+			return CUDA(cudaRGBAToYV12((float4*)input, output, width, height));
+		
 	}
 
 	printf(LOG_CUDA "cudaColorConvert() -- invalid input/output format combination (%s->%s)\n", imageFormatToStr(inputFormat), imageFormatToStr(inputFormat));
