@@ -130,13 +130,13 @@ inline size_t imageFormatSize( imageFormat format, size_t width, size_t height )
  * @ingroup image
  * @internal
  */
-template<typename T> struct assert_false : std::false_type { };
+template<typename T> struct __image_format_assert_false : std::false_type { };
 
 
 // imageFormatFromType
 template<typename T> inline imageFormat imageFormatFromType()	
 { 
-	static_assert(assert_false<T>::value, "invalid image format type - supported types are uchar3, uchar4, float3, float4"); 
+	static_assert(__image_format_assert_false<T>::value, "invalid image format type - supported types are uchar3, uchar4, float3, float4"); 
 }
 
 template<> inline imageFormat imageFormatFromType<uchar3>()	{ return IMAGE_RGB8; }
