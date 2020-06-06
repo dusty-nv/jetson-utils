@@ -29,7 +29,8 @@
 // cudaConvertColor
 cudaError_t cudaConvertColor( void* input, imageFormat inputFormat,
 					     void* output, imageFormat outputFormat,
-					     size_t width, size_t height )
+					     size_t width, size_t height,
+						 const float2& pixel_range)
 {
 	if( inputFormat == IMAGE_NV12 )
 	{
@@ -89,9 +90,9 @@ cudaError_t cudaConvertColor( void* input, imageFormat inputFormat,
 	else if( inputFormat == IMAGE_RGB32F )
 	{
 		if( outputFormat == IMAGE_RGB8 )
-			return CUDA(cudaRGB32ToRGB8((float3*)input, (uchar3*)output, width, height));	
+			return CUDA(cudaRGB32ToRGB8((float3*)input, (uchar3*)output, width, height, false, pixel_range));	
 		else if( outputFormat == IMAGE_RGBA8 )
-			return CUDA(cudaRGB32ToRGBA8((float3*)input, (uchar4*)output, width, height));	
+			return CUDA(cudaRGB32ToRGBA8((float3*)input, (uchar4*)output, width, height, false, pixel_range));	
 		else if( outputFormat == IMAGE_RGB32F )
 			return CUDA(cudaMemcpy(output, input, imageFormatSize(inputFormat, width, height), cudaMemcpyDeviceToDevice));
 		else if( outputFormat == IMAGE_RGBA32F )
@@ -104,9 +105,9 @@ cudaError_t cudaConvertColor( void* input, imageFormat inputFormat,
 	else if( inputFormat == IMAGE_RGBA32F )
 	{
 		if( outputFormat == IMAGE_RGB8 )
-			return CUDA(cudaRGBA32ToRGB8((float4*)input, (uchar3*)output, width, height));	
+			return CUDA(cudaRGBA32ToRGB8((float4*)input, (uchar3*)output, width, height, false, pixel_range));	
 		else if( outputFormat == IMAGE_RGBA8 )
-			return CUDA(cudaRGBA32ToRGBA8((float4*)input, (uchar4*)output, width, height));	
+			return CUDA(cudaRGBA32ToRGBA8((float4*)input, (uchar4*)output, width, height, false, pixel_range));	
 		else if( outputFormat == IMAGE_RGB32F )
 			return CUDA(cudaRGBA32ToRGB32((float4*)input, (float3*)output, width, height));
 		else if( outputFormat == IMAGE_RGBA32F )

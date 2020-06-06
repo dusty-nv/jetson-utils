@@ -32,7 +32,8 @@
  */
 cudaError_t cudaConvertColor( void* input, imageFormat inputFormat,
 					     void* output, imageFormat outputFormat,
-					     size_t width, size_t height );
+					     size_t width, size_t height,
+						 const float2& pixel_range=make_float2(0,255));
 
 
 #endif
