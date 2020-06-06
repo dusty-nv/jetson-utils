@@ -37,132 +37,6 @@
 #define LOG_IMAGE "[image] "
 
 
-// limit_pixel
-static inline unsigned char limit_pixel( float pixel, float max_pixel )
-{
-	if( pixel < 0 )
-		pixel = 0;
-
-	if( pixel > max_pixel )
-		pixel = max_pixel;
-
-	return (unsigned char)pixel;
-}
-
-
-// saveImageRGBA
-bool saveImageRGBA( const char* filename, float4* cpu, int width, int height, float max_pixel, int quality )
-{
-	// validate parameters
-	if( !filename || !cpu || width <= 0 || height <= 0 )
-	{
-		printf(LOG_IMAGE "saveImageRGBA() - invalid parameter\n");
-		return false;
-	}
-	
-	if( quality < 1 )
-		quality = 1;
-
-	if( quality > 100 )
-		quality = 100;
-	
-	// allocate memory for the uint8 image
-	const size_t stride = width * sizeof(unsigned char) * 4;
-	const size_t size   = stride * height;
-	unsigned char* img  = (unsigned char*)malloc(size);
-
-	if( !img )
-	{
-		printf(LOG_IMAGE "failed to allocate %zu bytes to save %ix%i image '%s'\n", size, width, height, filename);
-		return false;
-	}
-
-	// convert image from float to uint8
-	const float scale = 255.0f / max_pixel;
-
-	for( int y=0; y < height; y++ )
-	{
-		const size_t yOffset = y * stride;
-
-		for( int x=0; x < width; x++ )
-		{
-			const size_t offset = yOffset + x * sizeof(unsigned char) * 4;
-			const float4 pixel  = cpu[y * width + x];
-
-			img[offset + 0] = limit_pixel(pixel.x * scale, max_pixel);
-			img[offset + 1] = limit_pixel(pixel.y * scale, max_pixel);
-			img[offset + 2] = limit_pixel(pixel.z * scale, max_pixel);
-			img[offset + 3] = limit_pixel(pixel.w * scale, max_pixel);
-		}
-	}
-
-	// determine the file extension
-	const std::string ext = fileExtension(filename);
-	const char* extension = ext.c_str();
-
-	if( ext.size() == 0 )
-	{
-		printf(LOG_IMAGE "invalid filename or extension, '%s'\n", filename);
-		free(img);
-		return false;
-	}
-
-	// save the image
-	int save_result = 0;
-
-	if( strcasecmp(extension, "jpg") == 0 || strcasecmp(extension, "jpeg") == 0 )
-	{
-		save_result = stbi_write_jpg(filename, width, height, 4, img, quality);
-	}
-	else if( strcasecmp(extension, "png") == 0 )
-	{
-		// convert quality from 1-100 to 0-9 (where 0 is high quality)
-		quality = (100 - quality) / 10;
-
-		if( quality < 0 )
-			quality = 0;
-		
-		if( quality > 9 )
-			quality = 9;
-
-		stbi_write_png_compression_level = quality;
-
-		// write the PNG file
-		save_result = stbi_write_png(filename, width, height, 4, img, stride);
-	}
-	else if( strcasecmp(extension, "tga") == 0 )
-	{
-		save_result = stbi_write_tga(filename, width, height, 4, img);
-	}
-	else if( strcasecmp(extension, "bmp") == 0 )
-	{
-		save_result = stbi_write_bmp(filename, width, height, 4, img);
-	}
-	else if( strcasecmp(extension, "hdr") == 0 )
-	{
-		save_result = stbi_write_hdr(filename, width, height, 4, (float*)cpu);
-	}
-	else
-	{
-		printf(LOG_IMAGE "invalid extension format '.%s' saving image '%s'\n", extension, filename);
-		printf(LOG_IMAGE "valid extensions are:  JPG/JPEG, PNG, TGA, BMP, and HDR.\n");
-
-		free(img);
-		return false;
-	}
-
-	// check the return code
-	if( !save_result )
-	{
-		printf(LOG_IMAGE "failed to save %ix%i image to '%s'\n", width, height, filename);
-		free(img);
-		return false;
-	}
-
-	free(img);
-	return true;
-}
-
 
 // loadImageIO (internal)
 static unsigned char* loadImageIO( const char* filename, int* width, int* height, int* channels )
@@ -333,6 +207,7 @@ bool loadImage( const char* filename, void** output, imageFormat format, int* wi
 }
 
 
+#if 0
 // loadImageRGB
 bool loadImageRGB( const char* filename, uchar3** output, int* width, int* height )
 {
@@ -350,6 +225,8 @@ bool loadImageRGB( const char* filename, float3** output, int* width, int* heigh
 {
 	return loadImage(filename, (void**)output, IMAGE_RGB32F, width, height);
 }
+#endif
+
 
 // loadImageRGBA
 bool loadImageRGBA( const char* filename, float4** output, int* width, int* height )
@@ -372,3 +249,145 @@ bool loadImageRGBA( const char* filename, float4** cpu, float4** gpu, int* width
 }
 
 
+// limit_pixel
+/*static inline unsigned char limit_pixel( float pixel, float max_pixel )
+{
+	if( pixel < 0 )
+		pixel = 0;
+
+	if( pixel > max_pixel )
+		pixel = max_pixel;
+
+	return (unsigned char)pixel;
+}*/
+
+
+// saveImage
+bool saveImage( const char* filename, float4* ptr, imageFormat format, int width, int height, int quality, const float2& pixel_range )
+{
+	// validate parameters
+	if( !filename || !ptr || width <= 0 || height <= 0 )
+	{
+		printf(LOG_IMAGE "saveImageRGBA() - invalid parameter\n");
+		return false;
+	}
+	
+	if( quality < 1 )
+		quality = 1;
+
+	if( quality > 100 )
+		quality = 100;
+	
+	// check that the requested format is supported
+	if( format != IMAGE_RGB8 && format != IMAGE_RGBA8 && format != IMAGE_RGB32F && format != IMAGE_RGBA32F )
+	{
+		printf(LOG_IMAGE "saveImage() -- unsupported input image format (%s)\n", imageFormatToStr(format));
+		printf(LOG_IMAGE "               supported input image formats are:\n");
+		printf(LOG_IMAGE "                   * rgb8\n");		
+		printf(LOG_IMAGE "                   * rgba8\n");		
+		printf(LOG_IMAGE "                   * rgb32f\n");		
+		printf(LOG_IMAGE "                   * rgba32f\n");
+
+		return false;
+	}
+	
+	// allocate memory for the uint8 image
+	const size_t channels = imageFormatChannels(format);
+	const size_t stride   = width * sizeof(unsigned char) * channels;
+	const size_t size     = stride * height;
+	unsigned char* img    = (unsigned char*)ptr;
+
+	// convert from uint8 to float
+	if( format == IMAGE_RGB32F || format == IMAGE_RGBA32F )
+	{
+		const imageFormat outputFormat = (channels == 3) ? IMAGE_RGB8 : IMAGE_RGBA8;
+
+		if( !cudaAllocMapped((void**)&img, size) )
+		{
+			printf(LOG_IMAGE "saveImage() -- failed to allocate %zu bytes for image '%s'\n", size, filename);
+			return false;
+		}
+
+		if( CUDA_FAILED(cudaConvertColor(ptr, format, img, outputFormat, width, height, pixel_range)) )  // TODO limit pixel
+		{
+			printf(LOG_IMAGE "saveImage() -- failed to convert image from %s to %s ('%s')\n", imageFormatToStr(format), imageFormatToStr(outputFormat), filename);
+			return false;
+		}
+		
+		CUDA(cudaDeviceSynchronize());
+	}
+	
+	#define release_return(x) 	\
+		if( format == IMAGE_RGB32F || format == IMAGE_RGBA32F ) \
+			CUDA(cudaFreeHost(img)); \
+		return x;
+	
+	// determine the file extension
+	const std::string ext = fileExtension(filename);
+	const char* extension = ext.c_str();
+
+	if( ext.size() == 0 )
+	{
+		printf(LOG_IMAGE "invalid filename or extension, '%s'\n", filename);
+		release_return(false);
+	}
+
+	// save the image
+	int save_result = 0;
+
+	if( strcasecmp(extension, "jpg") == 0 || strcasecmp(extension, "jpeg") == 0 )
+	{
+		save_result = stbi_write_jpg(filename, width, height, channels, img, quality);
+	}
+	else if( strcasecmp(extension, "png") == 0 )
+	{
+		// convert quality from 1-100 to 0-9 (where 0 is high quality)
+		quality = (100 - quality) / 10;
+
+		if( quality < 0 )
+			quality = 0;
+		
+		if( quality > 9 )
+			quality = 9;
+
+		stbi_write_png_compression_level = quality;
+
+		// write the PNG file
+		save_result = stbi_write_png(filename, width, height, channels, img, stride);
+	}
+	else if( strcasecmp(extension, "tga") == 0 )
+	{
+		save_result = stbi_write_tga(filename, width, height, channels, img);
+	}
+	else if( strcasecmp(extension, "bmp") == 0 )
+	{
+		save_result = stbi_write_bmp(filename, width, height, channels, img);
+	}
+	/*else if( strcasecmp(extension, "hdr") == 0 )
+	{
+		save_result = stbi_write_hdr(filename, width, height, channels, (float*)cpu);
+	}*/
+	else
+	{
+		printf(LOG_IMAGE "invalid extension format '.%s' saving image '%s'\n", extension, filename);
+		printf(LOG_IMAGE "valid extensions are:  JPG/JPEG, PNG, TGA, BMP.\n");
+		
+		release_return(false);
+	}
+
+	// check the return code
+	if( !save_result )
+	{
+		printf(LOG_IMAGE "failed to save %ix%i image to '%s'\n", width, height, filename);
+		release_return(false);
+	}
+
+	release_return(true);
+}
+
+
+// saveImageRGBA
+bool saveImageRGBA( const char* filename, float4* ptr, int width, int height, float max_pixel, int quality )
+{
+	return saveImage(filename, ptr, IMAGE_RGBA32F, width, height, quality, make_float2(0, max_pixel));
+}

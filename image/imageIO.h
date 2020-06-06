@@ -66,29 +66,10 @@ bool loadImage( const char* filename, void** output, imageFormat format, int* wi
 template<typename T> inline bool loadImage( const char* filename, T** ptr, int* width, int* height )		{ return loadImage((void**)ptr, imageFormatFromType<T>(), width, height); }
 	
 /**
- * Load a color image from disk into CUDA memory, in uchar3 RGB format with pixel values 0-255.
- * @see loadImage() for more details about parameters and supported image formats.
- * @ingroup image
- */
-bool loadImageRGB( const char* filename, uchar4** ptr, int* width, int* height );
-
-/**
- * Load a color image from disk into CUDA memory, in float3 RGB format with pixel values 0-255.
- * @see loadImage() for more details about parameters and supported image formats.
- * @ingroup image
- */
-bool loadImageRGB( const char* filename, float3** ptr, int* width, int* height );
-
-/**
- * Load a color image from disk into CUDA memory with alpha, in uchar4 RGBA format with pixel values 0-255.
- * @see loadImage() for more details about parameters and supported image formats.
- * @ingroup image
- */
-bool loadImageRGBA( const char* filename, uchar4** ptr, int* width, int* height );
- 
-/**
  * Load a color image from disk into CUDA memory with alpha, in float4 RGBA format with pixel values 0-255.
  * @see loadImage() for more details about parameters and supported image formats.
+ * @deprecated this overload of loadImageRGBA() is deprecated and provided for legacy compatbility.
+ *             it is recommended to use loadImage() instead, which supports multiple image formats.
  * @ingroup image
  */
 bool loadImageRGBA( const char* filename, float4** ptr, int* width, int* height );
@@ -98,12 +79,13 @@ bool loadImageRGBA( const char* filename, float4** ptr, int* width, int* height 
  * @see loadImage() for more details about parameters and supported image formats.
  * @deprecated this overload of loadImageRGBA() is deprecated and provided for legacy compatbility.
  *             having separate CPU and GPU pointers for shared memory is no longer needed, as they are the same.
+ *             it is recommended to use loadImage() instead, which supports multiple image formats.
  * @ingroup image
  */
 bool loadImageRGBA( const char* filename, float4** cpu, float4** gpu, int* width, int* height );
 
 /**
- * Save a float4 RGBA image to disk.
+ * Save an image in CPU/GPU shared memory to disk.
  *
  * Supported image file formats by saveImageRGBA() include:  
  *
@@ -111,10 +93,9 @@ bool loadImageRGBA( const char* filename, float4** cpu, float4** gpu, int* width
  *   - PNG
  *   - TGA
  *   - BMP
- *   - HDR
  *
  * @param filename Desired path of the image file to save to disk.
- * @param cpu Pointer to the buffer containing the image in CPU address space.
+ * @param ptr Pointer to the buffer containing the image in shared CPU/GPU zero-copy memory.
  * @param width Width of the image in pixels.
  * @param height Height of the image in pixels.
  * @param max_pixel The maximum pixel value of this image, by default it's 255 for images in the range of 0-255.
@@ -123,11 +104,28 @@ bool loadImageRGBA( const char* filename, float4** cpu, float4** gpu, int* width
  * @param quality Indicates the compression quality level (between 1 and 100) to be applied for JPEG and PNG images.
  *                A level of 1 correponds to reduced quality and maximum compression.
  *                A level of 100 corresponds to maximum quality and reduced compression.
- *                By default a level of 100 is used for maximum quality and reduced compression. 
+ *                By default a level of 95 is used for high quality and moderate compression. 
  *                Note that this quality parameter only applies to JPEG and PNG, other formats will ignore it.
  * @ingroup image
  */
-bool saveImageRGBA( const char* filename, float4* cpu, int width, int height, float max_pixel=255.0f, int quality=100 );
+bool saveImage( const char* filename, float4* ptr, imageFormat format, int width, int height, 
+				int quality=95, const float2& pixel_range=make_float2(0,255) );
+
+/**
+ * TODO
+ * @ingroup image
+ */
+template<typename T> inline bool saveImage( const char* filename, T** ptr, int width, int height,
+											int quality=95, const float2& pixel_range=make_float2(0,255) )		{ return saveImage(filename, (void**)ptr, imageFormatFromType<T>(), width, height, quality, pixel_range); }
+	
+/**
+ * Save a float4 image in CPU/GPU shared memory to disk.
+ * @see saveImage() for more details about parameters and supported image formats.
+ * @deprecated this overload of saveImageRGBA() is deprecated and provided for legacy compatbility.
+ *             it is recommended to use saveImage() instead, which supports multiple image formats.
+ * @ingroup image
+ */
+bool saveImageRGBA( const char* filename, float4* ptr, int width, int height, float max_pixel=255.0f, int quality=100 );
 
 
 #endif
