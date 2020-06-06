@@ -160,7 +160,7 @@ cudaError_t cudaRGBA8ToRGBA32( uchar4* input, float4* output, size_t width, size
  *                    i.e if the input is RGB and output is BGR, or vice versa.  
  *                    The default is false, and the channels will remain the same.
  *
- * @param inputRange specifies the floating-point pixel value range of the input image, 
+ * @param pixelRange specifies the floating-point pixel value range of the input image, 
  *                   which is used to rescale the fixed-point pixel outputs to [0-255].
  *                   The default input range is [0,255], where no rescaling occurs.
  *                   Other common input ranges are [-1, 1] or [0,1].
@@ -168,7 +168,7 @@ cudaError_t cudaRGBA8ToRGBA32( uchar4* input, float4* output, size_t width, size
  * @ingroup colorspace
  */
 cudaError_t cudaRGB32ToRGB8( float3* input, uchar3* output, size_t width, size_t height, 
-					    bool swapRedBlue=false, const float2& inputRange=make_float2(0,255) );
+					    bool swapRedBlue=false, const float2& pixelRange=make_float2(0,255) );
 
 /**
  * Convert float3 RGB/BGR image into uchar4 RGBA/BGRA image.
@@ -177,7 +177,7 @@ cudaError_t cudaRGB32ToRGB8( float3* input, uchar3* output, size_t width, size_t
  *                    i.e if the input is RGB and output is BGR, or vice versa.  
  *                    The default is false, and the channels will remain the same.
  *
- * @param inputRange specifies the floating-point pixel value range of the input image, 
+ * @param pixelRange specifies the floating-point pixel value range of the input image, 
  *                   which is used to rescale the fixed-point pixel outputs to [0-255].
  *                   The default input range is [0,255], where no rescaling occurs.
  *                   Other common input ranges are [-1, 1] or [0,1].
@@ -185,7 +185,7 @@ cudaError_t cudaRGB32ToRGB8( float3* input, uchar3* output, size_t width, size_t
  * @ingroup colorspace
  */
 cudaError_t cudaRGB32ToRGBA8( float3* input, uchar4* output, size_t width, size_t height, 
-						bool swapRedBlue=false, const float2& inputRange=make_float2(0,255) );
+						bool swapRedBlue=false, const float2& pixelRange=make_float2(0,255) );
 
 /**
  * Convert float4 RGBA/BGRA image into uchar3 image.
@@ -194,7 +194,7 @@ cudaError_t cudaRGB32ToRGBA8( float3* input, uchar4* output, size_t width, size_
  *                    i.e if the input is RGB and output is BGR, or vice versa.  
  *                    The default is false, and the channels will remain the same.
  *
- * @param inputRange specifies the floating-point pixel value range of the input image, 
+ * @param pixelRange specifies the floating-point pixel value range of the input image, 
  *                   which is used to rescale the fixed-point pixel outputs to [0-255].
  *                   The default input range is [0,255], where no rescaling occurs.
  *                   Other common input ranges are [-1, 1] or [0,1].
@@ -202,7 +202,7 @@ cudaError_t cudaRGB32ToRGBA8( float3* input, uchar4* output, size_t width, size_
  * @ingroup colorspace
  */
 cudaError_t cudaRGBA32ToRGB8( float4* input, uchar3* output, size_t width, size_t height, 
-						bool swapRedBlue=false, const float2& inputRange=make_float2(0,255) );
+						bool swapRedBlue=false, const float2& pixelRange=make_float2(0,255) );
 
 /**
  * Convert float4 RGBA/BGRA image into uchar4 RGBA/BGRA image.
@@ -211,7 +211,7 @@ cudaError_t cudaRGBA32ToRGB8( float4* input, uchar3* output, size_t width, size_
  *                    i.e if the input is RGB and output is BGR, or vice versa.  
  *                    The default is false, and the channels will remain the same.
  *
- * @param inputRange specifies the floating-point pixel value range of the input image, 
+ * @param pixelRange specifies the floating-point pixel value range of the input image, 
  *                   which is used to rescale the fixed-point pixel outputs to [0-255].
  *                   The default input range is [0,255], where no rescaling occurs.
  *                   Other common input ranges are [-1, 1] or [0,1].
@@ -219,7 +219,7 @@ cudaError_t cudaRGBA32ToRGB8( float4* input, uchar3* output, size_t width, size_
  * @ingroup colorspace
  */
 cudaError_t cudaRGBA32ToRGBA8( float4* input, uchar4* output, size_t width, size_t height, 
-						 bool swapRedBlue=false, const float2& inputRange=make_float2(0,255) );
+						 bool swapRedBlue=false, const float2& pixelRange=make_float2(0,255) );
 
 ///@}
 
