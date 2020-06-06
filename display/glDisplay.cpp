@@ -475,13 +475,13 @@ glTexture* glDisplay::allocTexture( uint32_t width, uint32_t height, imageFormat
 	// convert imageFormat to GL format
 	uint32_t glFormat = 0;
 
-	if( format == FORMAT_RGB8 )
+	if( format == IMAGE_RGB8 )
 		glFormat = GL_RGB8;
-	else if( format == FORMAT_RGBA8 )
+	else if( format == IMAGE_RGBA8 )
 		glFormat = GL_RGBA8;
-	else if( format == FORMAT_RGB32 )
+	else if( format == IMAGE_RGB32F )
 		glFormat = GL_RGB32F_ARB;
-	else if( format == FORMAT_RGBA32 )
+	else if( format == IMAGE_RGBA32F )
 		glFormat = GL_RGBA32F_ARB;
 	else
 	{
@@ -542,7 +542,7 @@ void glDisplay::RenderImage( void* img, imageFormat format, uint32_t width, uint
 		return;
 	
 	// normalize pixels from [0,255] -> [0,1]
-	if( normalize && (format == FORMAT_RGB32 || format == FORMAT_RGBA32) )
+	if( normalize && (format == IMAGE_RGB32F || format == IMAGE_RGBA32F) )
 	{
 		if( !mNormalizedCUDA || mNormalizedWidth < width || mNormalizedHeight < height )
 		{
@@ -563,13 +563,13 @@ void glDisplay::RenderImage( void* img, imageFormat format, uint32_t width, uint
 		}
 
 		// rescale image pixel intensities for display
-		if( format == FORMAT_RGB32 )
+		if( format == IMAGE_RGB32F )
 		{
 			CUDA(cudaNormalizeRGB((float3*)img, make_float2(0.0f, 255.0f), 
 							  (float3*)mNormalizedCUDA, make_float2(0.0f, 1.0f), 
 	 						  width, height));
 		}
-		else if( format == FORMAT_RGBA32 )
+		else if( format == IMAGE_RGBA32F )
 		{
 			CUDA(cudaNormalizeRGBA((float4*)img, make_float2(0.0f, 255.0f), 
 							   (float4*)mNormalizedCUDA, make_float2(0.0f, 1.0f), 
@@ -597,7 +597,7 @@ void glDisplay::RenderImage( void* img, imageFormat format, uint32_t width, uint
 // Render
 void glDisplay::Render( float* img, uint32_t width, uint32_t height, float x, float y, bool normalize )
 {
-	RenderImage((void*)img, FORMAT_RGBA32, width, height, x, y, normalize);
+	RenderImage((void*)img, IMAGE_RGBA32F, width, height, x, y, normalize);
 }
 
 
@@ -613,7 +613,7 @@ void glDisplay::RenderOnce( void* img, imageFormat format, uint32_t width, uint3
 // RenderOnce
 void glDisplay::RenderOnce( float* img, uint32_t width, uint32_t height, float x, float y, bool normalize )
 {
-	RenderOnce((void*)img, FORMAT_RGBA32, width, height, x, y, normalize);
+	RenderOnce((void*)img, IMAGE_RGBA32F, width, height, x, y, normalize);
 }
 
 
@@ -626,7 +626,7 @@ bool glDisplay::Render( void* image, imageFormat format, uint32_t width, uint32_
 	bool display_success = true;
 
 	// determine input format
-	if( format == FORMAT_RGB8 || format == FORMAT_RGBA8 || format == FORMAT_RGB32 || format == FORMAT_RGBA32 )
+	if( format == IMAGE_RGB8 || format == IMAGE_RGBA8 || format == IMAGE_RGB32F || format == IMAGE_RGBA32F )
 	{
 		RenderOnce(image, format, width, height, 0, 0);
 	}

@@ -574,7 +574,7 @@ bool gstDecoder::Capture( void** output, imageFormat format, uint64_t timeout )
 	// perform colorspace conversion
 	void* nextRGB = mBufferRGB.Next(RingBuffer::Write);
 
-	if( CUDA_FAILED(cudaConvertColor(latestYUV, FORMAT_NV12, nextRGB, format, GetWidth(), GetHeight())) )
+	if( CUDA_FAILED(cudaConvertColor(latestYUV, IMAGE_NV12, nextRGB, format, GetWidth(), GetHeight())) )
 	{
 		printf(LOG_GSTREAMER "gstDecoder::Capture() -- unsupported image format (%s)\n", imageFormatToStr(format));
 		printf(LOG_GSTREAMER "                         supported formats are:\n");

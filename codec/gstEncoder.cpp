@@ -482,7 +482,7 @@ bool gstEncoder::Render( void* image, imageFormat format, uint32_t width, uint32
 		return enc_success & substreams_success;
 
 	// allocate color conversion buffer
-	const size_t i420Size = imageFormatSize(FORMAT_I420, width, height);
+	const size_t i420Size = imageFormatSize(IMAGE_I420, width, height);
 
 	if( !mBufferYUV.Alloc(2, i420Size, RingBuffer::ZeroCopy) )
 	{
@@ -494,7 +494,7 @@ bool gstEncoder::Render( void* image, imageFormat format, uint32_t width, uint32
 	// perform colorspace conversion
 	void* nextYUV = mBufferYUV.Next(RingBuffer::Write);
 
-	if( CUDA_FAILED(cudaConvertColor(image, format, nextYUV, FORMAT_I420, width, height)) )
+	if( CUDA_FAILED(cudaConvertColor(image, format, nextYUV, IMAGE_I420, width, height)) )
 	{
 		printf(LOG_GSTREAMER "gstEncoder::Render() -- unsupported image format (%s)\n", imageFormatToStr(format));
 		printf(LOG_GSTREAMER "                        supported formats are:\n");

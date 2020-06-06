@@ -120,7 +120,7 @@ GstFlowReturn gstCamera::onBuffer(_GstAppSink* sink, void* user_data)
 // Capture
 bool gstCamera::Capture( void** output, imageFormat format, uint64_t timeout )
 {
-	//if( format == FORMAT_RGBA32 )
+	//if( format == IMAGE_RGBA32F )
 	//	return CaptureRGBA((float**)image, timeout, mOptions.zeroCopy);
 
 	// verify the output pointer exists
@@ -155,7 +155,7 @@ bool gstCamera::Capture( void** output, imageFormat format, uint64_t timeout )
 
 	// perform colorspace conversion
 	void* nextRGB = mBufferRGB.Next(RingBuffer::Write);
-	const imageFormat cameraFormat = csiCamera() ? FORMAT_NV12 : FORMAT_RGB8;	// NV12 for CSI, RGB8 for V4L2 USB webcam
+	const imageFormat cameraFormat = csiCamera() ? IMAGE_NV12 : IMAGE_RGB8;	// NV12 for CSI, RGB8 for V4L2 USB webcam
 
 	if( CUDA_FAILED(cudaConvertColor(latestYUV, cameraFormat, nextRGB, format, GetWidth(), GetHeight())) )
 	{
@@ -178,7 +178,7 @@ bool gstCamera::Capture( void** output, imageFormat format, uint64_t timeout )
 bool gstCamera::CaptureRGBA( float** output, unsigned long timeout, bool zeroCopy )
 {
 	mOptions.zeroCopy = zeroCopy;
-	return Capture((void**)output, FORMAT_RGBA32, timeout);
+	return Capture((void**)output, IMAGE_RGBA32F, timeout);
 }
 	
 

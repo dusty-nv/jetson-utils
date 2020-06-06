@@ -32,18 +32,18 @@ inline const char* imageFormatToStr( imageFormat format )
 {
 	switch(format)
 	{
-		case FORMAT_RGB8:	 return "rgb8";
-		case FORMAT_RGBA8:	 return "rgba8";
-		case FORMAT_RGB32:	 return "rgb32";
-		case FORMAT_RGBA32:	 return "rgba32";
-		case FORMAT_I420:	 return "i420";
-		case FORMAT_YV12:	 return "yv12";
-		case FORMAT_NV12:	 return "nv12";
-		case FORMAT_UYVY:	 return "uyvy";
-		case FORMAT_YUYV:	 return "yuyv";
-		case FORMAT_GRAY8:	 return "gray8";
-		case FORMAT_GRAY32:  return "gray32";
-		case FORMAT_UNKNOWN: return "unknown";
+		case IMAGE_RGB8:	 return "rgb8";
+		case IMAGE_RGBA8:	 return "rgba8";
+		case IMAGE_RGB32F:	 return "rgb32f";
+		case IMAGE_RGBA32F:	 return "rgba32f";
+		case IMAGE_I420:	 return "i420";
+		case IMAGE_YV12:	 return "yv12";
+		case IMAGE_NV12:	 return "nv12";
+		case IMAGE_UYVY:	 return "uyvy";
+		case IMAGE_YUYV:	 return "yuyv";
+		case IMAGE_GRAY8:	 return "gray8";
+		case IMAGE_GRAY32:  return "gray32";
+		case IMAGE_UNKNOWN: return "unknown";
 	};
 
 	return "unknown";
@@ -54,9 +54,9 @@ inline const char* imageFormatToStr( imageFormat format )
 inline imageFormat imageFormatFromStr( const char* str )
 {
 	if( !str )
-		return FORMAT_UNKNOWN;
+		return IMAGE_UNKNOWN;
 
-	for( uint32_t n=0; n < FORMAT_COUNT; n++ )
+	for( uint32_t n=0; n < IMAGE_COUNT; n++ )
 	{
 		const imageFormat fmt = (imageFormat)n;
 
@@ -65,9 +65,13 @@ inline imageFormat imageFormatFromStr( const char* str )
 	}
 
 	if( strcasecmp(str, "yuy2") == 0 )
-		return FORMAT_YUY2;
-
-	return FORMAT_UNKNOWN;
+		return IMAGE_YUY2;
+	else if( strcasecmp(str, "rgb32") == 0 )
+		return IMAGE_RGB32F;
+	else if( strcasecmp(str, "rgba32") == 0 )
+		return IMAGE_RGBA32F;
+		
+	return IMAGE_UNKNOWN;
 }
 
 
@@ -76,17 +80,17 @@ inline size_t imageFormatChannels( imageFormat format )
 {
 	switch(format)
 	{
-		case FORMAT_RGB8:	return 3;
-		case FORMAT_RGBA8:	return 4;
-		case FORMAT_RGB32:	return 3;
-		case FORMAT_RGBA32: return 4;
-		case FORMAT_GRAY8:	return 1;
-		case FORMAT_GRAY32:	return 1;
-		case FORMAT_I420:	return 3;
-		case FORMAT_YV12:	return 3;
-		case FORMAT_NV12:	return 3;
-		case FORMAT_UYVY:	return 3;
-		case FORMAT_YUYV:	return 3;
+		case IMAGE_RGB8:	return 3;
+		case IMAGE_RGBA8:	return 4;
+		case IMAGE_RGB32F:	return 3;
+		case IMAGE_RGBA32F: return 4;
+		case IMAGE_GRAY8:	return 1;
+		case IMAGE_GRAY32:	return 1;
+		case IMAGE_I420:	return 3;
+		case IMAGE_YV12:	return 3;
+		case IMAGE_NV12:	return 3;
+		case IMAGE_UYVY:	return 3;
+		case IMAGE_YUYV:	return 3;
 	}
 
 	return 0;
@@ -98,17 +102,17 @@ inline size_t imageFormatDepth( imageFormat format )
 {
 	switch(format)
 	{
-		case FORMAT_RGB8:	return sizeof(uchar3) * 8;
-		case FORMAT_RGBA8:	return sizeof(uchar4) * 8;
-		case FORMAT_RGB32:	return sizeof(float3) * 8;
-		case FORMAT_RGBA32: return sizeof(float4) * 8;
-		case FORMAT_GRAY8:	return sizeof(unsigned char) * 8;
-		case FORMAT_GRAY32:	return sizeof(float) * 8;
-		case FORMAT_I420:	return 12;
-		case FORMAT_YV12:	return 12;
-		case FORMAT_NV12:	return 12;
-		case FORMAT_UYVY:	return 16;
-		case FORMAT_YUYV:	return 16;
+		case IMAGE_RGB8:	return sizeof(uchar3) * 8;
+		case IMAGE_RGBA8:	return sizeof(uchar4) * 8;
+		case IMAGE_RGB32F:	return sizeof(float3) * 8;
+		case IMAGE_RGBA32F: return sizeof(float4) * 8;
+		case IMAGE_GRAY8:	return sizeof(unsigned char) * 8;
+		case IMAGE_GRAY32:	return sizeof(float) * 8;
+		case IMAGE_I420:	return 12;
+		case IMAGE_YV12:	return 12;
+		case IMAGE_NV12:	return 12;
+		case IMAGE_UYVY:	return 16;
+		case IMAGE_YUYV:	return 16;
 	}
 
 	return 0;
@@ -135,10 +139,10 @@ template<typename T> inline imageFormat imageFormatFromType()
 	static_assert(assert_false<T>::value, "invalid image format type - supported types are uchar3, uchar4, float3, float4"); 
 }
 
-template<> inline imageFormat imageFormatFromType<uchar3>()	{ return FORMAT_RGB8; }
-template<> inline imageFormat imageFormatFromType<uchar4>()	{ return FORMAT_RGBA8; }
-template<> inline imageFormat imageFormatFromType<float3>()	{ return FORMAT_RGB32; }
-template<> inline imageFormat imageFormatFromType<float4>()	{ return FORMAT_RGBA32; }
+template<> inline imageFormat imageFormatFromType<uchar3>()	{ return IMAGE_RGB8; }
+template<> inline imageFormat imageFormatFromType<uchar4>()	{ return IMAGE_RGBA8; }
+template<> inline imageFormat imageFormatFromType<float3>()	{ return IMAGE_RGB32F; }
+template<> inline imageFormat imageFormatFromType<float4>()	{ return IMAGE_RGBA32F; }
 
 
 #endif

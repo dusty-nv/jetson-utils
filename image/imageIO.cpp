@@ -264,7 +264,7 @@ bool loadImage( const char* filename, void** output, imageFormat format, int* wi
 	}
 
 	// check that the requested format is supported
-	if( format != FORMAT_RGB8 && format != FORMAT_RGBA8 && format != FORMAT_RGB32 && format != FORMAT_RGBA32 )
+	if( format != IMAGE_RGB8 && format != IMAGE_RGBA8 && format != IMAGE_RGB32F && format != IMAGE_RGBA32F )
 	{
 		printf(LOG_IMAGE "loadImage() -- unsupported output image format requested (%s)\n", imageFormatToStr(format));
 		printf(LOG_IMAGE "               supported output formats are:\n");
@@ -296,9 +296,9 @@ bool loadImage( const char* filename, void** output, imageFormat format, int* wi
 	}
 
 	// convert from uint8 to float
-	if( format == FORMAT_RGB32 || format == FORMAT_RGBA32 )
+	if( format == IMAGE_RGB32F || format == IMAGE_RGBA32F )
 	{
-		const imageFormat inputFormat = (imgChannels == 3) ? FORMAT_RGB8 : FORMAT_RGBA8;
+		const imageFormat inputFormat = (imgChannels == 3) ? IMAGE_RGB8 : IMAGE_RGBA8;
 		const size_t inputImageSize = imageFormatSize(inputFormat, imgWidth, imgHeight);
 
 		void* inputImgGPU = NULL;
@@ -336,25 +336,25 @@ bool loadImage( const char* filename, void** output, imageFormat format, int* wi
 // loadImageRGB
 bool loadImageRGB( const char* filename, uchar3** output, int* width, int* height )
 {
-	return loadImage(filename, (void**)output, FORMAT_RGB8, width, height);
+	return loadImage(filename, (void**)output, IMAGE_RGB8, width, height);
 }
 
 // loadImageRGBA
 bool loadImageRGBA( const char* filename, uchar4** output, int* width, int* height )
 {
-	return loadImage(filename, (void**)output, FORMAT_RGBA8, width, height);
+	return loadImage(filename, (void**)output, IMAGE_RGBA8, width, height);
 }
 
 // loadImageRGB
 bool loadImageRGB( const char* filename, float3** output, int* width, int* height )
 {
-	return loadImage(filename, (void**)output, FORMAT_RGB32, width, height);
+	return loadImage(filename, (void**)output, IMAGE_RGB32F, width, height);
 }
 
 // loadImageRGBA
 bool loadImageRGBA( const char* filename, float4** output, int* width, int* height )
 {
-	return loadImage(filename, (void**)output, FORMAT_RGBA32, width, height);
+	return loadImage(filename, (void**)output, IMAGE_RGBA32F, width, height);
 }
 
 // loadImageRGBA
