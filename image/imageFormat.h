@@ -97,6 +97,17 @@ template<> inline imageFormat imageFormatFromType<uchar4>();
 template<> inline imageFormat imageFormatFromType<float3>();
 template<> inline imageFormat imageFormatFromType<float4>();
 
+/**
+ * @ingroup image
+ */
+template<imageFormat format> struct imageFormatType;
+
+template<> struct imageFormatType<IMAGE_RGB8>    { typedef uint8_t Base; typedef uchar3 Vector; };
+template<> struct imageFormatType<IMAGE_RGBA8>   { typedef uint8_t Base; typedef uchar4 Vector; };
+
+template<> struct imageFormatType<IMAGE_RGB32F>  { typedef float Base; typedef float3 Vector; };
+template<> struct imageFormatType<IMAGE_RGBA32F> { typedef float Base; typedef float4 Vector; };
+
 
 // inline implementations
 #include "imageFormat.inl"
