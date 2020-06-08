@@ -72,7 +72,7 @@ __global__ void gpuRectFill( T* input, T* output, int width, int height,
 
 
 // cudaRectFill
-cudaError_t cudaRectFill( float4* input, float4* output, uint32_t width, uint32_t height, float4* rects, int numRects, const float4& color )
+cudaError_t cudaRectFill( void* input, void* output, imageFormat format, uint32_t width, uint32_t height, float4* rects, int numRects, const float4& color )
 {
 	if( !input || !output || width == 0 || height == 0 || !rects || numRects == 0 )
 		return cudaErrorInvalidValue;
@@ -81,7 +81,16 @@ cudaError_t cudaRectFill( float4* input, float4* output, uint32_t width, uint32_
 	const dim3 blockDim(8, 8);
 	const dim3 gridDim(iDivUp(width,blockDim.x), iDivUp(height,blockDim.y));
 
-	gpuRectFill<float4><<<gridDim, blockDim>>>(input, output, width, height, rects, numRects, color); 
+	if( format == IMAGE_RGB8 )
+		gpuRectFill<uchar3><<<gridDim, blockDim>>>((uchar3*)input, (uchar3*)output, width, height, rects, numRects, color); 
+	else if( format == IMAGE_RGBA8 )
+		gpuRectFill<uchar4><<<gridDim, blockDim>>>((uchar4*)input, (uchar4*)output, width, height, rects, numRects, color); 
+	else if( format == IMAGE_RGB32F )
+		gpuRectFill<float3><<<gridDim, blockDim>>>((float3*)input, (float3*)output, width, height, rects, numRects, color); 
+	else if( format == IMAGE_RGBA32F )
+		gpuRectFill<float4><<<gridDim, blockDim>>>((float4*)input, (float4*)output, width, height, rects, numRects, color); 
+	else
+		return cudaErrorInvalidValue;
 
 	return cudaGetLastError();
 }

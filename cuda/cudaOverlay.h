@@ -25,14 +25,29 @@
 
 
 #include "cudaUtility.h"
+#include "imageFormat.h"
 
 
 /**
  * cudaRectFill
  * @ingroup cuda
  */
-cudaError_t cudaRectFill( float4* input, float4* output, uint32_t width, uint32_t height, float4* rects, int numRects, const float4& color );
+cudaError_t cudaRectFill( void* input, void* output, imageFormat format, 
+					 uint32_t width, uint32_t height, 
+					 float4* rects, int numRects, 
+					 const float4& color );
 
+/**
+ * cudaRectFill
+ * @ingroup cuda
+ */
+template<typename T> cudaError_t cudaRectFill( T* input, T* output, 
+				 					  uint32_t width, uint32_t height, 
+				 					  float4* rects, int numRects, 
+				 					  const float4& color )	
+{ 
+	return cudaRectFill(input, output, imageFormatFromType<T>(), width, height, rects, numRects, color); 
+}
 
 /**
  * cudaRectOutline
