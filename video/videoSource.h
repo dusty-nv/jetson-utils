@@ -63,13 +63,13 @@ public:
 	/**
 	 *
 	 */
-	virtual bool Capture( void** image, imageFormat format, uint64_t timeout=UINT64_MAX ) = 0;
-
+	template<typename T> bool Capture( T** image, uint64_t timeout=UINT64_MAX )		{ return Capture((void**)image, imageFormatFromType<T>(), timeout); }
+	
 	/**
 	 *
 	 */
-	template<typename T> inline bool Capture( T** image, uint64_t timeout=UINT64_MAX )		{ return Capture((void**)image, imageFormatFromType<T>(), timeout); }
-	
+	virtual bool Capture( void** image, imageFormat format, uint64_t timeout=UINT64_MAX ) = 0;
+
 	/**
 	 * Begin streaming the camera.
 	 * After Open() is called, frames from the camera will begin to be captured.
