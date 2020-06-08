@@ -149,13 +149,13 @@ public:
 	/**
 	 * Capture the next image frame from the camera.
 	 */
-	virtual bool Capture( void** image, imageFormat format, uint64_t timeout=UINT64_MAX );
-
+	template<typename T> bool Capture( T** image, uint64_t timeout=UINT64_MAX )		{ return Capture((void**)image, imageFormatFromType<T>(), timeout); }
+	
 	/**
 	 * Capture the next image frame from the camera.
 	 */
-	template<typename T> inline bool Capture( T** image, uint64_t timeout=UINT64_MAX )		{ return Capture((void**)image, imageFormatFromType<T>(), timeout); }
-	
+	virtual bool Capture( void** image, imageFormat format, uint64_t timeout=UINT64_MAX );
+
 	/**
 	 * Capture the next image frame from the camera and convert it to float4 RGBA format,
 	 * with pixel intensities ranging between 0.0 and 255.0.
