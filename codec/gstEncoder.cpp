@@ -457,7 +457,7 @@ bool gstEncoder::encodeYUV( void* buffer, size_t size )
 
 
 // Render
-bool gstEncoder::Render( void* image, imageFormat format, uint32_t width, uint32_t height )
+bool gstEncoder::Render( void* image, uint32_t width, uint32_t height, imageFormat format )
 {
 	if( !image || width == 0 || height == 0 )
 		return false;
@@ -480,7 +480,7 @@ bool gstEncoder::Render( void* image, imageFormat format, uint32_t width, uint32
 	bool enc_success = false;
 
 	#define render_end()	\
-		const bool substreams_success = videoOutput::Render(image, format, width, height); \
+		const bool substreams_success = videoOutput::Render(image, width, height, format); \
 		return enc_success & substreams_success;
 
 	// allocate color conversion buffer
