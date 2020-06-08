@@ -530,7 +530,7 @@ void glDisplay::Render( glTexture* texture, float x, float y )
 
 
 // RenderImage
-void glDisplay::RenderImage( void* img, imageFormat format, uint32_t width, uint32_t height, float x, float y, bool normalize )
+void glDisplay::RenderImage( void* img, uint32_t width, uint32_t height, imageFormat format, float x, float y, bool normalize )
 {
 	if( !img || width == 0 || height == 0 )
 		return;
@@ -597,15 +597,15 @@ void glDisplay::RenderImage( void* img, imageFormat format, uint32_t width, uint
 // Render
 void glDisplay::Render( float* img, uint32_t width, uint32_t height, float x, float y, bool normalize )
 {
-	RenderImage((void*)img, IMAGE_RGBA32F, width, height, x, y, normalize);
+	RenderImage((void*)img, width, height, IMAGE_RGBA32F, x, y, normalize);
 }
 
 
 // RenderOnce
-void glDisplay::RenderOnce( void* img, imageFormat format, uint32_t width, uint32_t height, float x, float y, bool normalize )
+void glDisplay::RenderOnce( void* img, uint32_t width, uint32_t height, imageFormat format, float x, float y, bool normalize )
 {
 	BeginRender();
-	RenderImage(img, format, width, height, x, y, normalize);
+	RenderImage(img, width, height, format, x, y, normalize);
 	EndRender();
 }
 
@@ -613,12 +613,12 @@ void glDisplay::RenderOnce( void* img, imageFormat format, uint32_t width, uint3
 // RenderOnce
 void glDisplay::RenderOnce( float* img, uint32_t width, uint32_t height, float x, float y, bool normalize )
 {
-	RenderOnce((void*)img, IMAGE_RGBA32F, width, height, x, y, normalize);
+	RenderOnce((void*)img, width, height, IMAGE_RGBA32F, x, y, normalize);
 }
 
 
 // Render
-bool glDisplay::Render( void* image, imageFormat format, uint32_t width, uint32_t height )
+bool glDisplay::Render( void* image, uint32_t width, uint32_t height, imageFormat format )
 {
 	if( !image )
 		return false;
@@ -628,7 +628,7 @@ bool glDisplay::Render( void* image, imageFormat format, uint32_t width, uint32_
 	// determine input format
 	if( format == IMAGE_RGB8 || format == IMAGE_RGBA8 || format == IMAGE_RGB32F || format == IMAGE_RGBA32F )
 	{
-		RenderOnce(image, format, width, height, 0, 0);
+		RenderOnce(image, width, height, format, 0, 0);
 	}
 	else
 	{
@@ -643,7 +643,7 @@ bool glDisplay::Render( void* image, imageFormat format, uint32_t width, uint32_
 	}
 
 	// render sub-streams
-	const bool substreams_success = videoOutput::Render(image, format, width, height);
+	const bool substreams_success = videoOutput::Render(image, width, height, format);
 	return display_success & substreams_success;
 }
 

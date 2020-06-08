@@ -93,20 +93,20 @@ public:
 	/**
 	 *
 	 */
-	virtual bool Render( void* image, imageFormat format, uint32_t width, uint32_t height );
-
+	template<typename T> bool Render( T* image, uint32_t width, uint32_t height )		{ return Render((void**)image, width, height, imageFormatFromType<T>()); }
+	
 	/**
 	 *
 	 */
-	template<typename T> inline bool Render( T* image, uint32_t width, uint32_t height )		{ return Render((void**)image, imageFormatFromType<T>(), width, height); }
-	
+	virtual bool Render( void* image, uint32_t width, uint32_t height, imageFormat format );
+
 	/**
 	 * Render a CUDA image (uchar3, uchar4, float3, float4) using OpenGL interop.
 	 * If normalize is true, the image's pixel values will be rescaled from the range of [0-255] to [0-1]
 	 * If normalize is false, the image's pixel values are assumed to already be in the range of [0-1]
 	 * Note that if normalization is selected to be performed, it will be done in-place on the image
 	 */
-	void RenderImage( void* image, imageFormat format, uint32_t width, uint32_t height, float x=0.0f, float y=30.0f, bool normalize=true );
+	void RenderImage( void* image, uint32_t width, uint32_t height, imageFormat format, float x=0.0f, float y=30.0f, bool normalize=true );
 
 	/**
 	 * Begin the frame, render one CUDA image using OpenGL interop, and end the frame.
@@ -115,7 +115,7 @@ public:
 	 * If normalize is false, the image's pixel values are assumed to already be in the range of [0-1]
 	 * Note that if normalization is selected to be performed, it will be done in-place on the image
 	 */
-	void RenderOnce( void* image, imageFormat format, uint32_t width, uint32_t height, float x=5.0f, float y=30.0f, bool normalize=true );
+	void RenderOnce( void* image, uint32_t width, uint32_t height, imageFormat format, float x=5.0f, float y=30.0f, bool normalize=true );
 
 	/**
 	 * Begin the frame, render one CUDA float4 image using OpenGL interop, and end the frame.
