@@ -21,6 +21,7 @@
  */
 
 #include "gstUtility.h"
+#include "logging.h"
 
 #include <gst/gst.h>
 #include <stdint.h>
@@ -69,10 +70,10 @@ void rilog_debug_function(GstDebugCategory* category, GstDebugLevel level,
 		className = G_OBJECT_CLASS_NAME(object);
 	}
 
-	printf(LOG_GSTREAMER "%s %s %s\n" SEP "%s:%i  %s\n" SEP "%s\n", 
-		  	gst_debug_level_str(level), typeName,
-		  	gst_debug_category_get_name(category), file, line, function, 
-            	gst_debug_message_get(message));
+	LogVerbose(LOG_GSTREAMER "%s %s %s\n" SEP "%s:%i  %s\n" SEP "%s\n", 
+		  	 gst_debug_level_str(level), typeName,
+		  	 gst_debug_category_get_name(category), file, line, function, 
+            	 gst_debug_message_get(message));
 
 }
 
@@ -90,7 +91,7 @@ bool gstreamerInit()
 
 	if( !gst_init_check(&argc, NULL, NULL) )
 	{
-		printf(LOG_GSTREAMER "failed to initialize gstreamer library with gst_init()\n");
+		LogError(LOG_GSTREAMER "failed to initialize gstreamer library with gst_init()\n");
 		return false;
 	}
 
@@ -99,7 +100,7 @@ bool gstreamerInit()
 	uint32_t ver[] = { 0, 0, 0, 0 };
 	gst_version( &ver[0], &ver[1], &ver[2], &ver[3] );
 
-	printf(LOG_GSTREAMER "initialized gstreamer, version %u.%u.%u.%u\n", ver[0], ver[1], ver[2], ver[3]);
+	LogInfo(LOG_GSTREAMER "initialized gstreamer, version %u.%u.%u.%u\n", ver[0], ver[1], ver[2], ver[3]);
 
 
 	// debugging
@@ -181,8 +182,8 @@ gboolean gst_message_print(GstBus* bus, GstMessage* message, gpointer user_data)
 			gchar *dbg_info = NULL;
  
 			gst_message_parse_error (message, &err, &dbg_info);
-			printf(LOG_GSTREAMER "gstreamer %s ERROR %s\n", GST_OBJECT_NAME (message->src), err->message);
-        		printf(LOG_GSTREAMER "gstreamer Debugging info: %s\n", (dbg_info) ? dbg_info : "none");
+			LogVerbose(LOG_GSTREAMER "gstreamer %s ERROR %s\n", GST_OBJECT_NAME (message->src), err->message);
+        		LogVerbose(LOG_GSTREAMER "gstreamer Debugging info: %s\n", (dbg_info) ? dbg_info : "none");
         
 			g_error_free(err);
         		g_free(dbg_info);
@@ -191,7 +192,7 @@ gboolean gst_message_print(GstBus* bus, GstMessage* message, gpointer user_data)
 		}
 		case GST_MESSAGE_EOS:
 		{
-			printf(LOG_GSTREAMER "gstreamer %s recieved EOS signal...\n", GST_OBJECT_NAME(message->src));
+			LogVerbose(LOG_GSTREAMER "gstreamer %s recieved EOS signal...\n", GST_OBJECT_NAME(message->src));
 			//g_main_loop_quit (app->loop);		// TODO trigger plugin Close() upon error
 			break;
 		}
@@ -201,7 +202,7 @@ gboolean gst_message_print(GstBus* bus, GstMessage* message, gpointer user_data)
     
 			gst_message_parse_state_changed(message, &old_state, &new_state, NULL);
 			
-			printf(LOG_GSTREAMER "gstreamer changed state from %s to %s ==> %s\n",
+			LogVerbose(LOG_GSTREAMER "gstreamer changed state from %s to %s ==> %s\n",
 							gst_element_state_get_name(old_state),
 							gst_element_state_get_name(new_state),
 						     GST_OBJECT_NAME(message->src));
@@ -212,7 +213,7 @@ gboolean gst_message_print(GstBus* bus, GstMessage* message, gpointer user_data)
 			GstStreamStatusType streamStatus;
 			gst_message_parse_stream_status(message, &streamStatus, NULL);
 			
-			printf(LOG_GSTREAMER "gstreamer stream status %s ==> %s\n",
+			LogVerbose(LOG_GSTREAMER "gstreamer stream status %s ==> %s\n",
 							gst_stream_status_string(streamStatus), 
 							GST_OBJECT_NAME(message->src));
 			break;
@@ -232,7 +233,7 @@ gboolean gst_message_print(GstBus* bus, GstMessage* message, gpointer user_data)
 
 			if( txt != NULL )
 			{
-				printf(LOG_GSTREAMER "gstreamer %s %s\n", GST_OBJECT_NAME(message->src), txt);
+				LogVerbose(LOG_GSTREAMER "gstreamer %s %s\n", GST_OBJECT_NAME(message->src), txt);
 #ifdef gst_tag_list_to_string			
 				g_free(txt);	
 #endif
@@ -245,7 +246,7 @@ gboolean gst_message_print(GstBus* bus, GstMessage* message, gpointer user_data)
 		}
 		default:
 		{
-			printf(LOG_GSTREAMER "gstreamer msg %s ==> %s\n", gst_message_type_get_name(GST_MESSAGE_TYPE(message)), GST_OBJECT_NAME(message->src));
+			LogVerbose(LOG_GSTREAMER "gstreamer msg %s ==> %s\n", gst_message_type_get_name(GST_MESSAGE_TYPE(message)), GST_OBJECT_NAME(message->src));
 			break;
 		}
 	}

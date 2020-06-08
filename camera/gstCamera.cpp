@@ -31,6 +31,8 @@
 #include <string.h>
 
 #include "cudaColorspace.h"
+#include "logging.h"
+
 #include "NvInfer.h"
 
 
@@ -89,14 +91,14 @@ gstCamera::~gstCamera()
 // onEOS
 void gstCamera::onEOS(_GstAppSink* sink, void* user_data)
 {
-	printf(LOG_GSTREAMER "gstCamera onEOS\n");
+	LogWarning(LOG_GSTREAMER "gstCamera -- end of stream (EOS)\n");
 }
 
 
 // onPreroll
 GstFlowReturn gstCamera::onPreroll(_GstAppSink* sink, void* user_data)
 {
-	printf(LOG_GSTREAMER "gstCamera onPreroll\n");
+	LogVerbose(LOG_GSTREAMER "gstCamera -- onPreroll\n");
 	return GST_FLOW_OK;
 }
 
@@ -149,7 +151,7 @@ bool gstCamera::Capture( void** output, imageFormat format, uint64_t timeout )
 
 	if( !mBufferRGB.Alloc(mOptions.numBuffers, rgbBufferSize, mOptions.zeroCopy ? RingBuffer::ZeroCopy : 0) )
 	{
-		printf(LOG_GSTREAMER "gstCamera -- failed to allocate %u buffers (%zu bytes each)\n", mOptions.numBuffers, rgbBufferSize);
+		LogError(LOG_GSTREAMER "gstCamera -- failed to allocate %u buffers (%zu bytes each)\n", mOptions.numBuffers, rgbBufferSize);
 		return false;
 	}
 
@@ -159,12 +161,12 @@ bool gstCamera::Capture( void** output, imageFormat format, uint64_t timeout )
 
 	if( CUDA_FAILED(cudaConvertColor(latestYUV, cameraFormat, nextRGB, format, GetWidth(), GetHeight())) )
 	{
-		printf(LOG_GSTREAMER "gstCamera::Capture() -- unsupported image format (%s)\n", imageFormatToStr(format));
-		printf(LOG_GSTREAMER "                        supported formats are:\n");
-		printf(LOG_GSTREAMER "                            * rgb8\n");		
-		printf(LOG_GSTREAMER "                            * rgba8\n");		
-		printf(LOG_GSTREAMER "                            * rgb32\n");		
-		printf(LOG_GSTREAMER "                            * rgba32\n");
+		LogError(LOG_GSTREAMER "gstCamera::Capture() -- unsupported image format (%s)\n", imageFormatToStr(format));
+		LogError(LOG_GSTREAMER "                        supported formats are:\n");
+		LogError(LOG_GSTREAMER "                            * rgb8\n");		
+		LogError(LOG_GSTREAMER "                            * rgba8\n");		
+		LogError(LOG_GSTREAMER "                            * rgb32f\n");		
+		LogError(LOG_GSTREAMER "                            * rgba32f\n");
 
 		return false;
 	}
@@ -197,7 +199,7 @@ void gstCamera::checkBuffer()
 	
 	if( !gstSample )
 	{
-		printf(LOG_GSTREAMER "gstCamera -- gst_app_sink_pull_sample() returned NULL...\n");
+		LogError(LOG_GSTREAMER "gstCamera -- gst_app_sink_pull_sample() returned NULL...\n");
 		return;
 	}
 	
@@ -205,7 +207,7 @@ void gstCamera::checkBuffer()
 	
 	if( !gstBuffer )
 	{
-		printf(LOG_GSTREAMER "gstCamera -- gst_sample_get_buffer() returned NULL...\n");
+		LogError(LOG_GSTREAMER "gstCamera -- gst_sample_get_buffer() returned NULL...\n");
 		return;
 	}
 	
@@ -214,7 +216,7 @@ void gstCamera::checkBuffer()
 
 	if( !gst_buffer_map(gstBuffer, &map, GST_MAP_READ) ) 
 	{
-		printf(LOG_GSTREAMER "gstCamera -- gst_buffer_map() failed...\n");
+		LogError(LOG_GSTREAMER "gstCamera -- gst_buffer_map() failed...\n");
 		return;
 	}
 	
@@ -225,7 +227,7 @@ void gstCamera::checkBuffer()
 	
 	if( !gstData )
 	{
-		printf(LOG_GSTREAMER "gstCamera -- gst_buffer had NULL data pointer...\n");
+		LogError(LOG_GSTREAMER "gstCamera -- gst_buffer had NULL data pointer...\n");
 		release_return;
 	}
 	
@@ -234,7 +236,7 @@ void gstCamera::checkBuffer()
 	
 	if( !gstCaps )
 	{
-		printf(LOG_GSTREAMER "gstCamera -- gst_buffer had NULL caps...\n");
+		LogError(LOG_GSTREAMER "gstCamera -- gst_buffer had NULL caps...\n");
 		release_return;
 	}
 	
@@ -242,7 +244,7 @@ void gstCamera::checkBuffer()
 	
 	if( !gstCapsStruct )
 	{
-		printf(LOG_GSTREAMER "gstCamera -- gst_caps had NULL structure...\n");
+		LogError(LOG_GSTREAMER "gstCamera -- gst_caps had NULL structure...\n");
 		release_return;
 	}
 	
@@ -253,7 +255,7 @@ void gstCamera::checkBuffer()
 	if( !gst_structure_get_int(gstCapsStruct, "width", &width) ||
 		!gst_structure_get_int(gstCapsStruct, "height", &height) )
 	{
-		printf(LOG_GSTREAMER "gstCamera -- gst_caps missing width/height...\n");
+		LogError(LOG_GSTREAMER "gstCamera -- gst_caps missing width/height...\n");
 		release_return;
 	}
 	
@@ -265,12 +267,12 @@ void gstCamera::checkBuffer()
 	mDepth          = (gstSize * 8) / (width * height);
 	mSize           = gstSize;
 	
-	//printf(LOG_GSTREAMER "gstCamera recieved %ix%i frame (%u bytes, %u bpp)\n", width, height, gstSize, mDepth);
+	LogDebug(LOG_GSTREAMER "gstCamera recieved %ix%i frame (%u bytes, %u bpp)\n", width, height, gstSize, mDepth);
 	
 	// make sure ringbuffer is allocated
 	if( !mBufferYUV.Alloc(mOptions.numBuffers, gstSize, RingBuffer::ZeroCopy) )
 	{
-		printf(LOG_GSTREAMER "gstCamera -- failed to allocate %u buffers (%u bytes each)\n", mOptions.numBuffers, gstSize);
+		LogError(LOG_GSTREAMER "gstCamera -- failed to allocate %u buffers (%u bytes each)\n", mOptions.numBuffers, gstSize);
 		release_return;
 	}
 
@@ -279,7 +281,7 @@ void gstCamera::checkBuffer()
 
 	if( !nextBuffer )
 	{
-		printf(LOG_GSTREAMER "gstCamera -- failed to retrieve next ringbuffer for writing\n");
+		LogError(LOG_GSTREAMER "gstCamera -- failed to retrieve next ringbuffer for writing\n");
 		release_return;
 	}
 
@@ -338,8 +340,9 @@ bool gstCamera::buildLaunchStr( gstCameraSrc src )
 	
 	mLaunchStr = ss.str();
 
-	printf(LOG_GSTREAMER "gstCamera pipeline string:\n");
-	printf("%s\n", mLaunchStr.c_str());
+	LogInfo(LOG_GSTREAMER "gstCamera pipeline string:\n");
+	LogInfo(LOG_GSTREAMER "%s\n", mLaunchStr.c_str());
+
 	return true;
 }
 
@@ -374,7 +377,7 @@ bool gstCamera::parseCameraStr( const char* camera )
 		return true;
 	}
 
-	printf(LOG_GSTREAMER "gstCamera::Create('%s') -- invalid camera device requested\n", camera);
+	LogError(LOG_GSTREAMER "gstCamera::Create('%s') -- invalid camera device requested\n", camera);
 	return false;
 }
 
@@ -401,7 +404,7 @@ gstCamera* gstCamera::Create( const videoOptions& options )
 {
 	if( !gstreamerInit() )
 	{
-		printf(LOG_GSTREAMER "failed to initialize gstreamer API\n");
+		LogError(LOG_GSTREAMER "failed to initialize gstreamer API\n");
 		return NULL;
 	}
 
@@ -427,24 +430,24 @@ gstCamera* gstCamera::Create( const videoOptions& options )
 	// initialize camera (with fallback)
 	if( !cam->init(GST_SOURCE_NVARGUS) )
 	{
-		printf(LOG_GSTREAMER "failed to init gstCamera (GST_SOURCE_NVARGUS, camera %s)\n", cam->mCameraStr.c_str());
+		LogError(LOG_GSTREAMER "failed to init gstCamera (GST_SOURCE_NVARGUS, camera %s)\n", cam->mCameraStr.c_str());
 
 		if( !cam->init(GST_SOURCE_NVCAMERA) )
 		{
-			printf(LOG_GSTREAMER "failed to init gstCamera (GST_SOURCE_NVCAMERA, camera %s)\n", cam->mCameraStr.c_str());
+			LogError(LOG_GSTREAMER "failed to init gstCamera (GST_SOURCE_NVCAMERA, camera %s)\n", cam->mCameraStr.c_str());
 
 			if( cam->mSensorCSI >= 0 )
 				cam->mSensorCSI = -1;
 
 			if( !cam->init(GST_SOURCE_V4L2) )
 			{
-				printf(LOG_GSTREAMER "failed to init gstCamera (GST_SOURCE_V4L2, camera %s)\n", cam->mCameraStr.c_str());
+				LogError(LOG_GSTREAMER "failed to init gstCamera (GST_SOURCE_V4L2, camera %s)\n", cam->mCameraStr.c_str());
 				return NULL;
 			}
 		}
 	}
 	
-	printf(LOG_GSTREAMER "gstCamera successfully initialized with %s, camera %s\n", gstCameraSrcToString(cam->mSource), cam->mCameraStr.c_str()); 
+	LogInfo(LOG_GSTREAMER "gstCamera successfully initialized with %s, camera %s\n", gstCameraSrcToString(cam->mSource), cam->mCameraStr.c_str()); 
 	return cam;
 }
 
@@ -460,12 +463,12 @@ gstCamera* gstCamera::Create( const char* camera )
 bool gstCamera::init( gstCameraSrc src )
 {
 	GError* err = NULL;
-	printf(LOG_GSTREAMER "gstCamera attempting to initialize with %s, camera %s\n", gstCameraSrcToString(src), mCameraStr.c_str());
+	LogInfo(LOG_GSTREAMER "gstCamera attempting to initialize with %s, camera %s\n", gstCameraSrcToString(src), mCameraStr.c_str());
 
 	// build pipeline string
 	if( !buildLaunchStr(src) )
 	{
-		printf(LOG_GSTREAMER "gstCamera failed to build pipeline string\n");
+		LogError(LOG_GSTREAMER "gstCamera failed to build pipeline string\n");
 		return false;
 	}
 
@@ -474,8 +477,8 @@ bool gstCamera::init( gstCameraSrc src )
 
 	if( err != NULL )
 	{
-		printf(LOG_GSTREAMER "gstCamera failed to create pipeline\n");
-		printf(LOG_GSTREAMER "   (%s)\n", err->message);
+		LogError(LOG_GSTREAMER "gstCamera failed to create pipeline\n");
+		LogError(LOG_GSTREAMER "   (%s)\n", err->message);
 		g_error_free(err);
 		return false;
 	}
@@ -484,7 +487,7 @@ bool gstCamera::init( gstCameraSrc src )
 
 	if( !pipeline )
 	{
-		printf(LOG_GSTREAMER "gstCamera failed to cast GstElement into GstPipeline\n");
+		LogError(LOG_GSTREAMER "gstCamera failed to cast GstElement into GstPipeline\n");
 		return false;
 	}	
 
@@ -493,7 +496,7 @@ bool gstCamera::init( gstCameraSrc src )
 
 	if( !mBus )
 	{
-		printf(LOG_GSTREAMER "gstCamera failed to retrieve GstBus from pipeline\n");
+		LogError(LOG_GSTREAMER "gstCamera failed to retrieve GstBus from pipeline\n");
 		return false;
 	}
 
@@ -506,7 +509,7 @@ bool gstCamera::init( gstCameraSrc src )
 
 	if( !appsinkElement || !appsink)
 	{
-		printf(LOG_GSTREAMER "gstCamera failed to retrieve AppSink element from pipeline\n");
+		LogError(LOG_GSTREAMER "gstCamera failed to retrieve AppSink element from pipeline\n");
 		return false;
 	}
 	
@@ -539,7 +542,7 @@ bool gstCamera::Open()
 		return true;
 
 	// transition pipline to STATE_PLAYING
-	printf(LOG_GSTREAMER "opening gstCamera for streaming, transitioning pipeline to GST_STATE_PLAYING\n");
+	LogError(LOG_GSTREAMER "opening gstCamera for streaming, transitioning pipeline to GST_STATE_PLAYING\n");
 	
 	const GstStateChangeReturn result = gst_element_set_state(mPipeline, GST_STATE_PLAYING);
 
@@ -560,7 +563,7 @@ bool gstCamera::Open()
 	}
 	else if( result != GST_STATE_CHANGE_SUCCESS )
 	{
-		printf(LOG_GSTREAMER "gstCamera failed to set pipeline state to PLAYING (error %u)\n", result);
+		LogError(LOG_GSTREAMER "gstCamera failed to set pipeline state to PLAYING (error %u)\n", result);
 		return false;
 	}
 
@@ -580,17 +583,17 @@ void gstCamera::Close()
 		return;
 
 	// stop pipeline
-	printf(LOG_GSTREAMER "gstCamera -- stopping pipeline, transitioning to GST_STATE_NULL\n");
+	LogInfo(LOG_GSTREAMER "gstCamera -- stopping pipeline, transitioning to GST_STATE_NULL\n");
 
 	const GstStateChangeReturn result = gst_element_set_state(mPipeline, GST_STATE_NULL);
 
 	if( result != GST_STATE_CHANGE_SUCCESS )
-		printf(LOG_GSTREAMER "gstCamera failed to set pipeline state to PLAYING (error %u)\n", result);
+		LogError(LOG_GSTREAMER "gstCamera failed to set pipeline state to PLAYING (error %u)\n", result);
 
 	usleep(250*1000);	
 	checkMsgBus();
 	mStreaming = false;
-	printf(LOG_GSTREAMER "gstCamera -- pipeline stopped\n");
+	LogInfo(LOG_GSTREAMER "gstCamera -- pipeline stopped\n");
 }
 
 
