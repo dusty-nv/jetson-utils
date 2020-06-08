@@ -23,8 +23,8 @@
 #ifndef __CUDA_COLORSPACE_H__
 #define __CUDA_COLORSPACE_H__
 
-#include "imageFormat.h"
 #include "cudaUtility.h"
+#include "imageFormat.h"
 
 
 /**
@@ -35,6 +35,17 @@ cudaError_t cudaConvertColor( void* input, imageFormat inputFormat,
 					     size_t width, size_t height,
 						 const float2& pixel_range=make_float2(0,255));
 
+/**
+ * @ingroup colorspace
+ */
+template<typename T_in, typename T_out> 
+cudaError_t cudaConvertColor( T_in* input, T_out* output,
+					     size_t width, size_t height,
+						const float2& pixel_range=make_float2(0,255))	
+{ 
+	return cudaConvertColor(input, imageFormatFromType<T_in>(), output, imageFormatFromType<T_out>(), width, height, pixel_range); 
+}
+	
 
 #endif
 
