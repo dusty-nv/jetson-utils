@@ -133,14 +133,14 @@ void videoOutput::Close()
 
 
 // Render
-bool videoOutput::Render( void* image, imageFormat format, uint32_t width, uint32_t height )
+bool videoOutput::Render( void* image, uint32_t width, uint32_t height, imageFormat format )
 {	
 	const uint32_t numOutputs = mOutputs.size();
 	bool result = true;
 
 	for( uint32_t n=0; n < numOutputs; n++ )
 	{
-		if( !mOutputs[n]->Render(image, format, width, height) )
+		if( !mOutputs[n]->Render(image, width, height, format) )
 			result = false;
 	}
 

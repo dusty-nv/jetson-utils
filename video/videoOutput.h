@@ -65,13 +65,13 @@ public:
 	/**
 	 *
 	 */
-	virtual bool Render( void* image, imageFormat format, uint32_t width, uint32_t height );
-
+	template<typename T> bool Render( T* image, uint32_t width, uint32_t height )		{ return Render((void**)image, width, height, imageFormatFromType<T>()); }
+	
 	/**
 	 *
 	 */
-	template<typename T> inline bool Render( T* image, uint32_t width, uint32_t height )		{ return Render((void**)image, imageFormatFromType<T>(), width, height); }
-	
+	virtual bool Render( void* image, uint32_t width, uint32_t height, imageFormat format );
+
 	/**
 	 * 
 	 */
