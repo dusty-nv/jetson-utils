@@ -128,7 +128,7 @@ static unsigned char* loadImageIO( const char* filename, int* width, int* height
 
 
 // loadImage
-bool loadImage( const char* filename, void** output, imageFormat format, int* width, int* height )
+bool loadImage( const char* filename, void** output, int* width, int* height, imageFormat format )
 {
 	// validate parameters
 	if( !filename || !output || !width || !height )
@@ -207,31 +207,10 @@ bool loadImage( const char* filename, void** output, imageFormat format, int* wi
 }
 
 
-#if 0
-// loadImageRGB
-bool loadImageRGB( const char* filename, uchar3** output, int* width, int* height )
-{
-	return loadImage(filename, (void**)output, IMAGE_RGB8, width, height);
-}
-
-// loadImageRGBA
-bool loadImageRGBA( const char* filename, uchar4** output, int* width, int* height )
-{
-	return loadImage(filename, (void**)output, IMAGE_RGBA8, width, height);
-}
-
-// loadImageRGB
-bool loadImageRGB( const char* filename, float3** output, int* width, int* height )
-{
-	return loadImage(filename, (void**)output, IMAGE_RGB32F, width, height);
-}
-#endif
-
-
 // loadImageRGBA
 bool loadImageRGBA( const char* filename, float4** output, int* width, int* height )
 {
-	return loadImage(filename, (void**)output, IMAGE_RGBA32F, width, height);
+	return loadImage(filename, (void**)output, width, height, IMAGE_RGBA32F);
 }
 
 // loadImageRGBA
@@ -263,7 +242,7 @@ bool loadImageRGBA( const char* filename, float4** cpu, float4** gpu, int* width
 
 
 // saveImage
-bool saveImage( const char* filename, float4* ptr, imageFormat format, int width, int height, int quality, const float2& pixel_range )
+bool saveImage( const char* filename, void* ptr, int width, int height, imageFormat format, int quality, const float2& pixel_range )
 {
 	// validate parameters
 	if( !filename || !ptr || width <= 0 || height <= 0 )
@@ -389,5 +368,5 @@ bool saveImage( const char* filename, float4* ptr, imageFormat format, int width
 // saveImageRGBA
 bool saveImageRGBA( const char* filename, float4* ptr, int width, int height, float max_pixel, int quality )
 {
-	return saveImage(filename, ptr, IMAGE_RGBA32F, width, height, quality, make_float2(0, max_pixel));
+	return saveImage(filename, ptr, width, height, IMAGE_RGBA32F, quality, make_float2(0, max_pixel));
 }
