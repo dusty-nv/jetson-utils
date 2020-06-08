@@ -25,6 +25,7 @@
 
 
 #include "cudaUtility.h"
+#include "imageFormat.h"
 
 #include <string>
 #include <vector>
@@ -78,25 +79,52 @@ public:
 	/**
 	 * Render text overlay onto image
 	 */
-	bool OverlayText( float4* image, uint32_t width, uint32_t height, 
+	bool OverlayText( void* image, imageFormat format,
+				   uint32_t width, uint32_t height, 
 			        const char* str, int x, int y, 
 				   const float4& color=make_float4(0, 0, 0, 255),
 				   const float4& background=make_float4(0, 0, 0, 0),
 				   int backgroundPadding=5 );
-						
+
 	/**
 	 * Render text overlay onto image
 	 */
-	bool OverlayText( float4* image, uint32_t width, uint32_t height, 
+	bool OverlayText( void* image, imageFormat format, 
+				   uint32_t width, uint32_t height, 
 			        const std::vector< std::pair< std::string, int2 > >& text,
 			        const float4& color=make_float4(0, 0, 0, 255),
 				   const float4& background=make_float4(0, 0, 0, 0),
 				   int backgroundPadding=5 );
-	
+
+	/**
+	 * Render text overlay onto image
+	 */
+	template<typename T> bool OverlayText( T* image, uint32_t width, uint32_t height, 
+			        				    const char* str, int x, int y, 
+				   				    const float4& color=make_float4(0, 0, 0, 255),
+				   				    const float4& background=make_float4(0, 0, 0, 0),
+				   				    int backgroundPadding=5 )		
+	{ 
+		return OverlayText(image, imageFormatFromType<T>(), width, height, str, x, y, color, background, backgroundPadding); 
+	}
+			
+	/**
+	 * Render text overlay onto image
+	 */
+	template<typename T> bool OverlayText( T* image, uint32_t width, uint32_t height, 
+			        				    const std::vector< std::pair< std::string, int2 > >& text, 
+				   				    const float4& color=make_float4(0, 0, 0, 255),
+				   				    const float4& background=make_float4(0, 0, 0, 0),
+				   				    int backgroundPadding=5 )		
+	{ 
+		return OverlayText(image, imageFormatFromType<T>(), width, height, text, color, background, backgroundPadding); 
+	}
+
 	/**
 	 * Return the bounding rectangle of the given text string.
 	 */
 	int4 TextExtents( const char* str, int x=0, int y=0 );
+
 
 protected:
 	cudaFont();
