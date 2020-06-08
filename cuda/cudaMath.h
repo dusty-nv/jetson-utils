@@ -26,6 +26,7 @@
 #include "cuda_runtime.h"
 
 typedef unsigned int uint;
+typedef unsigned char uchar;
 typedef unsigned short ushort;
 
 #ifndef EXIT_WAIVED
@@ -128,6 +129,10 @@ inline __host__ __device__ float3 make_float3(float2 a, float s)
 {
     return make_float3(a.x, a.y, s);
 }
+inline __host__ __device__ float3 make_float3(float3 a)
+{
+    return make_float3(a.x, a.y, a.z);
+}
 inline __host__ __device__ float3 make_float3(float4 a)
 {
     return make_float3(a.x, a.y, a.z);
@@ -137,6 +142,14 @@ inline __host__ __device__ float3 make_float3(int3 a)
     return make_float3(float(a.x), float(a.y), float(a.z));
 }
 inline __host__ __device__ float3 make_float3(uint3 a)
+{
+    return make_float3(float(a.x), float(a.y), float(a.z));
+}
+inline __host__ __device__ float3 make_float3(uchar3 a)
+{
+    return make_float3(float(a.x), float(a.y), float(a.z));
+}
+inline __host__ __device__ float3 make_float3(uchar4 a)
 {
     return make_float3(float(a.x), float(a.y), float(a.z));
 }
@@ -183,6 +196,47 @@ inline __host__ __device__ uint3 make_uint3(int3 a)
     return make_uint3(uint(a.x), uint(a.y), uint(a.z));
 }
 
+inline __host__ __device__ uchar3 make_uchar3(uchar s)
+{
+    return make_uchar3(s, s, s);
+}
+inline __host__ __device__ uchar3 make_uchar3(uint s)
+{
+    return make_uchar3(s, s, s);
+}
+inline __host__ __device__ uchar3 make_uchar3(uint2 a)
+{
+    return make_uchar3(a.x, a.y, 0);
+}
+inline __host__ __device__ uchar3 make_uchar3(uint2 a, uint s)
+{
+    return make_uchar3(a.x, a.y, s);
+}
+inline __host__ __device__ uchar3 make_uchar3(uint4 a)
+{
+    return make_uchar3(a.x, a.y, a.z);
+}
+inline __host__ __device__ uchar3 make_uchar3(uchar3 a)
+{
+    return make_uchar3(a.x, a.y, a.z);
+}
+inline __host__ __device__ uchar3 make_uchar3(uchar4 a)
+{
+    return make_uchar3(a.x, a.y, a.z);
+}
+inline __host__ __device__ uchar3 make_uchar3(int3 a)
+{
+    return make_uchar3(uchar(a.x), uchar(a.y), uchar(a.z));
+}
+inline __host__ __device__ uchar3 make_uchar3(float3 a)
+{
+    return make_uchar3(a.x, a.y, a.z);
+}
+inline __host__ __device__ uchar3 make_uchar3(float4 a)
+{
+    return make_uchar3(a.x, a.y, a.z);
+}
+
 inline __host__ __device__ float4 make_float4(float s)
 {
     return make_float4(s, s, s, s);
@@ -190,6 +244,10 @@ inline __host__ __device__ float4 make_float4(float s)
 inline __host__ __device__ float4 make_float4(float3 a)
 {
     return make_float4(a.x, a.y, a.z, 0.0f);
+}
+inline __host__ __device__ float4 make_float4(float4 a)
+{
+    return make_float4(a.x, a.y, a.z, a.w);
 }
 inline __host__ __device__ float4 make_float4(float3 a, float w)
 {
@@ -200,6 +258,14 @@ inline __host__ __device__ float4 make_float4(int4 a)
     return make_float4(float(a.x), float(a.y), float(a.z), float(a.w));
 }
 inline __host__ __device__ float4 make_float4(uint4 a)
+{
+    return make_float4(float(a.x), float(a.y), float(a.z), float(a.w));
+}
+inline __host__ __device__ float4 make_float4(uchar3 a)
+{
+    return make_float4(float(a.x), float(a.y), float(a.z), 0.0f);
+}
+inline __host__ __device__ float4 make_float4(uchar4 a)
 {
     return make_float4(float(a.x), float(a.y), float(a.z), float(a.w));
 }
@@ -241,6 +307,43 @@ inline __host__ __device__ uint4 make_uint4(uint3 a, uint w)
 inline __host__ __device__ uint4 make_uint4(int4 a)
 {
     return make_uint4(uint(a.x), uint(a.y), uint(a.z), uint(a.w));
+}
+
+inline __host__ __device__ uchar4 make_uchar4(uchar s)
+{
+    return make_uchar4(s, s, s, s);
+}
+inline __host__ __device__ uchar4 make_uchar4(uint s)
+{
+    return make_uchar4(s, s, s, s);
+}
+inline __host__ __device__ uchar4 make_uchar4(uint3 a)
+{
+    return make_uchar4(a.x, a.y, a.z, 0);
+}
+inline __host__ __device__ uchar4 make_uchar4(uchar3 a)
+{
+    return make_uchar4(a.x, a.y, a.z, 0);
+}
+inline __host__ __device__ uchar4 make_uchar4(uchar4 a)
+{
+    return make_uchar4(a.x, a.y, a.z, a.w);
+}
+inline __host__ __device__ uchar4 make_uchar4(uint3 a, uint w)
+{
+    return make_uchar4(a.x, a.y, a.z, w);
+}
+inline __host__ __device__ uchar4 make_uchar4(int4 a)
+{
+    return make_uchar4(uchar(a.x), uchar(a.y), uchar(a.z), uchar(a.w));
+}
+inline __host__ __device__ uchar4 make_uchar4(float3 a)
+{
+    return make_uchar4(a.x, a.y, a.z, 0);
+}
+inline __host__ __device__ uchar4 make_uchar4(float4 a)
+{
+    return make_uchar4(a.x, a.y, a.z, a.w);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
