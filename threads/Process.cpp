@@ -70,7 +70,7 @@ std::string Process::ExecutableDirectory()
 	if( path.length() == 0 )
 		return "";
 
-	return filePath(path);
+	return pathDir(path);
 }
 
 
