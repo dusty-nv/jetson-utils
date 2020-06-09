@@ -20,17 +20,14 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
-#include "imageFormat.h"
-#include "commandLine.h"
-#include "logging.h"
-
 #include "videoSource.h"
 #include "videoOutput.h"
 
+#include "logging.h"
+#include "commandLine.h"
+
 #include <signal.h>
 
-
-#include "gstDecoder.h"
 
 bool signal_recieved = false;
 
