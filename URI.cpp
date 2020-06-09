@@ -82,7 +82,7 @@ bool URI::Parse( const char* uri )
 		{
 			protocol = "v4l2";
 		}
-		else if( string.find(".") != std::string::npos || string.find("/") != std::string::npos ) //fileExists(string.c_str()) )
+		else if( string.find(".") != std::string::npos || string.find("/") != std::string::npos || fileExists(string.c_str()) )
 		{
 			protocol = "file";
 		}
