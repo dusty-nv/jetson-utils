@@ -21,6 +21,7 @@
  */
  
 #include "videoOutput.h"
+#include "imageWriter.h"
 
 #include "glDisplay.h"
 #include "gstEncoder.h"
@@ -49,12 +50,25 @@ videoOutput* videoOutput::Create( const videoOptions& options )
 	videoOutput* output = NULL;
 	const URI& uri = options.resource;
 	
-	if( uri.protocol == "display" )
-		output = glDisplay::Create(options);
-	else if( uri.protocol == "file" || uri.protocol == "rtp" )
+	if( uri.protocol == "file" )
+	{
+		if( gstEncoder::IsSupportedExtension(uri.extension.c_str()) )
+			output = gstEncoder::Create(options);
+		else
+			output = imageWriter::Create(options);
+	}
+	else if( uri.protocol == "rtp" )
+	{
 		output = gstEncoder::Create(options);
+	}
+	else if( uri.protocol == "display" )
+	{
+		output = glDisplay::Create(options);
+	}
 	else
+	{
 		printf("videoOutput -- unsupported protocol (%s)\n", uri.protocol.size() > 0 ? uri.protocol.c_str() : "null");
+	}
 
 	if( !output )
 		return NULL;
@@ -162,6 +176,8 @@ const char* videoOutput::TypeToStr( uint32_t type )
 		return "glDisplay";
 	else if( type == gstEncoder::Type )
 		return "gstEncoder";
+	else if( type == imageWriter::Type )
+		return "imageWriter";
 
 	return "(unknown)";
 }

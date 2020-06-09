@@ -32,7 +32,7 @@
 
 
 /**
- * @ingroup image
+ * @ingroup video
  */
 class videoOutput
 {
