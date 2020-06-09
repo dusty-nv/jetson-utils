@@ -82,6 +82,16 @@ public:
 	 */
 	static const uint32_t Type = (1 << 2);
 
+	/**
+	 *
+	 */
+	static const char* SupportedExtensions[];
+
+	/**
+	 *
+	 */
+	static bool IsSupportedExtension( const char* ext );
+
 protected:
 	gstEncoder( const videoOptions& options );
 	

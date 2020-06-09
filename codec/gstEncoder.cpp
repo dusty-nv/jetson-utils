@@ -37,6 +37,33 @@
 #include <unistd.h>
 
 
+// supported video file extensions
+const char* gstEncoder::SupportedExtensions[] = { "mkv", "mp4", "qt", 
+										"flv", "avi", "h264", 
+										"h265", NULL };
+
+bool gstEncoder::IsSupportedExtension( const char* ext )
+{
+	if( !ext )
+		return false;
+
+	uint32_t extCount = 0;
+
+	while(true)
+	{
+		if( !SupportedExtensions[extCount] )
+			break;
+
+		if( strcasecmp(SupportedExtensions[extCount], ext) == 0 )
+			return true;
+
+		extCount++;
+	}
+
+	return false;
+}
+
+
 // constructor
 gstEncoder::gstEncoder( const videoOptions& options ) : videoOutput(options)
 {	
@@ -265,6 +292,15 @@ bool gstEncoder::buildLaunchStr()
 	else if( mOptions.codec == videoOptions::CODEC_VP9 )
 		ss << "nv_omx_vp9enc quality-level=2 ! video/x-vp9 ! ";
 #endif
+	else
+	{
+		LogError(LOG_GSTREAMER "gstEncoder -- unsupported codec requested (%s)\n", videoOptions::CodecToStr(mOptions.codec));
+		LogError(LOG_GSTREAMER "              supported encoder codecs are:\n");
+		LogError(LOG_GSTREAMER "                 * h264\n");
+		LogError(LOG_GSTREAMER "                 * h265\n");
+		LogError(LOG_GSTREAMER "                 * vp8\n");
+		LogError(LOG_GSTREAMER "                 * vp9\n");
+	}
 
 	//if( fileLen > 0 && ipLen > 0 )
 	//	ss << "nvtee name=t ! ";
