@@ -23,11 +23,6 @@
 #include "cudaOverlay.h"
 
 
-/*static inline __device__ __host__ bool eq_less( float a, float b, float epsilon )
-{
-	return (a > (b - epsilon) && a < (b + epsilon)) ? true : false;
-}*/
-
 template<typename T>
 __global__ void gpuRectFill( T* input, T* output, int width, int height,
 					    float4* rects, int numRects, float4 color ) 
@@ -38,38 +33,89 @@ __global__ void gpuRectFill( T* input, T* output, int width, int height,
 	if( x >= width || y >= height )
 		return;
 
-	const T px_in  = input[ y * width + x ];
-	      T px_out = px_in;
-	
+	T px = input[ y * width + x ];
+
 	const float fx = x;
 	const float fy = y;
 	
-	//const float thick = 10.0f;
 	const float alpha = color.w / 255.0f;
 	const float ialph = 1.0f - alpha;
 	
 	for( int nr=0; nr < numRects; nr++ )
 	{
 		const float4 r = rects[nr];
-		
-		//printf("%i %i %i  %f %f %f %f\n", numRects, x, y, r.x, r.y, r.z, r.w);
-		
-		if( fy >= r.y && fy <= r.w /*&& (eq_less(fx, r.x, ep) || eq_less(fx, r.z, ep))*/ )
+	
+		if( fy >= r.y && fy <= r.w && fx >= r.x && fx <= r.z )
 		{
-			if( fx >= r.x && fx <= r.z /*&& (eq_less(fy, r.y, ep) || eq_less(fy, r.w, ep))*/ )
-			{
-				//printf("cuda rect %i %i\n", x, y);
-
-				px_out.x = alpha * color.x + ialph * px_out.x;
-				px_out.y = alpha * color.y + ialph * px_out.y;
-				px_out.z = alpha * color.z + ialph * px_out.z;
-			}
+			px.x = alpha * color.x + ialph * px.x;
+			px.y = alpha * color.y + ialph * px.y;
+			px.z = alpha * color.z + ialph * px.z;
 		}
 	}
 	
-	output[y * width + x] = px_out;	 
+	output[y * width + x] = px;	 
 }
 
+template<typename T>
+__global__ void gpuRectFillBox( T* input, T* output, int imgWidth, int imgHeight, int x0, int y0, int boxWidth, int boxHeight, const float4 color ) 
+{
+	const int box_x = blockIdx.x * blockDim.x + threadIdx.x;
+	const int box_y = blockIdx.y * blockDim.y + threadIdx.y;
+
+	if( box_x >= boxWidth || box_y >= boxHeight )
+		return;
+
+	const int x = box_x + x0;
+	const int y = box_y + y0;
+
+	if( x >= imgWidth || y >= imgHeight )
+		return;
+
+	T px = input[ y * imgWidth + x ];
+
+	const float alpha = color.w / 255.0f;
+	const float ialph = 1.0f - alpha;
+
+	px.x = alpha * color.x + ialph * px.x;
+	px.y = alpha * color.y + ialph * px.y;
+	px.z = alpha * color.z + ialph * px.z;
+	
+	output[y * imgWidth + x] = px;
+}
+
+template<typename T>
+cudaError_t launchRectFill( T* input, T* output, uint32_t width, uint32_t height, float4* rects, int numRects, const float4& color )
+{
+	if( !input || !output || width == 0 || height == 0 || !rects || numRects == 0 )
+		return cudaErrorInvalidValue;
+
+	// if input and output are the same image, then we can use the faster method
+	// which draws 1 box per kernel, but doesn't copy pixels that aren't inside boxes
+	if( input == output )
+	{
+		for( int n=0; n < numRects; n++ )
+		{
+			const int boxWidth = (int)(rects[n].z - rects[n].x);
+			const int boxHeight = (int)(rects[n].w - rects[n].y);
+
+			// launch kernel
+			const dim3 blockDim(8, 8);
+			const dim3 gridDim(iDivUp(boxWidth,blockDim.x), iDivUp(boxHeight,blockDim.y));
+
+			gpuRectFillBox<T><<<gridDim, blockDim>>>(input, output, width, height, (int)rects[n].x, (int)rects[n].y, boxWidth, boxHeight, color); 
+		}
+	}
+	else
+	{
+		// launch kernel
+		const dim3 blockDim(8, 8);
+		const dim3 gridDim(iDivUp(width,blockDim.x), iDivUp(height,blockDim.y));
+
+		gpuRectFill<T><<<gridDim, blockDim>>>(input, output, width, height, rects, numRects, color);
+	}
+
+	return cudaGetLastError();
+}
 
 // cudaRectFill
 cudaError_t cudaRectFill( void* input, void* output, imageFormat format, uint32_t width, uint32_t height, float4* rects, int numRects, const float4& color )
@@ -82,17 +128,13 @@ cudaError_t cudaRectFill( void* input, void* output, imageFormat format, uint32_
 	const dim3 gridDim(iDivUp(width,blockDim.x), iDivUp(height,blockDim.y));
 
 	if( format == IMAGE_RGB8 )
-		gpuRectFill<uchar3><<<gridDim, blockDim>>>((uchar3*)input, (uchar3*)output, width, height, rects, numRects, color); 
+		return launchRectFill<uchar3>((uchar3*)input, (uchar3*)output, width, height, rects, numRects, color); 
 	else if( format == IMAGE_RGBA8 )
-		gpuRectFill<uchar4><<<gridDim, blockDim>>>((uchar4*)input, (uchar4*)output, width, height, rects, numRects, color); 
+		return launchRectFill<uchar4>((uchar4*)input, (uchar4*)output, width, height, rects, numRects, color); 
 	else if( format == IMAGE_RGB32F )
-		gpuRectFill<float3><<<gridDim, blockDim>>>((float3*)input, (float3*)output, width, height, rects, numRects, color); 
+		return launchRectFill<float3>((float3*)input, (float3*)output, width, height, rects, numRects, color); 
 	else if( format == IMAGE_RGBA32F )
-		gpuRectFill<float4><<<gridDim, blockDim>>>((float4*)input, (float4*)output, width, height, rects, numRects, color); 
+		return launchRectFill<float4>((float4*)input, (float4*)output, width, height, rects, numRects, color); 
 	else
 		return cudaErrorInvalidValue;
-
-	return cudaGetLastError();
 }
-
-
