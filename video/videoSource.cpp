@@ -21,6 +21,7 @@
  */
  
 #include "videoSource.h"
+#include "imageLoader.h"
 
 #include "gstCamera.h"
 #include "gstDecoder.h"
@@ -46,13 +47,26 @@ videoSource* videoSource::Create( const videoOptions& options )
 	videoSource* src = NULL;
 	const URI& uri = options.resource;
 
-	if( uri.protocol == "csi" || uri.protocol == "v4l2" )
-		src = gstCamera::Create(options);
-	else if( uri.protocol == "file" || uri.protocol == "rtp" || uri.protocol == "rtsp" )
+	if( uri.protocol == "file" )
+	{
+		if( gstDecoder::IsSupportedExtension(uri.extension.c_str()) )
+			src = gstDecoder::Create(options);
+		else
+			src = imageLoader::Create(options);
+	}
+	else if( uri.protocol == "rtp" || uri.protocol == "rtsp" )
+	{
 		src = gstDecoder::Create(options);
+	}
+	else if( uri.protocol == "csi" || uri.protocol == "v4l2" )
+	{
+		src = gstCamera::Create(options);
+	}
 	else
+	{
 		printf("videoSource -- unsupported protocol (%s)\n", uri.protocol.size() > 0 ? uri.protocol.c_str() : "null");
-	
+	}
+
 	if( !src )
 		return NULL;
 
@@ -118,6 +132,8 @@ const char* videoSource::TypeToStr( uint32_t type )
 		return "gstCamera";
 	else if( type == gstDecoder::Type )
 		return "gstDecoder";
+	else if( type == imageLoader::Type )
+		return "imageLoader";
 
 	return "(unknown)";
 }

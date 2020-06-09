@@ -30,7 +30,7 @@
 
 
 /**
- * @ingroup image
+ * @ingroup video
  */
 class videoSource
 {
