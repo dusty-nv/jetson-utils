@@ -30,7 +30,7 @@
 
 
 /**
- * @ingroup image
+ * @ingroup video
  */
 struct videoOptions
 {
@@ -146,7 +146,9 @@ public:
 		CODEC_H264,
 		CODEC_H265,
 		CODEC_VP8,
-		CODEC_VP9
+		CODEC_VP9,
+		CODEC_MPEG2,
+		CODEC_MPEG4
 	};
 
 	/**

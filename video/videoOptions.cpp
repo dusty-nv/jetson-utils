@@ -98,12 +98,27 @@ bool videoOptions::Parse( const commandLine& cmdLine, videoOptions::IoType type 
 	height 	 = cmdLine.GetUnsignedInt("height");
 	frameRate  = cmdLine.GetUnsignedInt("framerate", frameRate);
 	numBuffers = cmdLine.GetUnsignedInt("num-buffers", numBuffers);
-	
 	zeroCopy 	 = cmdLine.GetFlag("zero-copy");
 
-	flipMethod = videoOptions::FlipMethodFromStr(cmdLine.GetString("flip-method"));
-	codec 	 = videoOptions::CodecFromStr(cmdLine.GetString("codec"));
+	// flip-method
+	const char* flipStr = (type == INPUT) ? cmdLine.GetString("input-flip-method")
+								   : cmdLine.GetString("output-flip-method");
+
+	if( !flipStr )
+		flipStr = cmdLine.GetString("flip-method");
+
+	flipMethod = videoOptions::FlipMethodFromStr(flipStr);
+
+	// codec
+	const char* codecStr = (type == INPUT) ? cmdLine.GetString("input-codec")
+								    : cmdLine.GetString("output-codec");
+
+	if( !codecStr )
+		codecStr = cmdLine.GetString("codec");
+
+	codec = videoOptions::CodecFromStr(codecStr);
 		
+	// bitrate
 	if( type == OUTPUT )
 		bitRate = cmdLine.GetUnsignedInt("bitrate", bitRate);
 
@@ -219,6 +234,8 @@ const char* videoOptions::CodecToStr( videoOptions::Codec codec )
 		case CODEC_H265:	return "h265";
 		case CODEC_VP8:	return "vp8";
 		case CODEC_VP9:	return "vp9";
+		case CODEC_MPEG2:	return "mpeg2";
+		case CODEC_MPEG4:	return "mpeg4";
 	}
 }
 
@@ -229,7 +246,7 @@ videoOptions::Codec videoOptions::CodecFromStr( const char* str )
 	if( !str )
 		return CODEC_UNKNOWN;
 
-	for( int n=0; n <= CODEC_VP9; n++ )
+	for( int n=0; n <= CODEC_MPEG4; n++ )
 	{
 		const Codec value = (Codec)n;
 
