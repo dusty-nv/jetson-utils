@@ -121,11 +121,12 @@ bool listDir( const char* path, std::vector<std::string>& output, bool includePa
 }
 #endif
 
-// fileExists
-bool fileExists( const char* path, bool regularFilesOnly )
+
+// fileType
+int fileType( const char* path )
 {
 	if( !path )
-		return false;
+		return FILE_MISSING;
 
 	struct stat fileStat;
 	const int result = stat(path, &fileStat);
@@ -133,16 +134,46 @@ bool fileExists( const char* path, bool regularFilesOnly )
 	if( result == -1 )
 	{
 		//printf("%s does not exist.\n", path);
-		return false;
+		return FILE_MISSING;
 	}
 
-	if( !regularFilesOnly )
-		return true;
-
 	if( S_ISREG(fileStat.st_mode) )
+		return FILE_REGULAR;
+	else if( S_ISDIR(fileStat.st_mode) )
+		return FILE_DIR;
+	else if( S_ISLNK(fileStat.st_mode) )
+		return FILE_LINK;
+	else if( S_ISCHR(fileStat.st_mode) )
+		return FILE_CHAR;
+	else if( S_ISBLK(fileStat.st_mode) )
+		return FILE_BLOCK;
+	else if( S_ISFIFO(fileStat.st_mode) )
+		return FILE_FIFO;
+	else if( S_ISSOCK(fileStat.st_mode) )
+		return FILE_SOCKET;
+	
+	return FILE_MISSING;
+}
+
+
+// fileExists
+bool fileExists( const char* path, int filter )
+{
+	if( !path )
+		return false;
+
+	const int type = fileType(path);
+	
+	if( type < 0 )
+		return false;
+	
+	if( filter < 0 )
 		return true;
 	
-	return false;
+	if( filter != type )
+		return false;
+	
+	return true;
 }
 
 

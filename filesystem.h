@@ -51,7 +51,7 @@ std::string absolutePath( const std::string& relative_path );
  *
  * @ingroup filesystem
  */
-//bool listDirectory( const char* path, std::vector<std::string>& list, bool includePath=false );
+//bool listDir( const char* path, std::vector<std::string>& list, bool includePath=false );
 
 
 /**
@@ -80,18 +80,35 @@ std::string locateFile( const std::string& path, std::vector<std::string>& locat
 
 
 /**
- * Verify path and return true if the file exists.
- *
- * @param regularFilesOnly If false (which is the default), then fileExists() includes filesystem entries 
- *                         like directories, device files, and sockets when verifying the path.
- *
- *                         If regularFilesOnly parameter is true, then fileExists() will verify the path 
- *                         is to a readable, "regular" file.  Other file types (for example directories)
- *                         will result in fileExists() returning false.
- *
+ * File types
  * @ingroup filesystem
  */
-bool fileExists( const char* path, bool regularFilesOnly=false );
+enum
+{
+	FILE_MISSING = -1,
+	FILE_REGULAR = 0,
+	FILE_DIR,
+	FILE_LINK,
+	FILE_CHAR,
+	FILE_BLOCK,
+	FILE_FIFO,
+	FILE_SOCKET,
+};
+
+
+/**
+ * Verify path and return true if the file exists.
+ * @param type filter by file type (by default, any file including directories will be checked)
+ * @ingroup filesystem
+ */
+bool fileExists( const char* path, int type=-1 );
+
+
+/**
+ * Return the file type, or FILE_MISSING if it doesn't exist.
+ * @ingroup filesystem
+ */
+int fileType( const char* path );
 
 
 /**
