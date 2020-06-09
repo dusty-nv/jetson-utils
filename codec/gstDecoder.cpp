@@ -22,7 +22,9 @@
 
 #include "gstDecoder.h"
 #include "cudaColorspace.h"
+
 #include "logging.h"
+#include "filesystem.h"
 
 #include <gst/gst.h>
 #include <gst/app/gstappsink.h>
@@ -46,6 +48,33 @@
 //  $ cd examples && ./test-launch "( videotestsrc ! x264enc ! rtph264pay name=pay0 pt=96 )"
 //  rtsp://127.0.0.1:8554/test
 //
+
+
+// supported image file extensions
+const char* gstDecoder::SupportedExtensions[] = { "mkv", "mp4", "qt", 
+										"flv", "avi", "h264", 
+										"h265", NULL };
+
+bool gstDecoder::IsSupportedExtension( const char* ext )
+{
+	if( !ext )
+		return false;
+
+	uint32_t extCount = 0;
+
+	while(true)
+	{
+		if( !SupportedExtensions[extCount] )
+			break;
+
+		if( strcasecmp(SupportedExtensions[extCount], ext) == 0 )
+			return true;
+
+		extCount++;
+	}
+
+	return false;
+}
 
 
 // constructor
@@ -206,6 +235,12 @@ bool gstDecoder::buildLaunchStr()
 
 	if( uri.protocol == "file" )
 	{
+		if( !fileExists(uri.path) )
+		{
+			LogError(LOG_GSTREAMER "gstDecoder -- couldn't find file '%s'\n", uri.path.c_str());
+			return false;
+		}
+
 		ss << "filesrc location=" << mOptions.resource.path << " ! ";
 
 		if( uri.extension == "mkv" )
@@ -218,13 +253,13 @@ bool gstDecoder::buildLaunchStr()
 			ss << "avidemux ! ";
 		else if( uri.extension != "h264" && uri.extension != "h265" )
 		{
-			printf(LOG_GSTREAMER "gstDecoder -- unsupported video file extension (%s)\n", uri.extension.c_str());
-			printf(LOG_GSTREAMER "              supported video extensions are:\n");
-			printf(LOG_GSTREAMER "                 * mkv\n");
-			printf(LOG_GSTREAMER "                 * mp4, qt\n");
-			printf(LOG_GSTREAMER "                 * flv\n");
-			printf(LOG_GSTREAMER "                 * avi\n");
-			printf(LOG_GSTREAMER "                 * h264, h265\n");
+			LogError(LOG_GSTREAMER "gstDecoder -- unsupported video file extension (%s)\n", uri.extension.c_str());
+			LogError(LOG_GSTREAMER "              supported video extensions are:\n");
+			LogError(LOG_GSTREAMER "                 * mkv\n");
+			LogError(LOG_GSTREAMER "                 * mp4, qt\n");
+			LogError(LOG_GSTREAMER "                 * flv\n");
+			LogError(LOG_GSTREAMER "                 * avi\n");
+			LogError(LOG_GSTREAMER "                 * h264, h265\n");
 
 			return false;
 		}
@@ -235,6 +270,10 @@ bool gstDecoder::buildLaunchStr()
 			ss << "h264parse ! ";
 		else if( mOptions.codec == videoOptions::CODEC_H265 )
 			ss << "h265parse ! ";
+		else if( mOptions.codec == videoOptions::CODEC_MPEG2 )
+			ss << "mpegvideoparse ! ";
+		else if( mOptions.codec == videoOptions::CODEC_MPEG4 )
+			ss << "mpeg4videoparse ! ";
 
 		mOptions.deviceType = videoOptions::DEVICE_FILE;
 	}
@@ -242,7 +281,7 @@ bool gstDecoder::buildLaunchStr()
 	{
 		if( uri.port <= 0 )
 		{
-			printf(LOG_GSTREAMER "gstDecoder -- invalid RTP port (%i)\n", uri.port);
+			LogError(LOG_GSTREAMER "gstDecoder -- invalid RTP port (%i)\n", uri.port);
 			return false;
 		}
 
@@ -299,6 +338,10 @@ bool gstDecoder::buildLaunchStr()
 		ss << "omxvp8dec ! ";
 	else if( mOptions.codec == videoOptions::CODEC_VP9 )
 		ss << "omxvp9dec ! ";
+	else if( mOptions.codec == videoOptions::CODEC_MPEG2 )
+		ss << "omxmpeg2videodec ! ";
+	else if( mOptions.codec == videoOptions::CODEC_MPEG4 )
+		ss << "omxmpeg4videodec ! ";
 #else
 	if( mOptions.codec == videoOptions::CODEC_H264 )
 		ss << "nv_omx_h264dec ! ";
@@ -308,10 +351,22 @@ bool gstDecoder::buildLaunchStr()
 		ss << "nv_omx_vp8dec ! ";
 	else if( mOptions.codec == videoOptions::CODEC_VP9 )
 		ss << "nv_omx_vp9dec ! ";
+	else if( mOptions.codec == videoOptions::CODEC_MPEG2 )
+		ss << "nx_omx_mpeg2videodec ! ";
+	else if( mOptions.codec == videoOptions::CODEC_MPEG4 )
+		ss << "nx_omx_mpeg4videodec ! ";
 #endif
 	else
 	{
-		LogError(LOG_GSTREAMER "gstDecoder -- unsupported codec requested (should be H.264/H.265/VP8/VP9)\n");
+		LogError(LOG_GSTREAMER "gstDecoder -- unsupported codec requested (%s)\n", videoOptions::CodecToStr(mOptions.codec));
+		LogError(LOG_GSTREAMER "              supported decoder codecs are:\n");
+		LogError(LOG_GSTREAMER "                 * h264\n");
+		LogError(LOG_GSTREAMER "                 * h265\n");
+		LogError(LOG_GSTREAMER "                 * vp8\n");
+		LogError(LOG_GSTREAMER "                 * vp9\n");
+		LogError(LOG_GSTREAMER "                 * mpeg2\n");
+		LogError(LOG_GSTREAMER "                 * mpeg4\n");
+
 		return false;
 	}
 
