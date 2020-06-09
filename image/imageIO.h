@@ -174,4 +174,12 @@ bool saveImage( const char* filename, void* ptr, int width, int height, imageFor
 bool saveImageRGBA( const char* filename, float4* ptr, int width, int height, float max_pixel=255.0f, int quality=100 );
 
 
+/**
+ * @internal
+ * @ingroup image
+ */
+#define LOG_IMAGE "[image] "
+
+
 #endif
+

@@ -34,8 +34,6 @@
 #define STB_IMAGE_RESIZE_IMPLEMENTATION
 #include "stb/stb_image_resize.h"
 
-#define LOG_IMAGE "[image] "
-
 
 
 // loadImageIO (internal)
@@ -75,7 +73,7 @@ static unsigned char* loadImageIO( const char* filename, int* width, int* height
 		imgChannels = *channels;
 
 	// validate dimensions for sanity
-	//printf(LOG_IMAGE "loaded '%s'  (%i x %i, %i channels)\n", filename, imgWidth, imgHeight, imgChannels);
+	printf(LOG_IMAGE "loaded '%s'  (%ix%i, %i channels)\n", filename, imgWidth, imgHeight, imgChannels);
 
 	if( imgWidth < 0 || imgHeight < 0 || imgChannels < 0 || imgChannels > 4 )
 	{
@@ -360,6 +358,8 @@ bool saveImage( const char* filename, void* ptr, int width, int height, imageFor
 		printf(LOG_IMAGE "failed to save %ix%i image to '%s'\n", width, height, filename);
 		release_return(false);
 	}
+
+	printf(LOG_IMAGE "saved '%s'  (%ix%i, %zu channels)\n", filename, width, height, channels);
 
 	release_return(true);
 }
