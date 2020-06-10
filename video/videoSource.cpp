@@ -85,22 +85,22 @@ videoSource* videoSource::Create( const char* resource, const videoOptions& opti
 
 
 // Create
-videoSource* videoSource::Create( const int argc, char** argv )
+videoSource* videoSource::Create( const int argc, char** argv, int positionArg )
 {
 	if( argc < 0 || !argv )
 		return NULL;
 
 	commandLine cmdLine(argc, argv);
-	return Create(cmdLine);
+	return Create(cmdLine, positionArg);
 }
 
 
 // Create
-videoSource* videoSource::Create( const commandLine& cmdLine )
+videoSource* videoSource::Create( const commandLine& cmdLine, int positionArg )
 {
 	videoOptions opt;
 
-	if( !opt.Parse(cmdLine, videoOptions::INPUT) )
+	if( !opt.Parse(cmdLine, videoOptions::INPUT, positionArg) )
 	{
 		printf("videoSource -- failed to parse command line options\n");
 		return NULL;

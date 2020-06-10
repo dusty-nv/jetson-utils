@@ -48,12 +48,12 @@ public:
 	/**
 	 *
 	 */
-	static videoSource* Create( const int argc, char** argv );
+	static videoSource* Create( const int argc, char** argv, int positionArg=-1 );
 
 	/**
 	 *
 	 */
-	static videoSource* Create( const commandLine& cmdLine );
+	static videoSource* Create( const commandLine& cmdLine, int positionArg=-1 );
 	
 	/**
 	 *
