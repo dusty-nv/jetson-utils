@@ -144,8 +144,15 @@ bool gstEncoder::init()
 		return NULL;
 	}
 
-	// build caps string
+	// check for default codec
+	if( mOptions.codec == videoOptions::CODEC_UNKNOWN )
+	{
+		LogWarning(LOG_GSTREAMER "gstEncoder -- codec not specified, defaulting to H.264\n");
+		mOptions.codec = videoOptions::CODEC_H264;
+	}
+
 #if 0
+	// build caps string
 	if( !buildCapsStr() )
 	{
 		printf(LOG_GSTREAMER "gstEncoder -- failed to build caps string\n");
@@ -241,13 +248,13 @@ bool gstEncoder::buildCapsStr()
 	ss << ", width=" << GetWidth();
 	ss << ", height=" << GetHeight();
 	ss << ", format=(string)I420";
-	ss << ", framerate=30/1";
+	ss << ", framerate=" << (int)mOptions.frameRate << "/1";
 #else
 	ss << "video/x-raw-yuv";
 	ss << ",width=" << GetWidth();
 	ss << ",height=" << GetHeight();
 	ss << ",format=(fourcc)I420";
-	ss << ",framerate=30/1";
+	ss << ",framerate=" << (int)mOptions.frameRate << "/1";
 #endif
 	
 	mCapsStr = ss.str();
@@ -500,7 +507,8 @@ bool gstEncoder::Render( void* image, uint32_t width, uint32_t height, imageForm
 
 	if( mOptions.width != width || mOptions.height != height )
 	{
-		LogWarning(LOG_GSTREAMER "gstEncoder::Render() -- warning, input dimensions (%ux%u) are different than expected (%ux%u)\n", width, height, mOptions.width, mOptions.height);
+		if( mOptions.width != 0 || mOptions.height != 0 )
+			LogWarning(LOG_GSTREAMER "gstEncoder::Render() -- warning, input dimensions (%ux%u) are different than expected (%ux%u)\n", width, height, mOptions.width, mOptions.height);
 		
 		mOptions.width  = width;
 		mOptions.height = height;
