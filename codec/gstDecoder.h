@@ -108,7 +108,7 @@ protected:
 	bool buildLaunchStr();
 	
 	bool init();
-	//bool init( gstCodec codec, const char* filename, const char* multicastIP, uint16_t port );
+	bool discover();
 	
 	static void onEOS(_GstAppSink* sink, void* user_data);
 	static GstFlowReturn onPreroll(_GstAppSink* sink, void* user_data);
@@ -125,9 +125,6 @@ protected:
 
 	std::string  mLaunchStr;
 	bool         mEOS;
-	//std::string  mInputPath;
-	//std::string  mMulticastIP;
-	//uint16_t     mPort;
 };
   
 #endif

@@ -28,6 +28,7 @@
 
 #include <gst/gst.h>
 #include <gst/app/gstappsink.h>
+#include <gst/pbutils/pbutils.h>
 
 #include <sstream>
 #include <unistd.h>
@@ -38,7 +39,7 @@
 
 // 
 // RTP test source pipeline:
-//  $ gst-launch-1.0 -v videotestsrc ! video/x-raw,framerate=30/1 ! videoscale ! videoconvert ! x264enc tune=zerolatency bitrate=500 speed-preset=superfast ! rtph264pay ! udpsink host=127.0.0.1 port=5000
+//  $ 
 //  rtp://@:5000
 //
 // RSTP test server installation:
@@ -124,7 +125,7 @@ gstDecoder* gstDecoder::Create( const videoOptions& options )
 
 	if( !dec->init() )
 	{
-		LogError(LOG_GSTREAMER "gstDecoder -- failed to create decoder engine\n");
+		LogError(LOG_GSTREAMER "gstDecoder -- failed to create decoder for %s\n", dec->mOptions.resource.string.c_str());
 		return NULL;
 	}
 	
@@ -144,7 +145,7 @@ gstDecoder* gstDecoder::Create( const URI& resource, videoOptions::Codec codec )
 	return Create(opt);
 }
 	
-
+	
 // init
 bool gstDecoder::init()
 {
@@ -156,6 +157,33 @@ bool gstDecoder::init()
 		return NULL;
 	}
 
+	// first, check that the file exists
+	if( mOptions.resource.protocol == "file" )
+	{
+		if( !fileExists(mOptions.resource.path) )
+		{
+			LogError(LOG_GSTREAMER "gstDecoder -- couldn't find file '%s'\n", mOptions.resource.path.c_str());
+			return false;
+		}
+	}
+	
+	LogInfo(LOG_GSTREAMER "gstDecoder -- creating decoder for %s\n", mOptions.resource.path.c_str());
+
+	// discover resource stats
+	if( !discover() )
+	{
+		if( mOptions.resource.protocol == "rtp" )
+			LogWarning(LOG_GSTREAMER "gstDecoder -- resource discovery not supported for RTP streams\n");		
+		else
+			LogError(LOG_GSTREAMER "gstDecoder -- resource discovery and auto-negotiation failed\n");
+
+		if( mOptions.codec == videoOptions::CODEC_UNKNOWN )
+		{
+			LogError(LOG_GSTREAMER "gstDecoder -- try manually setting the codec with the --input-codec option\n");
+			return false;
+		}
+	}
+	
 	// build pipeline string
 	if( !buildLaunchStr() )
 	{
@@ -224,6 +252,146 @@ bool gstDecoder::init()
 }
 
 
+// findVideoStreamInfo
+static GstDiscovererVideoInfo* findVideoStreamInfo( GstDiscovererStreamInfo* info )
+{
+	if( !info )
+		return NULL;
+	
+	//printf("stream type -- %s\n", gst_discoverer_stream_info_get_stream_type_nick(info));
+	
+	if( GST_IS_DISCOVERER_VIDEO_INFO(info) )
+	{
+		return GST_DISCOVERER_VIDEO_INFO(info);
+	}
+	else if( GST_IS_DISCOVERER_CONTAINER_INFO(info) )
+	{
+		GstDiscovererContainerInfo* containerInfo = GST_DISCOVERER_CONTAINER_INFO(info);
+	
+		if( !containerInfo )
+			return NULL;
+
+		GList* containerStreams = gst_discoverer_container_info_get_streams(containerInfo);
+			
+		for( GList* n=containerStreams; n; n = n->next )
+		{
+			GstDiscovererVideoInfo* videoStream = findVideoStreamInfo(GST_DISCOVERER_STREAM_INFO(n->data));
+			
+			if( videoStream != NULL )
+				return videoStream;
+		}
+	}
+	
+	return findVideoStreamInfo(gst_discoverer_stream_info_get_next(info));
+}
+
+
+// discover
+bool gstDecoder::discover()
+{
+	if( mOptions.resource.protocol == "rtp" )
+		return false;
+
+	GError* err = NULL;
+	GstDiscoverer* discoverer = gst_discoverer_new(GST_SECOND, &err);
+	
+	if( !discoverer )
+	{
+		LogError(LOG_GSTREAMER "gstDecoder -- failed to create gstreamer discovery instance:  %s\n", err->message);
+		return false;
+	}
+	
+	GstDiscovererInfo* info = gst_discoverer_discover_uri(discoverer,
+                             mOptions.resource.string.c_str(), &err);
+    
+	if( !info || err != NULL )
+	{
+		LogError(LOG_GSTREAMER "gstDecoder -- %s\n", err->message);
+		return false;
+	}
+	
+	GstDiscovererStreamInfo* rootStream = gst_discoverer_info_get_stream_info(info);
+	
+	if( !rootStream )
+	{
+		LogError(LOG_GSTREAMER "gstDecoder -- failed to discover stream info\n");
+		return false;
+	}
+
+	GstDiscovererVideoInfo* videoInfo = findVideoStreamInfo(rootStream);
+	GstDiscovererStreamInfo* streamInfo = GST_DISCOVERER_STREAM_INFO(videoInfo);
+	
+	if( !videoInfo )
+	{
+		LogError(LOG_GSTREAMER "gstDecoder -- failed to discover any video streams\n");
+		return false;
+	}
+	
+	// retrieve video resolution
+	const guint width  = gst_discoverer_video_info_get_width(videoInfo);
+	const guint height = gst_discoverer_video_info_get_height(videoInfo);
+	
+	const float framerate_num = gst_discoverer_video_info_get_framerate_num(videoInfo);
+	const float framerate_denom = gst_discoverer_video_info_get_framerate_denom(videoInfo);
+	
+	mOptions.frameRate = framerate_num / framerate_denom;
+
+	LogVerbose(LOG_GSTREAMER "gstDecoder -- discovered video resolution: %ux%u  (framerate %f Hz)\n", width, height, mOptions.frameRate);
+	
+	if( mOptions.width == 0 )
+		mOptions.width = width;
+
+	if( mOptions.height == 0 )
+		mOptions.height = height;
+
+	// retrieve video caps
+	GstCaps* caps = gst_discoverer_stream_info_get_caps(streamInfo);
+	
+	if( !caps )
+	{
+		printf(LOG_GSTREAMER "gstDecoder -- failed to discover video caps\n");
+		return false;
+	}
+	
+	const std::string videoCaps = gst_caps_to_string(caps);
+	
+	LogVerbose(LOG_GSTREAMER "gstDecoder -- discovered video caps:  %s\n", videoCaps.c_str());
+
+	// parse codec
+	if( videoCaps.find("video/x-h264") != std::string::npos )
+		mOptions.codec = videoOptions::CODEC_H264;
+	else if( videoCaps.find("video/x-h265") != std::string::npos )
+		mOptions.codec = videoOptions::CODEC_H265;
+	else if( videoCaps.find("video/x-vp8") != std::string::npos )
+		mOptions.codec = videoOptions::CODEC_VP8;
+	else if( videoCaps.find("video/x-vp9") != std::string::npos )
+		mOptions.codec = videoOptions::CODEC_VP9;
+	else if( videoCaps.find("video/mpeg") != std::string::npos )
+	{
+		if( videoCaps.find("mpegversion=(int)4") != std::string::npos )
+			mOptions.codec = videoOptions::CODEC_MPEG4;
+		else if( videoCaps.find("mpegversion=(int)2") != std::string::npos )
+			mOptions.codec = videoOptions::CODEC_MPEG2;
+	}
+
+	if( mOptions.codec == videoOptions::CODEC_UNKNOWN )
+	{
+		LogError(LOG_GSTREAMER "gstDecoder -- unsupported codec, supported codecs are:\n");
+		LogError(LOG_GSTREAMER "                 * h264\n");
+		LogError(LOG_GSTREAMER "                 * h265\n");
+		LogError(LOG_GSTREAMER "                 * vp8\n");
+		LogError(LOG_GSTREAMER "                 * vp9\n");
+		LogError(LOG_GSTREAMER "                 * mpeg2\n");
+		LogError(LOG_GSTREAMER "                 * mpeg4\n");
+
+		return false;
+	}
+
+	// TODO free other resources
+	//g_free(discoverer);
+	return true;
+}
+
 
 // buildLaunchStr
 bool gstDecoder::buildLaunchStr()
@@ -235,12 +403,6 @@ bool gstDecoder::buildLaunchStr()
 
 	if( uri.protocol == "file" )
 	{
-		if( !fileExists(uri.path) )
-		{
-			LogError(LOG_GSTREAMER "gstDecoder -- couldn't find file '%s'\n", uri.path.c_str());
-			return false;
-		}
-
 		ss << "filesrc location=" << mOptions.resource.path << " ! ";
 
 		if( uri.extension == "mkv" )
@@ -397,6 +559,7 @@ bool gstDecoder::buildLaunchStr()
 
 	return true;
 }
+
 
 
 // onEOS
