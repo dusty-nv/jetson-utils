@@ -38,7 +38,12 @@ public:
 	/**
 	 * Constructor, takes the command line from `main()`
 	 */
-	commandLine( const int argc, char** argv );
+	commandLine( const int argc, char** argv, const char* extraFlag=NULL );
+
+	/**
+	 * Constructor, takes the command line from `main()`
+	 */
+	commandLine( const int argc, char** argv, const char** extraArgs );
 
 	/**
 	 * Checks to see whether the specified flag was included on the 
@@ -106,6 +111,21 @@ public:
 	unsigned int GetPositionArgs() const;
 	
 	/**
+	 * Add an argument to the command line.
+	 */
+	void AddArg( const char* arg );
+
+	/**
+	 * Add arguments to the command line.
+	 */
+	void AddArgs( const char** args );
+
+	/**
+	 * Add a flag to the command line.
+	 */
+	void AddFlag( const char* flag );
+
+	/**
 	 * The argument count that the object was created with from main()
 	 */
 	int argc;
@@ -115,6 +135,13 @@ public:
 	 */
 	char** argv;
 };
+
+
+/**
+ * Specify a positional argument index.
+ * @ingroup util
+ */
+#define ARG_POSITION(x) x
 
 
 #endif

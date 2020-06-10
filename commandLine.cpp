@@ -22,6 +22,7 @@
 
 #include "commandLine.h"
 
+#include <string>
 #include <string.h>
 #include <strings.h>
 
@@ -45,10 +46,22 @@ static inline int strRemoveDelimiter( char delimiter, const char* string )
 
 
 // constructor
-commandLine::commandLine( const int pArgc, char** pArgv )
+commandLine::commandLine( const int pArgc, char** pArgv, const char* extraFlag )
 {
 	argc = pArgc;
 	argv = pArgv;
+
+	AddFlag(extraFlag);
+}
+
+
+// constructor
+commandLine::commandLine( const int pArgc, char** pArgv, const char** extraArgs )
+{
+	argc = pArgc;
+	argv = pArgv;
+
+	AddArgs(extraArgs);
 }
 
 
@@ -245,3 +258,70 @@ unsigned int commandLine::GetPositionArgs() const
 
 	return position_count;
 }
+
+
+// AddArg
+void commandLine::AddArg( const char* arg )
+{
+	if( !arg )
+		return;
+
+	const size_t arg_length = strlen(arg);
+
+	if( arg_length == 0 )
+		return;
+
+	const int new_argc = argc + 1;
+	char** new_argv = (char**)malloc(sizeof(char*) * new_argc);
+
+	if( !new_argv )
+		return;
+
+	for( int n=0; n < argc; n++ )
+		new_argv[n] = argv[n];
+
+	new_argv[argc] = (char*)malloc(arg_length + 1);
+
+	if( !new_argv[argc] )
+		return;
+
+	strcpy(new_argv[argc], arg);
+
+	argc = new_argc;
+	argv = new_argv;
+}
+
+
+// AddArgs
+void commandLine::AddArgs( const char** args )
+{
+	if( !args )
+		return;
+
+	int arg_count = 0;
+
+	while(true)
+	{
+		if( !args[arg_count] )
+			return;
+		
+		AddArg(args[arg_count]);
+		arg_count++;
+	}
+}
+
+
+// AddFlag
+void commandLine::AddFlag( const char* flag )
+{
+	if( !flag || strlen(flag) == 0 )
+		return;
+
+	if( GetFlag(flag) )
+		return;
+
+	const std::string arg = std::string("--") + flag;
+	AddArg(arg.c_str());
+}
+
+
