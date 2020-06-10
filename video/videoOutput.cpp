@@ -88,7 +88,7 @@ videoOutput* videoOutput::Create( const char* resource, const videoOptions& opti
 
 
 // Create
-videoOutput* videoOutput::Create( const int argc, char** argv )
+videoOutput* videoOutput::Create( const int argc, char** argv, int positionArg )
 {
 	if( argc < 0 || !argv )
 		return NULL;
@@ -99,11 +99,11 @@ videoOutput* videoOutput::Create( const int argc, char** argv )
 
 
 // Create
-videoOutput* videoOutput::Create( const commandLine& cmdLine )
+videoOutput* videoOutput::Create( const commandLine& cmdLine, int positionArg )
 {
 	videoOptions opt;
 
-	if( !opt.Parse(cmdLine, videoOptions::OUTPUT) )
+	if( !opt.Parse(cmdLine, videoOptions::OUTPUT, positionArg) )
 	{
 		printf("videoOutput -- failed to parse command line options\n");
 		return NULL;

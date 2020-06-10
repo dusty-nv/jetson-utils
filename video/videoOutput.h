@@ -50,12 +50,12 @@ public:
 	/**
 	 *
 	 */
-	static videoOutput* Create( const int argc, char** argv );
+	static videoOutput* Create( const int argc, char** argv, int positionArg=-1 );
 
 	/**
 	 *
 	 */
-	static videoOutput* Create( const commandLine& cmdLine );
+	static videoOutput* Create( const commandLine& cmdLine, int positionArg=-1 );
 	
 	/**
 	 *
