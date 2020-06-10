@@ -55,7 +55,7 @@ void videoOptions::Print( const char* prefix ) const
 
 	printf("  -- width:      %u\n", width);
 	printf("  -- height:     %u\n", height);
-	printf("  -- frameRate:  %u\n", frameRate);
+	printf("  -- frameRate:  %f\n", frameRate);
 	printf("  -- bitRate:    %u\n", bitRate);
 	printf("  -- numBuffers: %u\n", numBuffers);
 	printf("  -- zeroCopy:   %s\n", zeroCopy ? "true" : "false");
@@ -68,15 +68,15 @@ void videoOptions::Print( const char* prefix ) const
 
 
 // Parse
-bool videoOptions::Parse( const int argc, char** argv, videoOptions::IoType type )
+bool videoOptions::Parse( const int argc, char** argv, videoOptions::IoType type, int ioPositionArg )
 {
 	commandLine cmdLine(argc, argv);
-	return Parse(cmdLine, type);
+	return Parse(cmdLine, type, ioPositionArg);
 }
 
 
 // Parse
-bool videoOptions::Parse( const commandLine& cmdLine, videoOptions::IoType type )
+bool videoOptions::Parse( const commandLine& cmdLine, videoOptions::IoType type, int ioPositionArg )
 {
 	ioType = type;
 
@@ -84,8 +84,14 @@ bool videoOptions::Parse( const commandLine& cmdLine, videoOptions::IoType type 
 	const bool headless = cmdLine.GetFlag("no-display") | cmdLine.GetFlag("headless");
 
 	// parse input/output URI
-	const char* resourceStr = (type == INPUT) ? cmdLine.GetString("input", "csi://0")
-						                 : cmdLine.GetString("output", headless ? NULL : "display://0");
+	const char* resourceStr = NULL;
+
+	if( ioPositionArg >= 0 && cmdLine.GetPositionArgs() >= ioPositionArg )
+		resourceStr = cmdLine.GetPosition(ioPositionArg);
+
+	if( !resourceStr )
+		resourceStr = (type == INPUT) ? cmdLine.GetString("input", "csi://0")
+						          : cmdLine.GetString("output", headless ? NULL : "display://0");
 
 	if( !resource.Parse(resourceStr) )
 	{

@@ -58,7 +58,7 @@ public:
 	/**
 	 *
 	 */
-	uint32_t frameRate;
+	float frameRate;
 	
 	/**
 	 *
@@ -164,12 +164,12 @@ public:
 	/**
 	 *
 	 */
-	bool Parse( const int argc, char** argv, IoType ioType );
+	bool Parse( const int argc, char** argv, IoType ioType, int ioPositionArg=-1 );
 
 	/**
 	 *
 	 */
-	bool Parse( const commandLine& cmdLine, IoType ioType );
+	bool Parse( const commandLine& cmdLine, IoType ioType, int ioPositionArg=-1 );
 
 	/**
 	 *
