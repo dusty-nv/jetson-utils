@@ -76,34 +76,33 @@ protected:
  * @internal
  */
 #define LogMessage(level, format, args...)        \
-			if( level <= Log::GetLevel() ) {	\
-				printf(format, ## args);		\
-			}
+			if( level <= Log::GetLevel() )	\
+				printf(format, ## args)		\
 
 /**
  * @ingroup log
  */
-#define LogError(format, args...)		LogMessage(Log::ERROR, LOG_COLOR_RED LOG_LEVEL_PREFIX_ERROR format LOG_COLOR_RESET, ## args);
+#define LogError(format, args...)		LogMessage(Log::ERROR, LOG_COLOR_RED LOG_LEVEL_PREFIX_ERROR format LOG_COLOR_RESET, ## args)
 
 /**
  * @ingroup log
  */
-#define LogWarning(format, args...)	LogMessage(Log::WARNING, LOG_COLOR_YELLOW LOG_LEVEL_PREFIX_WARNING format LOG_COLOR_RESET, ## args);
+#define LogWarning(format, args...)	LogMessage(Log::WARNING, LOG_COLOR_YELLOW LOG_LEVEL_PREFIX_WARNING format LOG_COLOR_RESET, ## args)
 
 /**
  * @ingroup log
  */
-#define LogInfo(format, args...)		LogMessage(Log::INFO, LOG_LEVEL_PREFIX_INFO format, ## args);
+#define LogInfo(format, args...)		LogMessage(Log::INFO, LOG_LEVEL_PREFIX_INFO format, ## args)
 
 /**
  * @ingroup log
  */
-#define LogVerbose(format, args...)	LogMessage(Log::VERBOSE, LOG_LEVEL_PREFIX_VERBOSE format LOG_COLOR_RESET, ## args);
+#define LogVerbose(format, args...)	LogMessage(Log::VERBOSE, LOG_LEVEL_PREFIX_VERBOSE format LOG_COLOR_RESET, ## args)
 
 /**
  * @ingroup log
  */
-#define LogDebug(format, args...)		LogMessage(Log::DEBUG, LOG_LEVEL_PREFIX_DEBUG format LOG_COLOR_RESET, ## args);
+#define LogDebug(format, args...)		LogMessage(Log::DEBUG, LOG_LEVEL_PREFIX_DEBUG format LOG_COLOR_RESET, ## args)
 
 /**
  * 
