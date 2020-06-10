@@ -32,8 +32,16 @@
 // absolutePath
 std::string absolutePath( const std::string& relative_path )
 {
+	if( relative_path.size() != 0 )
+	{
+		const char first_char = relative_path[0];
+
+		if( first_char == '/' || first_char == '\\' || first_char == '~' )
+			return relative_path;
+	}
+
 	const std::string proc = Process::ExecutableDirectory();
-	return proc + relative_path;
+	return pathJoin(proc, relative_path);
 }
 
 

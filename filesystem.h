@@ -32,9 +32,9 @@
  * Given a relative path, resolve the absolute path based on the location 
  * of the process that calls the function.
  *
- * For example, if the application is located at "/home/user/my_process"
+ * For example, if the application is located at `/home/user/my_process`
  * and `absolutePath("resources/example")` is called, then this function
- * would return the path "/home/user/resources/example".
+ * would return the path `/home/user/resources/example`.
  * 
  * @ingroup filesystem
  */
