@@ -139,6 +139,39 @@ static PyObject* PyCudaMemory_ToString( PyCudaMemory* self )
 	return PYSTRING_FROM_STRING(str);
 }
 
+// PyCudaMemory_GetPtr
+static PyObject* PyCudaMemory_GetPtr( PyCudaMemory* self, void* closure )
+{
+	return PYLONG_FROM_UNSIGNED_LONG((uint64_t)self->ptr);
+}
+
+// PyCudaMemory_GetSize
+static PyObject* PyCudaMemory_GetSize( PyCudaMemory* self, void* closure )
+{
+	return PYLONG_FROM_UNSIGNED_LONG(self->size);
+}
+
+// PyCudaMemory_GetMapped
+static PyObject* PyCudaMemory_GetMapped( PyCudaMemory* self, void* closure )
+{
+	PY_RETURN_BOOL(self->mapped);
+}
+
+// PyCudaMemory_GetFreeOnDelete
+static PyObject* PyCudaMemory_GetFreeOnDelete( PyCudaMemory* self, void* closure )
+{
+	PY_RETURN_BOOL(self->freeOnDelete);
+}
+
+static PyGetSetDef pyCudaMemory_GetSet[] = 
+{
+	{ "ptr", (getter)PyCudaMemory_GetPtr, NULL, "Address of CUDA memory", NULL},
+	{ "size", (getter)PyCudaMemory_GetSize, NULL, "Size (in bytes)", NULL},
+	{ "mapped", (getter)PyCudaMemory_GetMapped, NULL, "Is the memory mapped to CPU also? (zeroCopy)", NULL},
+	{ "freeOnDelete", (getter)PyCudaMemory_GetFreeOnDelete, NULL, "Will the CUDA memory be released when the Python object is deleted?", NULL},	
+	{ NULL } /* Sentinel */
+};
+
 static PyTypeObject pyCudaMemory_Type = 
 {
     PyVarObject_HEAD_INIT(NULL, 0)
@@ -154,6 +187,7 @@ bool PyCudaMemory_RegisterType( PyObject* module )
 	pyCudaMemory_Type.tp_basicsize  = sizeof(PyCudaMemory);
 	pyCudaMemory_Type.tp_flags 	  = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE;
 	pyCudaMemory_Type.tp_methods    = NULL;
+	pyCudaMemory_Type.tp_getset     = pyCudaMemory_GetSet;
 	pyCudaMemory_Type.tp_new 	  = PyCudaMemory_New;
 	pyCudaMemory_Type.tp_init	  = (initproc)PyCudaMemory_Init;
 	pyCudaMemory_Type.tp_dealloc	  = (destructor)PyCudaMemory_Dealloc;
@@ -287,6 +321,32 @@ static PyObject* PyCudaImage_ToString( PyCudaImage* self )
 	return PYSTRING_FROM_STRING(str);
 }
 
+// PyCudaImage_GetWidth
+static PyObject* PyCudaImage_GetWidth( PyCudaImage* self, void* closure )
+{
+	return PYLONG_FROM_UNSIGNED_LONG(self->width);
+}
+
+// PyCudaImage_GetHeight
+static PyObject* PyCudaImage_GetHeight( PyCudaImage* self, void* closure )
+{
+	return PYLONG_FROM_UNSIGNED_LONG(self->height);
+}
+
+// PyCudaImage_GetFormat
+static PyObject* PyCudaImage_GetFormat( PyCudaImage* self, void* closure )
+{
+	return PYSTRING_FROM_STRING(imageFormatToStr(self->format));
+}
+
+static PyGetSetDef pyCudaImage_GetSet[] = 
+{
+	{ "width", (getter)PyCudaImage_GetWidth, NULL, "Width of the image (in pixels)", NULL},
+	{ "height", (getter)PyCudaImage_GetHeight, NULL, "Height of the image (in pixels)", NULL},
+	{ "format", (getter)PyCudaImage_GetFormat, NULL, "Pixel format of the image", NULL},
+	{ NULL } /* Sentinel */
+};
+
 static PyTypeObject pyCudaImage_Type = 
 {
     PyVarObject_HEAD_INIT(NULL, 0)
@@ -303,6 +363,7 @@ bool PyCudaImage_RegisterType( PyObject* module )
 	pyCudaImage_Type.tp_flags 	= Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE;
 	pyCudaImage_Type.tp_base      = &pyCudaMemory_Type;
 	pyCudaImage_Type.tp_methods   = NULL;
+	pyCudaImage_Type.tp_getset    = pyCudaImage_GetSet;
 	pyCudaImage_Type.tp_new 	     = PyCudaImage_New;
 	pyCudaImage_Type.tp_init	     = (initproc)PyCudaImage_Init;
 	pyCudaImage_Type.tp_dealloc	= NULL; /*(destructor)PyCudaMemory_Dealloc*/;
@@ -540,6 +601,61 @@ PyObject* PyCUDA_RegisterMappedImage( void* gpuPtr, uint32_t width, uint32_t hei
 	mem->format = format;
 
 	return (PyObject*)mem;
+}
+
+
+// PyCUDA_IsMemory
+bool PyCUDA_IsMemory( PyObject* object )
+{
+	if( !object )
+		return false;
+
+	if( PyObject_IsInstance(object, (PyObject*)&pyCudaMemory_Type) == 1 || 
+	    PyObject_IsInstance(object, (PyObject*)&pyCudaImage_Type) == 1)
+	{
+		return true;
+	}
+
+	return false;
+}
+
+
+// PyCUDA_IsImage
+bool PyCUDA_IsImage( PyObject* object )
+{
+	if( !object )
+		return false;
+
+	if( PyObject_IsInstance(object, (PyObject*)&pyCudaImage_Type) == 1 )
+		return true;
+
+	return false;
+}
+
+
+// PyCUDA_AsMemory
+PyCudaMemory* PyCUDA_Memory( PyObject* object )
+{
+	if( !object )
+		return NULL;
+
+	if( PyCUDA_IsMemory(object) )
+		return (PyCudaMemory*)object;
+
+	return NULL;
+}
+
+
+// PyCUDA_AsImage
+PyCudaImage* PyCUDA_Image( PyObject* object )
+{
+	if( !object )
+		return NULL;
+
+	if( PyCUDA_IsImage(object) )
+		return (PyCudaImage*)object;
+
+	return NULL;
 }
 
 

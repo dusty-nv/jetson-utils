@@ -55,6 +55,14 @@ PyObject* PyCUDA_RegisterMappedMemory( void* ptr, size_t size, bool freeOnDelete
 PyObject* PyCUDA_RegisterImage( void* ptr, uint32_t width, uint32_t height, imageFormat format, bool freeOnDelete=true );
 PyObject* PyCUDA_RegisterMappedImage( void* ptr, uint32_t width, uint32_t height, imageFormat format, bool freeOnDelete=true );
 
+// type checks
+bool PyCUDA_IsMemory( PyObject* object );
+bool PyCUDA_IsImage( PyObject* object );
+
+// cast operators
+PyCudaMemory* PyCUDA_Memory( PyObject* object );
+PyCudaImage* PyCUDA_Image( PyObject* object );
+
 // Register functions
 PyMethodDef* PyCUDA_RegisterFunctions();
 

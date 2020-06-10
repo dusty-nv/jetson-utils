@@ -78,25 +78,26 @@ PyObject* PyImageIO_SaveRGBA( PyObject* self, PyObject* args, PyObject* kwds )
 
 	int width  = 0;
 	int height = 0;
+	int quality = 95;
 
 	float max_pixel = 255.0f;
 
-	static char* kwlist[] = {"filename", "image", "width", "height", "max_pixel", NULL};
+	static char* kwlist[] = {"filename", "image", "width", "height", "max_pixel", "quality", NULL};
 
-	if( !PyArg_ParseTupleAndKeywords(args, kwds, "sOii|f", kwlist, &filename, &capsule, &width, &height, &max_pixel))
+	if( !PyArg_ParseTupleAndKeywords(args, kwds, "sO|iif", kwlist, &filename, &capsule, &width, &height, &max_pixel))
 	{
 		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "saveImageRGBA() failed to parse args tuple");
 		return NULL;
 	}
 
 	// verify dimensions
+#if 0
 	if( width <= 0 || height <= 0 )
 	{
 		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "saveImageRGBA() image dimensions are invalid");
 		return NULL;
 	}
 
-	// get pointer to image data
 	void* img = PyCapsule_GetPointer(capsule, CUDA_MAPPED_MEMORY_CAPSULE);	// TODO  support GPU-only memory
 
 	if( !img )
@@ -104,14 +105,36 @@ PyObject* PyImageIO_SaveRGBA( PyObject* self, PyObject* args, PyObject* kwds )
 		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "saveImageRGBA() failed to get input image pointer from PyCapsule container");
 		return NULL;
 	}
-		
-	// save the image
-	if( !saveImageRGBA(filename, (float4*)img, width, height, max_pixel) )
+#endif
+
+	// get pointer to image data
+	PyCudaImage* img = PyCUDA_Image(capsule);
+
+	if( img != NULL )
 	{
-		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "saveImageRGBA() failed to save the image");
-		return NULL;
+		if( !saveImage(filename, img->base.ptr, img->width, img->height, img->format, quality, make_float2(0,max_pixel)) )
+		{
+			PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "saveImageRGBA() failed to save the image");
+			return NULL;
+		}
 	}
-		
+	else
+	{
+		PyCudaMemory* mem = PyCUDA_Memory(capsule);
+
+		if( !mem )
+		{
+			PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "saveImageRGBA() wasn't passed a cudaImage or cudaMemory object");
+			return NULL;
+		}
+
+		if( !saveImageRGBA(filename, (float4*)mem->ptr, width, height, max_pixel, quality) )
+		{
+			PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "saveImageRGBA() failed to save the image");
+			return NULL;
+		}
+	}
+
 	// return void
 	Py_RETURN_NONE;
 }
