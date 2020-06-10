@@ -40,12 +40,24 @@
 	#define PYTHON_3
 	#endif
 
+	#ifndef PYLONG_AS_LONG
+	#define PYLONG_AS_LONG(x)			PyLong_AsLong(x)
+	#endif
+
 	#ifndef PYLONG_FROM_LONG
 	#define PYLONG_FROM_LONG(x)			PyLong_FromLong(x)
 	#endif
 
 	#ifndef PYLONG_FROM_UNSIGNED_LONG
 	#define PYLONG_FROM_UNSIGNED_LONG(x)	PyLong_FromUnsignedLong(x)
+	#endif
+
+	#ifndef PYSTRING_FROM_STRING
+	#define PYSTRING_FROM_STRING			PyUnicode_FromString
+	#endif
+
+	#ifndef PYSTRING_FROM_FORMAT
+	#define PYSTRING_FROM_FORMAT			PyUnicode_FromFormat
 	#endif
 
 #elif PY_MAJOR_VERSION >= 2
@@ -55,12 +67,24 @@
 	#define PYTHON_2
 	#endif
 
+	#ifndef PYLONG_AS_LONG
+	#define PYLONG_AS_LONG(x)			PyInt_AsLong(x)
+	#endif
+
 	#ifndef PYLONG_FROM_LONG
 	#define PYLONG_FROM_LONG(x)			PyInt_FromLong(x)
 	#endif
 
 	#ifndef PYLONG_FROM_UNSIGNED_LONG
 	#define PYLONG_FROM_UNSIGNED_LONG(x)	PyInt_FromLong(x)
+	#endif
+
+	#ifndef PYSTRING_FROM_STRING
+	#define PYSTRING_FROM_STRING			PyString_FromString
+	#endif
+
+	#ifndef PYSTRING_FROM_FORMAT
+	#define PYSTRING_FROM_FORMAT			PyString_FromFormat
 	#endif
 
 #endif

@@ -24,18 +24,36 @@
 #define __PYTHON_BINDINGS_CUDA__
 
 #include "PyUtils.h"
+#include "imageFormat.h"
 
+// PyCudaMemory object
+typedef struct {
+	PyObject_HEAD
+	void* ptr;
+	size_t size;
+	bool mapped;
+	bool freeOnDelete;
+} PyCudaMemory;
+
+// PyCudaImage object
+typedef struct {
+	PyCudaMemory base;
+	uint32_t width;
+	uint32_t height;
+	imageFormat format;
+} PyCudaImage;
 
 // Name of memory capsules
 #define CUDA_MALLOC_MEMORY_CAPSULE	PY_UTILS_MODULE_NAME ".cudaMalloc"
 #define CUDA_MAPPED_MEMORY_CAPSULE PY_UTILS_MODULE_NAME ".cudaAllocMapped"
 
-// Create memory capsule
-PyObject* PyCUDA_RegisterMemory( void* gpuPtr, bool freeOnDelete=true );
+// Create memory objects
+PyObject* PyCUDA_RegisterMemory( void* ptr, size_t size, bool freeOnDelete=true );
+PyObject* PyCUDA_RegisterMappedMemory( void* ptr, size_t size, bool freeOnDelete=true );
 
-// Create mapped memory capsule
-PyObject* PyCUDA_RegisterMappedMemory( void* gpuPtr, bool freeOnDelete=true );
-PyObject* PyCUDA_RegisterMappedMemory( void* cpuPtr, void* gpuPtr, bool freeOnDelete=true );
+// Create image objects
+PyObject* PyCUDA_RegisterImage( void* ptr, uint32_t width, uint32_t height, imageFormat format, bool freeOnDelete=true );
+PyObject* PyCUDA_RegisterMappedImage( void* ptr, uint32_t width, uint32_t height, imageFormat format, bool freeOnDelete=true );
 
 // Register functions
 PyMethodDef* PyCUDA_RegisterFunctions();

@@ -25,6 +25,306 @@
 #include "cudaMappedMemory.h"
 #include "cudaFont.h"
 
+#include "logging.h"
+
+
+//-------------------------------------------------------------------------------
+// PyCudaMemory_New
+static PyObject* PyCudaMemory_New( PyTypeObject *type, PyObject *args, PyObject *kwds )
+{
+	LogDebug(LOG_PY_UTILS "PyCudaMemory_New()\n");
+	
+	// allocate a new container
+	PyCudaMemory* self = (PyCudaMemory*)type->tp_alloc(type, 0);
+	
+	if( !self )
+	{
+		PyErr_SetString(PyExc_MemoryError, LOG_PY_UTILS "cudaMemory tp_alloc() failed to allocate a new object");
+		LogError(LOG_PY_UTILS "cudaMemory tp_alloc() failed to allocate a new object\n");
+		return NULL;
+	}
+	
+	self->ptr = NULL;
+	self->size = 0;
+	self->mapped = false;
+	self->freeOnDelete = true;
+
+	return (PyObject*)self;
+}
+
+// PyCudaMemory_Dealloc
+static void PyCudaMemory_Dealloc( PyCudaMemory* self )
+{
+	LogDebug(LOG_PY_UTILS "PyCudaMemory_Dealloc()\n");
+	
+	if( self->freeOnDelete && self->ptr != NULL )
+	{
+		if( self->mapped )
+			CUDA(cudaFreeHost(self->ptr));
+		else
+			CUDA(cudaFree(self->ptr));
+
+		self->ptr = NULL;
+	}
+
+	// free the container
+	Py_TYPE(self)->tp_free((PyObject*)self);
+}
+
+// PyCudaMemory_Init
+static int PyCudaMemory_Init( PyCudaMemory* self, PyObject *args, PyObject *kwds )
+{
+	LogDebug(LOG_PY_UTILS "PyCudaMemory_Init()\n");
+	
+	// parse arguments
+	int size = 0;
+	int mapped = 1;
+	int freeOnDelete = 1;
+
+	static char* kwlist[] = {"size", "mapped", "freeOnDelete", NULL};
+
+	if( !PyArg_ParseTupleAndKeywords(args, kwds, "i|ii", kwlist, &size, &mapped, &freeOnDelete))
+	{
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaMemory.__init()__ failed to parse args tuple");
+		printf(LOG_PY_UTILS "cudaMemory.__init()__ failed to parse args tuple\n");
+		return -1;
+	}
+    
+	if( size < 0 )
+	{
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaMemory.__init()__ had invalid size");
+		return -1;
+	}
+
+	// allocate CUDA memory
+	if( mapped > 0 )
+	{
+		if( !cudaAllocMapped(&self->ptr, size) )
+		{
+			PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaMemory.__init()__ failed to allocate CUDA mapped memory");
+			return -1;
+		}
+	}
+	else
+	{
+		if( CUDA_FAILED(cudaMalloc(&self->ptr, size)) )
+		{
+			PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaMemory.__init()__ failed to allocate CUDA memory");
+			return -1;
+		}
+	}
+
+	self->size = size;
+	self->mapped = (mapped > 0) ? true : false;
+	self->freeOnDelete = (freeOnDelete > 0) ? true : false;
+
+	return 0;
+}
+
+// PyCudaMemory_ToString
+static PyObject* PyCudaMemory_ToString( PyCudaMemory* self )
+{
+	char str[1024];
+
+	sprintf(str, 
+		   "<cudaMemory object>\n"
+		   "   -- ptr:    %p\n"
+		   "   -- size:   %zu\n"
+		   "   -- mapped: %s\n"
+		   "   -- freeOnDelete: %s\n",
+		   self->ptr, self->size, 
+		   self->mapped ? "true" : "false", 
+		   self->freeOnDelete ? "true" : "false");
+
+	return PYSTRING_FROM_STRING(str);
+}
+
+static PyTypeObject pyCudaMemory_Type = 
+{
+    PyVarObject_HEAD_INIT(NULL, 0)
+};
+
+// PyCudaMemory_RegisterType
+bool PyCudaMemory_RegisterType( PyObject* module )
+{
+	if( !module )
+		return false;
+	
+	pyCudaMemory_Type.tp_name 	  = PY_UTILS_MODULE_NAME ".cudaMemory";
+	pyCudaMemory_Type.tp_basicsize  = sizeof(PyCudaMemory);
+	pyCudaMemory_Type.tp_flags 	  = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE;
+	pyCudaMemory_Type.tp_methods    = NULL;
+	pyCudaMemory_Type.tp_new 	  = PyCudaMemory_New;
+	pyCudaMemory_Type.tp_init	  = (initproc)PyCudaMemory_Init;
+	pyCudaMemory_Type.tp_dealloc	  = (destructor)PyCudaMemory_Dealloc;
+	pyCudaMemory_Type.tp_str		  = (reprfunc)PyCudaMemory_ToString;
+	pyCudaMemory_Type.tp_doc  	  = "CUDA memory";
+	 
+	if( PyType_Ready(&pyCudaMemory_Type) < 0 )
+	{
+		LogError(LOG_PY_UTILS "PyCudaMemory PyType_Ready() failed\n");
+		return false;
+	}
+	
+	Py_INCREF(&pyCudaMemory_Type);
+    
+	if( PyModule_AddObject(module, "cudaMemory", (PyObject*)&pyCudaMemory_Type) < 0 )
+	{
+		LogError(LOG_PY_UTILS "PyCudaMemory PyModule_AddObject('cudaMemory') failed\n");
+		return false;
+	}
+	
+	return true;
+}
+
+//-------------------------------------------------------------------------------
+// PyCudaImage_New
+static PyObject* PyCudaImage_New( PyTypeObject *type, PyObject *args, PyObject *kwds )
+{
+	LogDebug(LOG_PY_UTILS "PyCudaImage_New()\n");
+	
+	// allocate a new container
+	PyCudaImage* self = (PyCudaImage*)type->tp_alloc(type, 0);
+	
+	if( !self )
+	{
+		PyErr_SetString(PyExc_MemoryError, LOG_PY_UTILS "cudaImage tp_alloc() failed to allocate a new object");
+		LogError(LOG_PY_UTILS "cudaImage tp_alloc() failed to allocate a new object\n");
+		return NULL;
+	}
+	
+	self->base.ptr = NULL;
+	self->base.size = 0;
+	self->base.mapped = false;
+	self->base.freeOnDelete = true;
+
+	return (PyObject*)self;
+}
+
+// PyCudaImage_Init
+static int PyCudaImage_Init( PyCudaImage* self, PyObject *args, PyObject *kwds )
+{
+	LogDebug(LOG_PY_UTILS "PyCudaImage_Init()\n");
+	
+	// parse arguments
+	int width = 0;
+	int height = 0;
+	int mapped = 1;
+	int freeOnDelete = 1;
+
+	const char* formatStr = "rgb8";
+	static char* kwlist[] = {"width", "height", "format", "mapped", "freeOnDelete", NULL};
+
+	if( !PyArg_ParseTupleAndKeywords(args, kwds, "ii|sii", kwlist, &width, &height, &formatStr, &mapped, &freeOnDelete))
+	{
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaImage.__init()__ failed to parse args tuple");
+		printf(LOG_PY_UTILS "cudaImage.__init()__ failed to parse args tuple\n");
+		return -1;
+	}
+    
+	if( width < 0 || height < 0 )
+	{
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaImage.__init()__ had invalid width/height");
+		return -1;
+	}
+
+	const imageFormat format = imageFormatFromStr(formatStr);
+
+	if( format == IMAGE_UNKNOWN )
+	{
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaImage.__init()__ had invalid image format");
+		return -1;
+	}
+
+	// allocate CUDA memory
+	const size_t size = imageFormatSize(format, width, height);
+
+	if( mapped > 0 )
+	{
+		if( !cudaAllocMapped(&self->base.ptr, size) )
+		{
+			PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaImage.__init()__ failed to allocate CUDA mapped memory");
+			return -1;
+		}
+	}
+	else
+	{
+		if( CUDA_FAILED(cudaMalloc(&self->base.ptr, size)) )
+		{
+			PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaImage.__init()__ failed to allocate CUDA memory");
+			return -1;
+		}
+	}
+
+	self->width = width;
+	self->height = height;
+	self->format = format;
+
+	self->base.size = size;
+	self->base.mapped = (mapped > 0) ? true : false;
+	self->base.freeOnDelete = (freeOnDelete > 0) ? true : false;
+
+	return 0;
+}
+
+// PyCudaImage_ToString
+static PyObject* PyCudaImage_ToString( PyCudaImage* self )
+{
+	char str[1024];
+
+	sprintf(str, 
+		   "<cudaImage object>\n"
+		   "   -- ptr:    %p\n"
+		   "   -- size:   %zu\n"
+		   "   -- width:  %u\n"
+		   "   -- height: %u\n"
+		   "   -- format: %s\n"
+		   "   -- mapped: %s\n"
+		   "   -- freeOnDelete: %s\n",
+		   self->base.ptr, self->base.size, self->width, self->height, imageFormatToStr(self->format), 
+		   self->base.mapped ? "true" : "false", self->base.freeOnDelete ? "true" : "false");
+
+	return PYSTRING_FROM_STRING(str);
+}
+
+static PyTypeObject pyCudaImage_Type = 
+{
+    PyVarObject_HEAD_INIT(NULL, 0)
+};
+
+// PyCudaImage_RegisterType
+bool PyCudaImage_RegisterType( PyObject* module )
+{
+	if( !module )
+		return false;
+	
+	pyCudaImage_Type.tp_name 	= PY_UTILS_MODULE_NAME ".cudaImage";
+	pyCudaImage_Type.tp_basicsize = sizeof(PyCudaImage);
+	pyCudaImage_Type.tp_flags 	= Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE;
+	pyCudaImage_Type.tp_base      = &pyCudaMemory_Type;
+	pyCudaImage_Type.tp_methods   = NULL;
+	pyCudaImage_Type.tp_new 	     = PyCudaImage_New;
+	pyCudaImage_Type.tp_init	     = (initproc)PyCudaImage_Init;
+	pyCudaImage_Type.tp_dealloc	= NULL; /*(destructor)PyCudaMemory_Dealloc*/;
+	pyCudaImage_Type.tp_str		= (reprfunc)PyCudaImage_ToString;
+	pyCudaImage_Type.tp_doc  	= "CUDA image";
+	 
+	if( PyType_Ready(&pyCudaImage_Type) < 0 )
+	{
+		LogError(LOG_PY_UTILS "PyCudaImage PyType_Ready() failed\n");
+		return false;
+	}
+	
+	Py_INCREF(&pyCudaImage_Type);
+    
+	if( PyModule_AddObject(module, "cudaImage", (PyObject*)&pyCudaImage_Type) < 0 )
+	{
+		LogError(LOG_PY_UTILS "PyCudaImage PyModule_AddObject('cudaImage') failed\n");
+		return false;
+	}
+	
+	return true;
+}
 
 //-------------------------------------------------------------------------------
 // PyCUDA_FreeMalloc
@@ -49,7 +349,7 @@ void PyCUDA_FreeMalloc( PyObject* capsule )
 
 
 // PyCUDA_RegisterMemory
-PyObject* PyCUDA_RegisterMemory( void* gpuPtr, bool freeOnDelete )
+PyObject* PyCUDA_RegisterMemory( void* gpuPtr, size_t size, bool freeOnDelete )
 {
 	if( !gpuPtr )
 	{
@@ -57,6 +357,7 @@ PyObject* PyCUDA_RegisterMemory( void* gpuPtr, bool freeOnDelete )
 		return NULL;
 	}
 
+#if 0
 	// create capsule object
 	PyObject* capsule = PyCapsule_New(gpuPtr, CUDA_MALLOC_MEMORY_CAPSULE, freeOnDelete ? PyCUDA_FreeMalloc : NULL);
 
@@ -71,6 +372,22 @@ PyObject* PyCUDA_RegisterMemory( void* gpuPtr, bool freeOnDelete )
 	}
 
 	return capsule;
+#endif
+
+	PyCudaMemory* mem = PyObject_New(PyCudaMemory, &pyCudaMemory_Type);
+
+	if( !mem )
+	{
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "PyCUDA_RegisterMemory() failed to create a new cudaMemory object");
+		return NULL;
+	}
+
+	mem->ptr = gpuPtr;
+	mem->size = size;
+	mem->mapped = false;
+	mem->freeOnDelete = freeOnDelete;
+
+	return (PyObject*)mem;
 }
 
 
@@ -100,11 +417,10 @@ PyObject* PyCUDA_Malloc( PyObject* self, PyObject* args )
 		return NULL;
 	}
 
-	return PyCUDA_RegisterMemory(gpuPtr);
+	return PyCUDA_RegisterMemory(gpuPtr, size);
 }
 
 
-//-------------------------------------------------------------------------------
 // PyCUDA_FreeMapped
 void PyCUDA_FreeMapped( PyObject* capsule )
 {
@@ -127,24 +443,15 @@ void PyCUDA_FreeMapped( PyObject* capsule )
 
 
 // PyCUDA_RegisterMappedMemory
-PyObject* PyCUDA_RegisterMappedMemory( void* cpuPtr, void* gpuPtr, bool freeOnDelete )
+PyObject* PyCUDA_RegisterMappedMemory( void* gpuPtr, size_t size, bool freeOnDelete )
 {
-	if( !cpuPtr || !gpuPtr )
+	if( !gpuPtr )
 	{
-		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "RegisterMappedMemory() was provided NULL memory pointers");
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaRegisterMappedMemory() was provided NULL memory pointers");
 		return NULL;
 	}
 
-	if( cpuPtr != gpuPtr )
-	{
-		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "RegisterMappedMemory() pointers don't match");
-		
-		if( freeOnDelete )
-			CUDA(cudaFreeHost(cpuPtr));
-
-		return NULL;
-	}
-
+#if 0
 	// create capsule object
 	PyObject* capsule = PyCapsule_New(cpuPtr, CUDA_MAPPED_MEMORY_CAPSULE, freeOnDelete ? PyCUDA_FreeMapped : NULL);
 
@@ -157,15 +464,82 @@ PyObject* PyCUDA_RegisterMappedMemory( void* cpuPtr, void* gpuPtr, bool freeOnDe
 
 		return NULL;
 	}
+#endif
 
-	return capsule;
+	PyCudaMemory* mem = PyObject_New(PyCudaMemory, &pyCudaMemory_Type);
+
+	if( !mem )
+	{
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "PyCUDA_RegisterMemory() failed to create a new cudaMemory object");
+		return NULL;
+	}
+
+	mem->ptr = gpuPtr;
+	mem->size = size;
+	mem->mapped = true;
+	mem->freeOnDelete = freeOnDelete;
+
+	return (PyObject*)mem;
 }
 
 
-// PyCUDA_RegisterMappedMemory
-PyObject* PyCUDA_RegisterMappedMemory( void* gpuPtr, bool freeOnDelete )
+// PyCUDA_RegisterImage
+PyObject* PyCUDA_RegisterImage( void* gpuPtr, uint32_t width, uint32_t height, imageFormat format, bool freeOnDelete )
 {
-	return PyCUDA_RegisterMappedMemory(gpuPtr, gpuPtr, freeOnDelete);
+	if( !gpuPtr )
+	{
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaRegisterImage() was provided NULL memory pointers");
+		return NULL;
+	}
+
+	PyCudaImage* mem = PyObject_New(PyCudaImage, &pyCudaImage_Type);
+
+	if( !mem )
+	{
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "PyCUDA_RegisterImage() failed to create a new cudaImage object");
+		return NULL;
+	}
+
+	mem->base.ptr = gpuPtr;
+	mem->base.size = imageFormatSize(format, width, height);
+	mem->base.mapped = false;
+	mem->base.freeOnDelete = freeOnDelete;
+
+	mem->width = width;
+	mem->height = height;
+	mem->format = format;
+
+	return (PyObject*)mem;
+}
+
+
+// PyCUDA_RegisterMappedImage
+PyObject* PyCUDA_RegisterMappedImage( void* gpuPtr, uint32_t width, uint32_t height, imageFormat format, bool freeOnDelete )
+{
+	if( !gpuPtr )
+	{
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaRegisterMappedImage() was provided NULL memory pointers");
+		return NULL;
+	}
+
+	PyCudaImage* mem = PyObject_New(PyCudaImage, &pyCudaImage_Type);
+
+	if( !mem )
+	{
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "PyCUDA_RegisterMappedImage() failed to create a new cudaImage object");
+		return NULL;
+	}
+
+	mem->base.ptr = gpuPtr;
+	mem->base.size = imageFormatSize(format, width, height);
+	mem->base.mapped = true;
+	mem->base.freeOnDelete = freeOnDelete;
+
+	mem->width = width;
+	mem->height = height;
+	mem->format = format;
+
+	return (PyObject*)mem;
 }
 
 
@@ -196,7 +570,7 @@ PyObject* PyCUDA_AllocMapped( PyObject* self, PyObject* args )
 		return NULL;
 	}
 
-	return PyCUDA_RegisterMappedMemory(cpuPtr, gpuPtr);
+	return PyCUDA_RegisterMappedMemory(gpuPtr, size);
 }
 
 
@@ -229,25 +603,6 @@ PyObject* PyCUDA_AdaptFontSize( PyObject* self, PyObject* args )
 }
 
 //-------------------------------------------------------------------------------
-
-static PyMethodDef pyCUDA_Functions[] = 
-{
-	{ "cudaMalloc", (PyCFunction)PyCUDA_Malloc, METH_VARARGS, "Allocated CUDA memory on the GPU with cudaMalloc()" },
-	{ "cudaAllocMapped", (PyCFunction)PyCUDA_AllocMapped, METH_VARARGS, "Allocate CUDA ZeroCopy mapped memory" },
-	{ "cudaDeviceSynchronize", (PyCFunction)PyCUDA_DeviceSynchronize, METH_NOARGS, "Wait for the GPU to complete all work" },
-	{ "adaptFontSize", (PyCFunction)PyCUDA_AdaptFontSize, METH_VARARGS, "Determine an appropriate font size for the given image dimension" },
-	{NULL}  /* Sentinel */
-};
-
-// Register functions
-PyMethodDef* PyCUDA_RegisterFunctions()
-{
-	return pyCUDA_Functions;
-}
-
-
-//-------------------------------------------------------------------------------
-
 // PyFont container
 typedef struct {
 	PyObject_HEAD
@@ -519,8 +874,6 @@ static PyObject* PyFont_OverlayText( PyFont_Object* self, PyObject* args, PyObje
 	Py_RETURN_NONE;
 }
 
-
-//-------------------------------------------------------------------------------
 static PyTypeObject pyFont_Type = 
 {
     PyVarObject_HEAD_INIT(NULL, 0)
@@ -560,12 +913,12 @@ static PyMemberDef pyFont_Members[] =
 	{NULL}  /* Sentinel */
 };
 
-// Register types
-bool PyCUDA_RegisterTypes( PyObject* module )
+bool PyFont_RegisterType( PyObject* module )
 {
 	if( !module )
 		return false;
-	
+
+	// register font
 	pyFont_Type.tp_name 	= PY_UTILS_MODULE_NAME ".cudaFont";
 	pyFont_Type.tp_basicsize = sizeof(PyFont_Object);
 	pyFont_Type.tp_flags 	= Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE;
@@ -589,6 +942,41 @@ bool PyCUDA_RegisterTypes( PyObject* module )
 		printf(LOG_PY_UTILS "cudaFont PyModule_AddObject('cudaFont') failed\n");
 		return false;
 	}
+
+	return true;
+}
+
+//-------------------------------------------------------------------------------
+static PyMethodDef pyCUDA_Functions[] = 
+{
+	{ "cudaMalloc", (PyCFunction)PyCUDA_Malloc, METH_VARARGS, "Allocated CUDA memory on the GPU with cudaMalloc()" },
+	{ "cudaAllocMapped", (PyCFunction)PyCUDA_AllocMapped, METH_VARARGS, "Allocate CUDA ZeroCopy mapped memory" },
+	{ "cudaDeviceSynchronize", (PyCFunction)PyCUDA_DeviceSynchronize, METH_NOARGS, "Wait for the GPU to complete all work" },
+	{ "adaptFontSize", (PyCFunction)PyCUDA_AdaptFontSize, METH_VARARGS, "Determine an appropriate font size for the given image dimension" },
+	{NULL}  /* Sentinel */
+};
+
+// Register functions
+PyMethodDef* PyCUDA_RegisterFunctions()
+{
+	return pyCUDA_Functions;
+}
+
+// Register CUDA types
+bool PyCUDA_RegisterTypes( PyObject* module )
+{
+	if( !module )
+		return false;
+	
+	if( !PyCudaMemory_RegisterType(module) )
+		return false;
+
+	if( !PyCudaImage_RegisterType(module) )
+		return false;
+
+	if( !PyFont_RegisterType(module) )
+		return false;
+
 	return true;
 }
 

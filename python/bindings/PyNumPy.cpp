@@ -156,7 +156,7 @@ PyObject* PyNumPy_ToCUDA( PyObject* self, PyObject* args )
 	}	
 
 	// register CUDA memory capsule
-	PyObject* capsule = PyCUDA_RegisterMappedMemory(cpuPtr, gpuPtr);
+	PyObject* capsule = PyCUDA_RegisterMappedMemory(gpuPtr, size);
 
 	if( !capsule )
 	{
