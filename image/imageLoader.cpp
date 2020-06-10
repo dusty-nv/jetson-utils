@@ -151,13 +151,21 @@ bool imageLoader::Capture( void** output, imageFormat format, uint64_t timeout )
 	}
 
 	// get the next file to load
-	const uint32_t currFile = mNextFile;
+	const size_t currFile = mNextFile;
 	mNextFile++;
 	
 	if( mNextFile >= mFiles.size() )
 	{
-		mEOS = true;
-		mStreaming = false;
+		if( isLooping() )
+		{
+			mNextFile = 0;
+			mLoopCount++;
+		}
+		else
+		{
+			mEOS = true;
+			mStreaming = false;
+		}
 	}
 
 	// load the next image

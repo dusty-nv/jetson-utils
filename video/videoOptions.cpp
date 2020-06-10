@@ -32,6 +32,7 @@ videoOptions::videoOptions()
 	frameRate   = 30;
 	bitRate     = 0;
 	numBuffers  = 4;
+	loop        = 0;
 	zeroCopy    = true;
 	ioType      = INPUT;
 	deviceType  = DEVICE_DEFAULT;
@@ -59,6 +60,7 @@ void videoOptions::Print( const char* prefix ) const
 	printf("  -- bitRate:    %u\n", bitRate);
 	printf("  -- numBuffers: %u\n", numBuffers);
 	printf("  -- zeroCopy:   %s\n", zeroCopy ? "true" : "false");
+	printf("  -- loop:       %i\n", loop);
 	printf("  -- codec:      %s\n", CodecToStr(codec));
 	printf("  -- flipMethod: %s\n", FlipMethodToStr(flipMethod));
 	printf("  -- ioType:     %s\n", IoTypeToStr(ioType));
@@ -105,6 +107,7 @@ bool videoOptions::Parse( const commandLine& cmdLine, videoOptions::IoType type,
 	frameRate  = cmdLine.GetUnsignedInt("framerate", frameRate);
 	numBuffers = cmdLine.GetUnsignedInt("num-buffers", numBuffers);
 	zeroCopy 	 = cmdLine.GetFlag("zero-copy");
+	loop       = cmdLine.GetInt("loop");
 
 	// flip-method
 	const char* flipStr = (type == INPUT) ? cmdLine.GetString("input-flip-method")

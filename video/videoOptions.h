@@ -53,8 +53,8 @@ public:
 	/**
 	 *
 	 */
-	uint32_t height;
-	
+	uint32_t height;	
+
 	/**
 	 *
 	 */
@@ -69,11 +69,18 @@ public:
 	 *
 	 */
 	uint32_t numBuffers;
-	
+
 	/**
 	 *
 	 */
 	bool zeroCopy;
+	
+	/**
+	 * -1 = loop forever
+	 *  0 = don't loop
+	 * >0 = set number of loops
+	 */
+	int loop;
 
 	/**
 	 *

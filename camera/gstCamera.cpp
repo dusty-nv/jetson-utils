@@ -427,6 +427,8 @@ gstCamera* gstCamera::Create( const videoOptions& options )
 	cam->mDepth = cam->csiCamera() ? 12 : 24;	// NV12 or RGB
 	cam->mSize  = (cam->GetWidth() * cam->GetHeight() * cam->mDepth) / 8;
 
+	cam->mOptions.loop = 0;	// disable looping for cameras
+
 	// initialize camera (with fallback)
 	if( !cam->init(GST_SOURCE_NVARGUS) )
 	{

@@ -85,6 +85,7 @@ gstDecoder::gstDecoder( const videoOptions& options ) : videoSource(options)
 	mBus        = NULL;
 	mPipeline   = NULL;
 	mEOS        = false;
+	mLoopCount  = 1;
 
 	mBufferRGB.SetThreaded(false);
 }
@@ -573,8 +574,7 @@ void gstDecoder::onEOS( _GstAppSink* sink, void* user_data )
 	gstDecoder* dec = (gstDecoder*)user_data;
 
 	dec->mEOS = true;	
-	dec->mStreaming = false;
-	//dec->Close();
+	dec->mStreaming = dec->isLooping();
 }
 
 
@@ -766,7 +766,7 @@ bool gstDecoder::Capture( void** output, imageFormat format, uint64_t timeout )
 		return false;
 
 	// confirm the stream is open
-	if( !mStreaming )
+	if( !mStreaming || mEOS )
 	{
 		if( !Open() )
 			return false;
@@ -810,14 +810,54 @@ bool gstDecoder::Capture( void** output, imageFormat format, uint64_t timeout )
 	return true;
 }
 
+#if 0
+static void queryPipelineState( GstElement* pipeline )
+{
+	GstState state = GST_STATE_VOID_PENDING;
+	GstState pending = GST_STATE_VOID_PENDING;
+
+	GstStateChangeReturn result = gst_element_get_state (pipeline,
+		                  &state, &pending,  GST_CLOCK_TIME_NONE);
+
+	if( result == GST_STATE_CHANGE_FAILURE )
+		printf("GST_STATE_CHANGE_FAILURE\n");
+
+	printf("state - %s\n", gst_element_state_get_name(state));
+	printf("pending - %s\n", gst_element_state_get_name(pending));
+}
+#endif
 
 // Open
 bool gstDecoder::Open()
 {
 	if( mEOS )
 	{
-		LogError(LOG_GSTREAMER "gstDecoder -- End of Stream (EOS) has been reached, stream has been closed\n");
-		return false;
+		if( isLooping() )
+		{
+			// seek stream back to the beginning
+			GstEvent *seek_event = NULL;
+
+			const bool seek = gst_element_seek(mPipeline, 1.0, GST_FORMAT_TIME,
+						                    (GstSeekFlags)(GST_SEEK_FLAG_FLUSH | GST_SEEK_FLAG_KEY_UNIT),
+						                    GST_SEEK_TYPE_SET, 0LL,
+						                    GST_SEEK_TYPE_NONE, GST_CLOCK_TIME_NONE );
+
+			if( !seek )
+			{
+				LogError(LOG_GSTREAMER "gstDecoder -- failed to seek stream to beginning (loop %zu of %i)\n", mLoopCount+1, mOptions.loop);
+				return false;
+			}
+	
+			LogWarning(LOG_GSTREAMER "gstDecoder -- seeking stream to beginning (loop %zu of %i)\n", mLoopCount+1, mOptions.loop);
+
+			mLoopCount++;
+			mEOS = false;
+		}
+		else
+		{
+			LogError(LOG_GSTREAMER "gstDecoder -- end of stream (EOS) has been reached, stream has been closed\n");
+			return false;
+		}	
 	}
 
 	if( mStreaming )

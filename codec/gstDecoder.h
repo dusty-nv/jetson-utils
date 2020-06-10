@@ -110,6 +110,8 @@ protected:
 	bool init();
 	bool discover();
 	
+	inline bool isLooping() const { return (mOptions.loop < 0) || ((mOptions.loop > 0) && (mLoopCount < mOptions.loop)); }
+
 	static void onEOS(_GstAppSink* sink, void* user_data);
 	static GstFlowReturn onPreroll(_GstAppSink* sink, void* user_data);
 	static GstFlowReturn onBuffer(_GstAppSink* sink, void* user_data);
@@ -125,6 +127,7 @@ protected:
 
 	std::string  mLaunchStr;
 	bool         mEOS;
+	size_t	   mLoopCount;
 };
   
 #endif

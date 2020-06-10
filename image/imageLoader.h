@@ -99,8 +99,11 @@ public:
 protected:
 	imageLoader( const videoOptions& options );
 
+	inline bool isLooping() const { return (mOptions.loop < 0) || ((mOptions.loop > 0) && (mLoopCount < mOptions.loop)); }
+
 	bool mEOS;
-	uint32_t mNextFile;
+	size_t mLoopCount;
+	size_t mNextFile;
 	
 	std::vector<std::string> mFiles;
 	std::vector<void*> mBuffers;
