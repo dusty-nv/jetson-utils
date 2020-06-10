@@ -44,7 +44,7 @@ void sig_handler(int signo)
 int main( int argc, char** argv )
 {
 	commandLine cmdLine(argc, argv);
-	
+
 	/*
 	 * attach signal handler
 	 */	
@@ -55,7 +55,7 @@ int main( int argc, char** argv )
 	/*
 	 * create input video stream
 	 */
-	videoSource* inputStream = videoSource::Create(cmdLine);
+	videoSource* inputStream = videoSource::Create(cmdLine, ARG_POSITION(0));
 
 	if( !inputStream )
 	{
@@ -67,7 +67,7 @@ int main( int argc, char** argv )
 	/*
 	 * create output video stream
 	 */
-	videoOutput* outputStream = videoOutput::Create(cmdLine);
+	videoOutput* outputStream = videoOutput::Create(cmdLine, ARG_POSITION(1));
 	
 	if( !outputStream )
 	{
