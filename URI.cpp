@@ -101,6 +101,14 @@ bool URI::Parse( const char* uri )
 		}
 
 		path = string;
+
+		// reconstruct full URI string
+		string = protocol + "://";
+
+		if( protocol == "file" )
+			string += absolutePath(path);	// URI paths should be absolute
+		else
+			string += path;
 	}
 
 	// protocol should be all lowercase for easier parsing
