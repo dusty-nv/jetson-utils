@@ -70,34 +70,27 @@ void videoOptions::Print( const char* prefix ) const
 
 
 // Parse
-bool videoOptions::Parse( const int argc, char** argv, videoOptions::IoType type, int ioPositionArg )
+bool videoOptions::Parse( const char* URI, const int argc, char** argv, videoOptions::IoType type )
 {
-	commandLine cmdLine(argc, argv);
-	return Parse(cmdLine, type, ioPositionArg);
+	return Parse(URI, argc, argv, type);
 }
 
 
 // Parse
-bool videoOptions::Parse( const commandLine& cmdLine, videoOptions::IoType type, int ioPositionArg )
+bool videoOptions::Parse( const char* URI, const commandLine& cmdLine, videoOptions::IoType type )
 {
 	ioType = type;
 
-	// check for headless output
+	// check for headless mode
 	const bool headless = cmdLine.GetFlag("no-display") | cmdLine.GetFlag("headless");
 
+	if( (URI == NULL || strlen(URI) == 0) && type == OUTPUT && !headless )
+		URI = "display://0";
+
 	// parse input/output URI
-	const char* resourceStr = NULL;
-
-	if( ioPositionArg >= 0 && cmdLine.GetPositionArgs() >= ioPositionArg )
-		resourceStr = cmdLine.GetPosition(ioPositionArg);
-
-	if( !resourceStr )
-		resourceStr = (type == INPUT) ? cmdLine.GetString("input", "csi://0")
-						          : cmdLine.GetString("output", headless ? NULL : "display://0");
-
-	if( !resource.Parse(resourceStr) )
+	if( !resource.Parse(URI) )
 	{
-		printf("videoOptions -- failed to parse %s resource URI (%s)\n", IoTypeToStr(type), resourceStr != NULL ? resourceStr : "null");
+		printf("videoOptions -- failed to parse %s resource URI (%s)\n", IoTypeToStr(type), URI != NULL ? URI : "null");
 		return false;
 	}
 
@@ -133,6 +126,35 @@ bool videoOptions::Parse( const commandLine& cmdLine, videoOptions::IoType type,
 
 	return true;
 }
+
+
+// Parse
+bool videoOptions::Parse( const commandLine& cmdLine, videoOptions::IoType type, int ioPositionArg )
+{
+	// check for headless output
+	const bool headless = cmdLine.GetFlag("no-display") | cmdLine.GetFlag("headless");
+
+	// parse input/output URI
+	const char* resourceStr = NULL;
+
+	if( ioPositionArg >= 0 && cmdLine.GetPositionArgs() >= ioPositionArg )
+		resourceStr = cmdLine.GetPosition(ioPositionArg);
+
+	if( !resourceStr )
+		resourceStr = (type == INPUT) ? cmdLine.GetString("input", "csi://0")
+						          : cmdLine.GetString("output", headless ? NULL : "display://0");
+
+	return Parse(resourceStr, cmdLine, type);
+}
+
+
+// Parse
+bool videoOptions::Parse( const int argc, char** argv, videoOptions::IoType type, int ioPositionArg )
+{
+	commandLine cmdLine(argc, argv);
+	return Parse(cmdLine, type, ioPositionArg);
+}
+
 
 
 // IoTypeToStr

@@ -171,6 +171,16 @@ public:
 	/**
 	 *
 	 */
+	bool Parse( const char* URI, const int argc, char** argv, IoType ioType);
+
+	/**
+	 *
+	 */
+	bool Parse( const char* URI, const commandLine& cmdLine, IoType ioType);
+
+	/**
+	 *
+	 */
 	bool Parse( const int argc, char** argv, IoType ioType, int ioPositionArg=-1 );
 
 	/**
