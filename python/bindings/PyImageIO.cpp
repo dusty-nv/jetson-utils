@@ -108,7 +108,7 @@ PyObject* PyImageIO_SaveRGBA( PyObject* self, PyObject* args, PyObject* kwds )
 #endif
 
 	// get pointer to image data
-	PyCudaImage* img = PyCUDA_Image(capsule);
+	PyCudaImage* img = PyCUDA_GetImage(capsule);
 
 	if( img != NULL )
 	{
@@ -120,7 +120,7 @@ PyObject* PyImageIO_SaveRGBA( PyObject* self, PyObject* args, PyObject* kwds )
 	}
 	else
 	{
-		PyCudaMemory* mem = PyCUDA_Memory(capsule);
+		PyCudaMemory* mem = PyCUDA_GetMemory(capsule);
 
 		if( !mem )
 		{

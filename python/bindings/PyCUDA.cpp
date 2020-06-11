@@ -86,7 +86,7 @@ static int PyCudaMemory_Init( PyCudaMemory* self, PyObject *args, PyObject *kwds
 	if( !PyArg_ParseTupleAndKeywords(args, kwds, "i|ii", kwlist, &size, &mapped, &freeOnDelete))
 	{
 		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaMemory.__init()__ failed to parse args tuple");
-		printf(LOG_PY_UTILS "cudaMemory.__init()__ failed to parse args tuple\n");
+		LogDebug(LOG_PY_UTILS "cudaMemory.__init()__ failed to parse args tuple\n");
 		return -1;
 	}
     
@@ -252,7 +252,7 @@ static int PyCudaImage_Init( PyCudaImage* self, PyObject *args, PyObject *kwds )
 	if( !PyArg_ParseTupleAndKeywords(args, kwds, "ii|sii", kwlist, &width, &height, &formatStr, &mapped, &freeOnDelete))
 	{
 		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaImage.__init()__ failed to parse args tuple");
-		printf(LOG_PY_UTILS "cudaImage.__init()__ failed to parse args tuple\n");
+		LogDebug(LOG_PY_UTILS "cudaImage.__init()__ failed to parse args tuple\n");
 		return -1;
 	}
     
@@ -388,26 +388,27 @@ bool PyCudaImage_RegisterType( PyObject* module )
 }
 
 //-------------------------------------------------------------------------------
+#if 0
 // PyCUDA_FreeMalloc
 void PyCUDA_FreeMalloc( PyObject* capsule )
 {
-	printf(LOG_PY_UTILS "freeing cudaMalloc memory\n");
+	LogDebug(LOG_PY_UTILS "freeing cudaMalloc memory\n");
 
 	void* ptr = PyCapsule_GetPointer(capsule, CUDA_MALLOC_MEMORY_CAPSULE);
 
 	if( !ptr )
 	{
-		printf(LOG_PY_UTILS "PyCUDA_FreeMalloc() failed to get pointer from PyCapsule container\n");
+		LogError(LOG_PY_UTILS "PyCUDA_FreeMalloc() failed to get pointer from PyCapsule container\n");
 		return;
 	}
 
 	if( CUDA_FAILED(cudaFree(ptr)) )
 	{
-		printf(LOG_PY_UTILS "failed to free cudaMalloc memory with cudaFree()\n");
+		LogError(LOG_PY_UTILS "failed to free cudaMalloc memory with cudaFree()\n");
 		return;
 	}
 }
-
+#endif
 
 // PyCUDA_RegisterMemory
 PyObject* PyCUDA_RegisterMemory( void* gpuPtr, size_t size, bool freeOnDelete )
@@ -483,25 +484,26 @@ PyObject* PyCUDA_Malloc( PyObject* self, PyObject* args )
 
 
 // PyCUDA_FreeMapped
+#if 0
 void PyCUDA_FreeMapped( PyObject* capsule )
 {
-	printf(LOG_PY_UTILS "freeing CUDA mapped memory\n");
+	LogDebug(LOG_PY_UTILS "freeing CUDA mapped memory\n");
 
 	void* ptr = PyCapsule_GetPointer(capsule, CUDA_MAPPED_MEMORY_CAPSULE);
 
 	if( !ptr )
 	{
-		printf(LOG_PY_UTILS "PyCUDA_FreeMapped() failed to get pointer from PyCapsule container\n");
+		LogError(LOG_PY_UTILS "PyCUDA_FreeMapped() failed to get pointer from PyCapsule container\n");
 		return;
 	}
 
 	if( CUDA_FAILED(cudaFreeHost(ptr)) )
 	{
-		printf(LOG_PY_UTILS "failed to free CUDA mapped memory with cudaFreeHost()\n");
+		LogError(LOG_PY_UTILS "failed to free CUDA mapped memory with cudaFreeHost()\n");
 		return;
 	}
 }
-
+#endif
 
 // PyCUDA_RegisterMappedMemory
 PyObject* PyCUDA_RegisterMappedMemory( void* gpuPtr, size_t size, bool freeOnDelete )
@@ -633,8 +635,8 @@ bool PyCUDA_IsImage( PyObject* object )
 }
 
 
-// PyCUDA_AsMemory
-PyCudaMemory* PyCUDA_Memory( PyObject* object )
+// PyCUDA_GetMemory
+PyCudaMemory* PyCUDA_GetMemory( PyObject* object )
 {
 	if( !object )
 		return NULL;
@@ -646,8 +648,8 @@ PyCudaMemory* PyCUDA_Memory( PyObject* object )
 }
 
 
-// PyCUDA_AsImage
-PyCudaImage* PyCUDA_Image( PyObject* object )
+// PyCUDA_GetImage
+PyCudaImage* PyCUDA_GetImage( PyObject* object )
 {
 	if( !object )
 		return NULL;
@@ -756,7 +758,7 @@ typedef struct {
 // New
 static PyObject* PyFont_New( PyTypeObject *type, PyObject *args, PyObject *kwds )
 {
-	printf(LOG_PY_UTILS "PyFont_New()\n");
+	LogDebug(LOG_PY_UTILS "PyFont_New()\n");
 	
 	// allocate a new container
 	PyFont_Object* self = (PyFont_Object*)type->tp_alloc(type, 0);
@@ -764,7 +766,7 @@ static PyObject* PyFont_New( PyTypeObject *type, PyObject *args, PyObject *kwds 
 	if( !self )
 	{
 		PyErr_SetString(PyExc_MemoryError, LOG_PY_UTILS "cudaFont tp_alloc() failed to allocate a new object");
-		printf(LOG_PY_UTILS "cudaFont tp_alloc() failed to allocate a new object\n");
+		LogDebug(LOG_PY_UTILS "cudaFont tp_alloc() failed to allocate a new object\n");
 		return NULL;
 	}
 	
@@ -816,7 +818,7 @@ static PyObject* PyFont_New( PyTypeObject *type, PyObject *args, PyObject *kwds 
 // Init
 static int PyFont_Init( PyFont_Object* self, PyObject *args, PyObject *kwds )
 {
-	printf(LOG_PY_UTILS "PyFont_Init()\n");
+	LogDebug(LOG_PY_UTILS "PyFont_Init()\n");
 	
 	// parse arguments
 	const char* font_name = NULL;
@@ -847,7 +849,7 @@ static int PyFont_Init( PyFont_Object* self, PyObject *args, PyObject *kwds )
 // Deallocate
 static void PyFont_Dealloc( PyFont_Object* self )
 {
-	printf(LOG_PY_UTILS "PyFont_Dealloc()\n");
+	LogDebug(LOG_PY_UTILS "PyFont_Dealloc()\n");
 
 	// free the font
 	if( self->font != NULL )
@@ -903,17 +905,14 @@ static PyObject* PyFont_OverlayText( PyFont_Object* self, PyObject* args, PyObje
 
 	const char* text = NULL;
 
-	int width  = 0;
-	int height = 0;
-
 	int x = 0;
 	int y = 0;
 
-	static char* kwlist[] = {"image", "width", "height", "text", "x", "y", "color", "background", NULL};
+	static char* kwlist[] = {"image", "text", "x", "y", "color", "background", NULL};
 
-	if( !PyArg_ParseTupleAndKeywords(args, kwds, "Oiis|iiOO", kwlist, &input, &width, &height, &text, &x, &y, &color, &bg))
+	if( !PyArg_ParseTupleAndKeywords(args, kwds, "Os|iiOO", kwlist, &input, &text, &x, &y, &color, &bg))
 	{
-		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaFont.OverlayText() failed to parse args tuple");
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaFont.OverlayText() failed to parse args (note that the width/height args have been removed)");
 		return NULL;
 	}
 
@@ -957,18 +956,18 @@ static PyObject* PyFont_OverlayText( PyFont_Object* self, PyObject* args, PyObje
 	}
 
 	// verify dimensions
-	if( width <= 0 || height <= 0 )
+	/*if( width <= 0 || height <= 0 )
 	{
 		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaFont.OverlayText() image dimensions are invalid");
 		return NULL;
-	}
+	}*/
 
 	// get pointer to input image data
-	void* input_img = PyCUDA_GetPointer(input);
+	PyCudaImage* img = PyCUDA_GetImage(input);
 
-	if( !input_img )
+	if( !img )
 	{
-		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaFont.OverlayText() failed to get input image pointer from PyCapsule container");
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaFont.OverlayText() failed to get input image pointer from first arg (should be cudaImage)");
 		return NULL;
 	}
 
@@ -981,10 +980,10 @@ static PyObject* PyFont_OverlayText( PyFont_Object* self, PyObject* args, PyObje
 		return NULL;
 	}*/
 
-	//printf("cudaFont.Overlay(%p, %p, %i, %i, '%s', %i, %i, (%f, %f, %f, %f))\n", input_img, output_img, width, height, text, x, y, rgba.x, rgba.y, rgba.z, rgba.w);
+	//LogDebug("cudaFont.Overlay(%p, %p, %i, %i, '%s', %i, %i, (%f, %f, %f, %f))\n", input_img, output_img, width, height, text, x, y, rgba.x, rgba.y, rgba.z, rgba.w);
 
 	// render the font overlay
-	self->font->OverlayText((float4*)input_img, width, height, text, x, y, rgba, bg_rgba);
+	self->font->OverlayText(img->base.ptr, img->format, img->width, img->height, text, x, y, rgba, bg_rgba);
 
 	// return void
 	Py_RETURN_NONE;
@@ -1047,7 +1046,7 @@ bool PyFont_RegisterType( PyObject* module )
 	 
 	if( PyType_Ready(&pyFont_Type) < 0 )
 	{
-		printf(LOG_PY_UTILS "cudaFont PyType_Ready() failed\n");
+		LogError(LOG_PY_UTILS "cudaFont PyType_Ready() failed\n");
 		return false;
 	}
 	
@@ -1055,7 +1054,7 @@ bool PyFont_RegisterType( PyObject* module )
     
 	if( PyModule_AddObject(module, "cudaFont", (PyObject*)&pyFont_Type) < 0 )
 	{
-		printf(LOG_PY_UTILS "cudaFont PyModule_AddObject('cudaFont') failed\n");
+		LogError(LOG_PY_UTILS "cudaFont PyModule_AddObject('cudaFont') failed\n");
 		return false;
 	}
 

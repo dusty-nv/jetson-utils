@@ -47,33 +47,62 @@ PyObject* PyNumPy_FromCUDA( PyObject* self, PyObject* args, PyObject* kwds )
 
 	static char* kwlist[] = {"array", "width", "height", "depth", NULL};
 
-	if( !PyArg_ParseTupleAndKeywords(args, kwds, "Oi|ii", kwlist, &capsule, &width, &height, &depth))
+	if( !PyArg_ParseTupleAndKeywords(args, kwds, "O|iii", kwlist, &capsule, &width, &height, &depth))
 	{
 		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaToNumpy() failed to parse args tuple");
 		return NULL;
 	}
 
 	// verify dimensions
-	if( width <= 0 || height <= 0 || depth <= 0 )
+	/*if( width <= 0 || height <= 0 || depth <= 0 )
 	{
 		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaToNumpy() array dimensions are invalid");
 		return NULL;
-	}
+	}*/
 
 	// get pointer to image data
-	void* src = PyCapsule_GetPointer(capsule, CUDA_MAPPED_MEMORY_CAPSULE);	// TODO  support GPU-only memory
-
-	if( !src )
+	PyCudaImage* img = PyCUDA_GetImage(capsule);
+	
+	void* src = NULL;
+	int type = NPY_FLOAT32;	// TODO support other formats for cudaMemory case
+	bool mapped = false;
+	
+	if( !img )
 	{
-		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaToNumpy() failed to get input array pointer from PyCapsule container");
+		PyCudaMemory* mem = PyCUDA_GetMemory(capsule);
+		
+		if( !mem )
+		{
+			PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaToNumpy() failed to get input CUDA pointer from first arg (should be cudaImage or cudaMemory)");
+			return NULL;
+		}
+		
+		src = mem->ptr;
+		mapped = mem->mapped;
+	}
+	else
+	{
+		src    = img->base.ptr;
+		mapped = img->base.mapped;
+		width  = img->width;
+		height = img->height;
+		depth  = imageFormatChannels(img->format);
+		
+		if( img->format == IMAGE_RGB8 || img->format == IMAGE_RGBA8 )
+			type = NPY_UINT8;
+	}
+	
+	if( !mapped )   // TODO  support GPU-only memory
+	{
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaToNumpy() needs to use CUDA mapped memory as input (allocate with mapped=1)");
 		return NULL;
 	}
-
+	
 	// setup dims
 	npy_intp dims[] = { height, width, depth };
 
 	// create numpy array
-	PyObject* array = PyArray_SimpleNewFromData(3, dims, NPY_FLOAT32, src);
+	PyObject* array = PyArray_SimpleNewFromData(3, dims, type, src);
 
 	if( !array )
 	{
