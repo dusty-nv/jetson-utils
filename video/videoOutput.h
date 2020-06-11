@@ -45,7 +45,17 @@ public:
 	/**
 	 *
 	 */
-	static videoOutput* Create( const char* resource, const videoOptions& options=videoOptions() );
+	static videoOutput* Create( const char* URI, const videoOptions& options=videoOptions() );
+
+	/**
+	 *
+	 */
+	static videoOutput* Create( const char* URI, const commandLine& cmdLine );
+	
+	/**
+	 *
+	 */
+	static videoOutput* Create( const char* URI, const int argc, char** argv );
 
 	/**
 	 *

@@ -44,6 +44,27 @@ videoOutput::~videoOutput()
 }
 
 
+// create secondary display stream (if needed)
+static videoOutput* createDisplaySubstream( videoOutput* output, videoOptions& options, const commandLine& cmdLine )
+{
+	const bool headless = cmdLine.GetFlag("no-display") | cmdLine.GetFlag("headless");
+
+	if( options.resource.protocol != "display" && !headless )
+	{
+		options.resource = "display://0";
+		videoOutput* display = videoOutput::Create(options);
+
+		if( !display )
+			return output;
+
+		display->AddOutput(output);
+		return display;
+	}
+
+	return output;
+}
+
+
 // Create
 videoOutput* videoOutput::Create( const videoOptions& options )
 {
@@ -77,7 +98,6 @@ videoOutput* videoOutput::Create( const videoOptions& options )
 	return output;
 }
 
-
 // Create
 videoOutput* videoOutput::Create( const char* resource, const videoOptions& options )
 {
@@ -86,17 +106,26 @@ videoOutput* videoOutput::Create( const char* resource, const videoOptions& opti
 	return Create(opt);
 }
 
-
 // Create
-videoOutput* videoOutput::Create( const int argc, char** argv, int positionArg )
+videoOutput* videoOutput::Create( const char* resource, const commandLine& cmdLine )
 {
-	if( argc < 0 || !argv )
-		return NULL;
+	videoOptions opt;
 
-	commandLine cmdLine(argc, argv);
-	return Create(cmdLine);
+	if( !opt.Parse(resource, cmdLine, videoOptions::OUTPUT) )
+	{
+		printf("videoOutput -- failed to parse command line options\n");
+		return NULL;
+	}
+
+	return createDisplaySubstream(Create(opt), opt, cmdLine);
 }
 
+// Create
+videoOutput* videoOutput::Create( const char* resource, const int argc, char** argv )
+{
+	commandLine cmdLine(argc, argv);
+	return Create(resource, cmdLine);
+}
 
 // Create
 videoOutput* videoOutput::Create( const commandLine& cmdLine, int positionArg )
@@ -109,27 +138,15 @@ videoOutput* videoOutput::Create( const commandLine& cmdLine, int positionArg )
 		return NULL;
 	}
 
-	// create requested output interface
-	videoOutput* output = Create(opt);
-
-	// determine if display should also be created
-	const bool headless = cmdLine.GetFlag("no-display") | cmdLine.GetFlag("headless");
-
-	if( opt.resource.protocol != "display" && !headless )
-	{
-		opt.resource = "display://0";
-		videoOutput* display = Create(opt);
-
-		if( !display )
-			return output;
-
-		display->AddOutput(output);
-		return display;
-	}
-
-	return output;
+	return createDisplaySubstream(Create(opt), opt, cmdLine);
 }
 
+// Create
+videoOutput* videoOutput::Create( const int argc, char** argv, int positionArg )
+{
+	commandLine cmdLine(argc, argv);
+	return Create(cmdLine);
+}
 
 // Open
 bool videoOutput::Open()
