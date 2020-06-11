@@ -62,6 +62,7 @@ glDisplay::glDisplay( const videoOptions& options ) : videoOutput(options)
 	mDisplayX      = NULL;
 	mRendering     = false;
 	mEnableDebug   = false;
+	mResizedToFeed = false;
 	mActiveCursor  = OriginalCursor;
 	mDefaultCursor = OriginalCursor;
 	mDragMode      = DragDefault;
@@ -628,6 +629,15 @@ bool glDisplay::Render( void* image, uint32_t width, uint32_t height, imageForma
 	// determine input format
 	if( format == IMAGE_RGB8 || format == IMAGE_RGBA8 || format == IMAGE_RGB32F || format == IMAGE_RGBA32F )
 	{
+		// resize the window once to match the feed, but let the user resize/maximize
+		// only resize again if the window is then smaller than the feed
+		if( !mResizedToFeed || ((GetWidth() < width || GetHeight() < height) && (width < mScreenWidth && height < mScreenHeight)) )
+		{
+			SetSize(width, height);
+			mResizedToFeed = true;
+		}
+
+		// render and present the frame
 		RenderOnce(image, width, height, format, 0, 0);
 	}
 	else
@@ -776,6 +786,13 @@ void glDisplay::SetSize( uint32_t width, uint32_t height )
 {
 	if( mOptions.width == width && mOptions.height == height )
 		return;
+
+	// limit size to screen resolution
+	if( width > mScreenWidth )
+		width = mScreenWidth;
+
+	if( height > mScreenHeight )
+		height = mScreenHeight;
 
 	// un-maximized the window if new size not fullscreen
 	if( width != mScreenWidth || height != mScreenHeight )

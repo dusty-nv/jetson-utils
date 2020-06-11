@@ -502,13 +502,11 @@ protected:
 	int          mDefaultCursor;
 	bool		   mRendering;
 	bool		   mEnableDebug;
-	//bool		   mWindowClosed;
+	bool		   mResizedToFeed;
 	Atom		   mWindowClosedMsg;
 	DragMode	   mDragMode;
 
 	uint32_t mID;
-	//uint32_t mWidth;
-	//uint32_t mHeight;
 	uint32_t mScreenWidth;
 	uint32_t mScreenHeight;
 
