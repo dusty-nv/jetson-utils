@@ -43,7 +43,17 @@ public:
 	/**
 	 *
 	 */
-	static videoSource* Create( const char* resource, const videoOptions& options=videoOptions() );
+	static videoSource* Create( const char* URI, const videoOptions& options=videoOptions() );
+
+	/**
+	 *
+	 */
+	static videoSource* Create( const char* URI, const commandLine& cmdLine );
+	
+	/**
+	 *
+	 */
+	static videoSource* Create( const char* URI, const int argc, char** argv );
 
 	/**
 	 *

@@ -40,7 +40,6 @@ videoSource::~videoSource()
 
 }
 
-
 // Create
 videoSource* videoSource::Create( const videoOptions& options )
 {
@@ -74,7 +73,6 @@ videoSource* videoSource::Create( const videoOptions& options )
 	return src;
 }
 
-
 // Create
 videoSource* videoSource::Create( const char* resource, const videoOptions& options )
 {
@@ -83,17 +81,36 @@ videoSource* videoSource::Create( const char* resource, const videoOptions& opti
 	return Create(opt);
 }
 
+// Create
+videoSource* videoSource::Create( const char* resource, const int argc, char** argv )
+{
+	commandLine cmdLine(argc, argv);
+	return Create(resource, cmdLine);
+}
+
+// Create
+videoSource* videoSource::Create( const char* resource, const commandLine& cmdLine )
+{
+	videoOptions opt;
+
+	if( !opt.Parse(resource, cmdLine, videoOptions::INPUT) )
+	{
+		printf("videoSource -- failed to parse command line options\n");
+		return NULL;
+	}
+
+	return Create(opt);
+}
 
 // Create
 videoSource* videoSource::Create( const int argc, char** argv, int positionArg )
 {
-	if( argc < 0 || !argv )
-		return NULL;
+	/*if( argc < 0 || !argv )
+		return NULL;*/
 
 	commandLine cmdLine(argc, argv);
 	return Create(cmdLine, positionArg);
 }
-
 
 // Create
 videoSource* videoSource::Create( const commandLine& cmdLine, int positionArg )
@@ -109,7 +126,6 @@ videoSource* videoSource::Create( const commandLine& cmdLine, int positionArg )
 	return Create(opt);
 }
 
-
 // Open
 bool videoSource::Open()
 {
@@ -117,13 +133,11 @@ bool videoSource::Open()
 	return true;
 }
 
-
 // Close
 void videoSource::Close()
 {
 	mStreaming = false;
 }
-
 
 // TypeToStr
 const char* videoSource::TypeToStr( uint32_t type )
