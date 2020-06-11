@@ -388,53 +388,14 @@ bool PyCudaImage_RegisterType( PyObject* module )
 }
 
 //-------------------------------------------------------------------------------
-#if 0
-// PyCUDA_FreeMalloc
-void PyCUDA_FreeMalloc( PyObject* capsule )
-{
-	LogDebug(LOG_PY_UTILS "freeing cudaMalloc memory\n");
-
-	void* ptr = PyCapsule_GetPointer(capsule, CUDA_MALLOC_MEMORY_CAPSULE);
-
-	if( !ptr )
-	{
-		LogError(LOG_PY_UTILS "PyCUDA_FreeMalloc() failed to get pointer from PyCapsule container\n");
-		return;
-	}
-
-	if( CUDA_FAILED(cudaFree(ptr)) )
-	{
-		LogError(LOG_PY_UTILS "failed to free cudaMalloc memory with cudaFree()\n");
-		return;
-	}
-}
-#endif
-
 // PyCUDA_RegisterMemory
-PyObject* PyCUDA_RegisterMemory( void* gpuPtr, size_t size, bool freeOnDelete )
+PyObject* PyCUDA_RegisterMemory( void* gpuPtr, size_t size, bool mapped, bool freeOnDelete )
 {
 	if( !gpuPtr )
 	{
 		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "RegisterMemory() was provided NULL memory pointers");
 		return NULL;
 	}
-
-#if 0
-	// create capsule object
-	PyObject* capsule = PyCapsule_New(gpuPtr, CUDA_MALLOC_MEMORY_CAPSULE, freeOnDelete ? PyCUDA_FreeMalloc : NULL);
-
-	if( !capsule )
-	{
-		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "RegisterMemory() failed to create PyCapsule container");
-		
-		if( freeOnDelete )
-			CUDA(cudaFree(gpuPtr));
-
-		return NULL;
-	}
-
-	return capsule;
-#endif
 
 	PyCudaMemory* mem = PyObject_New(PyCudaMemory, &pyCudaMemory_Type);
 
@@ -446,13 +407,94 @@ PyObject* PyCUDA_RegisterMemory( void* gpuPtr, size_t size, bool freeOnDelete )
 
 	mem->ptr = gpuPtr;
 	mem->size = size;
-	mem->mapped = false;
+	mem->mapped = mapped;
 	mem->freeOnDelete = freeOnDelete;
 
 	return (PyObject*)mem;
 }
 
+// PyCUDA_RegisterImage
+PyObject* PyCUDA_RegisterImage( void* gpuPtr, uint32_t width, uint32_t height, imageFormat format, bool mapped, bool freeOnDelete )
+{
+	if( !gpuPtr )
+	{
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaRegisterImage() was provided NULL memory pointers");
+		return NULL;
+	}
 
+	PyCudaImage* mem = PyObject_New(PyCudaImage, &pyCudaImage_Type);
+
+	if( !mem )
+	{
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "PyCUDA_RegisterImage() failed to create a new cudaImage object");
+		return NULL;
+	}
+
+	mem->base.ptr = gpuPtr;
+	mem->base.size = imageFormatSize(format, width, height);
+	mem->base.mapped = mapped;
+	mem->base.freeOnDelete = freeOnDelete;
+
+	mem->width = width;
+	mem->height = height;
+	mem->format = format;
+
+	return (PyObject*)mem;
+}
+
+// PyCUDA_IsMemory
+bool PyCUDA_IsMemory( PyObject* object )
+{
+	if( !object )
+		return false;
+
+	if( PyObject_IsInstance(object, (PyObject*)&pyCudaMemory_Type) == 1 || 
+	    PyObject_IsInstance(object, (PyObject*)&pyCudaImage_Type) == 1)
+	{
+		return true;
+	}
+
+	return false;
+}
+
+// PyCUDA_IsImage
+bool PyCUDA_IsImage( PyObject* object )
+{
+	if( !object )
+		return false;
+
+	if( PyObject_IsInstance(object, (PyObject*)&pyCudaImage_Type) == 1 )
+		return true;
+
+	return false;
+}
+
+// PyCUDA_GetMemory
+PyCudaMemory* PyCUDA_GetMemory( PyObject* object )
+{
+	if( !object )
+		return NULL;
+
+	if( PyCUDA_IsMemory(object) )
+		return (PyCudaMemory*)object;
+
+	return NULL;
+}
+
+// PyCUDA_GetImage
+PyCudaImage* PyCUDA_GetImage( PyObject* object )
+{
+	if( !object )
+		return NULL;
+
+	if( PyCUDA_IsImage(object) )
+		return (PyCudaImage*)object;
+
+	return NULL;
+}
+
+
+//-------------------------------------------------------------------------------
 // PyCUDA_Malloc
 PyObject* PyCUDA_Malloc( PyObject* self, PyObject* args )
 {
@@ -483,183 +525,6 @@ PyObject* PyCUDA_Malloc( PyObject* self, PyObject* args )
 }
 
 
-// PyCUDA_FreeMapped
-#if 0
-void PyCUDA_FreeMapped( PyObject* capsule )
-{
-	LogDebug(LOG_PY_UTILS "freeing CUDA mapped memory\n");
-
-	void* ptr = PyCapsule_GetPointer(capsule, CUDA_MAPPED_MEMORY_CAPSULE);
-
-	if( !ptr )
-	{
-		LogError(LOG_PY_UTILS "PyCUDA_FreeMapped() failed to get pointer from PyCapsule container\n");
-		return;
-	}
-
-	if( CUDA_FAILED(cudaFreeHost(ptr)) )
-	{
-		LogError(LOG_PY_UTILS "failed to free CUDA mapped memory with cudaFreeHost()\n");
-		return;
-	}
-}
-#endif
-
-// PyCUDA_RegisterMappedMemory
-PyObject* PyCUDA_RegisterMappedMemory( void* gpuPtr, size_t size, bool freeOnDelete )
-{
-	if( !gpuPtr )
-	{
-		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaRegisterMappedMemory() was provided NULL memory pointers");
-		return NULL;
-	}
-
-#if 0
-	// create capsule object
-	PyObject* capsule = PyCapsule_New(cpuPtr, CUDA_MAPPED_MEMORY_CAPSULE, freeOnDelete ? PyCUDA_FreeMapped : NULL);
-
-	if( !capsule )
-	{
-		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "RegisterMappedMemory() failed to create PyCapsule container");
-		
-		if( freeOnDelete )
-			CUDA(cudaFreeHost(cpuPtr));
-
-		return NULL;
-	}
-#endif
-
-	PyCudaMemory* mem = PyObject_New(PyCudaMemory, &pyCudaMemory_Type);
-
-	if( !mem )
-	{
-		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "PyCUDA_RegisterMemory() failed to create a new cudaMemory object");
-		return NULL;
-	}
-
-	mem->ptr = gpuPtr;
-	mem->size = size;
-	mem->mapped = true;
-	mem->freeOnDelete = freeOnDelete;
-
-	return (PyObject*)mem;
-}
-
-
-// PyCUDA_RegisterImage
-PyObject* PyCUDA_RegisterImage( void* gpuPtr, uint32_t width, uint32_t height, imageFormat format, bool freeOnDelete )
-{
-	if( !gpuPtr )
-	{
-		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaRegisterImage() was provided NULL memory pointers");
-		return NULL;
-	}
-
-	PyCudaImage* mem = PyObject_New(PyCudaImage, &pyCudaImage_Type);
-
-	if( !mem )
-	{
-		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "PyCUDA_RegisterImage() failed to create a new cudaImage object");
-		return NULL;
-	}
-
-	mem->base.ptr = gpuPtr;
-	mem->base.size = imageFormatSize(format, width, height);
-	mem->base.mapped = false;
-	mem->base.freeOnDelete = freeOnDelete;
-
-	mem->width = width;
-	mem->height = height;
-	mem->format = format;
-
-	return (PyObject*)mem;
-}
-
-
-// PyCUDA_RegisterMappedImage
-PyObject* PyCUDA_RegisterMappedImage( void* gpuPtr, uint32_t width, uint32_t height, imageFormat format, bool freeOnDelete )
-{
-	if( !gpuPtr )
-	{
-		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaRegisterMappedImage() was provided NULL memory pointers");
-		return NULL;
-	}
-
-	PyCudaImage* mem = PyObject_New(PyCudaImage, &pyCudaImage_Type);
-
-	if( !mem )
-	{
-		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "PyCUDA_RegisterMappedImage() failed to create a new cudaImage object");
-		return NULL;
-	}
-
-	mem->base.ptr = gpuPtr;
-	mem->base.size = imageFormatSize(format, width, height);
-	mem->base.mapped = true;
-	mem->base.freeOnDelete = freeOnDelete;
-
-	mem->width = width;
-	mem->height = height;
-	mem->format = format;
-
-	return (PyObject*)mem;
-}
-
-
-// PyCUDA_IsMemory
-bool PyCUDA_IsMemory( PyObject* object )
-{
-	if( !object )
-		return false;
-
-	if( PyObject_IsInstance(object, (PyObject*)&pyCudaMemory_Type) == 1 || 
-	    PyObject_IsInstance(object, (PyObject*)&pyCudaImage_Type) == 1)
-	{
-		return true;
-	}
-
-	return false;
-}
-
-
-// PyCUDA_IsImage
-bool PyCUDA_IsImage( PyObject* object )
-{
-	if( !object )
-		return false;
-
-	if( PyObject_IsInstance(object, (PyObject*)&pyCudaImage_Type) == 1 )
-		return true;
-
-	return false;
-}
-
-
-// PyCUDA_GetMemory
-PyCudaMemory* PyCUDA_GetMemory( PyObject* object )
-{
-	if( !object )
-		return NULL;
-
-	if( PyCUDA_IsMemory(object) )
-		return (PyCudaMemory*)object;
-
-	return NULL;
-}
-
-
-// PyCUDA_GetImage
-PyCudaImage* PyCUDA_GetImage( PyObject* object )
-{
-	if( !object )
-		return NULL;
-
-	if( PyCUDA_IsImage(object) )
-		return (PyCudaImage*)object;
-
-	return NULL;
-}
-
 
 // PyCUDA_AllocMapped
 PyObject* PyCUDA_AllocMapped( PyObject* self, PyObject* args )
@@ -688,7 +553,7 @@ PyObject* PyCUDA_AllocMapped( PyObject* self, PyObject* args )
 		return NULL;
 	}
 
-	return PyCUDA_RegisterMappedMemory(gpuPtr, size);
+	return PyCUDA_RegisterMemory(gpuPtr, size, true);
 }
 
 

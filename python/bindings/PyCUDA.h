@@ -43,17 +43,13 @@ typedef struct {
 	imageFormat format;
 } PyCudaImage;
 
-// Name of memory capsules
-//#define CUDA_MALLOC_MEMORY_CAPSULE	PY_UTILS_MODULE_NAME ".cudaMalloc"
-//#define CUDA_MAPPED_MEMORY_CAPSULE PY_UTILS_MODULE_NAME ".cudaAllocMapped"
-
 // Create memory objects
-PyObject* PyCUDA_RegisterMemory( void* ptr, size_t size, bool freeOnDelete=true );
-PyObject* PyCUDA_RegisterMappedMemory( void* ptr, size_t size, bool freeOnDelete=true );
+PyObject* PyCUDA_RegisterMemory( void* ptr, size_t size, bool mapped=false, bool freeOnDelete=true );
+//PyObject* PyCUDA_RegisterMappedMemory( void* ptr, size_t size, bool freeOnDelete=true );
 
 // Create image objects
-PyObject* PyCUDA_RegisterImage( void* ptr, uint32_t width, uint32_t height, imageFormat format, bool freeOnDelete=true );
-PyObject* PyCUDA_RegisterMappedImage( void* ptr, uint32_t width, uint32_t height, imageFormat format, bool freeOnDelete=true );
+PyObject* PyCUDA_RegisterImage( void* ptr, uint32_t width, uint32_t height, imageFormat format, bool mapped=false, bool freeOnDelete=true );
+//PyObject* PyCUDA_RegisterMappedImage( void* ptr, uint32_t width, uint32_t height, imageFormat format, bool freeOnDelete=true );
 
 // type checks
 bool PyCUDA_IsMemory( PyObject* object );
@@ -69,13 +65,6 @@ PyMethodDef* PyCUDA_RegisterFunctions();
 // Register types
 bool PyCUDA_RegisterTypes( PyObject* module );
 
-// Retrieve pointer from capsule object
-/*inline void* PyCUDA_GetPointer( PyObject* capsule ) 
-{
-	if( PyCapsule_IsValid(capsule, CUDA_MAPPED_MEMORY_CAPSULE) != 0 )
-		return PyCapsule_GetPointer(capsule, CUDA_MAPPED_MEMORY_CAPSULE); 
-	else if( PyCapsule_IsValid(capsule, CUDA_MALLOC_MEMORY_CAPSULE) )
-		return PyCapsule_GetPointer(capsule, CUDA_MALLOC_MEMORY_CAPSULE); 
-}*/
 
 #endif
+

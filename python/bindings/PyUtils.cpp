@@ -24,6 +24,7 @@
 
 #include "PyGL.h"
 #include "PyCUDA.h"
+#include "PyVideo.h"
 #include "PyCamera.h"
 #include "PyImageIO.h"
 #include "PyNumPy.h"
@@ -73,6 +74,7 @@ bool PyUtils_RegisterFunctions()
 	// add functions to the master list
 	PyUtils_AddFunctions(PyGL_RegisterFunctions());
 	PyUtils_AddFunctions(PyCUDA_RegisterFunctions());
+	PyUtils_AddFunctions(PyVideo_RegisterFunctions());
 	PyUtils_AddFunctions(PyCamera_RegisterFunctions());
 	PyUtils_AddFunctions(PyImageIO_RegisterFunctions());
 	PyUtils_AddFunctions(PyNumPy_RegisterFunctions());
@@ -92,6 +94,9 @@ bool PyUtils_RegisterTypes( PyObject* module )
 
 	if( !PyCUDA_RegisterTypes(module) )
 		printf(LOG_PY_UTILS "failed to register CUDA types\n");
+
+	if( !PyVideo_RegisterTypes(module) )
+		printf(LOG_PY_UTILS "failed to register Video types\n");
 
 	if( !PyCamera_RegisterTypes(module) )
 		printf(LOG_PY_UTILS "failed to register Camera types\n");

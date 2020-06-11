@@ -185,7 +185,12 @@ PyObject* PyNumPy_ToCUDA( PyObject* self, PyObject* args )
 	}	
 
 	// register CUDA memory capsule
-	PyObject* capsule = PyCUDA_RegisterMappedMemory(gpuPtr, size);
+	PyObject* capsule = NULL;
+
+	if( ndim == 3 && (dims[2] == 3 || dims[2] == 4) )
+		capsule = PyCUDA_RegisterImage(gpuPtr, dims[1], dims[0], (dims[2] == 3) ? IMAGE_RGB32F : IMAGE_RGBA32F, true);
+	else
+		capsule = PyCUDA_RegisterMemory(gpuPtr, size, true);
 
 	if( !capsule )
 	{

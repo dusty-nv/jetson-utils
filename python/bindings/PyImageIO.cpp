@@ -49,7 +49,7 @@ PyObject* PyImageIO_LoadRGBA( PyObject* self, PyObject* args )
 	}
 		
 	// register memory container
-	PyObject* capsule = PyCUDA_RegisterMappedImage(imgPtr, width, height, IMAGE_RGBA32F);
+	PyObject* capsule = PyCUDA_RegisterImage(imgPtr, width, height, IMAGE_RGBA32F, true);
 
 	if( !capsule )
 		return NULL;
