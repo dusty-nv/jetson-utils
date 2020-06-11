@@ -40,8 +40,7 @@ std::string absolutePath( const std::string& relative_path )
 			return relative_path;
 	}
 
-	const std::string proc = Process::ExecutableDirectory();
-	return pathJoin(proc, relative_path);
+	return pathJoin(workingDirectory(), relative_path);
 }
 
 

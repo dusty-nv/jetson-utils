@@ -29,13 +29,15 @@
 
 
 /**
- * Given a relative path, resolve the absolute path based on the location 
- * of the process that calls the function.
+ * Given a relative path, resolve the absolute path using the working directory.
  *
- * For example, if the application is located at `/home/user/my_process`
- * and `absolutePath("resources/example")` is called, then this function
+ * For example, if the current working directory `/home/user/` and
+ * `absolutePath("resources/example")` is called, then this function
  * would return the path `/home/user/resources/example`.
  * 
+ * If the path is already an absolute path (i.e. it begins with `/` or `~/`)
+ * then this function will be ignored and the path will be returned as-is.
+ *
  * @ingroup filesystem
  */
 std::string absolutePath( const std::string& relative_path );
