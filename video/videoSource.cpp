@@ -65,12 +65,13 @@ videoSource* videoSource::Create( const videoOptions& options )
 	}
 	else
 	{
-		LogError("videoSource -- unsupported protocol (%s)\n", uri.protocol.size() > 0 ? uri.protocol.c_str() : "null");
+		LogError(LOG_VIDEO "videoSource -- unsupported protocol (%s)\n", uri.protocol.size() > 0 ? uri.protocol.c_str() : "null");
 	}
 
 	if( !src )
 		return NULL;
 
+	LogSuccess(LOG_VIDEO "created %s from %s\n", src->TypeToStr(), src->GetResource().string.c_str());
 	src->GetOptions().Print(src->TypeToStr());
 	return src;
 }
@@ -97,7 +98,7 @@ videoSource* videoSource::Create( const char* resource, const commandLine& cmdLi
 
 	if( !opt.Parse(resource, cmdLine, videoOptions::INPUT) )
 	{
-		LogError("videoSource -- failed to parse command line options\n");
+		LogError(LOG_VIDEO "videoSource -- failed to parse command line options\n");
 		return NULL;
 	}
 
@@ -121,7 +122,7 @@ videoSource* videoSource::Create( const commandLine& cmdLine, int positionArg )
 
 	if( !opt.Parse(cmdLine, videoOptions::INPUT, positionArg) )
 	{
-		LogError("videoSource -- failed to parse command line options\n");
+		LogError(LOG_VIDEO "videoSource -- failed to parse command line options\n");
 		return NULL;
 	}
 

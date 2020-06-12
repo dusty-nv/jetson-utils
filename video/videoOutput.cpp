@@ -90,12 +90,13 @@ videoOutput* videoOutput::Create( const videoOptions& options )
 	}
 	else
 	{
-		LogError("videoOutput -- unsupported protocol (%s)\n", uri.protocol.size() > 0 ? uri.protocol.c_str() : "null");
+		LogError(LOG_VIDEO "videoOutput -- unsupported protocol (%s)\n", uri.protocol.size() > 0 ? uri.protocol.c_str() : "null");
 	}
 
 	if( !output )
 		return NULL;
 
+	LogSuccess(LOG_VIDEO "created %s from %s\n", output->TypeToStr(), output->GetResource().string.c_str());
 	output->GetOptions().Print(output->TypeToStr());
 	return output;
 }
@@ -115,7 +116,7 @@ videoOutput* videoOutput::Create( const char* resource, const commandLine& cmdLi
 
 	if( !opt.Parse(resource, cmdLine, videoOptions::OUTPUT) )
 	{
-		LogError("videoOutput -- failed to parse command line options\n");
+		LogError(LOG_VIDEO "videoOutput -- failed to parse command line options\n");
 		return NULL;
 	}
 
@@ -136,7 +137,7 @@ videoOutput* videoOutput::Create( const commandLine& cmdLine, int positionArg )
 
 	if( !opt.Parse(cmdLine, videoOptions::OUTPUT, positionArg) )
 	{
-		LogError("videoOutput -- failed to parse command line options\n");
+		LogError(LOG_VIDEO "videoOutput -- failed to parse command line options\n");
 		return NULL;
 	}
 

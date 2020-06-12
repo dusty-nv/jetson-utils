@@ -212,7 +212,7 @@ glDisplay* glDisplay::Create( const videoOptions& options )
 	vp->mID = gDisplays.size();
 	gDisplays.push_back(vp);
 
-	LogSuccess(LOG_GL "glDisplay -- display device initialized (%ux%u)\n", vp->GetWidth(), vp->GetHeight());
+	LogInfo(LOG_GL "glDisplay -- display device initialized (%ux%u)\n", vp->GetWidth(), vp->GetHeight());
 	return vp;
 }
 

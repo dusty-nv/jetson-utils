@@ -92,7 +92,7 @@ bool videoOptions::Parse( const char* URI, const commandLine& cmdLine, videoOpti
 	// parse input/output URI
 	if( !resource.Parse(URI) )
 	{
-		LogError("videoOptions -- failed to parse %s resource URI (%s)\n", IoTypeToStr(type), URI != NULL ? URI : "null");
+		LogError(LOG_VIDEO "videoOptions -- failed to parse %s resource URI (%s)\n", IoTypeToStr(type), URI != NULL ? URI : "null");
 		return false;
 	}
 

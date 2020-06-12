@@ -230,5 +230,10 @@ public:
 };
 
 
+/**
+ * @ingroup video
+ */
+#define LOG_VIDEO "[video]  "
+
 #endif
 
