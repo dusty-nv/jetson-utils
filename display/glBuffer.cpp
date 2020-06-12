@@ -59,13 +59,13 @@ glBuffer* glBuffer::Create( uint32_t type, uint32_t size, void* data, uint32_t u
 
 	if( !buf )
 	{
-		printf(LOG_GL "failed to construct new glBuffer object\n");
+		LogError(LOG_GL "failed to construct new glBuffer object\n");
 		return NULL;
 	}
 
 	if( !buf->init(type, size, data, usage) )
 	{
-		printf(LOG_GL "failed to create buffer (%u bytes)\n", size);
+		LogError(LOG_GL "failed to create buffer (%u bytes)\n", size);
 		delete buf;		
 		return NULL;
 	}
@@ -81,13 +81,13 @@ glBuffer* glBuffer::Create( uint32_t type, uint32_t numElements, uint32_t elemen
 
 	if( !buf )
 	{
-		printf(LOG_GL "failed to construct new glBuffer object\n");
+		LogError(LOG_GL "failed to construct new glBuffer object\n");
 		return NULL;
 	}
 
 	if( !buf->init(type, numElements * elementSize, data, usage) )
 	{
-		printf(LOG_GL "failed to create buffer (%u bytes)\n", numElements * elementSize);
+		LogError(LOG_GL "failed to create buffer (%u bytes)\n", numElements * elementSize);
 		delete buf;		
 		return NULL;
 	}
@@ -153,7 +153,7 @@ void* glBuffer::Map( uint32_t device, uint32_t flags )
 {
 	if( mMapDevice != 0 )
 	{
-		printf(LOG_GL "error -- glBuffer is already mapped (call Unmap() first)\n");
+		LogError(LOG_GL "error -- glBuffer is already mapped (call Unmap() first)\n");
 		return NULL;
 	}
 
@@ -174,7 +174,7 @@ void* glBuffer::Map( uint32_t device, uint32_t flags )
 
 		if( !ptr )
 		{
-			printf(LOG_GL "glMapBuffer() failed\n");
+			LogError(LOG_GL "glMapBuffer() failed\n");
 			GL_CHECK("glMapBuffer()\n");			
 			return NULL;
 		}
@@ -189,12 +189,12 @@ void* glBuffer::Map( uint32_t device, uint32_t flags )
 			if( CUDA_FAILED(cudaGraphicsGLRegisterBuffer(&mInteropCUDA, mID, cudaGraphicsRegisterFlagsFromGL(flags))) )
 				return NULL;
 
-			printf(LOG_CUDA "registered OpenGL buffer for interop access (%u bytes)\n", mSize);
+			LogSuccess(LOG_CUDA "registered OpenGL buffer for interop access (%u bytes)\n", mSize);
 
 			if( mUsage != GL_DYNAMIC_DRAW )
 			{
-				printf(LOG_CUDA "warning: OpenGL interop buffer was not created with GL_DYNAMIC_DRAW\n");
-				printf(LOG_CUDA "it's recommended that GL interopability buffers use GL_DYNAMIC_DRAW\n");
+				LogWarning(LOG_CUDA "warning: OpenGL interop buffer was not created with GL_DYNAMIC_DRAW\n");
+				LogWarning(LOG_CUDA "it's recommended that GL interopability buffers use GL_DYNAMIC_DRAW\n");
 			}		
 		}
 
@@ -215,7 +215,7 @@ void* glBuffer::Map( uint32_t device, uint32_t flags )
 		}
 		
 		if( mSize != mappedSize )
-			printf(LOG_GL "glBuffer::Map() -- CUDA size mismatch %zu bytes  (expected=%u)\n", mappedSize, mSize);
+			LogWarning(LOG_GL "glBuffer::Map() -- CUDA size mismatch %zu bytes  (expected=%u)\n", mappedSize, mSize);
 		
 		mMapDevice = device;
 		mMapFlags = flags;	// these only need tracked for GPU	
@@ -223,7 +223,7 @@ void* glBuffer::Map( uint32_t device, uint32_t flags )
 		return devPtr;
 	}
 
-	printf(LOG_GL "glBuffer::Map() -- invalid device (must be GL_MAP_CPU or GL_MAP_CUDA)\n");
+	LogError(LOG_GL "glBuffer::Map() -- invalid device (must be GL_MAP_CPU or GL_MAP_CUDA)\n");
 	return NULL;
 }
 

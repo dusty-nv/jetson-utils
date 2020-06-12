@@ -25,6 +25,7 @@
 
 
 #include "cudaMappedMemory.h"
+#include "logging.h"
 
 
 // constructor
@@ -80,7 +81,7 @@ inline bool RingBuffer::Alloc( uint32_t numBuffers, size_t size, uint32_t flags 
 		{
 			if( !cudaAllocMapped(&mBuffers[n], size) )
 			{
-				printf("RingBuffer -- failed to allocate zero-copy buffer of %zu bytes\n", size);
+				LogError("RingBuffer -- failed to allocate zero-copy buffer of %zu bytes\n", size);
 				return false;
 			}
 		}
@@ -90,13 +91,13 @@ inline bool RingBuffer::Alloc( uint32_t numBuffers, size_t size, uint32_t flags 
 			
 			if( CUDA_FAILED(cudaMalloc(&mBuffers[n], size)) )
 			{
-				printf("RingBuffer -- failed to allocate CUDA buffer of %zu bytes\n", size);
+				LogError("RingBuffer -- failed to allocate CUDA buffer of %zu bytes\n", size);
 				return false;
 			}
 		}
 	}
 		
-	printf("RingBuffer -- allocated %u buffers (%zu bytes each, %zu bytes total)\n", numBuffers, size, size * numBuffers);
+	LogVerbose("RingBuffer -- allocated %u buffers (%zu bytes each, %zu bytes total)\n", numBuffers, size, size * numBuffers);
 	
 	mNumBuffers = numBuffers;
 	mBufferSize = size;
@@ -131,7 +132,7 @@ inline void* RingBuffer::Peek( uint32_t flags )
 
 	if( !mBuffers || mNumBuffers == 0 )
 	{
-		printf("RingBuffer::Peek() -- error, must call RingBuffer::Alloc() first\n");
+		LogError("RingBuffer::Peek() -- error, must call RingBuffer::Alloc() first\n");
 		return NULL;
 	}
 
@@ -152,7 +153,7 @@ inline void* RingBuffer::Peek( uint32_t flags )
 
 	if( bufferIndex < 0 )
 	{
-		printf("RingBuffer::Peek() -- error, invalid flags (must be Write or Read flags)\n");
+		LogError("RingBuffer::Peek() -- error, invalid flags (must be Write or Read flags)\n");
 		return NULL;
 	}
 
@@ -167,7 +168,7 @@ inline void* RingBuffer::Next( uint32_t flags )
 
 	if( !mBuffers || mNumBuffers == 0 )
 	{
-		printf("RingBuffer::Next() -- error, must call RingBuffer::Alloc() first\n");
+		LogError("RingBuffer::Next() -- error, must call RingBuffer::Alloc() first\n");
 		return NULL;
 	}
 
@@ -207,7 +208,7 @@ inline void* RingBuffer::Next( uint32_t flags )
 
 	if( bufferIndex < 0 )
 	{
-		printf("RingBuffer::Next() -- error, invalid flags (must be Write or Read flags)\n");
+		LogError("RingBuffer::Next() -- error, invalid flags (must be Write or Read flags)\n");
 		return NULL;
 	}
 

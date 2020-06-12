@@ -26,6 +26,8 @@
 #include "gstCamera.h"
 #include "gstDecoder.h"
 
+#include "logging.h"
+
 
 // constructor
 videoSource::videoSource( const videoOptions& options ) : mOptions(options)
@@ -63,7 +65,7 @@ videoSource* videoSource::Create( const videoOptions& options )
 	}
 	else
 	{
-		printf("videoSource -- unsupported protocol (%s)\n", uri.protocol.size() > 0 ? uri.protocol.c_str() : "null");
+		LogError("videoSource -- unsupported protocol (%s)\n", uri.protocol.size() > 0 ? uri.protocol.c_str() : "null");
 	}
 
 	if( !src )
@@ -95,7 +97,7 @@ videoSource* videoSource::Create( const char* resource, const commandLine& cmdLi
 
 	if( !opt.Parse(resource, cmdLine, videoOptions::INPUT) )
 	{
-		printf("videoSource -- failed to parse command line options\n");
+		LogError("videoSource -- failed to parse command line options\n");
 		return NULL;
 	}
 
@@ -119,7 +121,7 @@ videoSource* videoSource::Create( const commandLine& cmdLine, int positionArg )
 
 	if( !opt.Parse(cmdLine, videoOptions::INPUT, positionArg) )
 	{
-		printf("videoSource -- failed to parse command line options\n");
+		LogError("videoSource -- failed to parse command line options\n");
 		return NULL;
 	}
 

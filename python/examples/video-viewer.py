@@ -51,7 +51,7 @@ output = jetson.utils.videoOutput(opt.output_URI, argv=sys.argv)
 # capture frames until user exits
 while output.IsStreaming():
 	image = input.Capture()
-	print(image)
+	#print(image)
 	output.Render(image)
 	output.SetStatus("Video Viewer | {:d}x{:d} | {:d} FPS".format(image.width, image.height, output.GetFrameRate()))
 	

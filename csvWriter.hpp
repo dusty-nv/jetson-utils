@@ -25,6 +25,7 @@
 
 
 #include "csvWriter.h"
+#include "logging.h"
 
 
 // constructor
@@ -37,7 +38,7 @@ csvWriter::csvWriter( const char* filename, const char* delimiter )
 
 	if( !IsOpen() )
 	{
-		printf("csvWriter -- failed to open file %s\n", filename);
+		LogError("csvWriter -- failed to open file %s\n", filename);
 		return;
 	}
 

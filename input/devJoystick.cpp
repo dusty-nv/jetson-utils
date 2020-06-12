@@ -27,14 +27,17 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <unistd.h>
+
+#include "logging.h"
+
+
 // "linux/input-event-codes.h"
 
 
 // constructor
 JoystickDevice::JoystickDevice()
 {
-	mFD    = -1;
-	mDebug = false;
+	mFD = -1;
 
 	memset(mAxisRaw, 0, sizeof(mAxisRaw));
 	memset(mAxisNorm, 0, sizeof(mAxisNorm));
@@ -55,7 +58,7 @@ JoystickDevice* JoystickDevice::Create( const char* name )
 
 	if( path.length() == 0 )
 	{
-		printf("joystick -- failed to find path for device '%s'\n", name);
+		LogError("joystick -- failed to find path for device '%s'\n", name);
 		return NULL;
 	}
 
@@ -63,7 +66,7 @@ JoystickDevice* JoystickDevice::Create( const char* name )
 
 	if( fd == -1 )
 	{
-		printf("joystick -- failed to open %s\n", path.c_str());
+		LogError("joystick -- failed to open %s\n", path.c_str());
 		return NULL;
 	}
 
@@ -72,7 +75,7 @@ JoystickDevice* JoystickDevice::Create( const char* name )
 	joy->mFD   = fd;
 	joy->mPath = path;
 
-	printf("joystick -- opened device %s\n", path.c_str());
+	LogSuccess("joystick -- opened device %s\n", path.c_str());
 	return joy;
 }
 
@@ -96,13 +99,13 @@ bool JoystickDevice::Poll( uint32_t timeout )
 
 	if( result == -1 ) 
 	{
-		printf("joystick -- select() failed (errno=%i) (%s)\n", errno, strerror(errno));
+		LogError("joystick -- select() failed (errno=%i) (%s)\n", errno, strerror(errno));
 		return false;
 	}
 	else if( result == 0 )
 	{
-		if( mDebug && timeout > 0 )
-			printf("joystick -- select() timed out...\n");
+		if( /*mDebug &&*/ timeout > 0 )
+			LogDebug("joystick -- select() timed out...\n");
 
 		return false;	// timeout, not necessarily an error (TRY_AGAIN)
 	}
@@ -111,7 +114,7 @@ bool JoystickDevice::Poll( uint32_t timeout )
 
 	if( bytesRead < (int)sizeof(struct input_event) ) 
 	{
-		printf("joystick -- read() expected %d bytes, got %d\n", (int)sizeof(struct input_event), bytesRead);
+		LogError("joystick -- read() expected %d bytes, got %d\n", (int)sizeof(struct input_event), bytesRead);
 		return false;
 	}
 
@@ -126,23 +129,15 @@ bool JoystickDevice::Poll( uint32_t timeout )
 
 			mAxisRaw[ev[i].code] = ev[i].value;
 
-			if( mDebug )
-				printf("joystick -- axis %i, value %i  type=%i\n", (int)ev[i].code, ev[i].value, (int)ev[i].type);
+			LogDebug("joystick -- axis %i, value %i  type=%i\n", (int)ev[i].code, ev[i].value, (int)ev[i].type);
 		}
 		else if( ev[i].type != 0 )
 		{
-			if( mDebug )
-				printf("joystick -- event %i, code %i, value %i\n", (int)ev[i].type, (int)ev[i].code, ev[i].value);
+			LogDebug("joystick -- event %i, code %i, value %i\n", (int)ev[i].type, (int)ev[i].code, ev[i].value);
 		}
 	}
 
 	return true;	
 }
 
-
-// Debug
-void JoystickDevice::Debug( bool enable )
-{
-	mDebug = enable;
-}
 

@@ -25,6 +25,7 @@
 
 
 #include "csvReader.h"
+#include "logging.h"
 
 
 // toInt()
@@ -181,7 +182,7 @@ csvReader::csvReader( const char* filename, const char* delimiters ) : mFile(NUL
 
 	if( !mFile )
 	{
-		printf("csvReader -- failed to open file %s\n", filename);
+		LogError("csvReader -- failed to open file %s\n", filename);
 		perror("csvReader -- error");
 		return;
 	}
@@ -268,7 +269,7 @@ inline bool csvReader::Read( std::vector<csvData>& data, const char* delimiters 
 	{
 		if( ferror(mFile) )
 		{
-			printf("csvReader -- error reading file %s\n", mFilename.c_str());
+			LogError("csvReader -- error reading file %s\n", mFilename.c_str());
 			perror("csvReader -- error");
 		}
 

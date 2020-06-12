@@ -24,6 +24,7 @@
 #include "PyCUDA.h"
 
 #include "glDisplay.h"
+#include "logging.h"
 
 
 // PyDisplay container
@@ -36,7 +37,7 @@ typedef struct {
 // New
 static PyObject* PyDisplay_New( PyTypeObject *type, PyObject *args, PyObject *kwds )
 {
-	printf(LOG_PY_UTILS "PyDisplay_New()\n");
+	LogDebug(LOG_PY_UTILS "PyDisplay_New()\n");
 	
 	// allocate a new container
 	PyDisplay_Object* self = (PyDisplay_Object*)type->tp_alloc(type, 0);
@@ -55,7 +56,7 @@ static PyObject* PyDisplay_New( PyTypeObject *type, PyObject *args, PyObject *kw
 // Init
 static int PyDisplay_Init( PyDisplay_Object* self, PyObject *args, PyObject *kwds )
 {
-	printf(LOG_PY_UTILS "PyDisplay_Init()\n");
+	LogDebug(LOG_PY_UTILS "PyDisplay_Init()\n");
 	
 	// parse arguments
 	int width = -1;
@@ -87,7 +88,7 @@ static int PyDisplay_Init( PyDisplay_Object* self, PyObject *args, PyObject *kwd
 // Deallocate
 static void PyDisplay_Dealloc( PyDisplay_Object* self )
 {
-	printf(LOG_PY_UTILS "PyDisplay_Dealloc()\n");
+	LogDebug(LOG_PY_UTILS "PyDisplay_Dealloc()\n");
 
 	// free the display
 	if( self->display != NULL )
@@ -410,7 +411,7 @@ bool PyGL_RegisterTypes( PyObject* module )
 	 
 	if( PyType_Ready(&PyDisplay_Type) < 0 )
 	{
-		printf(LOG_PY_UTILS "glDisplay PyType_Ready() failed\n");
+		LogError(LOG_PY_UTILS "glDisplay PyType_Ready() failed\n");
 		return false;
 	}
 	
@@ -418,7 +419,7 @@ bool PyGL_RegisterTypes( PyObject* module )
     
 	if( PyModule_AddObject(module, "glDisplay", (PyObject*)&PyDisplay_Type) < 0 )
 	{
-		printf(LOG_PY_UTILS "glDisplay PyModule_AddObject('glDisplay') failed\n");
+		LogError(LOG_PY_UTILS "glDisplay PyModule_AddObject('glDisplay') failed\n");
 		return false;
 	}
 

@@ -130,19 +130,19 @@ static void gst_print_one_tag(const GstTagList * list, const gchar * tag, gpoint
      * we only use the GValue approach here because it is more generic */
     val = gst_tag_list_get_value_index (list, tag, i);
     if (G_VALUE_HOLDS_STRING (val)) {
-      printf("\t%20s : %s\n", tag, g_value_get_string (val));
+      LogVerbose("\t%20s : %s\n", tag, g_value_get_string (val));
     } else if (G_VALUE_HOLDS_UINT (val)) {
-      printf("\t%20s : %u\n", tag, g_value_get_uint (val));
+      LogVerbose("\t%20s : %u\n", tag, g_value_get_uint (val));
     } else if (G_VALUE_HOLDS_DOUBLE (val)) {
-      printf("\t%20s : %g\n", tag, g_value_get_double (val));
+      LogVerbose("\t%20s : %g\n", tag, g_value_get_double (val));
     } else if (G_VALUE_HOLDS_BOOLEAN (val)) {
-      printf("\t%20s : %s\n", tag,
+      LogVerbose("\t%20s : %s\n", tag,
           (g_value_get_boolean (val)) ? "true" : "false");
     } else if (GST_VALUE_HOLDS_BUFFER (val)) {
       //GstBuffer *buf = gst_value_get_buffer (val);
       //guint buffer_size = GST_BUFFER_SIZE(buf);
 
-      printf("\t%20s : buffer of size %u\n", tag, /*buffer_size*/0);
+      LogVerbose("\t%20s : buffer of size %u\n", tag, /*buffer_size*/0);
     } /*else if (GST_VALUE_HOLDS_DATE_TIME (val)) {
       GstDateTime *dt = (GstDateTime*)g_value_get_boxed (val);
       gchar *dt_str = gst_date_time_to_iso8601_string (dt);
@@ -150,7 +150,7 @@ static void gst_print_one_tag(const GstTagList * list, const gchar * tag, gpoint
       printf("\t%20s : %s\n", tag, dt_str);
       g_free (dt_str);
     }*/ else {
-      printf("\t%20s : tag of type '%s'\n", tag, G_VALUE_TYPE_NAME (val));
+      LogVerbose("\t%20s : tag of type '%s'\n", tag, G_VALUE_TYPE_NAME (val));
     }
   }
 }
@@ -173,7 +173,6 @@ static const char* gst_stream_status_string( GstStreamStatusType status )
 // gst_message_print
 gboolean gst_message_print(GstBus* bus, GstMessage* message, gpointer user_data)
 {
-
 	switch (GST_MESSAGE_TYPE (message)) 
 	{
 		case GST_MESSAGE_ERROR: 

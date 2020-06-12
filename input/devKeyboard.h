@@ -58,11 +58,6 @@ public:
 	 */
 	bool KeyDown( uint32_t code ) const;
 
-	/**
-	 * Enable/disable verbose logging
-	 */
-	void Debug( bool enabled=true );
-
 protected:
 	// constructor
 	KeyboardDevice();
@@ -71,7 +66,6 @@ protected:
 
 	int  mKeyMap[MAX_KEYS];
 	int  mFD;
-	bool mDebug;
 
 	std::string mPath;
 };

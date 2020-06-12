@@ -24,6 +24,7 @@
 #include "PyCUDA.h"
 
 #include "gstCamera.h"
+#include "logging.h"
 
 
 // PyCamera container
@@ -36,7 +37,7 @@ typedef struct {
 // New
 static PyObject* PyCamera_New( PyTypeObject *type, PyObject *args, PyObject *kwds )
 {
-	printf(LOG_PY_UTILS "PyCamera_New()\n");
+	LogDebug(LOG_PY_UTILS "PyCamera_New()\n");
 	
 	// allocate a new container
 	PyCamera_Object* self = (PyCamera_Object*)type->tp_alloc(type, 0);
@@ -44,7 +45,7 @@ static PyObject* PyCamera_New( PyTypeObject *type, PyObject *args, PyObject *kwd
 	if( !self )
 	{
 		PyErr_SetString(PyExc_MemoryError, LOG_PY_UTILS "gstCamera tp_alloc() failed to allocate a new object");
-		printf(LOG_PY_UTILS "gstCamera tp_alloc() failed to allocate a new object\n");
+		LogError(LOG_PY_UTILS "gstCamera tp_alloc() failed to allocate a new object\n");
 		return NULL;
 	}
 	
@@ -56,7 +57,7 @@ static PyObject* PyCamera_New( PyTypeObject *type, PyObject *args, PyObject *kwd
 // Init
 static int PyCamera_Init( PyCamera_Object* self, PyObject *args, PyObject *kwds )
 {
-	printf(LOG_PY_UTILS "PyCamera_Init()\n");
+	LogDebug(LOG_PY_UTILS "PyCamera_Init()\n");
 	
 	// parse arguments
 	int camera_width   = gstCamera::DefaultWidth;
@@ -68,7 +69,7 @@ static int PyCamera_Init( PyCamera_Object* self, PyObject *args, PyObject *kwds 
 	if( !PyArg_ParseTupleAndKeywords(args, kwds, "|iis", kwlist, &camera_width, &camera_height, &device))
 	{
 		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "gstCamera.__init()__ failed to parse args tuple");
-		printf(LOG_PY_UTILS "gstCamera.__init()__ failed to parse args tuple\n");
+		LogError(LOG_PY_UTILS "gstCamera.__init()__ failed to parse args tuple\n");
 		return -1;
 	}
   
@@ -101,7 +102,7 @@ static int PyCamera_Init( PyCamera_Object* self, PyObject *args, PyObject *kwds 
 // Deallocate
 static void PyCamera_Dealloc( PyCamera_Object* self )
 {
-	printf(LOG_PY_UTILS "PyCamera_Dealloc()\n");
+	LogDebug(LOG_PY_UTILS "PyCamera_Dealloc()\n");
 
 	// free the network
 	if( self->camera != NULL )
@@ -268,7 +269,7 @@ bool PyCamera_RegisterTypes( PyObject* module )
 	 
 	if( PyType_Ready(&pyCamera_Type) < 0 )
 	{
-		printf(LOG_PY_UTILS "gstCamera PyType_Ready() failed\n");
+		LogError(LOG_PY_UTILS "gstCamera PyType_Ready() failed\n");
 		return false;
 	}
 	
@@ -276,7 +277,7 @@ bool PyCamera_RegisterTypes( PyObject* module )
     
 	if( PyModule_AddObject(module, "gstCamera", (PyObject*)&pyCamera_Type) < 0 )
 	{
-		printf(LOG_PY_UTILS "gstCamera PyModule_AddObject('gstCamera') failed\n");
+		LogError(LOG_PY_UTILS "gstCamera PyModule_AddObject('gstCamera') failed\n");
 		return false;
 	}
 

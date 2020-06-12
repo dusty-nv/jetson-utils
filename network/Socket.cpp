@@ -30,13 +30,15 @@
 #include <unistd.h>
 #include <errno.h>
 
+#include "logging.h"
+
 
 // printErrno
 static void printErrno()
 {
 	const int e = errno;
 	const char* err = strerror(e);
-	printf("Socket error %i : %s\n", e, err);
+	LogError("Socket error %i : %s\n", e, err);
 }
 
 
@@ -76,19 +78,19 @@ bool Socket::SetBufferSize( size_t size )
 
 	if( setsockopt(mSock, SOL_SOCKET, SO_RCVBUF, &isz, sizeof(int)) != 0 )
 	{
-		printf("Socket failed to set rx buffer size of %zu bytes.\n", size);
+		LogError("Socket failed to set rx buffer size of %zu bytes.\n", size);
 		printErrno();			
 		return false;
 	}
 
 	if( setsockopt(mSock, SOL_SOCKET, SO_SNDBUF, &isz, sizeof(int)) != 0 )
 	{
-		printf("Socket failed to set rx buffer size of %zu bytes.\n", size);
+		LogError("Socket failed to set rx buffer size of %zu bytes.\n", size);
 		printErrno();		
 		return false;
 	}
 
-	printf("successfully set socket buffer size of %s:%u to %zu bytes\n", IPv4AddressStr(mLocalIP).c_str(), (uint32_t)mLocalPort, size);
+	LogVerbose("successfully set socket buffer size of %s:%u to %zu bytes\n", IPv4AddressStr(mLocalIP).c_str(), (uint32_t)mLocalPort, size);
 	return true;
 }
 
@@ -143,7 +145,7 @@ bool Socket::Accept( uint64_t timeout )
 	{
 		if( listen(mSock, 1) < 0 )
 		{
-			printf("failed to listen() on socket.\n");
+			LogError("failed to listen() on socket.\n");
 			return false;
 		}
 
@@ -167,13 +169,13 @@ bool Socket::Accept( uint64_t timeout )
 
 		if( result < 0 )
 		{
-			printf("select() error occurred during Socket::Accept()   (code=%i)\n", result);
+			LogError("select() error occurred during Socket::Accept()   (code=%i)\n", result);
 			printErrno();
 			return false;
 		}
 		else if( result == 0 )
 		{
-			printf("Socket::Accept() timeout occurred\n");
+			LogError("Socket::Accept() timeout occurred\n");
 			return false;
 		}
 	}
@@ -187,7 +189,7 @@ bool Socket::Accept( uint64_t timeout )
 
 	if( fd < 0 )
 	{
-		printf("Socket::Accept() failed  (code=%i)\n", fd);
+		LogError("Socket::Accept() failed  (code=%i)\n", fd);
 		printErrno();
 		return false;
 	}
@@ -232,7 +234,7 @@ bool Socket::Bind( uint32_t ipAddress, uint16_t port )
 
 	if( bind(mSock, (struct sockaddr*)&addr, sizeof(addr)) < 0 )
 	{
-		printf("failed to bind socket to %s port %hu\n", IPv4AddressStr(ipAddress).c_str(), port);
+		LogError("failed to bind socket to %s port %hu\n", IPv4AddressStr(ipAddress).c_str(), port);
 		printErrno();
 		return false;
 	}
@@ -266,7 +268,7 @@ bool Socket::Connect( uint32_t ipAddress, uint16_t port )
 
 	if( connect(mSock, (struct sockaddr*)&addr, sizeof(addr)) < 0 )
 	{
-		printf("Socket failed to connect to %X port %hi.\n", ipAddress, port);
+		LogError("Socket failed to connect to %X port %hi.\n", ipAddress, port);
 		printErrno();
 		return false;
 	}
@@ -340,7 +342,7 @@ size_t Socket::Recieve( uint8_t* buffer, size_t size, uint32_t* remoteIP, uint16
 		
 		if( setsockopt(mSock, IPPROTO_IP, IP_PKTINFO, (const char*)&opt, sizeof(int)) != 0 )
 		{
-			printf("Socket::Receive() failed to enabled extended PKTINFO\n");
+			LogError("Socket::Receive() failed to enabled extended PKTINFO\n");
 			printErrno();
 			return 0;
 		}
@@ -418,7 +420,7 @@ bool Socket::SetRecieveTimeout( uint64_t timeout )
 		
 	if( setsockopt(mSock, SOL_SOCKET, SO_RCVTIMEO, (char*)&tv, sizeof(struct timeval)) != 0 )
 	{
-		printf("Socket::SetRecieveTimeout() failed to set timeout of %zu microseconds.\n", timeout);
+		LogError("Socket::SetRecieveTimeout() failed to set timeout of %zu microseconds.\n", timeout);
 		printErrno();
 		return false;
 	}
@@ -441,7 +443,7 @@ bool Socket::Send( void* buffer, size_t size, uint32_t remoteIP, uint16_t remote
 		
 		if( setsockopt(mSock, SOL_SOCKET, SO_BROADCAST, (const char*)&opt, sizeof(int)) != 0 )
 		{
-			printf("Socket::Send() failed to enabled broadcasting...\n");
+			LogError("Socket::Send() failed to enabled broadcasting...\n");
 			printErrno();
 			return false;
 		}
@@ -462,7 +464,7 @@ bool Socket::Send( void* buffer, size_t size, uint32_t remoteIP, uint16_t remote
 	
 	if( res != size )
 	{
-		printf("failed send() to %s port %hu  (%li of %zu bytes)\n", IPv4AddressStr(remoteIP).c_str(), remotePort, res, size);
+		LogError("failed send() to %s port %hu  (%li of %zu bytes)\n", IPv4AddressStr(remoteIP).c_str(), remotePort, res, size);
 		printErrno();
 		return false;
 	}
@@ -474,7 +476,7 @@ bool Socket::Send( void* buffer, size_t size, uint32_t remoteIP, uint16_t remote
 // PrintIP
 void Socket::PrintIP() const
 {
-	printf("Socket %i   host %s:%hu   remote %s:%hu\n", mSock, IPv4AddressStr(mLocalIP).c_str(), mLocalPort,
+	LogInfo("Socket %i   host %s:%hu   remote %s:%hu\n", mSock, IPv4AddressStr(mLocalIP).c_str(), mLocalPort,
 														  IPv4AddressStr(mRemoteIP).c_str(), mRemotePort );
 }
 
@@ -487,7 +489,7 @@ size_t Socket::GetMTU()
 	
 	if( getsockopt(mSock, IPPROTO_IP, IP_MTU, &mtu, &mtuSize) < 0 )
 	{
-		printf("Socket::GetMTU() -- getsockopt(SOL_IP, IP_MTU) failed.\n");
+		LogError("Socket::GetMTU() -- getsockopt(SOL_IP, IP_MTU) failed.\n");
 		printErrno();
 		return 0;
 	}

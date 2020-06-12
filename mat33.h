@@ -27,6 +27,8 @@
 #include <unistd.h>
 #include <math.h>
 
+#include "logging.h"
+
 
 /**
  * Cast a 3x3 matrix from one type to another.
@@ -136,19 +138,19 @@ template<typename T>
 inline void mat33_print( const T src[3][3], const char* name=NULL )
 {
 	if( name != NULL )
-		printf("%s = \n", name);
+		LogInfo("%s = \n", name);
 
 	printf(" [ ");
 
 	for( uint32_t i=0; i < 3; i++ )
 	{
 		for( uint32_t j=0; j < 3; j++ )
-			printf("%f ", src[i][j]);
+			LogInfo("%f ", src[i][j]);
 
 		if( i < 2 )
-			printf("\n   ");
+			LogInfo("\n   ");
 		else
-			printf("]\n");
+			LogInfo("]\n");
 	}
 }
 

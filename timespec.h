@@ -24,9 +24,10 @@
 #define __TIMESPEC_UTIL_H__
 
 #include <time.h>
-
 #include <stdint.h>
 #include <stdio.h>
+
+#include "logging.h"
 
 
 /**
@@ -163,7 +164,7 @@ inline char* timeStr( const timespec& timestamp, char* strOut )				{ sprintf(str
  * Print the time to stdout.
  * @ingroup time
  */
-inline void timePrint( const timespec& timestamp, const char* text=NULL )		{ printf("%s   %lus + %010luns\n", text, (uint64_t)timestamp.tv_sec, (uint64_t)timestamp.tv_nsec); }
+inline void timePrint( const timespec& timestamp, const char* text=NULL )		{ LogInfo("%s   %lus + %010luns\n", text, (uint64_t)timestamp.tv_sec, (uint64_t)timestamp.tv_nsec); }
 
 /**
  * Put the current thread to sleep for a specified time.

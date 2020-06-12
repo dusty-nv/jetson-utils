@@ -21,9 +21,12 @@
  */
  
 #include "imageIO.h"
+
 #include "cudaMappedMemory.h"
 #include "cudaColorspace.h"
+
 #include "filesystem.h"
+#include "logging.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb/stb_image.h"
@@ -42,7 +45,7 @@ static unsigned char* loadImageIO( const char* filename, int* width, int* height
 	// validate parameters
 	if( !filename || !width || !height || !channels )
 	{
-		printf(LOG_IMAGE "loadImageIO() - invalid parameter(s)\n");
+		LogError(LOG_IMAGE "loadImageIO() - invalid parameter(s)\n");
 		return NULL;
 	}
 	
@@ -51,7 +54,7 @@ static unsigned char* loadImageIO( const char* filename, int* width, int* height
 
 	if( path.length() == 0 )
 	{
-		printf(LOG_IMAGE "failed to find file '%s'\n", filename);
+		LogError(LOG_IMAGE "failed to find file '%s'\n", filename);
 		return NULL;
 	}
 
@@ -64,8 +67,8 @@ static unsigned char* loadImageIO( const char* filename, int* width, int* height
 
 	if( !img )
 	{
-		printf(LOG_IMAGE "failed to load '%s'\n", path.c_str());
-		printf(LOG_IMAGE "(error:  %s)\n", stbi_failure_reason());
+		LogError(LOG_IMAGE "failed to load '%s'\n", path.c_str());
+		LogError(LOG_IMAGE "(error:  %s)\n", stbi_failure_reason());
 		return NULL;
 	}
 
@@ -73,11 +76,11 @@ static unsigned char* loadImageIO( const char* filename, int* width, int* height
 		imgChannels = *channels;
 
 	// validate dimensions for sanity
-	printf(LOG_IMAGE "loaded '%s'  (%ix%i, %i channels)\n", filename, imgWidth, imgHeight, imgChannels);
+	LogVerbose(LOG_IMAGE "loaded '%s'  (%ix%i, %i channels)\n", filename, imgWidth, imgHeight, imgChannels);
 
 	if( imgWidth < 0 || imgHeight < 0 || imgChannels < 0 || imgChannels > 4 )
 	{
-		printf(LOG_IMAGE "'%s' has invalid dimensions\n", filename);
+		LogError(LOG_IMAGE "'%s' has invalid dimensions\n", filename);
 		return NULL;
 	}
 
@@ -89,14 +92,14 @@ static unsigned char* loadImageIO( const char* filename, int* width, int* height
 	{
 		unsigned char* img_org = img;
 
-		printf(LOG_IMAGE "resizing '%s' to %ix%i\n", filename, resizeWidth, resizeHeight);
+		LogVerbose(LOG_IMAGE "resizing '%s' to %ix%i\n", filename, resizeWidth, resizeHeight);
 
 		// allocate memory for the resized image
 		img = (unsigned char*)malloc(resizeWidth * resizeHeight * imgChannels * sizeof(unsigned char));
 
 		if( !img )
 		{
-			printf(LOG_IMAGE "failed to allocated memory to resize '%s' to %ix%i\n", filename, resizeWidth, resizeHeight);
+			LogError(LOG_IMAGE "failed to allocated memory to resize '%s' to %ix%i\n", filename, resizeWidth, resizeHeight);
 			free(img_org);		
 			return NULL;
 		}
@@ -105,7 +108,7 @@ static unsigned char* loadImageIO( const char* filename, int* width, int* height
 		if( !stbir_resize_uint8(img_org, imgWidth, imgHeight, 0,
 						    img, resizeWidth, resizeHeight, 0, imgChannels) )
 		{
-			printf(LOG_IMAGE "failed to resize '%s' to %ix%i\n", filename, resizeWidth, resizeHeight);
+			LogError(LOG_IMAGE "failed to resize '%s' to %ix%i\n", filename, resizeWidth, resizeHeight);
 			free(img_org);
 			return NULL;
 		}
@@ -131,19 +134,19 @@ bool loadImage( const char* filename, void** output, int* width, int* height, im
 	// validate parameters
 	if( !filename || !output || !width || !height )
 	{
-		printf(LOG_IMAGE "loadImage() - invalid parameter(s)\n");
+		LogError(LOG_IMAGE "loadImage() - invalid parameter(s)\n");
 		return NULL;
 	}
 
 	// check that the requested format is supported
 	if( format != IMAGE_RGB8 && format != IMAGE_RGBA8 && format != IMAGE_RGB32F && format != IMAGE_RGBA32F )
 	{
-		printf(LOG_IMAGE "loadImage() -- unsupported output image format requested (%s)\n", imageFormatToStr(format));
-		printf(LOG_IMAGE "               supported output formats are:\n");
-		printf(LOG_IMAGE "                   * rgb8\n");		
-		printf(LOG_IMAGE "                   * rgba8\n");		
-		printf(LOG_IMAGE "                   * rgb32\n");		
-		printf(LOG_IMAGE "                   * rgba32\n");
+		LogError(LOG_IMAGE "loadImage() -- unsupported output image format requested (%s)\n", imageFormatToStr(format));
+		LogError(LOG_IMAGE "               supported output formats are:\n");
+		LogError(LOG_IMAGE "                   * rgb8\n");		
+		LogError(LOG_IMAGE "                   * rgba8\n");		
+		LogError(LOG_IMAGE "                   * rgb32\n");		
+		LogError(LOG_IMAGE "                   * rgba32\n");
 
 		return NULL;
 	}
@@ -163,7 +166,7 @@ bool loadImage( const char* filename, void** output, int* width, int* height, im
 
 	if( !cudaAllocMapped((void**)output, imgSize) )
 	{
-		printf(LOG_IMAGE "loadImage() -- failed to allocate %zu bytes for image '%s'\n", imgSize, filename);
+		LogError(LOG_IMAGE "loadImage() -- failed to allocate %zu bytes for image '%s'\n", imgSize, filename);
 		return false;
 	}
 
@@ -177,7 +180,7 @@ bool loadImage( const char* filename, void** output, int* width, int* height, im
 
 		if( !cudaAllocMapped(&inputImgGPU, inputImageSize) )
 		{
-			printf(LOG_IMAGE "loadImage() -- failed to allocate %zu bytes for image '%s'\n", inputImageSize, filename);
+			LogError(LOG_IMAGE "loadImage() -- failed to allocate %zu bytes for image '%s'\n", inputImageSize, filename);
 			return false;
 		}
 
@@ -245,7 +248,7 @@ bool saveImage( const char* filename, void* ptr, int width, int height, imageFor
 	// validate parameters
 	if( !filename || !ptr || width <= 0 || height <= 0 )
 	{
-		printf(LOG_IMAGE "saveImageRGBA() - invalid parameter\n");
+		LogError(LOG_IMAGE "saveImageRGBA() - invalid parameter\n");
 		return false;
 	}
 	
@@ -258,12 +261,12 @@ bool saveImage( const char* filename, void* ptr, int width, int height, imageFor
 	// check that the requested format is supported
 	if( format != IMAGE_RGB8 && format != IMAGE_RGBA8 && format != IMAGE_RGB32F && format != IMAGE_RGBA32F )
 	{
-		printf(LOG_IMAGE "saveImage() -- unsupported input image format (%s)\n", imageFormatToStr(format));
-		printf(LOG_IMAGE "               supported input image formats are:\n");
-		printf(LOG_IMAGE "                   * rgb8\n");		
-		printf(LOG_IMAGE "                   * rgba8\n");		
-		printf(LOG_IMAGE "                   * rgb32f\n");		
-		printf(LOG_IMAGE "                   * rgba32f\n");
+		LogError(LOG_IMAGE "saveImage() -- unsupported input image format (%s)\n", imageFormatToStr(format));
+		LogError(LOG_IMAGE "               supported input image formats are:\n");
+		LogError(LOG_IMAGE "                   * rgb8\n");		
+		LogError(LOG_IMAGE "                   * rgba8\n");		
+		LogError(LOG_IMAGE "                   * rgb32f\n");		
+		LogError(LOG_IMAGE "                   * rgba32f\n");
 
 		return false;
 	}
@@ -281,13 +284,13 @@ bool saveImage( const char* filename, void* ptr, int width, int height, imageFor
 
 		if( !cudaAllocMapped((void**)&img, size) )
 		{
-			printf(LOG_IMAGE "saveImage() -- failed to allocate %zu bytes for image '%s'\n", size, filename);
+			LogError(LOG_IMAGE "saveImage() -- failed to allocate %zu bytes for image '%s'\n", size, filename);
 			return false;
 		}
 
 		if( CUDA_FAILED(cudaConvertColor(ptr, format, img, outputFormat, width, height, pixel_range)) )  // TODO limit pixel
 		{
-			printf(LOG_IMAGE "saveImage() -- failed to convert image from %s to %s ('%s')\n", imageFormatToStr(format), imageFormatToStr(outputFormat), filename);
+			LogError(LOG_IMAGE "saveImage() -- failed to convert image from %s to %s ('%s')\n", imageFormatToStr(format), imageFormatToStr(outputFormat), filename);
 			return false;
 		}
 		
@@ -305,7 +308,7 @@ bool saveImage( const char* filename, void* ptr, int width, int height, imageFor
 
 	if( ext.size() == 0 )
 	{
-		printf(LOG_IMAGE "invalid filename or extension, '%s'\n", filename);
+		LogError(LOG_IMAGE "invalid filename or extension, '%s'\n", filename);
 		release_return(false);
 	}
 
@@ -346,8 +349,8 @@ bool saveImage( const char* filename, void* ptr, int width, int height, imageFor
 	}*/
 	else
 	{
-		printf(LOG_IMAGE "invalid extension format '.%s' saving image '%s'\n", extension, filename);
-		printf(LOG_IMAGE "valid extensions are:  JPG/JPEG, PNG, TGA, BMP.\n");
+		LogError(LOG_IMAGE "invalid extension format '.%s' saving image '%s'\n", extension, filename);
+		LogError(LOG_IMAGE "valid extensions are:  JPG/JPEG, PNG, TGA, BMP.\n");
 		
 		release_return(false);
 	}
@@ -355,11 +358,11 @@ bool saveImage( const char* filename, void* ptr, int width, int height, imageFor
 	// check the return code
 	if( !save_result )
 	{
-		printf(LOG_IMAGE "failed to save %ix%i image to '%s'\n", width, height, filename);
+		LogError(LOG_IMAGE "failed to save %ix%i image to '%s'\n", width, height, filename);
 		release_return(false);
 	}
 
-	printf(LOG_IMAGE "saved '%s'  (%ix%i, %zu channels)\n", filename, width, height, channels);
+	LogVerbose(LOG_IMAGE "saved '%s'  (%ix%i, %zu channels)\n", filename, width, height, channels);
 
 	release_return(true);
 }

@@ -28,6 +28,8 @@
 #include <strings.h>
 #include <glob.h>
 
+#include "logging.h"
+
 
 // absolutePath
 std::string absolutePath( const std::string& relative_path )
@@ -107,11 +109,11 @@ bool listDir( const std::string& path_in, std::vector<std::string>& output, uint
 	{
 		if( result == GLOB_NOSPACE )
 		{
-			printf("listDir('%s') - ran out of memory\n", path.c_str());
+			LogError("listDir('%s') - ran out of memory\n", path.c_str());
 		}		
 		else if( result == GLOB_ABORTED )
 		{
-			printf("listDir('%s') - aborted due to read error or permissions\n", path.c_str());
+			LogError("listDir('%s') - aborted due to read error or permissions\n", path.c_str());
 		}
 		else if( result == GLOB_NOMATCH )
 		{
@@ -121,7 +123,7 @@ bool listDir( const std::string& path_in, std::vector<std::string>& output, uint
 			if( firstChar != '.' && firstChar != '/' && firstChar != '\\' && firstChar != '*' && firstChar != '?' && firstChar != '~' )
 				return listDir(pathJoin(Process::ExecutableDirectory(), path), output, mask);
 			else
-				printf("listDir('%s') - found no matches\n", path.c_str());
+				LogError("listDir('%s') - found no matches\n", path.c_str());
 		}
 
 		return false;
@@ -144,7 +146,7 @@ bool listDir( const std::string& path_in, std::vector<std::string>& output, uint
 
 	if( output.size() == 0 )
 	{
-		printf("%s didn't match any files\n", path.c_str());
+		LogError("%s didn't match any files\n", path.c_str());
 		return false;
 	}
 
@@ -226,7 +228,7 @@ size_t fileSize( const std::string& path )
 
 	if( result == -1 )
 	{
-		printf("%s does not exist.\n", path.c_str());
+		LogError("%s does not exist.\n", path.c_str());
 		return 0;
 	}
 

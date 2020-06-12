@@ -30,6 +30,8 @@
 #include <ifaddrs.h>
 #include <errno.h>
 
+#include "logging.h"
+
 
 // networkHostname
 std::string networkHostname()
@@ -52,8 +54,10 @@ void networkAdapters( std::vector<networkAdapter_t>& interfaceList )
 	{ 
 		const int e = errno;
 		const char* err = strerror(e);
-		printf("Network error %i : %s\n", e, err );
+		LogError("Network error %i : %s\n", e, err );
 	}
+
+	LogVerbose("Network Interfaces:\n");
 
 	for( ifaddrs* n=addrs; n != NULL; n = n->ifa_next )
 	{
@@ -68,7 +72,7 @@ void networkAdapters( std::vector<networkAdapter_t>& interfaceList )
 		entry.name      = addrs->ifa_name;
 		entry.ipAddress = IPv4AddressStr(((sockaddr_in*)n->ifa_addr)->sin_addr.s_addr);
 
-		printf("%s %s\n", entry.name.c_str(), entry.ipAddress.c_str());
+		LogVerbose("  - %s %s\n", entry.name.c_str(), entry.ipAddress.c_str());
 
 		interfaceList.push_back(entry);
 	}

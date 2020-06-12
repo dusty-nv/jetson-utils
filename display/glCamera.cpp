@@ -81,7 +81,7 @@ glCamera* glCamera::Create( CameraMode mode, int registerEvents )
 
 	if( !cam )
 	{
-		printf(LOG_GL "failed to create camera\n");
+		LogError(LOG_GL "failed to create camera\n");
 		return NULL;
 	}
 

@@ -162,7 +162,7 @@ glDisplay* glDisplay::Create( const char* title, int width, int height, float r,
 
 	if( !window )
 	{
-		printf(LOG_GL "failed to create OpenGL window\n");
+		LogError(LOG_GL "failed to create OpenGL window\n");
 		delete window;
 		return NULL;
 	}
@@ -187,14 +187,14 @@ glDisplay* glDisplay::Create( const videoOptions& options )
 		
 	if( !vp->initWindow() )
 	{
-		printf(LOG_GL "failed to create X11 Window.\n");
+		LogError(LOG_GL "failed to create X11 Window.\n");
 		delete vp;
 		return NULL;
 	}
 	
 	if( !vp->initGL() )
 	{
-		printf(LOG_GL "failed to initialize OpenGL.\n");
+		LogError(LOG_GL "failed to initialize OpenGL.\n");
 		delete vp;
 		return NULL;
 	}
@@ -203,7 +203,7 @@ glDisplay* glDisplay::Create( const videoOptions& options )
 	
 	if (GLEW_OK != err)
 	{
-		printf(LOG_GL "GLEW Error: %s\n", glewGetErrorString(err));
+		LogError(LOG_GL "GLEW Error: %s\n", glewGetErrorString(err));
 		delete vp;
 		return NULL;
 	}
@@ -212,7 +212,7 @@ glDisplay* glDisplay::Create( const videoOptions& options )
 	vp->mID = gDisplays.size();
 	gDisplays.push_back(vp);
 
-	printf(LOG_GL "glDisplay -- display device initialized\n");
+	LogSuccess(LOG_GL "glDisplay -- display device initialized (%ux%u)\n", vp->GetWidth(), vp->GetHeight());
 	return vp;
 }
 
@@ -232,14 +232,14 @@ bool glDisplay::initWindow()
 
 	if( !mDisplayX )
 	{
-		printf(LOG_GL "failed to open X11 server connection.\n");
+		LogError(LOG_GL "failed to open X11 server connection.\n");
 		return false;
 	}
 
 		
 	if( !mDisplayX )
 	{
-		printf(LOG_GL "InitWindow() - no X11 server connection.\n" );
+		LogError(LOG_GL "InitWindow() - no X11 server connection.\n" );
 		return false;
 	}
 
@@ -254,14 +254,14 @@ bool glDisplay::initWindow()
 	if( mOptions.height == 0 )
 		mOptions.height = screenHeight;
 
-	printf(LOG_GL "glDisplay -- X screen %i resolution:  %ix%i\n", screenIdx, screenWidth, screenHeight);
-	printf(LOG_GL "glDisplay -- X window resolution:    %ux%u\n", mOptions.width, mOptions.height);
+	LogInfo(LOG_GL "glDisplay -- X screen %i resolution:  %ix%i\n", screenIdx, screenWidth, screenHeight);
+	LogInfo(LOG_GL "glDisplay -- X window resolution:    %ux%u\n", mOptions.width, mOptions.height);
 	
 	Screen* screen = XScreenOfDisplay(mDisplayX, screenIdx);
 
 	if( !screen )
 	{
-		printf(LOG_GL "failed to retrieve default Screen instance\n");
+		LogError(LOG_GL "failed to retrieve default Screen instance\n");
 		return false;
 	}
 	
@@ -486,12 +486,12 @@ glTexture* glDisplay::allocTexture( uint32_t width, uint32_t height, imageFormat
 		glFormat = GL_RGBA32F_ARB;
 	else
 	{
-		printf(LOG_GL "glDisplay::Render() -- unsupported image format (%s)\n", imageFormatToStr(format));
-		printf(LOG_GL "                       supported formats are:\n");
-		printf(LOG_GL "                           * rgb8\n");		
-		printf(LOG_GL "                           * rgba8\n");		
-		printf(LOG_GL "                           * rgb32\n");		
-		printf(LOG_GL "                           * rgba32\n");
+		LogError(LOG_GL "glDisplay::Render() -- unsupported image format (%s)\n", imageFormatToStr(format));
+		LogError(LOG_GL "                       supported formats are:\n");
+		LogError(LOG_GL "                           * rgb8\n");		
+		LogError(LOG_GL "                           * rgba8\n");		
+		LogError(LOG_GL "                           * rgb32\n");		
+		LogError(LOG_GL "                           * rgba32\n");
 
 		return NULL;
 	}
@@ -511,7 +511,7 @@ glTexture* glDisplay::allocTexture( uint32_t width, uint32_t height, imageFormat
 
 	if( !tex )
 	{
-		printf(LOG_GL "glDisplay.Render() failed to create OpenGL interop texture\n");
+		LogError(LOG_GL "glDisplay.Render() failed to create OpenGL interop texture\n");
 		return NULL;
 	}
 
@@ -555,7 +555,7 @@ void glDisplay::RenderImage( void* img, uint32_t width, uint32_t height, imageFo
 
 			if( CUDA_FAILED(cudaMalloc(&mNormalizedCUDA, width * height * sizeof(float) * 4)) )	// just allocate this as float4 for simplicity
 			{
-				printf(LOG_GL "glDisplay.Render() failed to allocate CUDA memory for normalization\n");
+				LogError(LOG_GL "glDisplay.Render() failed to allocate CUDA memory for normalization\n");
 				return;
 			}
 
@@ -642,12 +642,12 @@ bool glDisplay::Render( void* image, uint32_t width, uint32_t height, imageForma
 	}
 	else
 	{
-		printf(LOG_GL "glDisplay::Render() -- unsupported image format (%s)\n", imageFormatToStr(format));
-		printf(LOG_GL "                       supported formats are:\n");
-		printf(LOG_GL "                           * rgb8\n");		
-		printf(LOG_GL "                           * rgba8\n");		
-		printf(LOG_GL "                           * rgb32\n");		
-		printf(LOG_GL "                           * rgba32\n");
+		LogError(LOG_GL "glDisplay::Render() -- unsupported image format (%s)\n", imageFormatToStr(format));
+		LogError(LOG_GL "                       supported formats are:\n");
+		LogError(LOG_GL "                           * rgb8\n");		
+		LogError(LOG_GL "                           * rgba8\n");		
+		LogError(LOG_GL "                           * rgb32\n");		
+		LogError(LOG_GL "                           * rgba32\n");
 		
 		display_success = false;
 	}
@@ -734,7 +734,7 @@ bool glDisplay::IsMaximized()
 
 	if( error != Success )
 	{
-		printf(LOG_GL "glDisplay -- failed to get window properties (error=%i)\n", error);
+		LogError(LOG_GL "glDisplay -- failed to get window properties (error=%i)\n", error);
 		return false;
 	}
 
@@ -777,7 +777,7 @@ void glDisplay::SetMaximized( bool maximized )
 						    &e);
 
 	if( error == 0 )
-		printf(LOG_GL "glDisplay -- failed to %s window\n", maximized ? "maximize" : "un-maximize");
+		LogError(LOG_GL "glDisplay -- failed to %s window\n", maximized ? "maximize" : "un-maximize");
 }
 	
 
@@ -803,11 +803,11 @@ void glDisplay::SetSize( uint32_t width, uint32_t height )
 
 	if( error != 1 )
 	{
-		printf(LOG_GL "glDisplay -- failed to set window size to %ux%u (error=%i)\n", width, height, error);
+		LogError(LOG_GL "glDisplay -- failed to set window size to %ux%u (error=%i)\n", width, height, error);
 		return;
 	}
 
-	printf(LOG_GL "glDisplay -- set the window size to %ux%u\n", width, height); 
+	LogVerbose(LOG_GL "glDisplay -- set the window size to %ux%u\n", width, height); 
 
 	mOptions.width = width;
 	mOptions.height = height;
@@ -821,7 +821,7 @@ void glDisplay::SetCursor( uint32_t cursor )
 {
 	if( cursor >= XC_num_glyphs )
 	{
-		printf(LOG_GL "glDisplay -- invalid mouse cursor '%u'\n", cursor);
+		LogError(LOG_GL "glDisplay -- invalid mouse cursor '%u'\n", cursor);
 		return;
 	}
 
@@ -835,7 +835,7 @@ void glDisplay::SetCursor( uint32_t cursor )
 
 	if( !mCursors[cursor] )
 	{
-		printf(LOG_GL "glDisplay -- failed to load mouse cursor '%u'\n", cursor);
+		LogError(LOG_GL "glDisplay -- failed to load mouse cursor '%u'\n", cursor);
 		return;
 	}
 
@@ -856,7 +856,7 @@ void glDisplay::SetDefaultCursor( uint32_t cursor, bool activate )
 {
 	if( cursor >= XC_num_glyphs )
 	{
-		printf(LOG_GL "glDisplay -- invalid mouse cursor '%u'\n", cursor);
+		LogError(LOG_GL "glDisplay -- invalid mouse cursor '%u'\n", cursor);
 		return;
 	}
 
@@ -1267,43 +1267,32 @@ bool glDisplay::onEvent( uint16_t msg, int a, int b, void* user )
 	{
 		case MOUSE_MOVE:
 		{
-			if( display->mEnableDebug )
-				printf(LOG_GL "glDisplay -- event MOUSE_MOVE (%i, %i)\n", a, b);
-
+			LogDebug(LOG_GL "glDisplay -- event MOUSE_MOVE (%i, %i)\n", a, b);
 			break;
 		}
 		case MOUSE_ABSOLUTE:
 		{
-			if( display->mEnableDebug )
-				printf(LOG_GL "glDisplay -- event MOUSE_ABSOLUTE (%i, %i)\n", a, b);
-
+			LogDebug(LOG_GL "glDisplay -- event MOUSE_ABSOLUTE (%i, %i)\n", a, b);
 			break;
 		}
 		case MOUSE_BUTTON:
 		{
-			if( display->mEnableDebug )
-				printf(LOG_GL "glDisplay -- event MOUSE_BUTTON %i (%s)\n", a, b ? "pressed" : "released");
-	
+			LogDebug(LOG_GL "glDisplay -- event MOUSE_BUTTON %i (%s)\n", a, b ? "pressed" : "released");
 			break;
 		}
 		case MOUSE_DRAG:
 		{
-			if( display->mEnableDebug )
-				printf(LOG_GL "glDisplay -- event MOUSE_DRAG (%i, %i)\n", a, b);
-
+			LogDebug(LOG_GL "glDisplay -- event MOUSE_DRAG (%i, %i)\n", a, b);
 			break;
 		}
 		case MOUSE_WHEEL:
 		{
-			if( display->mEnableDebug )
-				printf(LOG_GL "glDisplay -- event MOUSE_WHEEL %i\n", a);
-	 
+			LogDebug(LOG_GL "glDisplay -- event MOUSE_WHEEL %i\n", a);
 			break;
 		}
 		case KEY_STATE:
 		{
-			if( display->mEnableDebug )
-				printf(LOG_GL "glDisplay -- event KEY_STATE %i %s (%s)\n", a, XKeysymToString(a), b ? "pressed" : "released");
+			LogDebug(LOG_GL "glDisplay -- event KEY_STATE %i %s (%s)\n", a, XKeysymToString(a), b ? "pressed" : "released");
 
 			if( a == XK_Escape && b == KEY_PRESSED )
 			{
@@ -1323,41 +1312,32 @@ bool glDisplay::onEvent( uint16_t msg, int a, int b, void* user )
 		}
 		case KEY_MODIFIED:
 		{
-			if( display->mEnableDebug )
-				printf(LOG_GL "glDisplay -- event KEY_MODIFIED %i %s (%s)\n", a, XKeysymToString(a), b ? "pressed" : "released");
-
+			LogDebug(LOG_GL "glDisplay -- event KEY_MODIFIED %i %s (%s)\n", a, XKeysymToString(a), b ? "pressed" : "released");
 			break;
 		}
 		case KEY_CHAR:
 		{
-			if( display->mEnableDebug )
-				printf(LOG_GL "glDisplay -- event KEY_CHAR %c (%i)\n", (char)a, a);
-
+			LogDebug(LOG_GL "glDisplay -- event KEY_CHAR %c (%i)\n", (char)a, a);
 			break;
 		}
 		case WIDGET_CREATED:
 		{
-			if( display->mEnableDebug )
-			{
-				float x1, y1;
-				float x2, y2;
+			float x1, y1;
+			float x2, y2;
 
-				display->GetWidget(a)->GetCoords(&x1, &y1, &x2, &y2);
-				printf(LOG_GL "glDisplay -- event WIDGET_CREATE (%i, %i) (%i, %i) (index=%i)\n", (int)x1, (int)y1, (int)x2, (int)y2, a);
-			}
+			display->GetWidget(a)->GetCoords(&x1, &y1, &x2, &y2);
+			LogDebug(LOG_GL "glDisplay -- event WIDGET_CREATE (%i, %i) (%i, %i) (index=%i)\n", (int)x1, (int)y1, (int)x2, (int)y2, a);
 
 			break;
 		}
 		case WINDOW_RESIZED:
 		{
-			if( display->mEnableDebug )
-				printf(LOG_GL "glDisplay -- event WINDOW_RESIZED (%i, %i)\n", a, b);
-
+			LogDebug(LOG_GL "glDisplay -- event WINDOW_RESIZED (%i, %i)\n", a, b);
 			return true;
 		}
 		case WINDOW_CLOSED:
 		{
-			printf(LOG_GL "glDisplay -- the window has been closed\n");
+			LogInfo(LOG_GL "glDisplay -- the window has been closed\n");
 			display->mStreaming = false;
 			return true;
 		}

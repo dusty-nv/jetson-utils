@@ -27,6 +27,7 @@
 #include <stdio.h>
 
 #include "filesystem.h"
+#include "logging.h"
 
 
 // toLower
@@ -96,7 +97,7 @@ bool URI::Parse( const char* uri )
 		}
 		else
 		{
-			printf("URI -- invalid resource or file path:  %s\n", string.c_str());
+			LogError("URI -- invalid resource or file path:  %s\n", string.c_str());
 			return false;
 		}
 
@@ -119,7 +120,7 @@ bool URI::Parse( const char* uri )
 	{
 		if( sscanf(path.c_str(), "/dev/video%i", &port) != 1 )
 		{
-			printf("URI -- failed to parse V4L2 device ID from %s\n", path.c_str());
+			LogError("URI -- failed to parse V4L2 device ID from %s\n", path.c_str());
 			return false;
 		}
 	}
@@ -127,7 +128,7 @@ bool URI::Parse( const char* uri )
 	{
 		if( sscanf(path.c_str(), "%i", &port) != 1 )
 		{
-			printf("URI -- failed to parse MIPI CSI device ID from %s\n", path.c_str());
+			LogError("URI -- failed to parse MIPI CSI device ID from %s\n", path.c_str());
 			return false;
 		}
 	}
@@ -135,7 +136,7 @@ bool URI::Parse( const char* uri )
 	{
 		if( sscanf(path.c_str(), "%i", &port) != 1 )
 		{
-			printf("URI -- using default display device 0\n");
+			LogVerbose("URI -- using default display device 0\n");
 			port = 0;
 		}
 	}
@@ -165,7 +166,7 @@ bool URI::Parse( const char* uri )
 		{
 			if( sscanf(port_str.c_str(), "%i", &port) != 1 )
 			{
-				printf("URI -- failed to parse IP port from %s\n", string.c_str());
+				LogError("URI -- failed to parse IP port from %s\n", string.c_str());
 				return false;
 			}
 		}
@@ -185,11 +186,11 @@ void URI::Print( const char* prefix ) const
 	if( !prefix )
 		prefix = "";
 
-	printf("%s-- URI: %s\n", prefix, string.c_str());
-	printf("%s   - protocol:  %s\n", prefix, protocol.c_str());
-	printf("%s   - path:      %s\n", prefix, path.c_str());
-	printf("%s   - extension: %s\n", prefix, extension.c_str());
-	printf("%s   - port:      %i\n", prefix, port);
+	LogInfo("%s-- URI: %s\n", prefix, string.c_str());
+	LogInfo("%s   - protocol:  %s\n", prefix, protocol.c_str());
+	LogInfo("%s   - path:      %s\n", prefix, path.c_str());
+	LogInfo("%s   - extension: %s\n", prefix, extension.c_str());
+	LogInfo("%s   - port:      %i\n", prefix, port);
 }
 
 

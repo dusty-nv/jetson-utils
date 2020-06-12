@@ -24,7 +24,7 @@
 #include "PyCUDA.h"
 
 #include "cudaMappedMemory.h"
-
+#include "logging.h"
 
 #ifdef HAS_NUMPY
 
@@ -145,7 +145,7 @@ PyObject* PyNumPy_ToCUDA( PyObject* self, PyObject* args )
 
 	for( int n=0; n < ndim; n++ )
 	{
-		printf(LOG_PY_UTILS "cudaFromNumpy()  ndarray dim %i = %li\n", n, dims[n]);
+		LogDebug(LOG_PY_UTILS "cudaFromNumpy()  ndarray dim %i = %li\n", n, dims[n]);
 
 		if( n == 0 )
 			size = dims[0];
@@ -245,9 +245,9 @@ bool PyNumPy_RegisterTypes( PyObject* module )
 // stub functions
 PyMethodDef* PyNumPy_RegisterFunctions()
 {
-	printf(LOG_PY_UTILS "compiled without NumPy array conversion support (warning)\n");
-	printf(LOG_PY_UTILS "if you wish to have support for converting NumPy arrays,\n");
-	printf(LOG_PY_UTILS "first run 'sudo apt-get install python-numpy python3-numpy'\n");
+	LogError(LOG_PY_UTILS "compiled without NumPy array conversion support (warning)\n");
+	LogError(LOG_PY_UTILS "if you wish to have support for converting NumPy arrays,\n");
+	LogError(LOG_PY_UTILS "first run 'sudo apt-get install python-numpy python3-numpy'\n");
 
 	return NULL;
 }

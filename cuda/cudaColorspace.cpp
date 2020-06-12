@@ -25,6 +25,8 @@
 #include "cudaRGB.h"
 #include "cudaYUV.h"
 
+#include "logging.h"
+
 
 // cudaConvertColor
 cudaError_t cudaConvertColor( void* input, imageFormat inputFormat,
@@ -119,7 +121,7 @@ cudaError_t cudaConvertColor( void* input, imageFormat inputFormat,
 		
 	}
 
-	printf(LOG_CUDA "cudaColorConvert() -- invalid input/output format combination (%s->%s)\n", imageFormatToStr(inputFormat), imageFormatToStr(inputFormat));
+	LogError(LOG_CUDA "cudaColorConvert() -- invalid input/output format combination (%s->%s)\n", imageFormatToStr(inputFormat), imageFormatToStr(inputFormat));
 	return cudaErrorInvalidValue;
 }
 

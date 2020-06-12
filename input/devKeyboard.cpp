@@ -27,12 +27,13 @@
 #include <fcntl.h>
 #include <unistd.h>
 
+#include "logging.h"
+
 
 // constructor
 KeyboardDevice::KeyboardDevice()
 {
-	mFD    = -1;
-	mDebug = false;
+	mFD = -1;
 
 	memset(mKeyMap, 0, sizeof(mKeyMap));
 }
@@ -55,7 +56,7 @@ KeyboardDevice* KeyboardDevice::Create( const char* path )
 
 	if( fd == -1 )
 	{
-		printf("keyboard -- failed to open %s\n", path);
+		LogError("keyboard -- failed to open %s\n", path);
 		return NULL;
 	}
 
@@ -87,13 +88,13 @@ bool KeyboardDevice::Poll( uint32_t timeout )
 
 	if( result == -1 ) 
 	{
-		printf("keyboard -- select() failed (errno=%i) (%s)\n", errno, strerror(errno));
+		LogError("keyboard -- select() failed (errno=%i) (%s)\n", errno, strerror(errno));
 		return false;
 	}
 	else if( result == 0 )
 	{
-		if( mDebug && timeout > 0 )
-			printf("keyboard -- select() timed out...\n");
+		if( /*mDebug &&*/ timeout > 0 )
+			LogDebug("keyboard -- select() timed out...\n");
 
 		return false;	// timeout, not necessarily an error (TRY_AGAIN)
 	}
@@ -102,7 +103,7 @@ bool KeyboardDevice::Poll( uint32_t timeout )
 
 	if( bytesRead < (int)sizeof(struct input_event) ) 
 	{
-		printf("keyboard -- read() expected %d bytes, got %d\n", (int)sizeof(struct input_event), bytesRead);
+		LogError("keyboard -- read() expected %d bytes, got %d\n", (int)sizeof(struct input_event), bytesRead);
 		return false;
 	}
 
@@ -121,8 +122,7 @@ bool KeyboardDevice::Poll( uint32_t timeout )
 
 		mKeyMap[ev[i].code] = (ev[i].value == 0) ? false : true;
 
-		if( mDebug )
-			printf("keyboard -- code %02u  value %i\n", ev[i].code, ev[i].value);
+		LogDebug("keyboard -- code %02u  value %i\n", ev[i].code, ev[i].value);
 	}
 
 	return true;	
@@ -138,10 +138,4 @@ bool KeyboardDevice::KeyDown( uint32_t code ) const
 	return mKeyMap[code];
 }
 
-
-// Debug
-void KeyboardDevice::Debug( bool enable )
-{
-	mDebug = enable;
-}
 

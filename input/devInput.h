@@ -79,19 +79,12 @@ public:
 	 */
 	static std::string FindPathByName( const char* name );
 
-	/**
-	 * Enable/disable verbose logging
-	 */
-	void Debug( bool enabled=true );
-
 protected:
 	// constructor
 	InputDevices();
 
 	KeyboardDevice* mKeyboard;
 	JoystickDevice* mJoystick;
-
-	bool mDebug;
 };
 
 #endif

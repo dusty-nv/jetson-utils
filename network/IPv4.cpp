@@ -29,6 +29,8 @@
 #include <ifaddrs.h>
 #include <errno.h>
 
+#include "logging.h"
+
 
 // IPv4Address
 bool IPv4Address( const char* str, uint32_t* ipOut )
@@ -42,7 +44,7 @@ bool IPv4Address( const char* str, uint32_t* ipOut )
 
 	if( res != 1 )
 	{
-		printf("IPv4Address() - failed to convert '%s' to valid IPv4 address\n", str);
+		LogError("IPv4Address() - failed to convert '%s' to valid IPv4 address\n", str);
 		return false;
 	}
 	
@@ -58,7 +60,7 @@ std::string IPv4AddressStr( uint32_t ipAddress )
 	memset(str, 0, INET_ADDRSTRLEN);
 
 	if( inet_ntop(AF_INET, &ipAddress, str, INET_ADDRSTRLEN) == NULL )
-		printf("IPv4AddressStr() - failed to convert 0x%08X to string\n", ipAddress);
+		LogError("IPv4AddressStr() - failed to convert 0x%08X to string\n", ipAddress);
 	
 	return std::string(str);
 }

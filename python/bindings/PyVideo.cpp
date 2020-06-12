@@ -76,7 +76,7 @@ static int PyVideoSource_Init( PyVideoSource_Object* self, PyObject *args, PyObj
 	if( !PyArg_ParseTupleAndKeywords(args, kwds, "|sOi", kwlist, &URI, &argList, &positionArg))
 	{
 		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "videoSource.__init()__ failed to parse args tuple");
-		printf(LOG_PY_UTILS "videoSource.__init()__ failed to parse args tuple\n");
+		LogError(LOG_PY_UTILS "videoSource.__init()__ failed to parse args tuple\n");
 		return -1;
 	}
   
@@ -298,7 +298,7 @@ static bool PyVideoSource_RegisterType( PyObject* module )
 	 
 	if( PyType_Ready(&pyVideoSource_Type) < 0 )
 	{
-		printf(LOG_PY_UTILS "videoSource PyType_Ready() failed\n");
+		LogError(LOG_PY_UTILS "videoSource PyType_Ready() failed\n");
 		return false;
 	}
 	
@@ -306,7 +306,7 @@ static bool PyVideoSource_RegisterType( PyObject* module )
     
 	if( PyModule_AddObject(module, "videoSource", (PyObject*)&pyVideoSource_Type) < 0 )
 	{
-		printf(LOG_PY_UTILS "videoSource PyModule_AddObject('videoSource') failed\n");
+		LogError(LOG_PY_UTILS "videoSource PyModule_AddObject('videoSource') failed\n");
 		return false;
 	}
 
@@ -349,7 +349,7 @@ static int PyVideoOutput_Init( PyVideoOutput_Object* self, PyObject *args, PyObj
 	if( !PyArg_ParseTupleAndKeywords(args, kwds, "|sOi", kwlist, &URI, &argList, &positionArg))
 	{
 		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "videoOutput.__init()__ failed to parse args tuple");
-		printf(LOG_PY_UTILS "videoOutput.__init()__ failed to parse args tuple\n");
+		LogError(LOG_PY_UTILS "videoOutput.__init()__ failed to parse args tuple\n");
 		return -1;
 	}
   
@@ -593,7 +593,7 @@ static bool PyVideoOutput_RegisterType( PyObject* module )
 	 
 	if( PyType_Ready(&pyVideoOutput_Type) < 0 )
 	{
-		printf(LOG_PY_UTILS "videoOutput PyType_Ready() failed\n");
+		LogError(LOG_PY_UTILS "videoOutput PyType_Ready() failed\n");
 		return false;
 	}
 	
@@ -601,7 +601,7 @@ static bool PyVideoOutput_RegisterType( PyObject* module )
     
 	if( PyModule_AddObject(module, "videoOutput", (PyObject*)&pyVideoOutput_Type) < 0 )
 	{
-		printf(LOG_PY_UTILS "videoOutput PyModule_AddObject('videoOutput') failed\n");
+		LogError(LOG_PY_UTILS "videoOutput PyModule_AddObject('videoOutput') failed\n");
 		return false;
 	}
 

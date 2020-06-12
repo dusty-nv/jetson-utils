@@ -259,7 +259,7 @@ bool cudaFont::init( const char* filename, float size )
 			}
 
 		#ifdef DEBUG_FONT
-			printf(LOG_CUDA "fit only %i of %u font glyphs in %ux%u bitmap\n", glyphsPacked, NumGlyphs, mFontMapWidth, mFontMapHeight);
+			LogDebug(LOG_CUDA "fit only %i of %u font glyphs in %ux%u bitmap\n", glyphsPacked, NumGlyphs, mFontMapWidth, mFontMapHeight);
 		#endif
 
 			CUDA(cudaFreeHost(mFontMapCPU));
@@ -271,14 +271,14 @@ bool cudaFont::init( const char* filename, float size )
 			mFontMapHeight *= 2;
 
 		#ifdef DEBUG_FONT
-			printf(LOG_CUDA "attempting to pack font with %ux%u bitmap...\n", mFontMapWidth, mFontMapHeight);
+			LogDebug(LOG_CUDA "attempting to pack font with %ux%u bitmap...\n", mFontMapWidth, mFontMapHeight);
 		#endif
 			continue;
 		}
 		else
 		{
 		#ifdef DEBUG_FONT
-			printf(LOG_CUDA "packed %u glyphs in %ux%u bitmap (font size=%.0fpx)\n", NumGlyphs, mFontMapWidth, mFontMapHeight, size);
+			LogDebug(LOG_CUDA "packed %u glyphs in %ux%u bitmap (font size=%.0fpx)\n", NumGlyphs, mFontMapWidth, mFontMapHeight, size);
 		#endif		
 			break;
 		}
@@ -303,7 +303,7 @@ bool cudaFont::init( const char* filename, float size )
 	#ifdef DEBUG_FONT
 		// debug info
 		const char c = n + FirstGlyph;
-		printf("Glyph %u: '%c' width=%hu height=%hu xOffset=%.0f yOffset=%.0f xAdvance=%0.1f\n", n, c, mGlyphInfo[n].width, mGlyphInfo[n].height, mGlyphInfo[n].xOffset, mGlyphInfo[n].yOffset, mGlyphInfo[n].xAdvance);
+		LogDebug("Glyph %u: '%c' width=%hu height=%hu xOffset=%.0f yOffset=%.0f xAdvance=%0.1f\n", n, c, mGlyphInfo[n].width, mGlyphInfo[n].height, mGlyphInfo[n].xOffset, mGlyphInfo[n].yOffset, mGlyphInfo[n].xAdvance);
 	#endif	
 	}
 
@@ -460,7 +460,7 @@ bool cudaFont::OverlayText( void* image, imageFormat format, uint32_t width, uin
 		}
 
 	#ifdef DEBUG_FONT
-		printf(LOG_CUDA "max glyph height:  %i\n", maxHeight);
+		LogDebug(LOG_CUDA "max glyph height:  %i\n", maxHeight);
 	#endif
 
 		// get the starting position of the string
@@ -549,7 +549,7 @@ bool cudaFont::OverlayText( void* image, imageFormat format, uint32_t width, uin
 	}
 
 #ifdef DEBUG_FONT
-	printf(LOG_CUDA "max glyph size is %ix%i\n", maxGlyphSize.x, maxGlyphSize.y);
+	LogDebug(LOG_CUDA "max glyph size is %ix%i\n", maxGlyphSize.x, maxGlyphSize.y);
 #endif
 
 	// draw background rects

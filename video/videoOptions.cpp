@@ -21,6 +21,8 @@
  */
  
 #include "videoOptions.h"
+
+#include "logging.h"
 #include <strings.h>
 
 
@@ -44,28 +46,28 @@ videoOptions::videoOptions()
 // Print
 void videoOptions::Print( const char* prefix ) const
 {
-	printf("------------------------------------------------\n");
+	LogInfo("------------------------------------------------\n");
 
 	if( prefix != NULL )
-		printf("%s video options:\n", prefix);
+		LogInfo("%s video options:\n", prefix);
 	else
-		printf("video options:\n");
+		LogInfo("video options:\n");
 
-	printf("------------------------------------------------\n");
+	LogInfo("------------------------------------------------\n");
 	resource.Print("  ");
 
-	printf("  -- width:      %u\n", width);
-	printf("  -- height:     %u\n", height);
-	printf("  -- frameRate:  %f\n", frameRate);
-	printf("  -- bitRate:    %u\n", bitRate);
-	printf("  -- numBuffers: %u\n", numBuffers);
-	printf("  -- zeroCopy:   %s\n", zeroCopy ? "true" : "false");
-	printf("  -- loop:       %i\n", loop);
-	printf("  -- codec:      %s\n", CodecToStr(codec));
-	printf("  -- flipMethod: %s\n", FlipMethodToStr(flipMethod));
-	printf("  -- ioType:     %s\n", IoTypeToStr(ioType));
+	LogInfo("  -- width:      %u\n", width);
+	LogInfo("  -- height:     %u\n", height);
+	LogInfo("  -- frameRate:  %f\n", frameRate);
+	LogInfo("  -- bitRate:    %u\n", bitRate);
+	LogInfo("  -- numBuffers: %u\n", numBuffers);
+	LogInfo("  -- zeroCopy:   %s\n", zeroCopy ? "true" : "false");
+	LogInfo("  -- loop:       %i\n", loop);
+	LogInfo("  -- codec:      %s\n", CodecToStr(codec));
+	LogInfo("  -- flipMethod: %s\n", FlipMethodToStr(flipMethod));
+	LogInfo("  -- ioType:     %s\n", IoTypeToStr(ioType));
 
-	printf("------------------------------------------------\n");
+	LogInfo("------------------------------------------------\n");
 }
 
 
@@ -90,7 +92,7 @@ bool videoOptions::Parse( const char* URI, const commandLine& cmdLine, videoOpti
 	// parse input/output URI
 	if( !resource.Parse(URI) )
 	{
-		printf("videoOptions -- failed to parse %s resource URI (%s)\n", IoTypeToStr(type), URI != NULL ? URI : "null");
+		LogError("videoOptions -- failed to parse %s resource URI (%s)\n", IoTypeToStr(type), URI != NULL ? URI : "null");
 		return false;
 	}
 
@@ -141,8 +143,19 @@ bool videoOptions::Parse( const commandLine& cmdLine, videoOptions::IoType type,
 		resourceStr = cmdLine.GetPosition(ioPositionArg);
 
 	if( !resourceStr )
-		resourceStr = (type == INPUT) ? cmdLine.GetString("input", "csi://0")
-						          : cmdLine.GetString("output", headless ? NULL : "display://0");
+	{
+		if( type == INPUT )
+		{
+			resourceStr = cmdLine.GetString("camera");
+
+			if( !resourceStr )
+				resourceStr = cmdLine.GetString("input", "csi://0");
+		}
+		else
+		{
+			resourceStr = cmdLine.GetString("output", headless ? NULL : "display://0");
+		}
+	}
 
 	return Parse(resourceStr, cmdLine, type);
 }

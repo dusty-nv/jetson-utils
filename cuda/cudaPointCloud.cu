@@ -23,6 +23,8 @@
 #include "cudaPointCloud.h"
 #include "cudaColormap.h"
 
+#include "logging.h"
+
 
 // float4 to uchar3
 inline __host__ __device__ uchar3 make_uchar3( float4 a )
@@ -73,19 +75,19 @@ bool cudaPointCloud::Extract( float* depth, uint32_t depth_width, uint32_t depth
 {
 	if( !depth )
 	{
-		printf(LOG_CUDA "cudaPointCloud::Extract() -- depth map is NULL\n");
+		LogError(LOG_CUDA "cudaPointCloud::Extract() -- depth map is NULL\n");
 		return false;
 	}
 
 	if( depth_width == 0 || depth_height == 0 || color_width == 0 || color_height == 0 )
 	{
-		printf(LOG_CUDA "cudaPointCloud::Extract() -- depth width/height parameters are zero\n");
+		LogError(LOG_CUDA "cudaPointCloud::Extract() -- depth width/height parameters are zero\n");
 		return false;
 	}
 
 	if( rgba != NULL && (color_width == 0 || color_height == 0) )
 	{
-		printf(LOG_CUDA "cudaPointCloud::Extract() -- color width/height parameters are zero\n");
+		LogError(LOG_CUDA "cudaPointCloud::Extract() -- color width/height parameters are zero\n");
 		return false;
 	}
 
@@ -103,7 +105,7 @@ bool cudaPointCloud::Extract( float* depth, uint32_t depth_width, uint32_t depth
 							    mDepthResize, color_width, color_height,
 							    make_float2(0.0f,0.0f), COLORMAP_NONE, FILTER_LINEAR)) ) 
 		{
-			printf(LOG_CUDA "cudaPointCloud::Extract() -- failed to resize depth image\n");
+			LogError(LOG_CUDA "cudaPointCloud::Extract() -- failed to resize depth image\n");
 			return false; 
 		}
 
@@ -140,7 +142,7 @@ bool cudaPointCloud::Extract( float* depth, uint32_t depth_width, uint32_t depth
 	// check for launch errors
 	if( CUDA_FAILED(cudaGetLastError()) )
 	{
-		printf(LOG_CUDA "cudaPointCloud::Extract() -- failed to extra point cloud with CUDA\n");
+		LogError(LOG_CUDA "cudaPointCloud::Extract() -- failed to extra point cloud with CUDA\n");
 		return false;
 	}
 	

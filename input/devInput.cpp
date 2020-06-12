@@ -30,13 +30,14 @@
 #include <linux/input.h>
 #include <sys/ioctl.h>
 
+#include "logging.h"
+
 
 // constructor
 InputDevices::InputDevices()
 {
 	mKeyboard = NULL;
 	mJoystick = NULL;
-	mDebug    = false;
 }
 
 
@@ -108,7 +109,7 @@ void InputDevices::Enumerate( DeviceList& devices )
 		return;
 	}
 
-	printf("Available devices (%i):\n", ndev);
+	LogVerbose("Available devices (%i):\n", ndev);
 
 	for(int i = 0; i < ndev; i++)
 	{
@@ -124,7 +125,7 @@ void InputDevices::Enumerate( DeviceList& devices )
 		if( ioctl(fd, EVIOCGNAME(sizeof(name)), name) < 0 )
 			continue;
 
-		printf("%s:	'%s'\n", fname, name);
+		LogVerbose("%s:	'%s'\n", fname, name);
 
 		close(fd);
 		free(namelist[i]);
@@ -155,19 +156,6 @@ std::string InputDevices::FindPathByName( const char* name )
 	}
 
 	return "";
-}
-
-
-// Debug
-void InputDevices::Debug( bool enable )
-{
-	mDebug = enable;
-
-	if( mKeyboard != NULL )
-		mKeyboard->Debug(enable);
-
-	if( mJoystick != NULL )
-		mJoystick->Debug(enable);
 }
 
 

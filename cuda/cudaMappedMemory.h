@@ -25,6 +25,7 @@
 
 
 #include "cudaUtility.h"
+#include "logging.h"
 
 
 /**
@@ -54,7 +55,7 @@ inline bool cudaAllocMapped( void** cpuPtr, void** gpuPtr, size_t size )
 		return false;
 
 	memset(*cpuPtr, 0, size);
-	//printf(LOG_CUDA "cudaAllocMapped %zu bytes, CPU %p GPU %p\n", size, *cpuPtr, *gpuPtr);
+	LogDebug(LOG_CUDA "cudaAllocMapped %zu bytes, CPU %p GPU %p\n", size, *cpuPtr, *gpuPtr);
 	return true;
 }
 
@@ -85,7 +86,7 @@ inline bool cudaAllocMapped( void** ptr, size_t size )
 
 	if( cpuPtr != gpuPtr )
 	{
-		printf(LOG_CUDA "cudaAllocMapped() - addresses of CPU and GPU pointers don't match\n");
+		LogError(LOG_CUDA "cudaAllocMapped() - addresses of CPU and GPU pointers don't match\n");
 		return false;
 	}
 

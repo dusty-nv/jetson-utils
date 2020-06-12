@@ -28,6 +28,7 @@
 #include <GL/glx.h>
 
 #include <stdio.h>
+#include "logging.h"
 
 
 /**
@@ -90,9 +91,9 @@ inline bool glCheckError(const char* msg, const char* file, int line)
 		  default:						 e = "unknown error";
 	}
 
-	printf(LOG_GL "Error %i - '%s'\n", (uint)err, e);
-	printf(LOG_GL "   %s::%i\n", file, line );
-	printf(LOG_GL "   %s\n", msg );
+	LogError(LOG_GL "Error %i - '%s'\n", (uint)err, e);
+	LogError(LOG_GL "   %s::%i\n", file, line );
+	LogError(LOG_GL "   %s\n", msg );
 	
 	return true;
 }
@@ -128,7 +129,7 @@ inline bool glCheckError(const char* msg)
 		  default:						 e = "unknown error";
 	}
 
-	printf(LOG_GL "%s    (error %i - %s)\n", msg, (uint)err, e);
+	LogError(LOG_GL "%s    (error %i - %s)\n", msg, (uint)err, e);
 	return true;
 }
 
@@ -148,7 +149,7 @@ inline void glPrintFreeMem()
 	glGetIntegerv(GL_GPU_MEM_INFO_TOTAL_AVAILABLE_MEM_NVX, &total_mem_kb);
 	glGetIntegerv(GL_GPU_MEM_INFO_CURRENT_AVAILABLE_MEM_NVX,&cur_avail_mem_kb);
 
-	printf(LOG_GL "GPU memory free    %i / %i kb\n", cur_avail_mem_kb, total_mem_kb);
+	LogInfo(LOG_GL "GPU memory free    %i / %i kb\n", cur_avail_mem_kb, total_mem_kb);
 }
 
 

@@ -26,6 +26,8 @@
 #include "glDisplay.h"
 #include "gstEncoder.h"
 
+#include "logging.h"
+
 
 // constructor
 videoOutput::videoOutput( const videoOptions& options ) : mOptions(options)
@@ -88,7 +90,7 @@ videoOutput* videoOutput::Create( const videoOptions& options )
 	}
 	else
 	{
-		printf("videoOutput -- unsupported protocol (%s)\n", uri.protocol.size() > 0 ? uri.protocol.c_str() : "null");
+		LogError("videoOutput -- unsupported protocol (%s)\n", uri.protocol.size() > 0 ? uri.protocol.c_str() : "null");
 	}
 
 	if( !output )
@@ -113,7 +115,7 @@ videoOutput* videoOutput::Create( const char* resource, const commandLine& cmdLi
 
 	if( !opt.Parse(resource, cmdLine, videoOptions::OUTPUT) )
 	{
-		printf("videoOutput -- failed to parse command line options\n");
+		LogError("videoOutput -- failed to parse command line options\n");
 		return NULL;
 	}
 
@@ -134,7 +136,7 @@ videoOutput* videoOutput::Create( const commandLine& cmdLine, int positionArg )
 
 	if( !opt.Parse(cmdLine, videoOptions::OUTPUT, positionArg) )
 	{
-		printf("videoOutput -- failed to parse command line options\n");
+		LogError("videoOutput -- failed to parse command line options\n");
 		return NULL;
 	}
 

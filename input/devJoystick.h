@@ -51,11 +51,6 @@ public:
 	 */
 	bool Poll( uint32_t timeout=0 );
 
-	/**
-	 * Enable/disable verbose logging
-	 */
-	void Debug( bool enabled=true );
-
 protected:
 	// constructor
 	JoystickDevice();
@@ -65,7 +60,6 @@ protected:
 	float mAxisNorm[MAX_AXIS];
 	int   mAxisRaw[MAX_AXIS];	
 	int   mFD;
-	bool  mDebug;
 
 	std::string mPath;
 };

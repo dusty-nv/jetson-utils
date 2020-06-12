@@ -28,6 +28,8 @@
 #include <string.h>
 #include <sys/mman.h>
 
+#include "logging.h"
+
 
 // constructor
 Thread::Thread()
@@ -46,7 +48,7 @@ Thread::~Thread()
 // Run
 void Thread::Run()
 {
-	printf("default Thread::Run() -- please implement your own Run() function\n");
+	LogError("default Thread::Run() -- please implement your own Run() function\n");
 }
 
 
@@ -78,7 +80,7 @@ bool Thread::StartThread( ThreadEntryFunction entry, void* user_param )
 	// make sure this thread object hasn't already been started
 	if( mThreadStarted )
 	{
-		printf( "Thread already initialized\n");
+		LogError("Thread already initialized\n");
 		return false;
 	}
 
@@ -86,7 +88,7 @@ bool Thread::StartThread( ThreadEntryFunction entry, void* user_param )
 
 	if( pthread_create(&mThreadID, NULL, entry, user_param) != 0 )
 	{
-		printf( "Thread failed to initialize\n");
+		LogError("Thread failed to initialize\n");
 		return false;
 	}
 

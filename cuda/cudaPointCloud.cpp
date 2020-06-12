@@ -28,6 +28,7 @@
 #include "glCamera.h"
 
 #include "mat33.h"
+#include "logging.h"
 
 
 // constructor
@@ -125,7 +126,7 @@ bool cudaPointCloud::Reserve( uint32_t maxPoints )
 	// allocate new memory
 	if( !cudaAllocMapped((void**)&mPointsCPU, (void**)&mPointsGPU, maxSize) )
 	{
-		printf(LOG_CUDA "failed to allocate %zu bytes for point cloud\n", maxSize);
+		LogError(LOG_CUDA "failed to allocate %zu bytes for point cloud\n", maxSize);
 		return false;
 	}
 	
@@ -265,7 +266,7 @@ bool cudaPointCloud::SetCalibration( const char* filename )
 
 	if( !file )
 	{
-		printf(LOG_CUDA "cudaPointCloud::Extract() -- failed to open calibration file %s\n", filename);
+		LogError(LOG_CUDA "cudaPointCloud::Extract() -- failed to open calibration file %s\n", filename);
 		return false;
 	}
  
@@ -278,7 +279,7 @@ bool cudaPointCloud::SetCalibration( const char* filename )
 
 		if( !fgets(str, 512, file) )
 		{
-			printf(LOG_CUDA "cudaPointCloud::Extract() -- failed to read line %i from calibration file %s\n", n+1, filename);
+			LogError(LOG_CUDA "cudaPointCloud::Extract() -- failed to read line %i from calibration file %s\n", n+1, filename);
 			return false;
 		}
 
@@ -286,7 +287,7 @@ bool cudaPointCloud::SetCalibration( const char* filename )
 
 		if( len <= 0 )
 		{
-			printf(LOG_CUDA "cudaPointCloud::Extract() -- invalid line %i from calibration file %s\n", n+1, filename);
+			LogError(LOG_CUDA "cudaPointCloud::Extract() -- invalid line %i from calibration file %s\n", n+1, filename);
 			return false;
 		}
 
@@ -295,7 +296,7 @@ bool cudaPointCloud::SetCalibration( const char* filename )
 
 		if( sscanf(str, "%f %f %f", &K[n][0], &K[n][1], &K[n][2]) != 3 )
 		{
-			printf(LOG_CUDA "cudaPointCloud::Extract() -- failed to parse line %i from calibration file %s\n", n+1, filename);
+			LogError(LOG_CUDA "cudaPointCloud::Extract() -- failed to parse line %i from calibration file %s\n", n+1, filename);
 			return false;
 		}
 	}
@@ -304,7 +305,7 @@ bool cudaPointCloud::SetCalibration( const char* filename )
 	fclose(file);
 
 	// dump the matrix
-	printf(LOG_CUDA "cudaPointCloud::Extract() -- loaded intrinsic camera calibration from %s\n", filename);
+	LogVerbose(LOG_CUDA "cudaPointCloud::Extract() -- loaded intrinsic camera calibration from %s\n", filename);
 	mat33_print(K, "K");
 
 	// save the calibration
@@ -324,7 +325,7 @@ bool cudaPointCloud::Save( const char* filename )
 
 	if( !file )
 	{
-		printf(LOG_CUDA "cudaPointCloud::Save() -- failed to create %s\n", filename);
+		LogError(LOG_CUDA "cudaPointCloud::Save() -- failed to create %s\n", filename);
 		return false;
 	}
 
