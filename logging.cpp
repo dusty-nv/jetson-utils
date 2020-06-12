@@ -21,10 +21,13 @@
  */
  
 #include "logging.h"
+#include <strings.h>
 
 
-// set default log level
+// set default logging options
 Log::Level Log::mLevel = Log::DEFAULT;
+FILE* Log::mFile = stdout;
+std::string Log::mFilename = "stdout";
 
 
 // ParseCmdLine
@@ -37,8 +40,103 @@ void Log::ParseCmdLine( const int argc, char** argv )
 // ParseCmdLine
 void Log::ParseCmdLine( const commandLine& cmdLine )
 {
-	// TODO
+	const char* levelStr = cmdLine.GetString("log-level");
+
+	if( levelStr != NULL )
+	{
+		SetLevel(LevelFromStr(levelStr));
+	}
+	else
+	{
+		if( cmdLine.GetFlag("debug") )
+			SetLevel(DEBUG);		
+		if( cmdLine.GetFlag("verbose") )
+			SetLevel(VERBOSE);
+	}
+
+	SetFile(cmdLine.GetString("log-file"));
 }
+
+
+// SetFile
+void Log::SetFile( FILE* file )
+{
+	if( !file || mFile == file )
+		return;
+
+	mFile = file;
+
+	if( mFile == stdout )
+		mFilename = "stdout";
+	else if( mFile == stderr )
+		mFilename = "stderr";
+}
+
+
+// SetFilename
+void Log::SetFile( const char* filename )
+{
+	if( !filename )
+		return;
+
+	if( strcasecmp(filename, "stdout") == 0 )
+		SetFile(stdout);
+	else if( strcasecmp(filename, "stderr") == 0 )
+		SetFile(stderr);
+	else
+	{
+		if( strcasecmp(filename, mFilename.c_str()) == 0 )
+			return;
+
+		FILE* file = fopen(filename, "w"); 
+
+		if( file != NULL )
+		{
+			SetFile(file);
+			mFilename = filename;
+		}
+		else
+		{
+			LogError("failed to open '%s' for logging\n", filename);
+			return;
+		}
+	}	
+}
+
+// LevelToStr
+const char* Log::LevelToStr( Log::Level level )
+{
+	switch(level)
+	{
+		case ERROR:    return "error";
+		case WARNING:  return "warning";
+		case SUCCESS:  return "success";
+		case INFO:	return "info";
+		case VERBOSE:	return "verbose";
+		case DEBUG:	return "debug";
+	}
+
+	return "default";
+}
+
+
+// LevelFromStr
+Log::Level Log::LevelFromStr( const char* str )
+{
+	if( !str )
+		return DEFAULT;
+
+	for( int n=0; n <= DEBUG; n++ )
+	{
+		const Level level = (Level)n;
+
+		if( strcasecmp(str, LevelToStr(level)) == 0 )
+			return level;
+	}
+
+	return DEFAULT;
+}
+
 
 
 	

@@ -24,7 +24,9 @@
 #define __LOGGING_UTILS_H_
 
 #include "commandLine.h"
+
 #include <stdio.h>
+#include <string>
 
 
 /**
@@ -40,6 +42,7 @@ public:
 	{
 		ERROR = 0,
 		WARNING,
+		SUCCESS,
 		INFO,
 		VERBOSE,
 		DEBUG,
@@ -49,12 +52,32 @@ public:
 	/**
 	 *
 	 */
-	static inline Level GetLevel()				{ return mLevel; }
+	static inline Level GetLevel()			{ return mLevel; }
 
 	/**
 	 *
 	 */
 	static inline void SetLevel( Level level )	{ mLevel = level; }
+
+	/**
+	 *
+	 */
+	static inline FILE* GetFile()				{ return mFile; }
+
+	/**
+	 *
+	 */
+	static inline const char* GetFilename()		{ return mFilename.c_str(); }
+
+	/**
+	 *
+	 */
+	static void SetFile( FILE* file );
+
+	/**
+	 * Can be "stdout", "stderr", "log.txt", ect.
+	 */
+	static void SetFile( const char* filename );
 
 	/**
 	 *
@@ -66,8 +89,20 @@ public:
 	 */
 	static void ParseCmdLine( const commandLine& cmdLine );
 
+	/**
+	 * 
+	 */
+	static const char* LevelToStr( Level level );
+
+	/**
+	 *
+	 */
+	static Level LevelFromStr( const char* str );
+
 protected:
-	static Level mLevel;
+	static Level 	    mLevel;
+	static FILE* 	    mFile;
+	static std::string mFilename;
 };
 
 
@@ -77,7 +112,7 @@ protected:
  */
 #define LogMessage(level, format, args...)        \
 			if( level <= Log::GetLevel() )	\
-				printf(format, ## args)		\
+				fprintf(Log::GetFile(), format, ## args)		\
 
 /**
  * @ingroup log
@@ -92,17 +127,22 @@ protected:
 /**
  * @ingroup log
  */
+#define LogSuccess(format, args...)	LogMessage(Log::SUCCESS, LOG_COLOR_GREEN LOG_LEVEL_PREFIX_SUCCESS format LOG_COLOR_RESET, ## args)
+
+/**
+ * @ingroup log
+ */
 #define LogInfo(format, args...)		LogMessage(Log::INFO, LOG_LEVEL_PREFIX_INFO format, ## args)
 
 /**
  * @ingroup log
  */
-#define LogVerbose(format, args...)	LogMessage(Log::VERBOSE, LOG_LEVEL_PREFIX_VERBOSE format LOG_COLOR_RESET, ## args)
+#define LogVerbose(format, args...)	LogMessage(Log::VERBOSE, LOG_LEVEL_PREFIX_VERBOSE format, ## args)
 
 /**
  * @ingroup log
  */
-#define LogDebug(format, args...)		LogMessage(Log::DEBUG, LOG_LEVEL_PREFIX_DEBUG format LOG_COLOR_RESET, ## args)
+#define LogDebug(format, args...)		LogMessage(Log::DEBUG, LOG_LEVEL_PREFIX_DEBUG format, ## args)
 
 /**
  * 
@@ -136,12 +176,14 @@ protected:
 #ifdef LOG_ENABLE_LEVEL_PREFIX
 	#define LOG_LEVEL_PREFIX_ERROR	"[E]"
 	#define LOG_LEVEL_PREFIX_WARNING	"[W]"
+	#define LOG_LEVEL_PREFIX_SUCCESS	"[S]"
 	#define LOG_LEVEL_PREFIX_INFO		"[I]"
 	#define LOG_LEVEL_PREFIX_VERBOSE	"[V]"
 	#define LOG_LEVEL_PREFIX_DEBUG	"[D]"
 #else
 	#define LOG_LEVEL_PREFIX_ERROR	""
 	#define LOG_LEVEL_PREFIX_WARNING	""
+	#define LOG_LEVEL_PREFIX_SUCCESS	""
 	#define LOG_LEVEL_PREFIX_INFO		""
 	#define LOG_LEVEL_PREFIX_VERBOSE	""
 	#define LOG_LEVEL_PREFIX_DEBUG	""
