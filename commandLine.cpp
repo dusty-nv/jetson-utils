@@ -21,6 +21,7 @@
  */
 
 #include "commandLine.h"
+#include "logging.h"
 
 #include <string>
 #include <string.h>
@@ -52,6 +53,8 @@ commandLine::commandLine( const int pArgc, char** pArgv, const char* extraFlag )
 	argv = pArgv;
 
 	AddFlag(extraFlag);
+
+	Log::ParseCmdLine(*this);
 }
 
 
@@ -62,6 +65,8 @@ commandLine::commandLine( const int pArgc, char** pArgv, const char** extraArgs 
 	argv = pArgv;
 
 	AddArgs(extraArgs);
+
+	Log::ParseCmdLine(*this);
 }
 
 
