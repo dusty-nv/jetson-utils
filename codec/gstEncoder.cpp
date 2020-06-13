@@ -316,7 +316,6 @@ bool gstEncoder::buildLaunchStr()
 	{
 		if( uri.extension == "mkv" )
 		{
-			//ss << "matroskamux ! queue ! ";
 			ss << "matroskamux ! ";
 		}
 		else if( uri.extension == "avi" )
