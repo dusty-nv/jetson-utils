@@ -45,6 +45,11 @@ cudaError_t cudaConvertColor( void* input, imageFormat inputFormat,
 		else if( outputFormat == IMAGE_RGBA32F )
 			return CUDA(cudaNV12ToRGBA(input, (float4*)output, width, height));
 	}
+	else if( inputFormat == IMAGE_I420 )
+	{
+		if( outputFormat == IMAGE_RGB8 )
+			return CUDA(cudaI420ToRGB(input, (uchar3*)output, width, height));
+	}
 	else if( inputFormat == IMAGE_YUYV )
 	{
 		if( outputFormat == IMAGE_RGBA8 )
@@ -121,7 +126,7 @@ cudaError_t cudaConvertColor( void* input, imageFormat inputFormat,
 		
 	}
 
-	LogError(LOG_CUDA "cudaColorConvert() -- invalid input/output format combination (%s->%s)\n", imageFormatToStr(inputFormat), imageFormatToStr(inputFormat));
+	LogError(LOG_CUDA "cudaColorConvert() -- invalid input/output format combination (%s->%s)\n", imageFormatToStr(inputFormat), imageFormatToStr(outputFormat));
 	return cudaErrorInvalidValue;
 }
 
