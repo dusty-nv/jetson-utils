@@ -23,6 +23,7 @@
 #include "PyCUDA.h"
 
 #include "cudaMappedMemory.h"
+#include "cudaColorspace.h"
 #include "cudaFont.h"
 
 #include "logging.h"
@@ -496,64 +497,98 @@ PyCudaImage* PyCUDA_GetImage( PyObject* object )
 
 //-------------------------------------------------------------------------------
 // PyCUDA_Malloc
-PyObject* PyCUDA_Malloc( PyObject* self, PyObject* args )
+PyObject* PyCUDA_Malloc( PyObject* self, PyObject* args, PyObject* kwds )
 {
 	int size = 0;
+	int width = 0;
+	int height = 0;
 
-	if( !PyArg_ParseTuple(args, "i", &size) )
+	const char* formatStr = NULL;
+	static char* kwlist[] = {"size", "width", "height", "format", NULL};
+
+	if( !PyArg_ParseTupleAndKeywords(args, kwds, "|iiis", kwlist, &size, &width, &height, &formatStr))
 	{
-		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaMalloc() failed to parse size argument");
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaMalloc() failed to parse arguments");
 		return NULL;
 	}
 		
-	if( size <= 0 )
+	if( size <= 0 && (width <= 0 || height <= 0) )
 	{
-		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaMalloc() requested size is negative or zero");
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaMalloc() requested size/dimensions are negative or zero");
 		return NULL;
 	}
+
+	const bool isImage = (width > 0) && (height > 0);
+	const imageFormat format = imageFormatFromStr(formatStr);
+
+	if( isImage && format == IMAGE_UNKNOWN )
+	{
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaMalloc() invalid format string");
+		return NULL;
+	}
+
+	if( isImage )
+		size = imageFormatSize(format, width, height);
 
 	// allocate memory
-	void* gpuPtr = NULL;
+	void* ptr = NULL;
 
-	if( !cudaMalloc(&gpuPtr, size) )
+	if( !cudaMalloc(&ptr, size) )
 	{
-		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaMalloc() failed");
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaMalloc() failed to allocate memory");
 		return NULL;
 	}
 
-	return PyCUDA_RegisterMemory(gpuPtr, size);
+	return isImage ? PyCUDA_RegisterImage(ptr, width, height, format)
+				: PyCUDA_RegisterMemory(ptr, size);
 }
 
 
-
 // PyCUDA_AllocMapped
-PyObject* PyCUDA_AllocMapped( PyObject* self, PyObject* args )
+PyObject* PyCUDA_AllocMapped( PyObject* self, PyObject* args, PyObject* kwds )
 {
 	int size = 0;
+	int width = 0;
+	int height = 0;
 
-	if( !PyArg_ParseTuple(args, "i", &size) )
+	const char* formatStr = NULL;
+	static char* kwlist[] = {"size", "width", "height", "format", NULL};
+
+	if( !PyArg_ParseTupleAndKeywords(args, kwds, "|iiis", kwlist, &size, &width, &height, &formatStr))
 	{
-		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaAllocMapped() failed to parse size argument");
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaAllocMapped() failed to parse arguments");
 		return NULL;
 	}
-		
-	if( size <= 0 )
+
+	if( size <= 0 && (width <= 0 || height <= 0) )
 	{
-		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaAllocMapped() requested size is negative or zero");
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaAllocMapped() requested size/dimensions are negative or zero");
 		return NULL;
 	}
+
+	const bool isImage = (width > 0) && (height > 0);
+	const imageFormat format = imageFormatFromStr(formatStr);
+
+	if( isImage && format == IMAGE_UNKNOWN )
+	{
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaAllocMapped() invalid format string");
+		return NULL;
+	}
+
+	if( isImage )
+		size = imageFormatSize(format, width, height);
 
 	// allocate memory
-	void* cpuPtr = NULL;
-	void* gpuPtr = NULL;
+	void* ptr = NULL;
 
-	if( !cudaAllocMapped(&cpuPtr, &gpuPtr, size) )
+	if( !cudaAllocMapped(&ptr, size) )
 	{
-		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaAllocMapped() failed");
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaAllocMapped() failed to allocate memory");
 		return NULL;
 	}
 
-	return PyCUDA_RegisterMemory(gpuPtr, size, true);
+	return isImage ? PyCUDA_RegisterImage(ptr, width, height, format, true)
+				: PyCUDA_RegisterMemory(ptr, size, true);
 }
 
 
@@ -583,6 +618,43 @@ PyObject* PyCUDA_AdaptFontSize( PyObject* self, PyObject* args )
 	}
 
 	return PyFloat_FromDouble(adaptFontSize(dim));
+}
+
+
+// PyCUDA_ConvertColor
+PyObject* PyCUDA_ConvertColor( PyObject* self, PyObject* args, PyObject* kwds )
+{
+	// parse arguments
+	PyObject* pyInput  = NULL;
+	PyObject* pyOutput = NULL;
+	
+	static char* kwlist[] = {"input", "output", NULL};
+
+	if( !PyArg_ParseTupleAndKeywords(args, kwds, "OO", kwlist, &pyInput, &pyOutput))
+	{
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaConvertColor() failed to parse args");
+		return NULL;
+	}
+	
+	// get pointers to image data
+	PyCudaImage* input = PyCUDA_GetImage(pyInput);
+	PyCudaImage* output = PyCUDA_GetImage(pyOutput);
+
+	if( !input || !output )
+	{
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaConvertColor() failed to get input/output image pointers (should be cudaImage)");
+		return NULL;
+	}
+
+	// run the CUDA function
+	if( CUDA_FAILED(cudaConvertColor(input->base.ptr, input->format, output->base.ptr, output->format, input->width, input->height)) )
+	{
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaConvertColor() failed");
+		return NULL;
+	}
+
+	// return void
+	Py_RETURN_NONE;
 }
 
 //-------------------------------------------------------------------------------
@@ -929,9 +1001,10 @@ bool PyFont_RegisterType( PyObject* module )
 //-------------------------------------------------------------------------------
 static PyMethodDef pyCUDA_Functions[] = 
 {
-	{ "cudaMalloc", (PyCFunction)PyCUDA_Malloc, METH_VARARGS, "Allocated CUDA memory on the GPU with cudaMalloc()" },
-	{ "cudaAllocMapped", (PyCFunction)PyCUDA_AllocMapped, METH_VARARGS, "Allocate CUDA ZeroCopy mapped memory" },
+	{ "cudaMalloc", (PyCFunction)PyCUDA_Malloc, METH_VARARGS|METH_KEYWORDS, "Allocated CUDA memory on the GPU with cudaMalloc()" },
+	{ "cudaAllocMapped", (PyCFunction)PyCUDA_AllocMapped, METH_VARARGS|METH_KEYWORDS, "Allocate CUDA ZeroCopy mapped memory" },
 	{ "cudaDeviceSynchronize", (PyCFunction)PyCUDA_DeviceSynchronize, METH_NOARGS, "Wait for the GPU to complete all work" },
+	{ "cudaConvertColor", (PyCFunction)PyCUDA_ConvertColor, METH_VARARGS|METH_KEYWORDS, "Perform colorspace conversion on the GPU" },
 	{ "adaptFontSize", (PyCFunction)PyCUDA_AdaptFontSize, METH_VARARGS, "Determine an appropriate font size for the given image dimension" },
 	{NULL}  /* Sentinel */
 };
