@@ -21,9 +21,109 @@
  */
 
 #include "cudaYUV.h"
+#include "cudaVector.h"
 
 
+//-----------------------------------------------------------------------------------------------
+// I420/YV12 to RGB
+//-----------------------------------------------------------------------------------------------
+static inline __device__ float clamp( float x )	{ return fminf(fmaxf(x, 0.0f), 255.0f); }
 
+static inline __device__ float3 YUV2RGB(float Y, float U, float V)
+{
+	U -= 128.0f;
+	V -= 128.0f;
+
+#if 1
+	return make_float3(clamp(Y + 1.402f * V),
+    				    clamp(Y - 0.344f * U - 0.714f * V),
+				    clamp(Y + 1.772f * U));
+#else
+	return make_float3(clamp(Y + 1.140f * V),
+			    	    clamp(Y - 0.395f * U - 0.581f * V),
+			         clamp(Y + 2.3032f * U));
+#endif
+}
+
+template <typename T, bool formatYV12>
+__global__ void I420ToRGB(uint8_t* srcImage, int srcPitch,
+                          T* dstImage,     	int dstPitch,
+                          int width,         int height) 
+{
+	const int x = blockIdx.x * blockDim.x + threadIdx.x;
+	const int y = blockIdx.y * blockDim.y + threadIdx.y;
+
+	if( x >= width )
+		return;
+
+	if( y >= height )
+		return;
+
+	const int x2 = x/2;
+	const int y2 = y/2;
+
+	const int srcPitch2 = srcPitch/2;
+	const int planeSize = srcPitch * height;
+
+	// get the YUV plane offsets
+	uint8_t* y_plane = srcImage;
+	uint8_t* u_plane;
+	uint8_t* v_plane;
+
+	if( formatYV12 )
+	{
+		v_plane = y_plane + planeSize;		
+		u_plane = v_plane + (planeSize / 4);	// size of U & V planes is 25% of Y plane
+	}
+	else
+	{
+		u_plane = y_plane + planeSize;		// in I420, order of U & V planes is reversed
+		v_plane = u_plane + (planeSize / 4);
+	}
+
+	// read YUV pixel
+	const float Y = y_plane[y * srcPitch + x];
+	const float U = u_plane[y2 * srcPitch2 + x2];
+	const float V = v_plane[y2 * srcPitch2 + x2];
+
+	const float3 RGB = YUV2RGB(Y, U, V);
+
+	dstImage[y * width + x] = make_vec<T>(RGB.x, RGB.y, RGB.z, 255);
+}
+
+template <typename T, bool formatYV12>
+cudaError_t launch420ToRGB(void* srcDev, size_t srcPitch, T* destDev,
+                           size_t destPitch, size_t width, size_t height) 
+{
+	if( !srcDev || !destDev )
+		return cudaErrorInvalidDevicePointer;
+
+	if( srcPitch == 0 || destPitch == 0 || width == 0 || height == 0 )
+		return cudaErrorInvalidValue;
+
+	const dim3 blockDim(8,8);
+	//const dim3 gridDim((width+(2*blockDim.x-1))/(2*blockDim.x), (height+(blockDim.y-1))/blockDim.y, 1);
+	const dim3 gridDim(iDivUp(width,blockDim.x), iDivUp(height, blockDim.y));
+
+	I420ToRGB<T, formatYV12><<<gridDim, blockDim>>>( (uint8_t*)srcDev, srcPitch, destDev, destPitch, width, height );
+
+	return CUDA(cudaGetLastError());
+}
+
+cudaError_t cudaI420ToRGB(void* input, size_t inputPitch, uchar3* output, size_t outputPitch, size_t width, size_t height) 
+{
+    return launch420ToRGB<uchar3, false>(input, inputPitch, output, outputPitch, width, height);
+}
+
+cudaError_t cudaI420ToRGB(void* input, uchar3* output, size_t width, size_t height) 
+{
+    return launch420ToRGB<uchar3, false>(input, width * sizeof(uint8_t), output, width * sizeof(uchar3), width, height);
+}
+
+
+//-----------------------------------------------------------------------------------------------
+// RGB to I420/YV12
+//-----------------------------------------------------------------------------------------------
 inline __device__ void rgb_to_y(const uint8_t r, const uint8_t g, const uint8_t b, uint8_t& y)
 {
 	y = static_cast<uint8_t>(((int)(30 * r) + (int)(59 * g) + (int)(11 * b)) / 100);
@@ -37,7 +137,7 @@ inline __device__ void rgb_to_yuv(const uint8_t r, const uint8_t g, const uint8_
 }
 
 template <typename T, bool formatYV12>
-__global__ void RGB_to_YV12( T* src, int srcAlignedWidth, uint8_t* dst, int dstPitch, int width, int height )
+__global__ void RGBToYV12( T* src, int srcAlignedWidth, uint8_t* dst, int dstPitch, int width, int height )
 {
 	const int x = (blockIdx.x * blockDim.x + threadIdx.x) * 2;
 	const int y = (blockIdx.y * blockDim.y + threadIdx.y) * 2;
@@ -92,7 +192,7 @@ __global__ void RGB_to_YV12( T* src, int srcAlignedWidth, uint8_t* dst, int dstP
 } 
 
 template<typename T, bool formatYV12>
-cudaError_t launch420( T* input, size_t inputPitch, void* output, size_t outputPitch, size_t width, size_t height)
+cudaError_t launchRGBTo420( T* input, size_t inputPitch, void* output, size_t outputPitch, size_t width, size_t height)
 {
 	if( !input || !inputPitch || !output || !outputPitch || !width || !height )
 		return cudaErrorInvalidValue;
@@ -102,7 +202,7 @@ cudaError_t launch420( T* input, size_t inputPitch, void* output, size_t outputP
 
 	const int inputAlignedWidth = inputPitch / sizeof(T);
 
-	RGB_to_YV12<T, formatYV12><<<grid, block>>>(input, inputAlignedWidth, (uint8_t*)output, outputPitch, width, height);
+	RGBToYV12<T, formatYV12><<<grid, block>>>(input, inputAlignedWidth, (uint8_t*)output, outputPitch, width, height);
 
 	return CUDA(cudaGetLastError());
 }
@@ -111,7 +211,7 @@ cudaError_t launch420( T* input, size_t inputPitch, void* output, size_t outputP
 // cudaRGBToI420 (uchar3)
 cudaError_t cudaRGBToI420( uchar3* input, size_t inputPitch, void* output, size_t outputPitch, size_t width, size_t height )
 {
-	return launch420<uchar3,true>( input, inputPitch, output, outputPitch, width, height );
+	return launchRGBTo420<uchar3,true>( input, inputPitch, output, outputPitch, width, height );
 }
 
 // cudaRGBToI420 (uchar3)
@@ -123,7 +223,7 @@ cudaError_t cudaRGBToI420( uchar3* input, void* output, size_t width, size_t hei
 // cudaRGBToI420 (float3)
 cudaError_t cudaRGBToI420( float3* input, size_t inputPitch, void* output, size_t outputPitch, size_t width, size_t height )
 {
-	return launch420<float3,true>( input, inputPitch, output, outputPitch, width, height );
+	return launchRGBTo420<float3,true>( input, inputPitch, output, outputPitch, width, height );
 }
 
 // cudaRGBAToI420 (float3)
@@ -135,7 +235,7 @@ cudaError_t cudaRGBToI420( float3* input, void* output, size_t width, size_t hei
 // cudaRGBAToI420 (uchar4)
 cudaError_t cudaRGBAToI420( uchar4* input, size_t inputPitch, void* output, size_t outputPitch, size_t width, size_t height )
 {
-	return launch420<uchar4,true>( input, inputPitch, output, outputPitch, width, height );
+	return launchRGBTo420<uchar4,true>( input, inputPitch, output, outputPitch, width, height );
 }
 
 // cudaRGBAToI420 (uchar4)
@@ -147,7 +247,7 @@ cudaError_t cudaRGBAToI420( uchar4* input, void* output, size_t width, size_t he
 // cudaRGBAToI420 (float4)
 cudaError_t cudaRGBAToI420( float4* input, size_t inputPitch, void* output, size_t outputPitch, size_t width, size_t height )
 {
-	return launch420<float4,true>( input, inputPitch, output, outputPitch, width, height );
+	return launchRGBTo420<float4,true>( input, inputPitch, output, outputPitch, width, height );
 }
 
 // cudaRGBAToI420 (float4)
@@ -161,7 +261,7 @@ cudaError_t cudaRGBAToI420( float4* input, void* output, size_t width, size_t he
 // cudaRGBToYV12 (uchar3)
 cudaError_t cudaRGBToYV12( uchar3* input, size_t inputPitch, void* output, size_t outputPitch, size_t width, size_t height )
 {
-	return launch420<uchar3,false>( input, inputPitch, output, outputPitch, width, height );
+	return launchRGBTo420<uchar3,false>( input, inputPitch, output, outputPitch, width, height );
 }
 
 // cudaRGBToYV12 (uchar3)
@@ -173,7 +273,7 @@ cudaError_t cudaRGBToYV12( uchar3* input, void* output, size_t width, size_t hei
 // cudaRGBToYV12 (float3)
 cudaError_t cudaRGBToYV12( float3* input, size_t inputPitch, void* output, size_t outputPitch, size_t width, size_t height )
 {
-	return launch420<float3,false>( input, inputPitch, output, outputPitch, width, height );
+	return launchRGBTo420<float3,false>( input, inputPitch, output, outputPitch, width, height );
 }
 
 // cudaRGBToYV12 (float3)
@@ -185,7 +285,7 @@ cudaError_t cudaRGBToYV12( float3* input, void* output, size_t width, size_t hei
 // cudaRGBAToYV12 (uchar4)
 cudaError_t cudaRGBAToYV12( uchar4* input, size_t inputPitch, void* output, size_t outputPitch, size_t width, size_t height )
 {
-	return launch420<uchar4,false>( input, inputPitch, output, outputPitch, width, height );
+	return launchRGBTo420<uchar4,false>( input, inputPitch, output, outputPitch, width, height );
 }
 
 // cudaRGBAToYV12 (uchar4)
@@ -197,7 +297,7 @@ cudaError_t cudaRGBAToYV12( uchar4* input, void* output, size_t width, size_t he
 // cudaRGBAToYV12 (float4)
 cudaError_t cudaRGBAToYV12( float4* input, size_t inputPitch, void* output, size_t outputPitch, size_t width, size_t height )
 {
-	return launch420<float4,false>( input, inputPitch, output, outputPitch, width, height );
+	return launchRGBTo420<float4,false>( input, inputPitch, output, outputPitch, width, height );
 }
 
 // cudaRGBAToYV12 (float4)
