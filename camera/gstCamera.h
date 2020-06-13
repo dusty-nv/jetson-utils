@@ -40,6 +40,7 @@ struct _GstAppSink;
  * Enumeration of camera input source methods
  * @ingroup gstCamera
  */
+#if 0
 enum gstCameraSrc
 {
 	GST_SOURCE_NVCAMERA,	/* use nvcamerasrc element */
@@ -47,11 +48,13 @@ enum gstCameraSrc
 	GST_SOURCE_V4L2		/* use v4l2src element */
 };
 
+
 /**
  * Stringize function to convert gstCameraSrc enum to text
  * @ingroup gstCamera
  */
 const char* gstCameraSrcToString( gstCameraSrc src );	
+#endif
 
 
 /**
@@ -190,25 +193,7 @@ public:
 	 *               or error occurred, or if timeout was 0 and a frame wasn't ready.
 	 */
 	bool CaptureRGBA( float** image, uint64_t timeout=UINT64_MAX, bool zeroCopy=false );
-	
-	/**
-	 * Return the pixel bit depth of the camera (measured in bits).
-	 * This will be 12 for MIPI CSI cameras (YUV NV12 format)
-	 * or 24 for VL42 cameras (RGB 24-bit).
-	 */
-	inline uint32_t GetPixelDepth() const 		{ return mDepth; }
 
-	/**
-	 * Return the size (in bytes) of a camera frame from Capture().
-	 *
-	 * @note this is not the size of the converted float4 RGBA image
-	 *       from Convert(), but rather the YUV (NV12) or RGB (24-bit)
-	 *       image that gets aquired by the Capture() function.
-	 *       To calculate the size of the converted float4 RGBA image,
-	 *       take:  `GetWidth() * GetHeight() * sizeof(float) * 4`
-	 */
-	inline uint32_t GetSize() const	   		{ return mSize; }
-	
 	/**
 	 *
 	 */
@@ -236,9 +221,9 @@ private:
 
 	gstCamera( const videoOptions& options );
 
-	bool init( gstCameraSrc src );
-	bool buildLaunchStr( gstCameraSrc src );
-	bool parseCameraStr( const char* camera );
+	bool init();
+	bool discover();
+	bool buildLaunchStr();
 
 	void checkMsgBus();
 	void checkBuffer();
@@ -246,21 +231,16 @@ private:
 	_GstBus*     mBus;
 	_GstAppSink* mAppSink;
 	_GstElement* mPipeline;
-	gstCameraSrc mSource;
 
 	std::string  mLaunchStr;
-	std::string  mCameraStr;
 
-	uint32_t mDepth;
-	uint32_t mSize;
-
+	imageFormat mFormatYUV;
+	size_t      mFrameCount;
+	
 	RingBuffer mBufferYUV;
 	RingBuffer mBufferRGB;
 
 	Event mWaitEvent;
-	int   mSensorCSI;	  // -1 for V4L2, >=0 for MIPI CSI
-
-	inline bool csiCamera() const		{ return (mSensorCSI >= 0); }
 };
 
 #endif
