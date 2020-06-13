@@ -126,8 +126,10 @@ protected:
 	RingBuffer   mBufferRGB;
 
 	std::string  mLaunchStr;
+	bool         mCustomSize;
 	bool         mEOS;
 	size_t	   mLoopCount;
+	size_t	   mFrameCount;
 };
   
 #endif

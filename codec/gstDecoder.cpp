@@ -84,8 +84,10 @@ gstDecoder::gstDecoder( const videoOptions& options ) : videoSource(options)
 	mAppSink    = NULL;
 	mBus        = NULL;
 	mPipeline   = NULL;
+	mCustomSize = false;
 	mEOS        = false;
 	mLoopCount  = 1;
+	mFrameCount = 0;
 
 	mBufferRGB.SetThreaded(false);
 }
@@ -169,6 +171,10 @@ bool gstDecoder::init()
 	}
 	
 	LogInfo(LOG_GSTREAMER "gstDecoder -- creating decoder for %s\n", mOptions.resource.path.c_str());
+
+	// flag if the user wants a specific resolution
+	if( mOptions.width != 0 || mOptions.height != 0 )
+		mCustomSize = true;
 
 	// discover resource stats
 	if( !discover() )
@@ -339,6 +345,13 @@ bool gstDecoder::discover()
 
 	LogVerbose(LOG_GSTREAMER "gstDecoder -- discovered video resolution: %ux%u  (framerate %f Hz)\n", width, height, mOptions.frameRate);
 	
+	if( mCustomSize )
+	{
+		// disable re-scaling if the user's custom size matches the feed's
+		if( mOptions.width == width && mOptions.height == height )
+			mCustomSize = false;
+	}
+
 	if( mOptions.width == 0 )
 		mOptions.width = width;
 
@@ -367,6 +380,8 @@ bool gstDecoder::discover()
 		mOptions.codec = videoOptions::CODEC_VP8;
 	else if( videoCaps.find("video/x-vp9") != std::string::npos )
 		mOptions.codec = videoOptions::CODEC_VP9;
+	else if( videoCaps.find("image/jpeg") != std::string::npos )
+		mOptions.codec = videoOptions::CODEC_MJPEG;
 	else if( videoCaps.find("video/mpeg") != std::string::npos )
 	{
 		if( videoCaps.find("mpegversion=(int)4") != std::string::npos )
@@ -384,6 +399,7 @@ bool gstDecoder::discover()
 		LogError(LOG_GSTREAMER "                 * vp9\n");
 		LogError(LOG_GSTREAMER "                 * mpeg2\n");
 		LogError(LOG_GSTREAMER "                 * mpeg4\n");
+		LogError(LOG_GSTREAMER "                 * mjpeg\n");
 
 		return false;
 	}
@@ -461,6 +477,12 @@ bool gstDecoder::buildLaunchStr()
 			ss << "VP8\" ! rtpvp8depay ! ";
 		else if( mOptions.codec == videoOptions::CODEC_VP9 )
 			ss << "VP9\" ! rtpvp9depay ! ";
+		else if( mOptions.codec == videoOptions::CODEC_MPEG2 )
+			ss << "MP2T\" ! rtpmp2tdepay ! ";		// MP2T-ES
+		else if( mOptions.codec == videoOptions::CODEC_MPEG4 )
+			ss << "MP4V-ES\" ! rtpmp4vdepay ! ";	// MPEG4-GENERIC\" ! rtpmp4gdepay
+		else if( mOptions.codec == videoOptions::CODEC_MJPEG )
+			ss << "JPEG\" ! rtpjpegdepay ! ";
 
 		mOptions.deviceType = videoOptions::DEVICE_IP;
 	}
@@ -478,6 +500,12 @@ bool gstDecoder::buildLaunchStr()
 			ss << "rtpvp8depay ! ";
 		else if( mOptions.codec == videoOptions::CODEC_VP9 )
 			ss << "rtpvp9depay ! ";
+		else if( mOptions.codec == videoOptions::CODEC_MPEG2 )
+			ss << "rtpmp2tdepay ! ";		// MP2T-ES
+		else if( mOptions.codec == videoOptions::CODEC_MPEG4 )
+			ss << "rtpmp4vdepay ! ";	// rtpmp4gdepay
+		else if( mOptions.codec == videoOptions::CODEC_MJPEG )
+			ss << "rtpjpegdepay ! ";
 
 		mOptions.deviceType = videoOptions::DEVICE_IP;
 	}
@@ -505,6 +533,8 @@ bool gstDecoder::buildLaunchStr()
 		ss << "omxmpeg2videodec ! ";
 	else if( mOptions.codec == videoOptions::CODEC_MPEG4 )
 		ss << "omxmpeg4videodec ! ";
+	else if( mOptions.codec == videoOptions::CODEC_MJPEG )
+		ss << "nvjpegdec ! ";
 #else
 	if( mOptions.codec == videoOptions::CODEC_H264 )
 		ss << "nv_omx_h264dec ! ";
@@ -529,12 +559,13 @@ bool gstDecoder::buildLaunchStr()
 		LogError(LOG_GSTREAMER "                 * vp9\n");
 		LogError(LOG_GSTREAMER "                 * mpeg2\n");
 		LogError(LOG_GSTREAMER "                 * mpeg4\n");
+		LogError(LOG_GSTREAMER "                 * mjpeg\n");
 
 		return false;
 	}
 
 	// resize if requested
-	if( mOptions.width != 0 && mOptions.height != 0 || mOptions.flipMethod != videoOptions::FLIP_NONE )
+	if( mCustomSize || mOptions.flipMethod != videoOptions::FLIP_NONE )
 	{
 		ss << "nvvidconv";
 
@@ -549,7 +580,9 @@ bool gstDecoder::buildLaunchStr()
 		ss <<" ! ";
 	}
 	else
+	{
 		ss << "video/x-raw ! ";
+	}
 
 	ss << "appsink name=mysink"; // wait-on-eos=false;
 
@@ -672,7 +705,11 @@ void gstDecoder::checkBuffer()
 	}
 	
 	const void* gstData = map.data;
-	const guint gstSize = map.size;
+	const gsize gstSize = map.maxsize; //map.size;
+
+	if( map.maxsize > map.size && mFrameCount == 0 ) 
+		LogWarning(LOG_GSTREAMER "gstDecoder -- map buffer size was less than max size (%zu vs %zu)\n", map.size, map.maxsize);
+	
 #else
 	// block waiting for the buffer
 	GstBuffer* gstBuffer = gst_app_sink_pull_buffer(mAppSink);
@@ -702,6 +739,10 @@ void gstDecoder::checkBuffer()
 		release_return;
 	}
 #endif
+	// on the first frame, print out the recieve caps
+	if( mFrameCount == 0 )
+		LogVerbose(LOG_GSTREAMER "gstDecoder recieve caps:  %s\n", gst_caps_to_string(gstCaps));
+
 	// retrieve caps structure
 	GstStructure* gstCapsStruct = gst_caps_get_structure(gstCaps, 0);
 	
@@ -722,7 +763,7 @@ void gstDecoder::checkBuffer()
 		release_return;
 	}
 	
-	LogDebug(LOG_GSTREAMER "gstDecoder -- recieved %ix%i frame\n", width, height);
+	LogDebug(LOG_GSTREAMER "gstDecoder -- recieved %ix%i frame (%zu bytes)\n", width, height, gstSize);
 		
 	if( width < 1 || height < 1 )
 		release_return;
@@ -733,7 +774,7 @@ void gstDecoder::checkBuffer()
 	// allocate ringbuffer
 	if( !mBufferYUV.Alloc(mOptions.numBuffers, gstSize, RingBuffer::ZeroCopy) )
 	{
-		LogError(LOG_GSTREAMER "gstDecoder -- failed to allocate %u buffers (%u bytes each)\n", mOptions.numBuffers, gstSize);
+		LogError(LOG_GSTREAMER "gstDecoder -- failed to allocate %u buffers (%zu bytes each)\n", mOptions.numBuffers, gstSize);
 		release_return;
 	}
 
@@ -749,6 +790,7 @@ void gstDecoder::checkBuffer()
 	memcpy(nextBuffer, gstData, gstSize);
 	mBufferYUV.Next(RingBuffer::Write);
 	mWaitEvent.Wake();
+	mFrameCount++;
 
 #if GST_CHECK_VERSION(1,0,0)
 	gst_buffer_unmap(gstBuffer, &map);
@@ -778,7 +820,7 @@ bool gstDecoder::Capture( void** output, imageFormat format, uint64_t timeout )
 
 	// get the latest ringbuffer
 	void* latestYUV = mBufferYUV.Next(RingBuffer::ReadLatestOnce);
-
+	
 	if( !latestYUV )
 		return false;
 
@@ -793,8 +835,9 @@ bool gstDecoder::Capture( void** output, imageFormat format, uint64_t timeout )
 
 	// perform colorspace conversion
 	void* nextRGB = mBufferRGB.Next(RingBuffer::Write);
+	const imageFormat formatYUV = (mOptions.codec == videoOptions::CODEC_MJPEG) ? IMAGE_I420 : IMAGE_NV12;
 
-	if( CUDA_FAILED(cudaConvertColor(latestYUV, IMAGE_NV12, nextRGB, format, GetWidth(), GetHeight())) )
+	if( CUDA_FAILED(cudaConvertColor(latestYUV, formatYUV, nextRGB, format, GetWidth(), GetHeight())) )
 	{
 		LogError(LOG_GSTREAMER "gstDecoder::Capture() -- unsupported image format (%s)\n", imageFormatToStr(format));
 		LogError(LOG_GSTREAMER "                         supported formats are:\n");
