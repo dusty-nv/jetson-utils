@@ -273,13 +273,13 @@ const char* videoOptions::CodecToStr( videoOptions::Codec codec )
 	{
 		case CODEC_UNKNOWN:	return "unknown";
 		case CODEC_RAW:	return "raw";
-		case CODEC_JPEG:	return "jpeg";
 		case CODEC_H264:	return "h264";
 		case CODEC_H265:	return "h265";
 		case CODEC_VP8:	return "vp8";
 		case CODEC_VP9:	return "vp9";
 		case CODEC_MPEG2:	return "mpeg2";
 		case CODEC_MPEG4:	return "mpeg4";
+		case CODEC_MJPEG:	return "mjpeg";
 	}
 }
 
@@ -290,7 +290,7 @@ videoOptions::Codec videoOptions::CodecFromStr( const char* str )
 	if( !str )
 		return CODEC_UNKNOWN;
 
-	for( int n=0; n <= CODEC_MPEG4; n++ )
+	for( int n=0; n <= CODEC_MJPEG; n++ )
 	{
 		const Codec value = (Codec)n;
 
