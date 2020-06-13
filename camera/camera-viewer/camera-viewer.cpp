@@ -62,12 +62,9 @@ int main( int argc, char** argv )
 		return 0;
 	}
 	
-	printf("\ncamera-viewer:  successfully initialized camera device\n");
-	printf("    width:  %u\n", camera->GetWidth());
-	printf("   height:  %u\n", camera->GetHeight());
-	printf("    depth:  %u (bpp)\n", camera->GetPixelDepth());
+	printf("\ncamera-viewer:  successfully initialized camera device (%ux%u)\n", camera->GetWidth(), camera->GetHeight());
 	
-
+	
 	/*
 	 * create openGL window
 	 */
