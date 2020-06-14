@@ -26,8 +26,112 @@
 #include <gst/gst.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <strings.h>
 
 
+//---------------------------------------------------------------------------------------------
+imageFormat gst_parse_format( GstStructure* caps )
+{
+	const char* format = gst_structure_get_string(caps, "format");
+	
+	if( !format )
+		return IMAGE_UNKNOWN;
+	
+	if( strcasecmp(format, "rgb") == 0 )
+		return IMAGE_RGB8;
+	else if( strcasecmp(format, "yuy2") == 0 )
+		return IMAGE_YUY2;
+	else if( strcasecmp(format, "i420") == 0 )
+		return IMAGE_I420;
+	else if( strcasecmp(format, "nv12") == 0 )
+		return IMAGE_NV12;
+	else if( strcasecmp(format, "yv12") == 0 )
+		return IMAGE_YV12;
+	else if( strcasecmp(format, "yuyv") == 0 )
+		return IMAGE_YUYV;
+	else if( strcasecmp(format, "uyvy") == 0 )
+		return IMAGE_UYVY;
+	
+	return IMAGE_UNKNOWN;
+}
+
+const char* gst_format_to_string( imageFormat format )
+{
+	switch(format)
+	{
+		case IMAGE_RGB8:	return "RGB";
+		case IMAGE_YUY2:	return "YUY2";
+		case IMAGE_I420:	return "I420";
+		case IMAGE_NV12:	return "NV12";
+		case IMAGE_YV12:	return "YV12";
+		case IMAGE_UYVY:	return "UYVY";
+	}
+	
+	return " ";
+}
+
+videoOptions::Codec gst_parse_codec( GstStructure* caps )
+{
+	const char* codec = gst_structure_get_name(caps);
+	
+	if( !codec )
+		return videoOptions::CODEC_UNKNOWN;
+	
+	if( strcasecmp(codec, "video/x-raw") == 0 )
+		return videoOptions::CODEC_RAW;
+	else if( strcasecmp(codec, "video/x-h264") == 0 )
+		return videoOptions::CODEC_H264;
+	else if( strcasecmp(codec, "video/x-h265") == 0 )
+		return videoOptions::CODEC_H265;
+	else if( strcasecmp(codec, "video/x-vp8") == 0 )
+		return videoOptions::CODEC_VP8;
+	else if( strcasecmp(codec, "video/x-vp9") == 0 )
+		return videoOptions::CODEC_VP9;
+	else if( strcasecmp(codec, "image/jpeg") == 0 )
+		return videoOptions::CODEC_MJPEG;
+	else if( strcasecmp(codec, "video/mpeg") == 0 )
+	{
+		int mpegVersion = 0;
+	
+		if( !gst_structure_get_int(caps, "mpegversion", &mpegVersion) )
+		{
+			LogError(LOG_GSTREAMER "MPEG codec, but failed to get MPEG version from caps\n");
+			return videoOptions::CODEC_UNKNOWN;
+		}
+		
+		if( mpegVersion == 2 )
+			return videoOptions::CODEC_MPEG2;
+		else if( mpegVersion == 4 )
+			return videoOptions::CODEC_MPEG4;
+		else
+		{
+			LogError(LOG_GSTREAMER "invalid MPEG codec version:  %i (MPEG-2 and MPEG-4 are supported)\n", mpegVersion);
+			return videoOptions::CODEC_UNKNOWN;
+		}
+	}
+	
+	LogError(LOG_GSTREAMER "unrecognized codec - %s\n", codec);
+}
+
+const char* gst_codec_to_string( videoOptions::Codec codec )
+{
+	switch(codec)
+	{
+		case videoOptions::CODEC_RAW: 	return "video/x-raw";
+		case videoOptions::CODEC_H264:	return "video/x-h264";
+		case videoOptions::CODEC_H265:	return "video/x-h265";
+		case videoOptions::CODEC_VP8:	return "video/x-vp8";
+		case videoOptions::CODEC_VP9:	return "video/x-vp9";
+		case videoOptions::CODEC_MJPEG:	return "image/jpeg";
+		case videoOptions::CODEC_MPEG2:	return "video/mpeg, mpegversion=(int)2";
+		case videoOptions::CODEC_MPEG4:	return "video/mpeg, mpegversion=(int)4";
+	}
+	
+	return " ";
+}
+
+
+//---------------------------------------------------------------------------------------------
 inline const char* gst_debug_level_str( GstDebugLevel level )
 {
 	switch (level)
@@ -116,8 +220,8 @@ bool gstreamerInit()
 	
 	return true;
 }
-//---------------------------------------------------------------------------------------------
 
+//---------------------------------------------------------------------------------------------
 static void gst_print_one_tag(const GstTagList * list, const gchar * tag, gpointer user_data)
 {
   int i, num;

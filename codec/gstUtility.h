@@ -24,7 +24,7 @@
 #define __GSTREAMER_UTILITY_H__
 
 #include <gst/gst.h>
-#include <string>
+#include "videoOptions.h"
 
 
 /**
@@ -41,7 +41,6 @@
  */
 bool gstreamerInit();
 
-
 /**
  * gst_message_print
  * @internal
@@ -49,6 +48,33 @@ bool gstreamerInit();
  */
 gboolean gst_message_print(_GstBus* bus, _GstMessage* message, void* user_data);
 
+/**
+ * gst_parse_codec
+ * @internal
+ * @ingroup codec
+ */
+videoOptions::Codec gst_parse_codec( GstStructure* caps );
+
+/**
+ * gst_parse_format
+ * @internal
+ * @ingroup codec
+ */
+imageFormat gst_parse_format( GstStructure* caps );
+
+/**
+ * gst_codec_to_string
+ * @internal
+ * @ingroup codec
+ */
+const char* gst_codec_to_string( videoOptions::Codec codec );
+
+/**
+ * gst_format_to_string
+ * @internal
+ * @ingroup codec
+ */
+const char* gst_format_to_string( imageFormat format );
 
 #endif
 
