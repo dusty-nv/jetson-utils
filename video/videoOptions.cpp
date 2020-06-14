@@ -117,10 +117,11 @@ bool videoOptions::Parse( const char* URI, const commandLine& cmdLine, videoOpti
 	const char* codecStr = (type == INPUT) ? cmdLine.GetString("input-codec")
 								    : cmdLine.GetString("output-codec");
 
-	if( !codecStr )
+	if( !codecStr && type == OUTPUT )
 		codecStr = cmdLine.GetString("codec");
 
-	codec = videoOptions::CodecFromStr(codecStr);
+	if( codecStr != NULL )	
+		codec = videoOptions::CodecFromStr(codecStr);
 		
 	// bitrate
 	if( type == OUTPUT )
