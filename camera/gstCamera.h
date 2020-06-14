@@ -37,27 +37,6 @@ struct _GstAppSink;
 
 
 /**
- * Enumeration of camera input source methods
- * @ingroup gstCamera
- */
-#if 0
-enum gstCameraSrc
-{
-	GST_SOURCE_NVCAMERA,	/* use nvcamerasrc element */
-	GST_SOURCE_NVARGUS,		/* use nvargussrc element */
-	GST_SOURCE_V4L2		/* use v4l2src element */
-};
-
-
-/**
- * Stringize function to convert gstCameraSrc enum to text
- * @ingroup gstCamera
- */
-const char* gstCameraSrcToString( gstCameraSrc src );	
-#endif
-
-
-/**
  * MIPI CSI and V4L2 camera capture using GStreamer and `nvarguscamerasrc` or `v4l2src` elements.
  * gstCamera supports both MIPI CSI cameras and V4L2-compliant devices like USB webcams.
  *
@@ -227,6 +206,10 @@ private:
 
 	void checkMsgBus();
 	void checkBuffer();
+	
+	bool matchCaps( GstCaps* caps );
+	bool printCaps( GstCaps* caps );
+	bool parseCaps( GstStructure* caps, videoOptions::Codec* codec, imageFormat* format, uint32_t* width, uint32_t* height );
 	
 	_GstBus*     mBus;
 	_GstAppSink* mAppSink;
