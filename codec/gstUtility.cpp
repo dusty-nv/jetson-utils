@@ -51,6 +51,14 @@ imageFormat gst_parse_format( GstStructure* caps )
 		return IMAGE_YUYV;
 	else if( strcasecmp(format, "uyvy") == 0 )
 		return IMAGE_UYVY;
+	else if( strcasecmp(format, "bggr") == 0 )
+		return IMAGE_BAYER_BGGR;
+	else if( strcasecmp(format, "gbrg") == 0 )
+		return IMAGE_BAYER_GBRG;
+	else if( strcasecmp(format, "grgb") == 0 )
+		return IMAGE_BAYER_GRBG;
+	else if( strcasecmp(format, "rggb") == 0 )
+		return IMAGE_BAYER_RGGB;
 	
 	return IMAGE_UNKNOWN;
 }
@@ -65,6 +73,10 @@ const char* gst_format_to_string( imageFormat format )
 		case IMAGE_NV12:	return "NV12";
 		case IMAGE_YV12:	return "YV12";
 		case IMAGE_UYVY:	return "UYVY";
+		case IMAGE_BAYER_BGGR:	return "bggr";
+		case IMAGE_BAYER_GBRG:	return "gbrg";
+		case IMAGE_BAYER_GRBG:	return "grbg";
+		case IMAGE_BAYER_RGGB:	return "rggb";
 	}
 	
 	return " ";
@@ -77,7 +89,7 @@ videoOptions::Codec gst_parse_codec( GstStructure* caps )
 	if( !codec )
 		return videoOptions::CODEC_UNKNOWN;
 	
-	if( strcasecmp(codec, "video/x-raw") == 0 )
+	if( strcasecmp(codec, "video/x-raw") == 0 || strcasecmp(codec, "video/x-bayer") == 0 )
 		return videoOptions::CODEC_RAW;
 	else if( strcasecmp(codec, "video/x-h264") == 0 )
 		return videoOptions::CODEC_H264;
