@@ -31,6 +31,7 @@
 #include <string.h>
 
 #include "cudaColorspace.h"
+#include "filesystem.h"
 #include "logging.h"
 
 #include "NvInfer.h"
@@ -151,13 +152,17 @@ bool gstCamera::buildLaunchStr()
 	else
 	{
 		ss << "v4l2src device=" << mOptions.resource.path << " ! ";
-		ss << gst_codec_to_string(mOptions.codec) << ", ";
 		
-		if( mOptions.codec == videoOptions::CODEC_RAW )
-			ss << "format=(string)" << gst_format_to_string(mFormatYUV) << ", ";
+		if( mOptions.codec != videoOptions::CODEC_UNKNOWN )
+		{
+			ss << gst_codec_to_string(mOptions.codec) << ", ";
+			
+			if( mOptions.codec == videoOptions::CODEC_RAW )
+				ss << "format=(string)" << gst_format_to_string(mFormatYUV) << ", ";
+			
+			ss << "width=(int)" << GetWidth() << ", height=(int)" << GetHeight() << " ! "; 
+		}
 		
-		ss << "width=(int)" << GetWidth() << ", height=(int)" << GetHeight() << " ! "; 
-
 		if( mOptions.codec == videoOptions::CODEC_H264 )
 			ss << "h264parse ! omxh264dec ! video/x-raw ! ";
 		else if( mOptions.codec == videoOptions::CODEC_H265 )
@@ -385,8 +390,16 @@ bool gstCamera::init()
 	// discover device stats
 	if( !discover() )
 	{
-		LogError(LOG_GSTREAMER "gstCamera -- resource discovery and auto-negotiation failed\n");
-		return false;
+		if( mOptions.resource.protocol == "v4l2" && fileExists(mOptions.resource.path) )
+		{
+			LogWarning(LOG_GSTREAMER "gstCamera -- device discovery failed, but %s exists\n", mOptions.resource.path.c_str());
+			LogWarning(LOG_GSTREAMER "             support for compressed formats is disabled\n");
+		}
+		else
+		{
+			LogError(LOG_GSTREAMER "gstCamera -- device discovery and auto-negotiation failed\n");
+			return false;
+		}
 	}
 	
 	// build pipeline string
