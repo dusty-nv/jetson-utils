@@ -318,13 +318,24 @@ bool gstEncoder::buildLaunchStr()
 		{
 			ss << "matroskamux ! ";
 		}
-		else if( uri.extension == "avi" )
-		{
-			ss << "avimux ! ";
-		}
 		else if( uri.extension == "flv" )
 		{
 			ss << "flvmux ! ";
+		}
+		else if( uri.extension == "avi" )
+		{
+			if( mOptions.codec == videoOptions::CODEC_H265 || mOptions.codec == videoOptions::CODEC_VP9 )
+			{
+				LogError(LOG_GSTREAMER "gstEncoder -- AVI format doesn't support codec %s\n", videoOptions::CodecToStr(mOptions.codec));
+				LogError(LOG_GSTREAMER "              supported AVI codecs are:\n");
+				LogError(LOG_GSTREAMER "                 * h264\n");
+				LogError(LOG_GSTREAMER "                 * vp8\n");
+				LogError(LOG_GSTREAMER "                 * mjpeg\n");
+
+				return false;
+			}
+
+			ss << "avimux ! ";
 		}
 		else if( uri.extension == "mp4" || uri.extension == "qt" )
 		{
@@ -350,8 +361,7 @@ bool gstEncoder::buildLaunchStr()
 
 		ss << "filesink location=" << uri.path;
 
-		//if( ipLen > 0 )
-		//	ss << " t. ! ";	// begin the second tee
+		mOptions.deviceType = videoOptions::DEVICE_FILE;
 	}
 	else if( uri.protocol == "rtp" )
 	{
@@ -362,6 +372,8 @@ bool gstEncoder::buildLaunchStr()
 			ss << "port=" << uri.port;
 
 		ss << " auto-multicast=true";
+
+		mOptions.deviceType = videoOptions::DEVICE_IP;
 	}
 
 	mLaunchStr = ss.str();
