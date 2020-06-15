@@ -53,7 +53,7 @@ while output.IsStreaming():
 	image = input.Capture()
 	#print(image)
 	output.Render(image)
-	output.SetStatus("Video Viewer | {:d}x{:d} | {:d} FPS".format(image.width, image.height, output.GetFrameRate()))
+	output.SetStatus("Video Viewer | {:d}x{:d} | {:.1f} FPS".format(image.width, image.height, output.GetFrameRate()))
 	
 
 
