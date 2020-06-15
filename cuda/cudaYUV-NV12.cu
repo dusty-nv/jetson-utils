@@ -42,12 +42,15 @@ static inline __device__ T YUV2RGB(const uint3& yuvi)
 	const float v    = float(yuvi.z) - 512.0f;
 	const float s    = 1.0f / 1024.0f * 255.0f;	// TODO clamp for uchar output?
 
-	// R = Y + 1.140V
-   	// G = Y - 0.395U - 0.581V
-   	// B = Y + 2.032U
+#if 1
+	return make_vec<T>(clamp((luma + 1.402f * v) * s),
+				    clamp((luma - 0.344f * u - 0.714f * v) * s),
+				    clamp((luma + 1.772f * u) * s), 255);
+#else
 	return make_vec<T>(clamp((luma + 1.140f * v) * s),
 				    clamp((luma - 0.395f * u - 0.581f * v) * s),
 				    clamp((luma + 2.032f * u) * s), 255);
+#endif
 }
 
 
