@@ -91,7 +91,8 @@ public:
 		DEVICE_V4L2,
 		DEVICE_CSI,
 		DEVICE_IP,
-		DEVICE_FILE
+		DEVICE_FILE,
+		DEVICE_DISPLAY
 	};
 
 	/**

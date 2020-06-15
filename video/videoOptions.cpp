@@ -56,17 +56,18 @@ void videoOptions::Print( const char* prefix ) const
 	LogInfo("------------------------------------------------\n");
 	resource.Print("  ");
 
+	LogInfo("  -- deviceType: %s\n", DeviceTypeToStr(deviceType));
+	LogInfo("  -- ioType:     %s\n", IoTypeToStr(ioType));
+	LogInfo("  -- codec:      %s\n", CodecToStr(codec));
 	LogInfo("  -- width:      %u\n", width);
 	LogInfo("  -- height:     %u\n", height);
 	LogInfo("  -- frameRate:  %f\n", frameRate);
 	LogInfo("  -- bitRate:    %u\n", bitRate);
 	LogInfo("  -- numBuffers: %u\n", numBuffers);
-	LogInfo("  -- zeroCopy:   %s\n", zeroCopy ? "true" : "false");
-	LogInfo("  -- loop:       %i\n", loop);
-	LogInfo("  -- codec:      %s\n", CodecToStr(codec));
+	LogInfo("  -- zeroCopy:   %s\n", zeroCopy ? "true" : "false");	
 	LogInfo("  -- flipMethod: %s\n", FlipMethodToStr(flipMethod));
-	LogInfo("  -- ioType:     %s\n", IoTypeToStr(ioType));
-
+	LogInfo("  -- loop:       %i\n", loop);
+	
 	LogInfo("------------------------------------------------\n");
 }
 
@@ -210,6 +211,7 @@ const char* videoOptions::DeviceTypeToStr( videoOptions::DeviceType type )
 		case DEVICE_CSI:		return "csi";
 		case DEVICE_IP:		return "ip";
 		case DEVICE_FILE:		return "file";
+		case DEVICE_DISPLAY:	return "display";
 	}
 }
 
@@ -220,7 +222,7 @@ videoOptions::DeviceType videoOptions::DeviceTypeFromStr( const char* str )
 	if( !str )
 		return DEVICE_DEFAULT;
 
-	for( int n=0; n <= DEVICE_FILE; n++ )
+	for( int n=0; n <= DEVICE_DISPLAY; n++ )
 	{
 		const DeviceType value = (DeviceType)n;
 
