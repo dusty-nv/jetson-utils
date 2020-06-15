@@ -523,7 +523,7 @@ static PyObject* PyVideoOutput_GetFrameRate( PyVideoOutput_Object* self )
 		return NULL;
 	}
 
-	return PYLONG_FROM_UNSIGNED_LONG(self->output->GetFrameRate());
+	return PyFloat_FromDouble(self->output->GetFrameRate());
 }
 
 // PyVideoOutput_IsStreaming
