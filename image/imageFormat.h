@@ -35,12 +35,16 @@ enum imageFormat
 {
 	// RGB
 	IMAGE_RGB8=0,
-	IMAGE_RGB32F,
-
-	// RGBA
 	IMAGE_RGBA8,
+	IMAGE_RGB32F,
 	IMAGE_RGBA32F,
 
+	// BGR
+	IMAGE_BGR8,
+	IMAGE_BGRA8,
+	IMAGE_BGR32F,
+	IMAGE_BGRA32F,
+	
 	// YUV
 	IMAGE_YUYV,
 	IMAGE_YUY2=IMAGE_YUYV,
@@ -48,6 +52,12 @@ enum imageFormat
 	IMAGE_I420,
 	IMAGE_YV12,
 	IMAGE_NV12,
+	
+	// Bayer
+	IMAGE_BAYER_BGGR,
+	IMAGE_BAYER_GBRG,
+	IMAGE_BAYER_GRBG,
+	IMAGE_BAYER_RGGB,
 	
 	// grayscale
 	IMAGE_GRAY8,	
@@ -68,6 +78,11 @@ inline const char* imageFormatToStr( imageFormat format );
  * @ingroup image
  */
 inline imageFormat imageFormatFromStr( const char* str );
+
+/**
+ * @ingroup image
+ */
+inline bool imageFormatIsBayer( imageFormat format );
 
 /**
  * Number of image channels in format

@@ -32,23 +32,39 @@ inline const char* imageFormatToStr( imageFormat format )
 {
 	switch(format)
 	{
-		case IMAGE_RGB8:	 return "rgb8";
-		case IMAGE_RGBA8:	 return "rgba8";
-		case IMAGE_RGB32F:	 return "rgb32f";
-		case IMAGE_RGBA32F:	 return "rgba32f";
-		case IMAGE_I420:	 return "i420";
-		case IMAGE_YV12:	 return "yv12";
-		case IMAGE_NV12:	 return "nv12";
-		case IMAGE_UYVY:	 return "uyvy";
-		case IMAGE_YUYV:	 return "yuyv";
-		case IMAGE_GRAY8:	 return "gray8";
-		case IMAGE_GRAY32:  return "gray32";
-		case IMAGE_UNKNOWN: return "unknown";
+		case IMAGE_RGB8:	 	return "rgb8";
+		case IMAGE_RGBA8:	 	return "rgba8";
+		case IMAGE_RGB32F:	 	return "rgb32f";
+		case IMAGE_RGBA32F:	 	return "rgba32f";
+		case IMAGE_BGR8:	 	return "bgr8";
+		case IMAGE_BGRA8:	 	return "bgra8";
+		case IMAGE_BGR32F:	 	return "bgr32f";
+		case IMAGE_BGRA32F:	 	return "bgra32f";
+		case IMAGE_I420:	 	return "i420";
+		case IMAGE_YV12:	 	return "yv12";
+		case IMAGE_NV12:	 	return "nv12";
+		case IMAGE_UYVY:	 	return "uyvy";
+		case IMAGE_YUYV:	 	return "yuyv";
+		case IMAGE_BAYER_BGGR:	return "bayer_bggr";
+		case IMAGE_BAYER_GBRG:	return "bayer_gbrg";
+		case IMAGE_BAYER_GRBG:	return "bayer_grbg";
+		case IMAGE_BAYER_RGGB:	return "bayer_rggb";
+		case IMAGE_GRAY8:	 	return "gray8";
+		case IMAGE_GRAY32:  	return "gray32";
+		case IMAGE_UNKNOWN: 	return "unknown";
 	};
-
+	
 	return "unknown";
 }
 
+// imageFormatIsBayer
+inline bool imageFormatIsBayer( imageFormat format )
+{
+	if( format == IMAGE_BAYER_BGGR || format == IMAGE_BAYER_GBRG || format == IMAGE_BAYER_GRBG || format == IMAGE_BAYER_RGGB )
+		return true;
+		
+	return false;
+}
 
 // imageFormatFromStr
 inline imageFormat imageFormatFromStr( const char* str )
@@ -80,17 +96,25 @@ inline size_t imageFormatChannels( imageFormat format )
 {
 	switch(format)
 	{
-		case IMAGE_RGB8:	return 3;
-		case IMAGE_RGBA8:	return 4;
-		case IMAGE_RGB32F:	return 3;
-		case IMAGE_RGBA32F: return 4;
-		case IMAGE_GRAY8:	return 1;
-		case IMAGE_GRAY32:	return 1;
-		case IMAGE_I420:	return 3;
-		case IMAGE_YV12:	return 3;
-		case IMAGE_NV12:	return 3;
-		case IMAGE_UYVY:	return 3;
-		case IMAGE_YUYV:	return 3;
+		case IMAGE_RGB8:
+		case IMAGE_RGB32F:
+		case IMAGE_BGR8:
+		case IMAGE_BGR32F:		return 3;
+		case IMAGE_RGBA8:
+		case IMAGE_RGBA32F:
+		case IMAGE_BGRA8:
+		case IMAGE_BGRA32F: 	return 4;
+		case IMAGE_GRAY8:
+		case IMAGE_GRAY32:		return 1;
+		case IMAGE_I420:
+		case IMAGE_YV12:
+		case IMAGE_NV12:
+		case IMAGE_UYVY:
+		case IMAGE_YUYV:		return 3;
+		case IMAGE_BAYER_BGGR:
+		case IMAGE_BAYER_GBRG:
+		case IMAGE_BAYER_GRBG:
+		case IMAGE_BAYER_RGGB:	return 1;
 	}
 
 	return 0;
@@ -113,6 +137,10 @@ inline size_t imageFormatDepth( imageFormat format )
 		case IMAGE_NV12:	return 12;
 		case IMAGE_UYVY:	return 16;
 		case IMAGE_YUYV:	return 16;
+		case IMAGE_BAYER_BGGR:
+		case IMAGE_BAYER_GBRG:
+		case IMAGE_BAYER_GRBG:
+		case IMAGE_BAYER_RGGB:	return sizeof(unsigned char) * 8;
 	}
 
 	return 0;
