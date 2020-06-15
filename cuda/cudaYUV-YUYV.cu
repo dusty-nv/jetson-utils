@@ -142,107 +142,24 @@ cudaError_t launchYUYV( void* input, size_t inputPitch, T* output, size_t output
 // cudaUYVYToRGBA (uchar4)
 cudaError_t cudaUYVYToRGBA( void* input, uchar4* output, size_t width, size_t height )
 {
-	return cudaUYVYToRGBA(input, width * sizeof(uchar2), output, width * sizeof(uchar4), width, height);
-}
-
-// cudaUYVYToRGBA (uchar4)
-cudaError_t cudaUYVYToRGBA( void* input, size_t inputPitch, uchar4* output, size_t outputPitch, size_t width, size_t height )
-{
-	return launchYUYV<uchar8, uint8_t, true>(input, inputPitch, (uchar8*)output, outputPitch, width, height);
+	return launchYUYV<uchar8, uint8_t, true>(input, width * sizeof(uchar2), (uchar8*)output, width * sizeof(uchar4), width, height);
 }
 
 // cudaYUYVToRGBA (uchar4)
 cudaError_t cudaYUYVToRGBA( void* input, uchar4* output, size_t width, size_t height )
 {
-	return cudaYUYVToRGBA(input, width * sizeof(uchar2), output, width * sizeof(uchar4), width, height);
-}
-
-// cudaYUYVToRGBA (uchar4)
-cudaError_t cudaYUYVToRGBA( void* input, size_t inputPitch, uchar4* output, size_t outputPitch, size_t width, size_t height )
-{
-	return launchYUYV<uchar8, uint8_t, false>(input, inputPitch, (uchar8*)output, outputPitch, width, height);
+	return launchYUYV<uchar8, uint8_t, false>(input, width * sizeof(uchar2), (uchar8*)output, width * sizeof(uchar4), width, height);
 }
 
 // cudaUYVYToRGBA (float4)
 cudaError_t cudaUYVYToRGBA( void* input, float4* output, size_t width, size_t height )
 {
-	return cudaUYVYToRGBA(input, width * sizeof(uchar2), output, width * sizeof(float4), width, height);
-}
-
-// cudaUYVYToRGBA (float4)
-cudaError_t cudaUYVYToRGBA( void* input, size_t inputPitch, float4* output, size_t outputPitch, size_t width, size_t height )
-{
-	return launchYUYV<float8, float, true>(input, inputPitch, (float8*)output, outputPitch, width, height);
+	return launchYUYV<float8, float, true>(input, width * sizeof(uchar2), (float8*)output, width * sizeof(float4), width, height);
 }
 
 // cudaYUYVToRGBA (float4)
 cudaError_t cudaYUYVToRGBA( void* input, float4* output, size_t width, size_t height )
 {
-	return cudaYUYVToRGBA(input, width * sizeof(uchar2), output, width * sizeof(float4), width, height);
-}
-
-// cudaYUYVToRGBA (float4)
-cudaError_t cudaYUYVToRGBA( void* input, size_t inputPitch, float4* output, size_t outputPitch, size_t width, size_t height )
-{
-	return launchYUYV<float8, float, false>(input, inputPitch, (float8*)output, outputPitch, width, height);
-}
-
-
-//-----------------------------------------------------------------------------------
-// YUYV/UYVY to grayscale
-//-----------------------------------------------------------------------------------
-
-template <bool formatUYVY>
-__global__ void yuyvToGray( uchar4* src, int srcAlignedWidth, float2* dst, int dstAlignedWidth, int width, int height )
-{
-	const int x = blockIdx.x * blockDim.x + threadIdx.x;
-	const int y = blockIdx.y * blockDim.y + threadIdx.y;
-
-	if( x >= srcAlignedWidth || y >= height )
-		return;
-
-	const uchar4 macroPx = src[y * srcAlignedWidth + x];
-
-	const float y0 = formatUYVY ? macroPx.y : macroPx.x;
-	const float y1 = formatUYVY ? macroPx.w : macroPx.z; 
-
-	dst[y * dstAlignedWidth + x] = make_float2(y0/255.0f, y1/255.0f);
-} 
-
-template<bool formatUYVY>
-cudaError_t launchGrayYUYV( void* input, size_t inputPitch, float* output, size_t outputPitch, size_t width, size_t height)
-{
-	if( !input || !inputPitch || !output || !outputPitch || !width || !height )
-		return cudaErrorInvalidValue;
-
-	const dim3 block(8,8);
-	const dim3 grid(iDivUp(width/2, block.x), iDivUp(height, block.y));
-
-	const int srcAlignedWidth = inputPitch / sizeof(uchar4);	// normally would be uchar2, but we're doubling up pixels
-	const int dstAlignedWidth = outputPitch / sizeof(float2);	// normally would be float ^^^
-
-	yuyvToGray<formatUYVY><<<grid, block>>>((uchar4*)input, srcAlignedWidth, (float2*)output, dstAlignedWidth, width, height);
-
-	return CUDA(cudaGetLastError());
-}
-
-cudaError_t cudaUYVYToGray( void* input, float* output, size_t width, size_t height )
-{
-	return cudaUYVYToGray(input, width * sizeof(uchar2), output, width * sizeof(uint8_t), width, height);
-}
-
-cudaError_t cudaUYVYToGray( void* input, size_t inputPitch, float* output, size_t outputPitch, size_t width, size_t height )
-{
-	return launchGrayYUYV<true>(input, inputPitch, output, outputPitch, width, height);
-}
-
-cudaError_t cudaYUYVToGray( void* input, float* output, size_t width, size_t height )
-{
-	return cudaYUYVToGray(input, width * sizeof(uchar2), output, width * sizeof(float), width, height);
-}
-
-cudaError_t cudaYUYVToGray( void* input, size_t inputPitch, float* output, size_t outputPitch, size_t width, size_t height )
-{
-	return launchGrayYUYV<false>(input, inputPitch, output, outputPitch, width, height);
+	return launchYUYV<float8, float, false>(input, width * sizeof(uchar2), (float8*)output, width * sizeof(float4), width, height);
 }
 
