@@ -96,7 +96,7 @@ int main( int argc, char** argv )
 
 			// update status bar
 			char str[256];
-			sprintf(str, "Video Viewer (%ux%u) | %u FPS", inputStream->GetWidth(), inputStream->GetHeight(), outputStream->GetFrameRate());
+			sprintf(str, "Video Viewer (%ux%u) | %.1f FPS", inputStream->GetWidth(), inputStream->GetHeight(), outputStream->GetFrameRate());
 			outputStream->SetStatus(str);	
 
 			// check if the user quit
