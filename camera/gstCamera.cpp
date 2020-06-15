@@ -214,7 +214,7 @@ bool gstCamera::printCaps( GstCaps* device_caps )
 
 
 // parseCaps
-bool gstCamera::parseCaps( GstStructure* caps, videoOptions::Codec* _codec, imageFormat* _format, uint32_t* _width, uint32_t* _height )
+bool gstCamera::parseCaps( GstStructure* caps, videoOptions::Codec* _codec, imageFormat* _format, uint32_t* _width, uint32_t* _height, float* _frameRate )
 {
 	// parse codec/format
 	const videoOptions::Codec codec = gst_parse_codec(caps);
@@ -240,11 +240,52 @@ bool gstCamera::parseCaps( GstStructure* caps, videoOptions::Codec* _codec, imag
 		return false;
 	}
 	
-	*_codec  = codec;
-	*_format = format;
-	*_width  = width;
-	*_height = height;
-	 
+	// get highest framerate
+	float frameRate = 0;
+	int frameRateNum = 0;
+	int frameRateDenom = 0;
+	
+	if( gst_structure_get_fraction(caps, "framerate", &frameRateNum, &frameRateDenom) )
+	{
+		frameRate = float(frameRateNum) / float(frameRateDenom);
+	}
+	else
+	{
+		// it's a list of framerates, pick the max
+		GValueArray* frameRateList = NULL;
+
+		if( gst_structure_get_list(caps, "framerate", &frameRateList) && frameRateList->n_values > 0 )
+		{
+			for( uint32_t n=0; n < frameRateList->n_values; n++ )
+			{
+				GValue* value = frameRateList->values + n;
+
+				if( GST_VALUE_HOLDS_FRACTION(value) )
+				{
+					frameRateNum = gst_value_get_fraction_numerator(value);
+					frameRateDenom = gst_value_get_fraction_denominator(value);
+
+					if( frameRateNum > 0 && frameRateDenom > 0 )
+					{
+						const float rate = float(frameRateNum) / float(frameRateDenom);
+		
+						if( rate > frameRate )
+							frameRate = rate;
+					}
+				}
+			}
+		}
+	}
+	
+	if( frameRate <= 0.0f )
+		LogWarning(LOG_GSTREAMER "gstCamera -- missing framerate in caps, ignoring\n");
+
+	*_codec     = codec;
+	*_format    = format;
+	*_width     = width;
+	*_height    = height;
+	*_frameRate = frameRate;
+
 	return true;
 }
 
@@ -254,8 +295,11 @@ bool gstCamera::matchCaps( GstCaps* device_caps )
 {
 	const uint32_t numCaps = gst_caps_get_size(device_caps);
 	GstStructure* bestCaps = NULL;
-	int           bestDist = 1000000;
-	
+
+	int   bestResolution = 1000000;
+	float bestFrameRate = 0.0f;
+	videoOptions::Codec bestCodec = videoOptions::CODEC_UNKNOWN;
+
 	for( uint32_t n=0; n < numCaps; n++ )
 	{
 		GstStructure* caps = gst_caps_get_structure(device_caps, n);
@@ -266,20 +310,25 @@ bool gstCamera::matchCaps( GstCaps* device_caps )
 		videoOptions::Codec codec;
 		imageFormat format;
 		uint32_t width, height;
-		
-		if( !parseCaps(caps, &codec, &format, &width, &height) )
+		float frameRate;
+
+		if( !parseCaps(caps, &codec, &format, &width, &height, &frameRate) )
 			continue;
 	
-		const int dist = abs(int(mOptions.width) - int(width)) + abs(int(mOptions.height) - int(height));
+		const int resolutionDiff = abs(int(mOptions.width) - int(width)) + abs(int(mOptions.height) - int(height));
 	
-		if( dist < bestDist )
+		// pick this one if the resolution is closer, or if the resolution is the same but the framerate is better
+		// (or if the framerate is the same and previous codec was MJPEG, pick the new one because MJPEG isn't preferred)
+		if( resolutionDiff < bestResolution || (resolutionDiff == bestResolution && (frameRate > bestFrameRate || bestCodec == videoOptions::CODEC_MJPEG)) )
 		{
-			bestDist = dist;
+			bestResolution = resolutionDiff;
+			bestFrameRate = frameRate;
+			bestCodec = codec;
 			bestCaps = caps;
 		}
 		
-		if( dist == 0 )
-			break;
+		//if( resolutionDiff == 0 )
+		//	break;
 	}
 		
 	if( !bestCaps )
@@ -288,7 +337,7 @@ bool gstCamera::matchCaps( GstCaps* device_caps )
 		return false;
 	}
 	
-	if( !parseCaps(bestCaps, &mOptions.codec, &mFormatYUV, &mOptions.width, &mOptions.height) )
+	if( !parseCaps(bestCaps, &mOptions.codec, &mFormatYUV, &mOptions.width, &mOptions.height, &mOptions.frameRate) )
 		return false;
 	
 	return true;
@@ -375,7 +424,7 @@ bool gstCamera::discover()
 	if( !matchCaps(device_caps) )
 		return false;
 	
-	LogVerbose(LOG_GSTREAMER "gstCamera -- selected codec=%s format=%s width=%u height=%u\n", videoOptions::CodecToStr(mOptions.codec), imageFormatToStr(mFormatYUV), GetWidth(), GetHeight());
+	LogVerbose(LOG_GSTREAMER "gstCamera -- selected device profile:  codec=%s format=%s width=%u height=%u\n", videoOptions::CodecToStr(mOptions.codec), imageFormatToStr(mFormatYUV), GetWidth(), GetHeight());
 	
 	return true;
 }
@@ -538,17 +587,20 @@ void gstCamera::checkBuffer()
 		return;
 	}
 	
-	//gst_util_dump_mem(map.data, map.size); 
-
-	void* gstData = map.data; //GST_BUFFER_DATA(gstBuffer);
-	const uint32_t gstSize = map.size; //GST_BUFFER_SIZE(gstBuffer);
+	const void* gstData = map.data;
+	const gsize gstSize = map.maxsize; //map.size;
 	
 	if( !gstData )
 	{
-		LogError(LOG_GSTREAMER "gstCamera -- gst_buffer had NULL data pointer...\n");
+		LogError(LOG_GSTREAMER "gstCamera -- gst_buffer_map had NULL data pointer...\n");
 		release_return;
 	}
 	
+	if( map.maxsize > map.size && mFrameCount == 0 ) 
+	{
+		LogWarning(LOG_GSTREAMER "gstCamera -- map buffer size was less than max size (%zu vs %zu)\n", map.size, map.maxsize);
+	}
+
 	// retrieve caps
 	GstCaps* gstCaps = gst_sample_get_caps(gstSample);
 	
@@ -594,19 +646,19 @@ void gstCamera::checkBuffer()
 		
 		if( mFormatYUV == IMAGE_UNKNOWN )
 		{
-			LogError(LOG_GSTREAMER "gstCamera -- device %s does not have a compatible format\n", mOptions.resource.path.c_str());
+			LogError(LOG_GSTREAMER "gstCamera -- device %s does not have a compatible decoded format\n", mOptions.resource.path.c_str());
 			release_return;
 		}
 		
-		LogVerbose(LOG_GSTREAMER "gstCamera -- recieved first frame, codec=%s format=%s width=%u height=%u\n", videoOptions::CodecToStr(mOptions.codec), imageFormatToStr(mFormatYUV), GetWidth(), GetHeight());
+		LogVerbose(LOG_GSTREAMER "gstCamera -- recieved first frame, codec=%s format=%s width=%u height=%u size=%zu\n", videoOptions::CodecToStr(mOptions.codec), imageFormatToStr(mFormatYUV), GetWidth(), GetHeight(), gstSize);
 	}
 	
-	LogDebug(LOG_GSTREAMER "gstCamera recieved %ix%i %s frame (%u bytes)\n", width, height, imageFormatToStr(mFormatYUV), gstSize);
+	LogDebug(LOG_GSTREAMER "gstCamera recieved %ix%i %s frame (%zu bytes)\n", width, height, imageFormatToStr(mFormatYUV), gstSize);
 	
 	// make sure ringbuffer is allocated
 	if( !mBufferYUV.Alloc(mOptions.numBuffers, gstSize, RingBuffer::ZeroCopy) )
 	{
-		LogError(LOG_GSTREAMER "gstCamera -- failed to allocate %u buffers (%u bytes each)\n", mOptions.numBuffers, gstSize);
+		LogError(LOG_GSTREAMER "gstCamera -- failed to allocate %u buffers (%zu bytes each)\n", mOptions.numBuffers, gstSize);
 		release_return;
 	}
 
