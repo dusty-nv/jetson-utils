@@ -39,8 +39,16 @@
 
 // 
 // RTP test source pipeline:
-//  $ 
-//  rtp://@:5000
+//  (from PC)     $ gst-launch-1.0 -v videotestsrc ! video/x-raw,width=300,height=300,framerate=30/1 ! x264enc ! rtph264pay ! udpsink host=127.0.0.1 port=5000
+//  (from Jetson) $ ./video-viewer test.mkv rtp://@:5000
+// 
+// RTP test recieve pipeline:
+//  (from PC)     $ gst-launch-1.0 -v udpsrc port=5000 caps = "application/x-rtp, media=(string)video, clock-rate=(int)90000, encoding-name=(string)H264, payload=(int)96" ! rtph264depay ! decodebin ! videoconvert ! autovideosink
+//  (from Jetson) $ ./video-viewer rtp://@:5000
+//  (from VLC)    SDP file contents:
+//                c=IN IP4 127.0.0.1
+//                m=video 5000 RTP/AVP 96
+//                a=rtpmap:96 H264/90000
 //
 // RSTP test server installation:
 //  $ git clone https://github.com/GStreamer/gst-rtsp-server && cd gst-rtsp-server
@@ -88,6 +96,7 @@ gstDecoder::gstDecoder( const videoOptions& options ) : videoSource(options)
 	mEOS        = false;
 	mLoopCount  = 1;
 	mFrameCount = 0;
+	mFormatYUV  = IMAGE_UNKNOWN;
 
 	mBufferRGB.SetThreaded(false);
 }
@@ -707,9 +716,17 @@ void gstDecoder::checkBuffer()
 	const void* gstData = map.data;
 	const gsize gstSize = map.maxsize; //map.size;
 
+	if( !gstData )
+	{
+		LogError(LOG_GSTREAMER "gstDecoder -- gst_buffer_map had NULL data pointer...\n");
+		release_return;
+	}
+
 	if( map.maxsize > map.size && mFrameCount == 0 ) 
+	{
 		LogWarning(LOG_GSTREAMER "gstDecoder -- map buffer size was less than max size (%zu vs %zu)\n", map.size, map.maxsize);
-	
+	}
+
 #else
 	// block waiting for the buffer
 	GstBuffer* gstBuffer = gst_app_sink_pull_buffer(mAppSink);
@@ -763,14 +780,28 @@ void gstDecoder::checkBuffer()
 		release_return;
 	}
 	
-	LogDebug(LOG_GSTREAMER "gstDecoder -- recieved %ix%i frame (%zu bytes)\n", width, height, gstSize);
-		
 	if( width < 1 || height < 1 )
 		release_return;
 	
 	mOptions.width = width;
 	mOptions.height = height;
 
+	// verify format 
+	if( mFrameCount == 0 )
+	{
+		mFormatYUV = gst_parse_format(gstCapsStruct);
+		
+		if( mFormatYUV == IMAGE_UNKNOWN )
+		{
+			LogError(LOG_GSTREAMER "gstDecoder -- stream %s does not have a compatible decoded format\n", mOptions.resource.c_str());
+			release_return;
+		}
+		
+		LogVerbose(LOG_GSTREAMER "gstDecoder -- recieved first frame, codec=%s format=%s width=%u height=%u size=%zu\n", videoOptions::CodecToStr(mOptions.codec), imageFormatToStr(mFormatYUV), GetWidth(), GetHeight(), gstSize);
+	}
+
+	LogDebug(LOG_GSTREAMER "gstDecoder -- recieved %ix%i frame (%zu bytes)\n", width, height, gstSize);
+		
 	// allocate ringbuffer
 	if( !mBufferYUV.Alloc(mOptions.numBuffers, gstSize, RingBuffer::ZeroCopy) )
 	{
@@ -835,9 +866,8 @@ bool gstDecoder::Capture( void** output, imageFormat format, uint64_t timeout )
 
 	// perform colorspace conversion
 	void* nextRGB = mBufferRGB.Next(RingBuffer::Write);
-	const imageFormat formatYUV = (mOptions.codec == videoOptions::CODEC_MJPEG) ? IMAGE_I420 : IMAGE_NV12;
 
-	if( CUDA_FAILED(cudaConvertColor(latestYUV, formatYUV, nextRGB, format, GetWidth(), GetHeight())) )
+	if( CUDA_FAILED(cudaConvertColor(latestYUV, mFormatYUV, nextRGB, format, GetWidth(), GetHeight())) )
 	{
 		LogError(LOG_GSTREAMER "gstDecoder::Capture() -- unsupported image format (%s)\n", imageFormatToStr(format));
 		LogError(LOG_GSTREAMER "                         supported formats are:\n");

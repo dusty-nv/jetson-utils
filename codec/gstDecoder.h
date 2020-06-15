@@ -130,6 +130,7 @@ protected:
 	bool         mEOS;
 	size_t	   mLoopCount;
 	size_t	   mFrameCount;
+	imageFormat  mFormatYUV;
 };
   
 #endif
