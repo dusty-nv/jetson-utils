@@ -126,17 +126,17 @@ inline size_t imageFormatDepth( imageFormat format )
 {
 	switch(format)
 	{
-		case IMAGE_RGB8:	return sizeof(uchar3) * 8;
-		case IMAGE_RGBA8:	return sizeof(uchar4) * 8;
-		case IMAGE_RGB32F:	return sizeof(float3) * 8;
-		case IMAGE_RGBA32F: return sizeof(float4) * 8;
-		case IMAGE_GRAY8:	return sizeof(unsigned char) * 8;
-		case IMAGE_GRAY32:	return sizeof(float) * 8;
-		case IMAGE_I420:	return 12;
-		case IMAGE_YV12:	return 12;
-		case IMAGE_NV12:	return 12;
-		case IMAGE_UYVY:	return 16;
-		case IMAGE_YUYV:	return 16;
+		case IMAGE_RGB8:		return sizeof(uchar3) * 8;
+		case IMAGE_RGBA8:		return sizeof(uchar4) * 8;
+		case IMAGE_RGB32F:		return sizeof(float3) * 8;
+		case IMAGE_RGBA32F: 	return sizeof(float4) * 8;
+		case IMAGE_GRAY8:		return sizeof(unsigned char) * 8;
+		case IMAGE_GRAY32:		return sizeof(float) * 8;
+		case IMAGE_I420:
+		case IMAGE_YV12:
+		case IMAGE_NV12:		return 12;
+		case IMAGE_UYVY:
+		case IMAGE_YUYV:		return 16;
 		case IMAGE_BAYER_BGGR:
 		case IMAGE_BAYER_GBRG:
 		case IMAGE_BAYER_GRBG:
