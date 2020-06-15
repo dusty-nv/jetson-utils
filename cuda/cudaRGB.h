@@ -29,6 +29,48 @@
 
 
 //////////////////////////////////////////////////////////////////////////////////
+/// @name RGB/RGBA to BGR/BGRA (or vice-versa)
+/// @ingroup colorspace
+//////////////////////////////////////////////////////////////////////////////////
+
+///@{
+	
+/**
+ * Convert uchar3 RGB image to uchar3 BGR (or convert BGR to RGB).
+ * This function swaps the red and blue channels, so if the input is RGB it will 
+ * be converted to RGB, and if the input is BGR it will be converted to RGB.
+ * @ingroup colorspace
+ */
+cudaError_t cudaRGB8ToBGR8( uchar3* input, uchar3* output, size_t width, size_t height );
+
+/**
+ * Convert float3 RGB image to float3 BGR (or convert BGR to RGB).
+ * This function swaps the red and blue channels, so if the input is RGB it will 
+ * be converted to RGB, and if the input is BGR it will be converted to RGB.
+ * @ingroup colorspace
+ */
+cudaError_t cudaRGB32ToBGR32( float3* input, float3* output, size_t width, size_t height );
+
+/**
+ * Convert uchar4 RGBA image to uchar4 BGRA (or convert BGRA to RGBA).
+ * This function swaps the red and blue channels, so if the input is RGBA it will 
+ * be converted to RGBA, and if the input is BGR it will be converted to RGBA.
+ * @ingroup colorspace
+ */
+cudaError_t cudaRGBA8ToBGRA8( uchar4* input, uchar4* output, size_t width, size_t height );
+
+/**
+ * Convert float4 RGBA image to float4 BGRA (or convert BGRA to RGBA).
+ * This function swaps the red and blue channels, so if the input is RGBA it will 
+ * be converted to RGBA, and if the input is BGR it will be converted to RGBA.
+ * @ingroup colorspace
+ */
+cudaError_t cudaRGBA32ToBGRA32( float4* input, float4* output, size_t width, size_t height );
+
+
+///@}
+	
+//////////////////////////////////////////////////////////////////////////////////
 /// @name 8-bit RGB/BGR to 8-bit RGBA/BGRA (or vice-versa)
 /// @ingroup colorspace
 //////////////////////////////////////////////////////////////////////////////////
