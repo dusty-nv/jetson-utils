@@ -110,7 +110,7 @@ public:
 	/**
 	 *
 	 */
-	inline uint32_t GetFrameRate() const					{ return mOptions.frameRate; }
+	inline float GetFrameRate() const						{ return mOptions.frameRate; }
 	
 	/**
 	 *
