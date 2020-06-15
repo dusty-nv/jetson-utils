@@ -68,8 +68,6 @@ glDisplay::glDisplay( const videoOptions& options ) : videoOutput(options)
 	mDragMode      = DragDefault;
 
 	mID		     = 0;
-	//mWidth         = 0;
-	//mHeight        = 0;
 	mScreenWidth   = 0;
 	mScreenHeight  = 0;
 	mAvgTime       = 1.0f;
@@ -96,6 +94,10 @@ glDisplay::glDisplay( const videoOptions& options ) : videoOutput(options)
 	memset(mMouseButtons, 0, sizeof(mMouseButtons));
 	memset(mKeyStates, 0, sizeof(mKeyStates));
  
+	// set some static video flags
+	mOptions.codec = videoOptions::CODEC_RAW;
+	mOptions.deviceType = videoOptions::DEVICE_DISPLAY;
+	
 	// get the starting time for FPS counter
 	clock_gettime(CLOCK_REALTIME, &mLastTime);
 	
@@ -463,7 +465,7 @@ void glDisplay::EndRender()
 	mLastTime  = currTime;
 	mRendering = false;
 
-	mOptions.frameRate = (int)GetFPS();
+	mOptions.frameRate = GetFPS();
 }
 
 
