@@ -61,12 +61,21 @@ enum imageFormat
 	
 	// grayscale
 	IMAGE_GRAY8,	
-	IMAGE_GRAY32,
+	IMAGE_GRAY32F,
 
 	// extras
 	IMAGE_COUNT,
 	IMAGE_UNKNOWN=999,
 	IMAGE_DEFAULT=IMAGE_RGBA32F
+};
+
+/**
+ * @ingroup image
+ */
+enum imageBaseType
+{
+	IMAGE_UINT8,
+	IMAGE_FLOAT
 };
 
 /**
@@ -78,11 +87,6 @@ inline const char* imageFormatToStr( imageFormat format );
  * @ingroup image
  */
 inline imageFormat imageFormatFromStr( const char* str );
-
-/**
- * @ingroup image
- */
-inline bool imageFormatIsBayer( imageFormat format );
 
 /**
  * Number of image channels in format
@@ -101,6 +105,27 @@ inline size_t imageFormatDepth( imageFormat format );
  * @ingroup image
  */
 inline size_t imageFormatSize( imageFormat format, size_t width, size_t height );
+
+/**
+ * @returns true if the imageFormat is RGB/RGBA 
+ *               (IMAGE_RGB8, IMAGE_RGBA8, IMAGE_RGB32F, IMAGE_RGBA32F)
+ *               otherwise, returns false.
+ * @ingroup image
+ */
+inline bool imageFormatIsRGB( imageFormat format );
+
+/**
+ * @returns true if the imageFormat is Bayer 
+ *               (IMAGE_BAYER_BGGR, IMAGE_BAYER_GBRG, IMAGE_BAYER_GRBG, IMAGE_BAYER_RGGB)
+ *               otherwise, returns false.
+ * @ingroup image
+ */
+inline bool imageFormatIsBayer( imageFormat format );
+
+/**
+ * @ingroup image
+ */
+inline imageBaseType imageFormatBaseType( imageFormat format );
 
 /**
  * @ingroup image

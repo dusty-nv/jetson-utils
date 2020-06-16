@@ -50,11 +50,20 @@ inline const char* imageFormatToStr( imageFormat format )
 		case IMAGE_BAYER_GRBG:	return "bayer_grbg";
 		case IMAGE_BAYER_RGGB:	return "bayer_rggb";
 		case IMAGE_GRAY8:	 	return "gray8";
-		case IMAGE_GRAY32:  	return "gray32";
+		case IMAGE_GRAY32F:  	return "gray32f";
 		case IMAGE_UNKNOWN: 	return "unknown";
 	};
 	
 	return "unknown";
+}
+
+// imageFormatIsRGB
+inline bool imageFormatIsRGB( imageFormat format )
+{
+	if( format == IMAGE_RGB8 || format == IMAGE_RGBA8 || format == IMAGE_RGB32F || format == IMAGE_RGBA32F )
+		return true;
+		
+	return false;
 }
 
 // imageFormatIsBayer
@@ -86,8 +95,28 @@ inline imageFormat imageFormatFromStr( const char* str )
 		return IMAGE_RGB32F;
 	else if( strcasecmp(str, "rgba32") == 0 )
 		return IMAGE_RGBA32F;
-		
+	else if( strcasecmp(str, "grey8") == 0 )
+		return IMAGE_GRAY8;
+	else if( strcasecmp(str, "grey32f") == 0 )
+		return IMAGE_GRAY32F;
+
 	return IMAGE_UNKNOWN;
+}
+
+
+// imageFormatBaseType
+inline imageBaseType imageFormatBaseType( imageFormat format )
+{
+	switch(format)
+	{
+		case IMAGE_GRAY32F:
+		case IMAGE_RGB32F:
+		case IMAGE_BGR32F:		
+		case IMAGE_RGBA32F: 
+		case IMAGE_BGRA32F:		return IMAGE_FLOAT;
+	}
+
+	return IMAGE_UINT8;
 }
 
 
@@ -105,7 +134,7 @@ inline size_t imageFormatChannels( imageFormat format )
 		case IMAGE_BGRA8:
 		case IMAGE_BGRA32F: 	return 4;
 		case IMAGE_GRAY8:
-		case IMAGE_GRAY32:		return 1;
+		case IMAGE_GRAY32F:		return 1;
 		case IMAGE_I420:
 		case IMAGE_YV12:
 		case IMAGE_NV12:
@@ -126,12 +155,16 @@ inline size_t imageFormatDepth( imageFormat format )
 {
 	switch(format)
 	{
-		case IMAGE_RGB8:		return sizeof(uchar3) * 8;
-		case IMAGE_RGBA8:		return sizeof(uchar4) * 8;
-		case IMAGE_RGB32F:		return sizeof(float3) * 8;
-		case IMAGE_RGBA32F: 	return sizeof(float4) * 8;
+		case IMAGE_RGB8:		
+		case IMAGE_BGR8:		return sizeof(uchar3) * 8;
+		case IMAGE_RGBA8:		
+		case IMAGE_BGRA8:		return sizeof(uchar4) * 8;
+		case IMAGE_RGB32F:		
+		case IMAGE_BGR32F:		return sizeof(float3) * 8;
+		case IMAGE_RGBA32F: 	
+		case IMAGE_BGRA32F:		return sizeof(float4) * 8;
 		case IMAGE_GRAY8:		return sizeof(unsigned char) * 8;
-		case IMAGE_GRAY32:		return sizeof(float) * 8;
+		case IMAGE_GRAY32F:		return sizeof(float) * 8;
 		case IMAGE_I420:
 		case IMAGE_YV12:
 		case IMAGE_NV12:		return 12;
