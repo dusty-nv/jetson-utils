@@ -27,10 +27,10 @@
 
 
 // Register functions
-PyMethodDef* PyNumPy_RegisterFunctions();
+PyMethodDef* PyNumpy_RegisterFunctions();
 
 // Register types
-bool PyNumPy_RegisterTypes( PyObject* module );
+bool PyNumpy_RegisterTypes( PyObject* module );
 
 
 #endif

@@ -38,9 +38,11 @@ typedef struct {
 // PyCudaImage object
 typedef struct {
 	PyCudaMemory base;
-	uint32_t width;
-	uint32_t height;
 	imageFormat format;
+	uint32_t    width;
+	uint32_t    height;
+	Py_ssize_t  shape[3];
+	Py_ssize_t  strides[3];
 } PyCudaImage;
 
 // Create memory objects

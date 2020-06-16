@@ -20,7 +20,7 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
-#include "PyNumPy.h"
+#include "PyNumpy.h"
 #include "PyCUDA.h"
 
 #include "cudaMappedMemory.h"
@@ -35,8 +35,22 @@
 
 
 
+// imageFormat to numpy dtype
+static int PyNumpy_ConvertFormat( imageFormat format )
+{
+	const imageBaseType baseType = imageFormatBaseType(format);
+
+	if( baseType == IMAGE_FLOAT )
+		return NPY_FLOAT32;
+	else if( baseType == IMAGE_UINT8 )
+		return NPY_UINT8;
+
+	return NPY_VOID;
+}
+
+
 // cudaToNumpy()
-PyObject* PyNumPy_FromCUDA( PyObject* self, PyObject* args, PyObject* kwds )
+PyObject* PyNumpy_FromCUDA( PyObject* self, PyObject* args, PyObject* kwds )
 {
 	// parse arguments
 	PyObject* capsule = NULL;
@@ -64,7 +78,7 @@ PyObject* PyNumPy_FromCUDA( PyObject* self, PyObject* args, PyObject* kwds )
 	PyCudaImage* img = PyCUDA_GetImage(capsule);
 	
 	void* src = NULL;
-	int type = NPY_FLOAT32;	// TODO support other formats for cudaMemory case
+	int type = NPY_FLOAT32;	// float is assumed for PyCudaMemory case, but inferred for PyCudaImage case
 	bool mapped = false;
 	
 	if( !img )
@@ -87,9 +101,7 @@ PyObject* PyNumPy_FromCUDA( PyObject* self, PyObject* args, PyObject* kwds )
 		width  = img->width;
 		height = img->height;
 		depth  = imageFormatChannels(img->format);
-		
-		if( img->format == IMAGE_RGB8 || img->format == IMAGE_RGBA8 )
-			type = NPY_UINT8;
+		type   = PyNumpy_ConvertFormat(img->format);
 	}
 	
 	if( !mapped )   // TODO  support GPU-only memory
@@ -122,7 +134,7 @@ PyObject* PyNumPy_FromCUDA( PyObject* self, PyObject* args, PyObject* kwds )
 
 
 // cudaFromNumpy()
-PyObject* PyNumPy_ToCUDA( PyObject* self, PyObject* args )
+PyObject* PyNumpy_ToCUDA( PyObject* self, PyObject* args )
 {
 	PyObject* object = NULL;
 
@@ -212,38 +224,38 @@ PyObject* PyNumPy_ToCUDA( PyObject* self, PyObject* args )
 
 static PyMethodDef pyImageIO_Functions[] = 
 {
-	{ "cudaFromNumpy", (PyCFunction)PyNumPy_ToCUDA, METH_VARARGS, "Copy a numpy ndarray to CUDA memory" },
-	{ "cudaToNumpy", (PyCFunction)PyNumPy_FromCUDA, METH_VARARGS|METH_KEYWORDS, "Create a numpy ndarray wrapping the CUDA memory, without copying it" },	
+	{ "cudaFromNumpy", (PyCFunction)PyNumpy_ToCUDA, METH_VARARGS, "Copy a numpy ndarray to CUDA memory" },
+	{ "cudaToNumpy", (PyCFunction)PyNumpy_FromCUDA, METH_VARARGS|METH_KEYWORDS, "Create a numpy ndarray wrapping the CUDA memory, without copying it" },	
 	{NULL}  /* Sentinel */
 };
 
 // Register functions
-PyMethodDef* PyNumPy_RegisterFunctions()
+PyMethodDef* PyNumpy_RegisterFunctions()
 {
 	return pyImageIO_Functions;
 }
 
 // Initialize NumPy
-PyMODINIT_FUNC PyNumPy_ImportNumPy()
+PyMODINIT_FUNC PyNumpy_ImportNumPy()
 {
 	import_array();
 	//import_ufunc();	// only needed if using ufunctions
 }
 
 // Register types
-bool PyNumPy_RegisterTypes( PyObject* module )
+bool PyNumpy_RegisterTypes( PyObject* module )
 {
 	if( !module )
 		return false;
 	
-	PyNumPy_ImportNumPy();
+	PyNumpy_ImportNumPy();
 	return true;
 }
 
 #else
 
 // stub functions
-PyMethodDef* PyNumPy_RegisterFunctions()
+PyMethodDef* PyNumpy_RegisterFunctions()
 {
 	LogError(LOG_PY_UTILS "compiled without NumPy array conversion support (warning)\n");
 	LogError(LOG_PY_UTILS "if you wish to have support for converting NumPy arrays,\n");
@@ -253,7 +265,7 @@ PyMethodDef* PyNumPy_RegisterFunctions()
 }
 
 // Register types
-bool PyNumPy_RegisterTypes( PyObject* module )
+bool PyNumpy_RegisterTypes( PyObject* module )
 {
 	if( !module )
 		return false;

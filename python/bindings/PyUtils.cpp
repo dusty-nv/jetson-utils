@@ -27,7 +27,7 @@
 #include "PyVideo.h"
 #include "PyCamera.h"
 #include "PyImageIO.h"
-#include "PyNumPy.h"
+#include "PyNumpy.h"
 
 #include "logging.h"
 
@@ -79,7 +79,7 @@ bool PyUtils_RegisterFunctions()
 	PyUtils_AddFunctions(PyVideo_RegisterFunctions());
 	PyUtils_AddFunctions(PyCamera_RegisterFunctions());
 	PyUtils_AddFunctions(PyImageIO_RegisterFunctions());
-	PyUtils_AddFunctions(PyNumPy_RegisterFunctions());
+	PyUtils_AddFunctions(PyNumpy_RegisterFunctions());
 
 	LogDebug(LOG_PY_UTILS "done registering module functions\n");
 	return true;
@@ -106,7 +106,7 @@ bool PyUtils_RegisterTypes( PyObject* module )
 	if( !PyImageIO_RegisterTypes(module) )
 		LogError(LOG_PY_UTILS "failed to register ImageIO types\n");
 
-	if( !PyNumPy_RegisterTypes(module) )
+	if( !PyNumpy_RegisterTypes(module) )
 		LogError(LOG_PY_UTILS "failed to register NumPy types\n");
 
 	LogDebug(LOG_PY_UTILS "done registering module types\n");

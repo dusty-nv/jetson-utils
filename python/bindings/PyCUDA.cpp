@@ -232,8 +232,40 @@ static PyObject* PyCudaImage_New( PyTypeObject *type, PyObject *args, PyObject *
 	self->base.size = 0;
 	self->base.mapped = false;
 	self->base.freeOnDelete = true;
-
+	
+	self->width = 0;
+	self->height = 0;
+	
+	self->shape[0] = 0; self->shape[1] = 0; self->shape[2] = 0;
+	self->strides[0] = 0; self->strides[1] = 0; self->strides[2] = 0;
+	
+	self->format = IMAGE_UNKNOWN;
+	
 	return (PyObject*)self;
+}
+
+// PyCudaImage_Config
+static void PyCudaImage_Config( PyCudaImage* self, void* ptr, uint32_t width, uint32_t height, imageFormat format, bool mapped, bool freeOnDelete )
+{
+	self->base.ptr = ptr;
+	self->base.size = imageFormatSize(format, width, height);
+	self->base.mapped = mapped;
+	self->base.freeOnDelete = freeOnDelete;
+
+	const size_t bitDepth = imageFormatDepth(format);
+	
+	self->width = width;
+	self->height = height;
+	
+	self->shape[0] = height;
+	self->shape[1] = width;
+	self->shape[2] = imageFormatChannels(format);
+
+	self->strides[0] = (width * bitDepth) / 8;
+	self->strides[1] = bitDepth / 8;
+	self->strides[2] = self->strides[1] / self->shape[2];
+
+	self->format = format;
 }
 
 // PyCudaImage_Init
@@ -290,15 +322,8 @@ static int PyCudaImage_Init( PyCudaImage* self, PyObject *args, PyObject *kwds )
 			return -1;
 		}
 	}
-
-	self->width = width;
-	self->height = height;
-	self->format = format;
-
-	self->base.size = size;
-	self->base.mapped = (mapped > 0) ? true : false;
-	self->base.freeOnDelete = (freeOnDelete > 0) ? true : false;
-
+	
+	PyCudaImage_Config(self, self->base.ptr, width, height, format, (mapped > 0) ? true : false, (freeOnDelete > 0) ? true : false);
 	return 0;
 }
 
@@ -316,7 +341,7 @@ static PyObject* PyCudaImage_ToString( PyCudaImage* self )
 		   "   -- format: %s\n"
 		   "   -- mapped: %s\n"
 		   "   -- freeOnDelete: %s\n",
-		   self->base.ptr, self->base.size, self->width, self->height, imageFormatToStr(self->format), 
+		   self->base.ptr, self->base.size, (uint32_t)self->width, (uint32_t)self->height, imageFormatToStr(self->format), 
 		   self->base.mapped ? "true" : "false", self->base.freeOnDelete ? "true" : "false");
 
 	return PYSTRING_FROM_STRING(str);
@@ -339,6 +364,66 @@ static PyObject* PyCudaImage_GetFormat( PyCudaImage* self, void* closure )
 {
 	return PYSTRING_FROM_STRING(imageFormatToStr(self->format));
 }
+
+#if PY_MAJOR_VERSION >= 3
+// PyCudaImage_GetBuffer
+static int PyCudaImage_GetBuffer(PyCudaImage* self, Py_buffer* view, int flags)
+{
+	if( view == NULL ) 
+	{
+		PyErr_SetString(PyExc_BufferError, "cudaImage - NULL view in buffer view");
+		return -1;
+	}
+
+	if( !self->base.mapped )
+	{
+		PyErr_SetString(PyExc_BufferError, "cudaImage - buffer must be allocated as mapped to view as buffer");
+		return -1;
+	}	
+	
+	view->obj = (PyObject*)self;
+	view->buf = (void*)self->base.ptr;
+	view->len = self->base.size;
+	view->readonly = 0;
+	view->itemsize = (imageFormatDepth(self->format) / 8) / imageFormatChannels(self->format);
+	
+	view->ndim = 3; //(self->shape[2] > 1) ? 3 : 2;
+	view->shape = self->shape;  // length-1 sequence of dimensions
+	view->strides = self->strides;  // for the simple case we can do this
+	view->suboffsets = NULL;
+	view->internal = NULL;
+
+	switch(self->format)
+	{
+		case IMAGE_RGB8:
+		case IMAGE_BGR8:		
+		case IMAGE_RGBA8:		
+		case IMAGE_BGRA8:		
+		case IMAGE_GRAY8:				
+		case IMAGE_I420:
+		case IMAGE_YV12:
+		case IMAGE_NV12:		
+		case IMAGE_UYVY:
+		case IMAGE_YUYV:		
+		case IMAGE_BAYER_BGGR:
+		case IMAGE_BAYER_GBRG:
+		case IMAGE_BAYER_GRBG:
+		case IMAGE_BAYER_RGGB:	view->format = "B";	break;
+		case IMAGE_RGB32F:		
+		case IMAGE_RGBA32F: 	
+		case IMAGE_GRAY32F:		view->format = "f"; break;
+	}
+	
+	Py_INCREF(self);
+	return 0;
+}
+
+static PyBufferProcs pyCudaImage_AsBuffer = {
+	// this definition is only compatible with Python 3.3 and above
+	(getbufferproc)PyCudaImage_GetBuffer,
+	(releasebufferproc)0,  // we do not require any special release function
+};
+#endif
 
 static PyGetSetDef pyCudaImage_GetSet[] = 
 {
@@ -371,6 +456,10 @@ bool PyCudaImage_RegisterType( PyObject* module )
 	pyCudaImage_Type.tp_str		= (reprfunc)PyCudaImage_ToString;
 	pyCudaImage_Type.tp_doc  	= "CUDA image";
 	 
+#if PY_MAJOR_VERSION >= 3
+	pyCudaImage_Type.tp_as_buffer = &pyCudaImage_AsBuffer;
+#endif
+
 	if( PyType_Ready(&pyCudaImage_Type) < 0 )
 	{
 		LogError(LOG_PY_UTILS "PyCudaImage PyType_Ready() failed\n");
@@ -431,15 +520,7 @@ PyObject* PyCUDA_RegisterImage( void* gpuPtr, uint32_t width, uint32_t height, i
 		return NULL;
 	}
 
-	mem->base.ptr = gpuPtr;
-	mem->base.size = imageFormatSize(format, width, height);
-	mem->base.mapped = mapped;
-	mem->base.freeOnDelete = freeOnDelete;
-
-	mem->width = width;
-	mem->height = height;
-	mem->format = format;
-
+	PyCudaImage_Config(mem, gpuPtr, width, height, format, mapped, freeOnDelete);
 	return (PyObject*)mem;
 }
 
