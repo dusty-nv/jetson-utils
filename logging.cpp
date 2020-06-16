@@ -48,10 +48,11 @@ void Log::ParseCmdLine( const commandLine& cmdLine )
 	}
 	else
 	{
-		if( cmdLine.GetFlag("debug") )
-			SetLevel(DEBUG);		
 		if( cmdLine.GetFlag("verbose") )
 			SetLevel(VERBOSE);
+
+		if( cmdLine.GetFlag("debug") )
+			SetLevel(DEBUG);		
 	}
 
 	SetFile(cmdLine.GetString("log-file"));
@@ -108,6 +109,7 @@ const char* Log::LevelToStr( Log::Level level )
 {
 	switch(level)
 	{
+		case SILENT:	return "silent";
 		case ERROR:    return "error";
 		case WARNING:  return "warning";
 		case SUCCESS:  return "success";
@@ -133,6 +135,9 @@ Log::Level Log::LevelFromStr( const char* str )
 		if( strcasecmp(str, LevelToStr(level)) == 0 )
 			return level;
 	}
+
+	if( strcasecmp(str, "disable") == 0 || strcasecmp(str, "disabled") == 0 || strcasecmp(str, "none") == 0 )
+		return SILENT;
 
 	return DEFAULT;
 }

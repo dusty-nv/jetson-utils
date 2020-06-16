@@ -40,7 +40,8 @@ public:
 	 */
 	enum Level
 	{
-		ERROR = 0,
+		SILENT = 0,
+		ERROR,
 		WARNING,
 		SUCCESS,
 		INFO,
@@ -110,9 +111,7 @@ protected:
  * @ingroup log
  * @internal
  */
-#define LogMessage(level, format, args...)        \
-			if( level <= Log::GetLevel() )	\
-				fprintf(Log::GetFile(), format, ## args)		\
+#define LogMessage(level, format, args...) if( level <= Log::GetLevel() ) fprintf(Log::GetFile(), format, ## args)
 
 /**
  * @ingroup log
