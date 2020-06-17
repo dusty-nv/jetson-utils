@@ -266,6 +266,12 @@ cudaError_t cudaGray32ToRGBA32( float* srcDev, float4* dstDev, size_t width, siz
 	return launchGrayToRGB<float, float4>(srcDev, dstDev, width, height);
 }
 
+// cudaGray8ToGray32 (uint8 -> float)
+cudaError_t cudaGray8ToGray32( uint8_t* srcDev, float* dstDev, size_t width, size_t height )
+{
+	return launchGrayToRGB<uint8_t, float>(srcDev, dstDev, width, height);
+}
+
 
 //-----------------------------------------------------------------------------------
 // Grayscale to RGB (normalized)
@@ -319,3 +325,12 @@ cudaError_t cudaGray32ToRGBA8( float* srcDev, uchar4* dstDev, size_t width, size
 {
 	return launchGrayToRGB_Norm<float, uchar4>(srcDev, dstDev, width, height, inputRange);
 }
+
+// cudaGray32ToGray8 (float -> uint8)
+cudaError_t cudaGray32ToGray8( float* srcDev, uint8_t* dstDev, size_t width, size_t height, const float2& inputRange )
+{
+	return launchGrayToRGB_Norm<float, uint8_t>(srcDev, dstDev, width, height, inputRange);
+}
+
+
+

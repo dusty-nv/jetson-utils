@@ -28,8 +28,38 @@
 
 
 //////////////////////////////////////////////////////////////////////////////////
+/// @name 8-bit grayscale to floating-point grayscale (and vice versa)
+/// @see cudaConvertColor() from cudaColorspace.h for automated format conversion
+/// @ingroup colorspace
+//////////////////////////////////////////////////////////////////////////////////
+
+///@{
+
+/**
+ * Convert uint8 grayscale image into float grayscale.
+ * @ingroup colorspace
+ */
+cudaError_t cudaGray8ToGray32( uint8_t* input, float* output, size_t width, size_t height );
+
+/**
+ * Convert float grayscale image into uint8 grayscale.
+ *
+ * @param pixelRange specifies the floating-point pixel value range of the input image, 
+ *                   which is used to rescale the fixed-point pixel outputs to [0,255].
+ *                   The default input range is [0,255], where no rescaling occurs.
+ *                   Other common input ranges are [-1, 1] or [0,1].
+ *
+ * @ingroup colorspace
+ */
+cudaError_t cudaGray32ToGray8( float* input, uint8_t* output, size_t width, size_t height, 
+						 const float2& pixelRange=make_float2(0,255) );
+
+///@}
+
+
+//////////////////////////////////////////////////////////////////////////////////
 /// @name RGB/BGR to 8-bit grayscale
-/// @see cudaConvertColor() from cudaColorspace.h for automated conversion
+/// @see cudaConvertColor() from cudaColorspace.h for automated format conversion
 /// @ingroup colorspace
 //////////////////////////////////////////////////////////////////////////////////
 
@@ -92,7 +122,7 @@ cudaError_t cudaRGBA32ToGray8( float4* input, uint8_t* output, size_t width, siz
 
 //////////////////////////////////////////////////////////////////////////////////
 /// @name RGB/BGR to floating-point grayscale
-/// @see cudaConvertColor() from cudaColorspace.h for automated conversion
+/// @see cudaConvertColor() from cudaColorspace.h for automated format conversion
 /// @ingroup colorspace
 //////////////////////////////////////////////////////////////////////////////////
 
@@ -143,7 +173,7 @@ cudaError_t cudaRGBA32ToGray32( float4* input, float* output, size_t width, size
 
 //////////////////////////////////////////////////////////////////////////////////
 /// @name 8-bit grayscale to RGB/BGR
-/// @see cudaConvertColor() from cudaColorspace.h for automated conversion
+/// @see cudaConvertColor() from cudaColorspace.h for automated format conversion
 /// @ingroup colorspace
 //////////////////////////////////////////////////////////////////////////////////
 
@@ -178,7 +208,7 @@ cudaError_t cudaGray8ToRGBA32( uint8_t* input, float4* output, size_t width, siz
 
 //////////////////////////////////////////////////////////////////////////////////
 /// @name Floating-point grayscale to RGB/BGR
-/// @see cudaConvertColor() from cudaColorspace.h for automated conversion
+/// @see cudaConvertColor() from cudaColorspace.h for automated format conversion
 /// @ingroup colorspace
 //////////////////////////////////////////////////////////////////////////////////
 
@@ -195,7 +225,8 @@ cudaError_t cudaGray8ToRGBA32( uint8_t* input, float4* output, size_t width, siz
  *
  * @ingroup colorspace
  */
-cudaError_t cudaGray32ToRGB8( float* input, uchar3* output, size_t width, size_t height, const float2& pixelRange=make_float2(0,255) );
+cudaError_t cudaGray32ToRGB8( float* input, uchar3* output, size_t width, size_t height, 
+						const float2& pixelRange=make_float2(0,255) );
 
 /**
  * Convert float grayscale image into uchar4 RGB/BGR.
@@ -207,7 +238,8 @@ cudaError_t cudaGray32ToRGB8( float* input, uchar3* output, size_t width, size_t
  *
  * @ingroup colorspace
  */
-cudaError_t cudaGray32ToRGBA8( float* input, uchar4* output, size_t width, size_t height, const float2& pixelRange=make_float2(0,255) );
+cudaError_t cudaGray32ToRGBA8( float* input, uchar4* output, size_t width, size_t height, 
+						 const float2& pixelRange=make_float2(0,255) );
 
 /**
  * Convert float grayscale image into float3 RGB/BGR.

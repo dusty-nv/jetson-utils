@@ -30,7 +30,7 @@
 
 //////////////////////////////////////////////////////////////////////////////////
 /// @name RGB/RGBA to BGR/BGRA (or vice-versa)
-/// @see cudaConvertColor() from cudaColorspace.h for automated conversion
+/// @see cudaConvertColor() from cudaColorspace.h for automated format conversion
 /// @ingroup colorspace
 //////////////////////////////////////////////////////////////////////////////////
 
@@ -73,7 +73,7 @@ cudaError_t cudaRGBA32ToBGRA32( float4* input, float4* output, size_t width, siz
 	
 //////////////////////////////////////////////////////////////////////////////////
 /// @name 8-bit RGB/BGR to 8-bit RGBA/BGRA (or vice-versa)
-/// @see cudaConvertColor() from cudaColorspace.h for automated conversion
+/// @see cudaConvertColor() from cudaColorspace.h for automated format conversion
 /// @ingroup colorspace
 //////////////////////////////////////////////////////////////////////////////////
 
@@ -106,7 +106,7 @@ cudaError_t cudaRGBA8ToRGB8( uchar4* input, uchar3* output, size_t width, size_t
 
 //////////////////////////////////////////////////////////////////////////////////
 /// @name Floating-point RGB/BGR to floating-point RGBA/BGRA (or vice versa)
-/// @see cudaConvertColor() from cudaColorspace.h for automated conversion
+/// @see cudaConvertColor() from cudaColorspace.h for automated format conversion
 /// @ingroup colorspace
 //////////////////////////////////////////////////////////////////////////////////
 
@@ -139,7 +139,7 @@ cudaError_t cudaRGBA32ToRGB32( float4* input, float3* output, size_t width, size
 
 //////////////////////////////////////////////////////////////////////////////////
 /// @name 8-bit images to floating-point images
-/// @see cudaConvertColor() from cudaColorspace.h for automated conversion
+/// @see cudaConvertColor() from cudaColorspace.h for automated format conversion
 /// @ingroup colorspace
 //////////////////////////////////////////////////////////////////////////////////
 
@@ -194,7 +194,7 @@ cudaError_t cudaRGBA8ToRGBA32( uchar4* input, float4* output, size_t width, size
 
 //////////////////////////////////////////////////////////////////////////////////
 /// @name Floating-point images to 8-bit images
-/// @see cudaConvertColor() from cudaColorspace.h for automated conversion
+/// @see cudaConvertColor() from cudaColorspace.h for automated format conversion
 /// @ingroup colorspace
 //////////////////////////////////////////////////////////////////////////////////
 
