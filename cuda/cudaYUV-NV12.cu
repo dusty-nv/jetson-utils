@@ -31,6 +31,9 @@
 #define FIXED_COLOR_COMPONENT_MASK      0xffffffff
 
 
+//-----------------------------------------------------------------------------------
+// YUV to RGB colorspace conversion
+//-----------------------------------------------------------------------------------
 static inline __device__ float clamp( float x )	{ return fminf(fmaxf(x, 0.0f), 255.0f); }
 
 // YUV2RGB
@@ -54,86 +57,13 @@ static inline __device__ T YUV2RGB(const uint3& yuvi)
 }
 
 
-__device__ uint32_t RGBAPACK_8bit(float red, float green, float blue, uint32_t alpha)
-{
-    uint32_t ARGBpixel = 0;
-
-    // Clamp final 10 bit results
-    red   = min(max(red,   0.0f), 255.0f);
-    green = min(max(green, 0.0f), 255.0f);
-    blue  = min(max(blue,  0.0f), 255.0f);
-
-    // Convert to 8 bit unsigned integers per color component
-    ARGBpixel = ((((uint32_t)red)   << 24) |
-                 (((uint32_t)green) << 16) |
-		       (((uint32_t)blue)  <<  8) | (uint32_t)alpha);
-
-    return  ARGBpixel;
-}
-
-
-__device__ uint32_t RGBAPACK_10bit(float red, float green, float blue, uint32_t alpha)
-{
-    uint32_t ARGBpixel = 0;
-
-    // Clamp final 10 bit results
-    red   = min(max(red,   0.0f), 1023.f);
-    green = min(max(green, 0.0f), 1023.f);
-    blue  = min(max(blue,  0.0f), 1023.f);
-
-    // Convert to 8 bit unsigned integers per color component
-    ARGBpixel = ((((uint32_t)red   >> 2) << 24) |
-                 (((uint32_t)green >> 2) << 16) |
-                 (((uint32_t)blue  >> 2) <<  8) | (uint32_t)alpha);
-
-    return  ARGBpixel;
-}
-
-
-__global__ void Passthru(uint32_t *srcImage,   size_t nSourcePitch,
-                         uint32_t *dstImage,   size_t nDestPitch,
-                         uint32_t width,       uint32_t height)
-{
-    int x, y;
-    uint32_t yuv101010Pel[2];
-    uint32_t processingPitch = ((width) + 63) & ~63;
-    uint32_t dstImagePitch   = nDestPitch >> 2;
-    uint8_t *srcImageU8     = (uint8_t *)srcImage;
-
-    processingPitch = nSourcePitch;
-
-    // Pad borders with duplicate pixels, and we multiply by 2 because we process 2 pixels per thread
-    x = blockIdx.x * (blockDim.x << 1) + (threadIdx.x << 1);
-    y = blockIdx.y *  blockDim.y       +  threadIdx.y;
-
-    if (x >= width)
-        return; //x = width - 1;
-
-    if (y >= height)
-        return; // y = height - 1;
-
-    // Read 2 Luma components at a time, so we don't waste processing since CbCr are decimated this way.
-    // if we move to texture we could read 4 luminance values
-    yuv101010Pel[0] = (srcImageU8[y * processingPitch + x    ]);
-    yuv101010Pel[1] = (srcImageU8[y * processingPitch + x + 1]);
-
-    // this steps performs the color conversion
-    float luma[2];
-
-    luma[0]   = (yuv101010Pel[0]        & 0x00FF);
-    luma[1]   = (yuv101010Pel[1]        & 0x00FF);
-
-    // Clamp the results to RGBA
-    dstImage[y * dstImagePitch + x     ] = RGBAPACK_8bit(luma[0], luma[0], luma[0], 255);	 // alpha=((uint32_t)0xff<< 24);
-    dstImage[y * dstImagePitch + x + 1 ] = RGBAPACK_8bit(luma[1], luma[1], luma[1], 255);
-}
-
-
-// NV12ToRGBA
+//-----------------------------------------------------------------------------------
+// NV12 to RGB
+//-----------------------------------------------------------------------------------
 template<typename T>
-__global__ void NV12ToRGBA(uint32_t* srcImage, size_t nSourcePitch,
-                           T* dstImage,        size_t nDestPitch,
-                           uint32_t width,     uint32_t height)
+__global__ void NV12ToRGB(uint32_t* srcImage, size_t nSourcePitch,
+                          T* dstImage,        size_t nDestPitch,
+                          uint32_t width,     uint32_t height)
 {
 	int x, y;
 	uint32_t yuv101010Pel[2];
@@ -205,7 +135,7 @@ __global__ void NV12ToRGBA(uint32_t* srcImage, size_t nSourcePitch,
 
 
 template<typename T> 
-cudaError_t launchNV12ToRGBA( void* srcDev, T* dstDev, size_t width, size_t height )
+cudaError_t launchNV12ToRGB( void* srcDev, T* dstDev, size_t width, size_t height )
 {
 	if( !srcDev || !dstDev )
 		return cudaErrorInvalidDevicePointer;
@@ -219,7 +149,7 @@ cudaError_t launchNV12ToRGBA( void* srcDev, T* dstDev, size_t width, size_t heig
 	const dim3 blockDim(32,8,1);
 	const dim3 gridDim(iDivUp(width,blockDim.x), iDivUp(height, blockDim.y), 1);
 
-	NV12ToRGBA<T><<<gridDim, blockDim>>>( (uint32_t*)srcDev, srcPitch, dstDev, dstPitch, width, height );
+	NV12ToRGB<T><<<gridDim, blockDim>>>( (uint32_t*)srcDev, srcPitch, dstDev, dstPitch, width, height );
 	
 	return CUDA(cudaGetLastError());
 }
@@ -227,25 +157,25 @@ cudaError_t launchNV12ToRGBA( void* srcDev, T* dstDev, size_t width, size_t heig
 // cudaNV12ToRGB (uchar3)
 cudaError_t cudaNV12ToRGB( void* srcDev, uchar3* destDev, size_t width, size_t height )
 {
-	return launchNV12ToRGBA<uchar3>(srcDev, destDev, width, height);
+	return launchNV12ToRGB<uchar3>(srcDev, destDev, width, height);
 }
 
 // cudaNV12ToRGB (float3)
 cudaError_t cudaNV12ToRGB( void* srcDev, float3* destDev, size_t width, size_t height )
 {
-	return launchNV12ToRGBA<float3>(srcDev, destDev, width, height);
+	return launchNV12ToRGB<float3>(srcDev, destDev, width, height);
 }
 
 // cudaNV12ToRGBA (uchar4)
 cudaError_t cudaNV12ToRGBA( void* srcDev, uchar4* destDev, size_t width, size_t height )
 {
-	return launchNV12ToRGBA<uchar4>(srcDev, destDev, width, height);
+	return launchNV12ToRGB<uchar4>(srcDev, destDev, width, height);
 }
 
 // cudaNV12ToRGBA (float4)
 cudaError_t cudaNV12ToRGBA( void* srcDev, float4* destDev, size_t width, size_t height )
 {
-	return launchNV12ToRGBA<float4>(srcDev, destDev, width, height);
+	return launchNV12ToRGB<float4>(srcDev, destDev, width, height);
 }
 
 

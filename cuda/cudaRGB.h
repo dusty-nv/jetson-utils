@@ -30,6 +30,7 @@
 
 //////////////////////////////////////////////////////////////////////////////////
 /// @name RGB/RGBA to BGR/BGRA (or vice-versa)
+/// @see cudaConvertColor() from cudaColorspace.h for automated conversion
 /// @ingroup colorspace
 //////////////////////////////////////////////////////////////////////////////////
 
@@ -72,6 +73,7 @@ cudaError_t cudaRGBA32ToBGRA32( float4* input, float4* output, size_t width, siz
 	
 //////////////////////////////////////////////////////////////////////////////////
 /// @name 8-bit RGB/BGR to 8-bit RGBA/BGRA (or vice-versa)
+/// @see cudaConvertColor() from cudaColorspace.h for automated conversion
 /// @ingroup colorspace
 //////////////////////////////////////////////////////////////////////////////////
 
@@ -104,6 +106,7 @@ cudaError_t cudaRGBA8ToRGB8( uchar4* input, uchar3* output, size_t width, size_t
 
 //////////////////////////////////////////////////////////////////////////////////
 /// @name Floating-point RGB/BGR to floating-point RGBA/BGRA (or vice versa)
+/// @see cudaConvertColor() from cudaColorspace.h for automated conversion
 /// @ingroup colorspace
 //////////////////////////////////////////////////////////////////////////////////
 
@@ -136,6 +139,7 @@ cudaError_t cudaRGBA32ToRGB32( float4* input, float3* output, size_t width, size
 
 //////////////////////////////////////////////////////////////////////////////////
 /// @name 8-bit images to floating-point images
+/// @see cudaConvertColor() from cudaColorspace.h for automated conversion
 /// @ingroup colorspace
 //////////////////////////////////////////////////////////////////////////////////
 
@@ -190,6 +194,7 @@ cudaError_t cudaRGBA8ToRGBA32( uchar4* input, float4* output, size_t width, size
 
 //////////////////////////////////////////////////////////////////////////////////
 /// @name Floating-point images to 8-bit images
+/// @see cudaConvertColor() from cudaColorspace.h for automated conversion
 /// @ingroup colorspace
 //////////////////////////////////////////////////////////////////////////////////
 
@@ -203,7 +208,7 @@ cudaError_t cudaRGBA8ToRGBA32( uchar4* input, float4* output, size_t width, size
  *                    The default is false, and the channels will remain the same.
  *
  * @param pixelRange specifies the floating-point pixel value range of the input image, 
- *                   which is used to rescale the fixed-point pixel outputs to [0-255].
+ *                   which is used to rescale the fixed-point pixel outputs to [0,255].
  *                   The default input range is [0,255], where no rescaling occurs.
  *                   Other common input ranges are [-1, 1] or [0,1].
  *
@@ -220,7 +225,7 @@ cudaError_t cudaRGB32ToRGB8( float3* input, uchar3* output, size_t width, size_t
  *                    The default is false, and the channels will remain the same.
  *
  * @param pixelRange specifies the floating-point pixel value range of the input image, 
- *                   which is used to rescale the fixed-point pixel outputs to [0-255].
+ *                   which is used to rescale the fixed-point pixel outputs to [0,255].
  *                   The default input range is [0,255], where no rescaling occurs.
  *                   Other common input ranges are [-1, 1] or [0,1].
  *
@@ -237,7 +242,7 @@ cudaError_t cudaRGB32ToRGBA8( float3* input, uchar4* output, size_t width, size_
  *                    The default is false, and the channels will remain the same.
  *
  * @param pixelRange specifies the floating-point pixel value range of the input image, 
- *                   which is used to rescale the fixed-point pixel outputs to [0-255].
+ *                   which is used to rescale the fixed-point pixel outputs to [0,255].
  *                   The default input range is [0,255], where no rescaling occurs.
  *                   Other common input ranges are [-1, 1] or [0,1].
  *
@@ -254,7 +259,7 @@ cudaError_t cudaRGBA32ToRGB8( float4* input, uchar3* output, size_t width, size_
  *                    The default is false, and the channels will remain the same.
  *
  * @param pixelRange specifies the floating-point pixel value range of the input image, 
- *                   which is used to rescale the fixed-point pixel outputs to [0-255].
+ *                   which is used to rescale the fixed-point pixel outputs to [0,255].
  *                   The default input range is [0,255], where no rescaling occurs.
  *                   Other common input ranges are [-1, 1] or [0,1].
  *
@@ -265,6 +270,4 @@ cudaError_t cudaRGBA32ToRGBA8( float4* input, uchar4* output, size_t width, size
 
 ///@}
 
-
 #endif
-

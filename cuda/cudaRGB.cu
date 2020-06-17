@@ -24,7 +24,9 @@
 #include "cudaVector.h"
 
 
-//-------------------------------------------------------------------------------------------------------------------------
+//-----------------------------------------------------------------------------------
+// RGB <-> BGR
+//-----------------------------------------------------------------------------------
 template<typename T>
 __global__ void RGBToBGR(T* srcImage, T* dstImage, int width, int height)
 {
@@ -78,9 +80,11 @@ cudaError_t cudaRGBA32ToBGRA32( float4* input, float4* output, size_t width, siz
 	return launchRGBToBGR<float4>(input, output, width, height);
 }
 
-//-------------------------------------------------------------------------------------------------------------------------
+//-----------------------------------------------------------------------------------
+// uint8 to float
+//-----------------------------------------------------------------------------------
 template<typename T_in, typename T_out, bool isBGR>
-__global__ void RGB8ToRGB32(T_in* srcImage, T_out* dstImage, int width, int height)
+__global__ void RGBToRGB(T_in* srcImage, T_out* dstImage, int width, int height)
 {
 	const int x = (blockIdx.x * blockDim.x) + threadIdx.x;
 	const int y = (blockIdx.y * blockDim.y) + threadIdx.y;
@@ -102,7 +106,7 @@ __global__ void RGB8ToRGB32(T_in* srcImage, T_out* dstImage, int width, int heig
 }
 
 template<typename T_in, typename T_out, bool isBGR> 
-cudaError_t launchRGB8ToRGB32( T_in* srcDev, T_out* dstDev, size_t width, size_t height )
+cudaError_t launchRGBToRGB( T_in* srcDev, T_out* dstDev, size_t width, size_t height )
 {
 	if( !srcDev || !dstDev )
 		return cudaErrorInvalidDevicePointer;
@@ -110,7 +114,7 @@ cudaError_t launchRGB8ToRGB32( T_in* srcDev, T_out* dstDev, size_t width, size_t
 	const dim3 blockDim(32,8,1);
 	const dim3 gridDim(iDivUp(width,blockDim.x), iDivUp(height,blockDim.y), 1);
 
-	RGB8ToRGB32<T_in, T_out, isBGR><<<gridDim, blockDim>>>(srcDev, dstDev, width, height);
+	RGBToRGB<T_in, T_out, isBGR><<<gridDim, blockDim>>>(srcDev, dstDev, width, height);
 	
 	return CUDA(cudaGetLastError());
 }
@@ -120,78 +124,80 @@ cudaError_t launchRGB8ToRGB32( T_in* srcDev, T_out* dstDev, size_t width, size_t
 cudaError_t cudaRGB8ToRGB32( uchar3* srcDev, float3* dstDev, size_t width, size_t height, bool swapRedBlue )
 {
 	if( swapRedBlue )
-		return launchRGB8ToRGB32<uchar3, float3, true>(srcDev, dstDev, width, height);
+		return launchRGBToRGB<uchar3, float3, true>(srcDev, dstDev, width, height);
 	else
-		return launchRGB8ToRGB32<uchar3, float3, false>(srcDev, dstDev, width, height);
+		return launchRGBToRGB<uchar3, float3, false>(srcDev, dstDev, width, height);
 }
 
 // cudaRGB8ToRGBA32 (uchar3 -> float4)
 cudaError_t cudaRGB8ToRGBA32( uchar3* srcDev, float4* dstDev, size_t width, size_t height, bool swapRedBlue )
 {
 	if( swapRedBlue )
-		return launchRGB8ToRGB32<uchar3, float4, true>(srcDev, dstDev, width, height);
+		return launchRGBToRGB<uchar3, float4, true>(srcDev, dstDev, width, height);
 	else
-		return launchRGB8ToRGB32<uchar3, float4, false>(srcDev, dstDev, width, height);
+		return launchRGBToRGB<uchar3, float4, false>(srcDev, dstDev, width, height);
 }
 
 // cudaRGBA8ToRGB32 (uchar4 -> float3)
 cudaError_t cudaRGBA8ToRGB32( uchar4* srcDev, float3* dstDev, size_t width, size_t height, bool swapRedBlue )
 {
 	if( swapRedBlue )
-		return launchRGB8ToRGB32<uchar4, float3, true>(srcDev, dstDev, width, height);
+		return launchRGBToRGB<uchar4, float3, true>(srcDev, dstDev, width, height);
 	else
-		return launchRGB8ToRGB32<uchar4, float3, false>(srcDev, dstDev, width, height);
+		return launchRGBToRGB<uchar4, float3, false>(srcDev, dstDev, width, height);
 }
 
 // cudaRGBA8ToRGBA32 (uchar4 -> float4)
 cudaError_t cudaRGBA8ToRGBA32( uchar4* srcDev, float4* dstDev, size_t width, size_t height, bool swapRedBlue )
 {
 	if( swapRedBlue )
-		return launchRGB8ToRGB32<uchar4, float4, true>(srcDev, dstDev, width, height);
+		return launchRGBToRGB<uchar4, float4, true>(srcDev, dstDev, width, height);
 	else
-		return launchRGB8ToRGB32<uchar4, float4, false>(srcDev, dstDev, width, height);
+		return launchRGBToRGB<uchar4, float4, false>(srcDev, dstDev, width, height);
 }
 
 // cudaRGB8ToRGBA8 (uchar3 -> uchar4)
 cudaError_t cudaRGB8ToRGBA8( uchar3* srcDev, uchar4* dstDev, size_t width, size_t height, bool swapRedBlue )
 {
 	if( swapRedBlue )
-		return launchRGB8ToRGB32<uchar3, uchar4, true>(srcDev, dstDev, width, height);
+		return launchRGBToRGB<uchar3, uchar4, true>(srcDev, dstDev, width, height);
 	else
-		return launchRGB8ToRGB32<uchar3, uchar4, false>(srcDev, dstDev, width, height);
+		return launchRGBToRGB<uchar3, uchar4, false>(srcDev, dstDev, width, height);
 }
 
 // cudaRGBA8ToRGB8 (uchar4 -> uchar3)
 cudaError_t cudaRGBA8ToRGB8( uchar4* srcDev, uchar3* dstDev, size_t width, size_t height, bool swapRedBlue )
 {
 	if( swapRedBlue )
-		return launchRGB8ToRGB32<uchar4, uchar3, true>(srcDev, dstDev, width, height);
+		return launchRGBToRGB<uchar4, uchar3, true>(srcDev, dstDev, width, height);
 	else
-		return launchRGB8ToRGB32<uchar4, uchar3, false>(srcDev, dstDev, width, height);
+		return launchRGBToRGB<uchar4, uchar3, false>(srcDev, dstDev, width, height);
 }
 
 // cudaRGB32ToRGBA32 (float3 -> float4)
 cudaError_t cudaRGB32ToRGBA32( float3* srcDev, float4* dstDev, size_t width, size_t height, bool swapRedBlue )
 {
 	if( swapRedBlue )
-		return launchRGB8ToRGB32<float3, float4, true>(srcDev, dstDev, width, height);
+		return launchRGBToRGB<float3, float4, true>(srcDev, dstDev, width, height);
 	else
-		return launchRGB8ToRGB32<float3, float4, false>(srcDev, dstDev, width, height);
+		return launchRGBToRGB<float3, float4, false>(srcDev, dstDev, width, height);
 }
 
 // cudaRGBA32ToRGB32 (float4 -> float3)
 cudaError_t cudaRGBA32ToRGB32( float4* srcDev, float3* dstDev, size_t width, size_t height, bool swapRedBlue )
 {
 	if( swapRedBlue )
-		return launchRGB8ToRGB32<float4, float3, true>(srcDev, dstDev, width, height);
+		return launchRGBToRGB<float4, float3, true>(srcDev, dstDev, width, height);
 	else
-		return launchRGB8ToRGB32<float4, float3, false>(srcDev, dstDev, width, height);
+		return launchRGBToRGB<float4, float3, false>(srcDev, dstDev, width, height);
 }
 
-//-------------------------------------------------------------------------------------------------------------------------
+//-----------------------------------------------------------------------------------
+// float to uint8
+//-----------------------------------------------------------------------------------
 template<typename T_in, typename T_out, bool isBGRA>
-__global__ void RGB32ToRGB8(T_in* srcImage, T_out* dstImage, int width, int height,
-					   float min_pixel_value, float scaling_factor)
+__global__ void RGBToRGB_Norm(T_in* srcImage, T_out* dstImage, int width, int height,
+							  float min_pixel_value, float scaling_factor)
 {
 	const int x = (blockIdx.x * blockDim.x) + threadIdx.x;
 	const int y = (blockIdx.y * blockDim.y) + threadIdx.y;
@@ -215,7 +221,7 @@ __global__ void RGB32ToRGB8(T_in* srcImage, T_out* dstImage, int width, int heig
 }
 
 template<typename T_in, typename T_out, bool isBGR> 
-cudaError_t launchRGB32ToRGB8( T_in* srcDev, T_out* dstDev, size_t width, size_t height, const float2& inputRange )
+cudaError_t launchRGBToRGB_Norm( T_in* srcDev, T_out* dstDev, size_t width, size_t height, const float2& inputRange )
 {
 	if( !srcDev || !dstDev )
 		return cudaErrorInvalidDevicePointer;
@@ -228,7 +234,7 @@ cudaError_t launchRGB32ToRGB8( T_in* srcDev, T_out* dstDev, size_t width, size_t
 	const dim3 blockDim(32,8,1);
 	const dim3 gridDim(iDivUp(width,blockDim.x), iDivUp(height,blockDim.y), 1);
 
-	RGB32ToRGB8<T_in, T_out, isBGR><<<gridDim, blockDim>>>( srcDev, dstDev, width, height, inputRange.x, multiplier);
+	RGBToRGB_Norm<T_in, T_out, isBGR><<<gridDim, blockDim>>>( srcDev, dstDev, width, height, inputRange.x, multiplier);
 	
 	return CUDA(cudaGetLastError());
 }
@@ -238,36 +244,34 @@ cudaError_t launchRGB32ToRGB8( T_in* srcDev, T_out* dstDev, size_t width, size_t
 cudaError_t cudaRGB32ToRGB8( float3* srcDev, uchar3* dstDev, size_t width, size_t height, bool swapRedBlue, const float2& inputRange )
 {
 	if( swapRedBlue )
-		return launchRGB32ToRGB8<float3, uchar3, true>(srcDev, dstDev, width, height, inputRange);
+		return launchRGBToRGB_Norm<float3, uchar3, true>(srcDev, dstDev, width, height, inputRange);
 	else
-		return launchRGB32ToRGB8<float3, uchar3, false>(srcDev, dstDev, width, height, inputRange);
+		return launchRGBToRGB_Norm<float3, uchar3, false>(srcDev, dstDev, width, height, inputRange);
 }
 
 // cudaRGB32ToRGBA8 (float3 -> uchar4)
 cudaError_t cudaRGB32ToRGBA8( float3* srcDev, uchar4* dstDev, size_t width, size_t height, bool swapRedBlue, const float2& inputRange )
 {
 	if( swapRedBlue )
-		return launchRGB32ToRGB8<float3, uchar4, true>(srcDev, dstDev, width, height, inputRange);
+		return launchRGBToRGB_Norm<float3, uchar4, true>(srcDev, dstDev, width, height, inputRange);
 	else
-		return launchRGB32ToRGB8<float3, uchar4, false>(srcDev, dstDev, width, height, inputRange);
+		return launchRGBToRGB_Norm<float3, uchar4, false>(srcDev, dstDev, width, height, inputRange);
 }
 
 // cudaRGBA32ToRGB8 (float4 -> uchar3)
 cudaError_t cudaRGBA32ToRGB8( float4* srcDev, uchar3* dstDev, size_t width, size_t height, bool swapRedBlue, const float2& inputRange )
 {
 	if( swapRedBlue )
-		return launchRGB32ToRGB8<float4, uchar3, true>(srcDev, dstDev, width, height, inputRange);
+		return launchRGBToRGB_Norm<float4, uchar3, true>(srcDev, dstDev, width, height, inputRange);
 	else
-		return launchRGB32ToRGB8<float4, uchar3, false>(srcDev, dstDev, width, height, inputRange);
+		return launchRGBToRGB_Norm<float4, uchar3, false>(srcDev, dstDev, width, height, inputRange);
 }
 
 // cudaRGBA32ToRGBA8 (float4 -> uchar4)
 cudaError_t cudaRGBA32ToRGBA8( float4* srcDev, uchar4* dstDev, size_t width, size_t height, bool swapRedBlue, const float2& inputRange )
 {
 	if( swapRedBlue )
-		return launchRGB32ToRGB8<float4, uchar4, true>(srcDev, dstDev, width, height, inputRange);
+		return launchRGBToRGB_Norm<float4, uchar4, true>(srcDev, dstDev, width, height, inputRange);
 	else
-		return launchRGB32ToRGB8<float4, uchar4, false>(srcDev, dstDev, width, height, inputRange);
+		return launchRGBToRGB_Norm<float4, uchar4, false>(srcDev, dstDev, width, height, inputRange);
 }
-
-
