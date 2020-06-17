@@ -36,9 +36,11 @@
  */
 template<class T> struct cudaVectorTypeInfo;
 
+template<> struct cudaVectorTypeInfo<uchar>  { typedef uint8_t Base; };
 template<> struct cudaVectorTypeInfo<uchar3> { typedef uint8_t Base; };
 template<> struct cudaVectorTypeInfo<uchar4> { typedef uint8_t Base; };
 
+template<> struct cudaVectorTypeInfo<float>  { typedef float Base; };
 template<> struct cudaVectorTypeInfo<float3> { typedef float Base; };
 template<> struct cudaVectorTypeInfo<float4> { typedef float Base; };
 
@@ -54,9 +56,11 @@ template<typename T> struct cuda_assert_false : std::false_type { };
  */
 template<typename T> inline __host__ __device__ T make_vec( typename cudaVectorTypeInfo<T>::Base x, typename cudaVectorTypeInfo<T>::Base y, typename cudaVectorTypeInfo<T>::Base z, typename cudaVectorTypeInfo<T>::Base w )	{ static_assert(cuda_assert_false<T>::value, "invalid vector type - supported types are uchar3, uchar4, float3, float4");  }
 
+template<> inline __host__ __device__ uchar  make_vec( uint8_t x, uint8_t y, uint8_t z, uint8_t w )	{ return x; }
 template<> inline __host__ __device__ uchar3 make_vec( uint8_t x, uint8_t y, uint8_t z, uint8_t w )	{ return make_uchar3(x,y,z); }
 template<> inline __host__ __device__ uchar4 make_vec( uint8_t x, uint8_t y, uint8_t z, uint8_t w )	{ return make_uchar4(x,y,z,w); }
 
+template<> inline __host__ __device__ float  make_vec( float x, float y, float z, float w )		{ return x; }
 template<> inline __host__ __device__ float3 make_vec( float x, float y, float z, float w )		{ return make_float3(x,y,z); }
 template<> inline __host__ __device__ float4 make_vec( float x, float y, float z, float w )		{ return make_float4(x,y,z,w); }
 
