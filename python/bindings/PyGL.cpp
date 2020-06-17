@@ -159,32 +159,26 @@ static PyObject* PyDisplay_Render( PyDisplay_Object* self, PyObject* args, PyObj
 	int height = 0;
 	int norm   = 1;
 
-	static char* kwlist[] = {"image", "width", "height", "x", "y", "normalize", NULL};
+	const char* format_str = "rgba32f";
+	static char* kwlist[] = {"image", "width", "height", "x", "y", "normalize", "format", NULL};
 
-	if( !PyArg_ParseTupleAndKeywords(args, kwds, "O|iiffi", kwlist, &capsule, &width, &height, &x, &y, &norm))
+	if( !PyArg_ParseTupleAndKeywords(args, kwds, "O|iiffis", kwlist, &capsule, &width, &height, &x, &y, &norm, &format_str))
 	{
 		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "glDisplay.Render() failed to parse args tuple");
 		return NULL;
 	}
 
-	// verify dimensions
-	/*if( width <= 0 || height <= 0 )
-	{
-		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "glDisplay.Render() image dimensions are invalid");
-		return NULL;
-	}*/
+	// parse format string
+	imageFormat format = imageFormatFromStr(format_str);
 
 	// get pointer to image data
-	PyCudaImage* img = PyCUDA_GetImage(capsule);
+	void* ptr = PyCUDA_GetImage(capsule, &width, &height, &format);
 
-	if( !img )
-	{
-		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "glDisplay.Render() failed to get image pointer from first arg (should be cudaImage)");
+	if( !ptr )
 		return NULL;
-	}
 
 	// render the image
-	self->display->RenderImage(img->base.ptr, img->width, img->height, img->format, x, y, norm > 0 ? true : false);
+	self->display->RenderImage(ptr, width, height, format, x, y, norm > 0 ? true : false);
 
 	// return void
 	Py_RETURN_NONE;
@@ -210,32 +204,26 @@ static PyObject* PyDisplay_RenderOnce( PyDisplay_Object* self, PyObject* args, P
 	int height = 0;
 	int norm   = 1;
 
-	static char* kwlist[] = {"image", "width", "height", "x", "y", "normalize", NULL};
+	const char* format_str = "rgba32f";
+	static char* kwlist[] = {"image", "width", "height", "x", "y", "normalize", "format", NULL};
 
-	if( !PyArg_ParseTupleAndKeywords(args, kwds, "O|iiffi", kwlist, &capsule, &width, &height, &x, &y, &norm))
+	if( !PyArg_ParseTupleAndKeywords(args, kwds, "O|iiffis", kwlist, &capsule, &width, &height, &x, &y, &norm))
 	{
 		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "glDisplay.RenderOnce() failed to parse args tuple");
 		return NULL;
 	}
 
-	// verify dimensions
-	/*if( width <= 0 || height <= 0 )
-	{
-		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "glDisplay.RenderOnce() image dimensions are invalid");
-		return NULL;
-	}*/
+	// parse format string
+	imageFormat format = imageFormatFromStr(format_str);
 
 	// get pointer to image data
-	PyCudaImage* img = PyCUDA_GetImage(capsule);
+	void* ptr = PyCUDA_GetImage(capsule, &width, &height, &format);
 
-	if( !img )
-	{
-		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "glDisplay.RenderOnce() failed to get image pointer from first arg (should be cudaImage)");
+	if( !ptr )
 		return NULL;
-	}
 
 	// render the image
-	self->display->RenderOnce(img->base.ptr, img->width, img->height, img->format, x, y, norm > 0 ? true : false);
+	self->display->RenderOnce(ptr, width, height, format, x, y, norm > 0 ? true : false);
 
 	// return void
 	Py_RETURN_NONE;

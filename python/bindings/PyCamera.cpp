@@ -205,7 +205,7 @@ static PyObject* PyCamera_CaptureRGBA( PyCamera_Object* self, PyObject* args, Py
 	Py_DECREF(pyWidth);
 	Py_DECREF(pyHeight);
 
-	return capsule;
+	return tuple;
 }
 
 

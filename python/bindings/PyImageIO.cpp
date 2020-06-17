@@ -178,23 +178,6 @@ PyObject* PyImageIO_SaveRGBA( PyObject* self, PyObject* args, PyObject* kwds )
 		return NULL;
 	}
 
-	// verify dimensions
-#if 0
-	if( width <= 0 || height <= 0 )
-	{
-		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "saveImageRGBA() image dimensions are invalid");
-		return NULL;
-	}
-
-	void* img = PyCapsule_GetPointer(capsule, CUDA_MAPPED_MEMORY_CAPSULE);	// TODO  support GPU-only memory
-
-	if( !img )
-	{
-		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "saveImageRGBA() failed to get input image pointer from PyCapsule container");
-		return NULL;
-	}
-#endif
-
 	// get pointer to image data
 	PyCudaImage* img = PyCUDA_GetImage(capsule);
 

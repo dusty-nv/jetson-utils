@@ -575,6 +575,53 @@ PyCudaImage* PyCUDA_GetImage( PyObject* object )
 	return NULL;
 }
 
+// PyCUDA_GetImage
+void* PyCUDA_GetImage( PyObject* capsule, int* width, int* height, imageFormat* format )
+{
+	PyCudaImage* img = PyCUDA_GetImage(capsule);
+	void* ptr = NULL;
+
+	if( img != NULL )
+	{
+		ptr = img->base.ptr;
+		*width = img->width;
+		*height = img->height;
+		*format = img->format;
+	}
+	else
+	{
+		PyCudaMemory* mem = PyCUDA_GetMemory(capsule);
+
+		if( !mem )
+		{
+			PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "function wasn't passed a valid cudaImage or cudaMemory object");
+			return NULL;
+		}
+
+		ptr = mem->ptr;
+
+		if( *width <= 0 || *height <= 0 )
+		{
+			PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "image dimensions are invalid");
+			return NULL;
+		}
+
+		if( *format == IMAGE_UNKNOWN )
+		{
+			PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "invalid image format");
+			return NULL;
+		}
+	}
+
+	if( !ptr )
+	{
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "image pointer was NULL (should be cudaImage or cudaMemory)");
+		return NULL;
+	}
+
+	return ptr;
+}
+
 
 //-------------------------------------------------------------------------------
 // PyCUDA_Malloc
@@ -922,20 +969,27 @@ static PyObject* PyFont_OverlayText( PyFont_Object* self, PyObject* args, PyObje
 	PyObject* bg     = NULL;
 
 	const char* text = NULL;
+	const char* format_str = "rgba32f";
+
+	int width = 0;
+	int height = 0;
 
 	int x = 0;
 	int y = 0;
 
-	static char* kwlist[] = {"image", "text", "x", "y", "color", "background", NULL};
+	static char* kwlist[] = {"image", "width", "height", "text", "x", "y", "color", "background", "format", NULL};
 
-	if( !PyArg_ParseTupleAndKeywords(args, kwds, "Os|iiOO", kwlist, &input, &text, &x, &y, &color, &bg))
+	if( !PyArg_ParseTupleAndKeywords(args, kwds, "O|iisiiOOs", kwlist, &input, &width, &height, &text, &x, &y, &color, &bg, &format_str))
 	{
-		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaFont.OverlayText() failed to parse args (note that the width/height args have been removed)");
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaFont.OverlayText() failed to parse function arguments");
 		return NULL;
 	}
 
-	//if( !output )
-	//	output = input;
+	if( !text )
+	{
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaFont.OverlayText() was not passed in a text string");
+		return NULL;
+	}
 
 	// parse color tuple
 	float4 rgba = make_float4(0, 0, 0, 255);
@@ -973,35 +1027,17 @@ static PyObject* PyFont_OverlayText( PyFont_Object* self, PyObject* args, PyObje
 		}
 	}
 
-	// verify dimensions
-	/*if( width <= 0 || height <= 0 )
-	{
-		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaFont.OverlayText() image dimensions are invalid");
+	// parse format string
+	imageFormat format = imageFormatFromStr(format_str);
+
+	// get pointer to image data
+	void* ptr = PyCUDA_GetImage(input, &width, &height, &format);
+
+	if( !ptr )
 		return NULL;
-	}*/
-
-	// get pointer to input image data
-	PyCudaImage* img = PyCUDA_GetImage(input);
-
-	if( !img )
-	{
-		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaFont.OverlayText() failed to get input image pointer from first arg (should be cudaImage)");
-		return NULL;
-	}
-
-	// get pointer to output image data
-	/*void* output_img = PyCUDA_GetPointer(output);
-
-	if( !output_img )
-	{
-		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaFont.Overlay() failed to get output image pointer from PyCapsule container");
-		return NULL;
-	}*/
-
-	//LogDebug("cudaFont.Overlay(%p, %p, %i, %i, '%s', %i, %i, (%f, %f, %f, %f))\n", input_img, output_img, width, height, text, x, y, rgba.x, rgba.y, rgba.z, rgba.w);
 
 	// render the font overlay
-	self->font->OverlayText(img->base.ptr, img->format, img->width, img->height, text, x, y, rgba, bg_rgba);
+	self->font->OverlayText(ptr, format, width, height, text, x, y, rgba, bg_rgba);
 
 	// return void
 	Py_RETURN_NONE;
