@@ -566,17 +566,12 @@ void glDisplay::RenderImage( void* img, uint32_t width, uint32_t height, imageFo
 		}
 
 		// rescale image pixel intensities for display
-		if( format == IMAGE_RGB32F )
+		if( CUDA_FAILED(cudaNormalize(img, make_float2(0.0f, 255.0f), 
+							  mNormalizedCUDA, make_float2(0.0f, 1.0f), 
+	 						  width, height, format)) )
 		{
-			CUDA(cudaNormalizeRGB((float3*)img, make_float2(0.0f, 255.0f), 
-							  (float3*)mNormalizedCUDA, make_float2(0.0f, 1.0f), 
-	 						  width, height));
-		}
-		else if( format == IMAGE_RGBA32F )
-		{
-			CUDA(cudaNormalizeRGBA((float4*)img, make_float2(0.0f, 255.0f), 
-							   (float4*)mNormalizedCUDA, make_float2(0.0f, 1.0f), 
-	 						   width, height));
+			LogError(LOG_GL "glDisplay.Render() failed to normalize image\n");
+			return;
 		}
 
 		img = mNormalizedCUDA;
