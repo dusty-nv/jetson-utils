@@ -98,12 +98,24 @@ bool videoOptions::Parse( const char* URI, const commandLine& cmdLine, videoOpti
 	}
 
 	// parse stream settings
-	width 	 = cmdLine.GetUnsignedInt("width");
-	height 	 = cmdLine.GetUnsignedInt("height");
 	frameRate  = cmdLine.GetUnsignedInt("framerate", frameRate);
 	numBuffers = cmdLine.GetUnsignedInt("num-buffers", numBuffers);
 	zeroCopy 	 = cmdLine.GetFlag("zero-copy");
 	loop       = cmdLine.GetInt("loop");
+
+	// width
+	width = (type == INPUT) ? cmdLine.GetUnsignedInt("input-width")
+					    : cmdLine.GetUnsignedInt("output-width");
+
+	if( width == 0 )
+		width = cmdLine.GetUnsignedInt("width");
+
+	// height
+	height = (type == INPUT) ? cmdLine.GetUnsignedInt("input-height")
+					     : cmdLine.GetUnsignedInt("output-height");
+
+	if( height == 0 )
+		height = cmdLine.GetUnsignedInt("height");
 
 	// flip-method
 	const char* flipStr = (type == INPUT) ? cmdLine.GetString("input-flip-method")
