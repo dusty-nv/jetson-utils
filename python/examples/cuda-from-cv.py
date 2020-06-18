@@ -21,36 +21,45 @@
 # DEALINGS IN THE SOFTWARE.
 #
 
+import cv2
 import jetson.utils
 import argparse
-import numpy
+
 
 # parse the command line
-parser = argparse.ArgumentParser('Map CUDA to memory to numpy ndarray')
+parser = argparse.ArgumentParser(description='Convert an image from OpenCV to CUDA')
 
-parser.add_argument("--width", type=int, default=4, help="width of the array (in float elements)")
-parser.add_argument("--height", type=int, default=2, help="height of the array (in float elements)")
+parser.add_argument("file_in", type=str, default="images/granny_smith_1.jpg", nargs='?', help="filename of the input image to process")
+parser.add_argument("file_out", type=str, default="cuda-from-cv.jpg", nargs='?', help="filename of the output image to save")
 
 opt = parser.parse_args()
 
-# allocate cuda memory
-cuda_img = jetson.utils.cudaAllocMapped(width=opt.width, height=opt.height, format='rgb32f')
-print(cuda_img)
 
-# create a numpy ndarray that references the CUDA memory
-# it won't be copied, but uses the same memory underneath
-array = jetson.utils.cudaToNumpy(cuda_img)
+# load the image
+cv_img = cv2.imread(opt.file_in)
 
-print("\ncudaToNumpy() array:")
-print(type(array))
-print(array.dtype)
-print(array.shape)	# numpy dims will be in (height, width, depth) order
-print(array)
+print('OpenCV image size: ' + str(cv_img.shape))
+print('OpenCV image type: ' + str(cv_img.dtype))
 
-# create another ndarray and do some ops with it
-array2 = numpy.ones(array.shape, numpy.float32)
+# convert to CUDA (cv2 images are numpy arrays, in BGR format)
+bgr_img = jetson.utils.cudaFromNumpy(cv_img, isBGR=True)
 
-print("\nadding arrays...\n")
-print(array + array2)
+print('BGR image: ')
+print(bgr_img)
 
+# convert from BGR -> RGB
+rgb_img = jetson.utils.cudaAllocMapped(width=bgr_img.width,
+							    height=bgr_img.height,
+							    format='rgb8')
+
+jetson.utils.cudaConvertColor(bgr_img, rgb_img)
+
+print('RGB image: ')
+print(rgb_img)
+
+# save the image
+if opt.file_out is not None:
+	jetson.utils.cudaDeviceSynchronize()
+	jetson.utils.saveImage(opt.file_out, rgb_img)
+	print("saved {:d}x{:d} test image to '{:s}'".format(rgb_img.width, rgb_img.height, opt.file_out))
 

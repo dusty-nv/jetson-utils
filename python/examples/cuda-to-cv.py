@@ -21,36 +21,47 @@
 # DEALINGS IN THE SOFTWARE.
 #
 
+import cv2
 import jetson.utils
 import argparse
-import numpy
+
 
 # parse the command line
-parser = argparse.ArgumentParser('Map CUDA to memory to numpy ndarray')
+parser = argparse.ArgumentParser(description='Convert an image from CUDA to OpenCV')
 
-parser.add_argument("--width", type=int, default=4, help="width of the array (in float elements)")
-parser.add_argument("--height", type=int, default=2, help="height of the array (in float elements)")
+parser.add_argument("file_in", type=str, default="images/jellyfish.jpg", nargs='?', help="filename of the input image to process")
+parser.add_argument("file_out", type=str, default="cuda-to-cv.jpg", nargs='?', help="filename of the output image to save")
 
 opt = parser.parse_args()
 
-# allocate cuda memory
-cuda_img = jetson.utils.cudaAllocMapped(width=opt.width, height=opt.height, format='rgb32f')
-print(cuda_img)
 
-# create a numpy ndarray that references the CUDA memory
-# it won't be copied, but uses the same memory underneath
-array = jetson.utils.cudaToNumpy(cuda_img)
+# load the image into CUDA memory
+rgb_img = jetson.utils.loadImage(opt.file_in)
 
-print("\ncudaToNumpy() array:")
-print(type(array))
-print(array.dtype)
-print(array.shape)	# numpy dims will be in (height, width, depth) order
-print(array)
+print('RGB image: ')
+print(rgb_img)
 
-# create another ndarray and do some ops with it
-array2 = numpy.ones(array.shape, numpy.float32)
+# convert to BGR, since that's what OpenCV expects
+bgr_img = jetson.utils.cudaAllocMapped(width=rgb_img.width,
+							    height=rgb_img.height,
+							    format='bgr8')
 
-print("\nadding arrays...\n")
-print(array + array2)
+jetson.utils.cudaConvertColor(rgb_img, bgr_img)
 
+print('BGR image: ')
+print(bgr_img)
+
+# make sure the GPU is done work before we convert to cv2
+jetson.utils.cudaDeviceSynchronize()
+
+# convert to cv2 image (cv2 images are numpy arrays)
+cv_img = jetson.utils.cudaToNumpy(bgr_img)
+
+print('OpenCV image size: ' + str(cv_img.shape))
+print('OpenCV image type: ' + str(cv_img.dtype))
+
+# save the image
+if opt.file_out is not None:
+	cv2.imwrite(opt.file_out, cv_img)
+	print("saved {:d}x{:d} test image to '{:s}'".format(bgr_img.width, bgr_img.height, opt.file_out))
 
