@@ -25,25 +25,58 @@
 
 
 #include "cudaUtility.h"
-
+#include "imageFormat.h"
 
 
 /**
- * Function for increasing or decreasing the size of an image on the GPU.
+ * Rescale a uint8 grayscale image on the GPU.
+ * @ingroup cuda
+ */
+cudaError_t cudaResize( uint8_t* input,  size_t inputWidth,  size_t inputHeight,
+				    uint8_t* output, size_t outputWidth, size_t outputHeight );
+
+/**
+ * Rescale a floating-point grayscale image on the GPU.
  * @ingroup cuda
  */
 cudaError_t cudaResize( float* input,  size_t inputWidth,  size_t inputHeight,
 				    float* output, size_t outputWidth, size_t outputHeight );
 
-
 /**
- * Function for increasing or decreasing the size of an image on the GPU.
+ * Rescale a uchar3 RGB/BGR image on the GPU.
  * @ingroup cuda
  */
-cudaError_t cudaResizeRGBA( float4* input,  size_t inputWidth,  size_t inputHeight,
-				        float4* output, size_t outputWidth, size_t outputHeight );
+cudaError_t cudaResize( uchar3* input,  size_t inputWidth,  size_t inputHeight,
+				    uchar3* output, size_t outputWidth, size_t outputHeight );
 
+/**
+ * Rescale a float3 RGB/BGR image on the GPU.
+ * @ingroup cuda
+ */
+cudaError_t cudaResize( float3* input,  size_t inputWidth,  size_t inputHeight,
+				    float3* output, size_t outputWidth, size_t outputHeight );
 
+/**
+ * Rescale a uchar4 RGBA/BGRA image on the GPU.
+ * @ingroup cuda
+ */
+cudaError_t cudaResize( uchar4* input,  size_t inputWidth,  size_t inputHeight,
+				    uchar4* output, size_t outputWidth, size_t outputHeight );
+
+/**
+ * Rescale a float4 RGBA/BGRA image on the GPU.
+ * @ingroup cuda
+ */
+cudaError_t cudaResize( float4* input,  size_t inputWidth,  size_t inputHeight,
+				    float4* output, size_t outputWidth, size_t outputHeight );
+
+/**
+ * Rescale an image on the GPU (supports grayscale, RGB/BGR, RGBA/BGRA)
+ * @ingroup cuda
+ */
+cudaError_t cudaResize( void* input,  size_t inputWidth,  size_t inputHeight,
+				    void* output, size_t outputWidth, size_t outputHeight, 
+				    imageFormat format );
 
 #endif
 

@@ -25,13 +25,14 @@
 
 
 #include "cudaUtility.h"
+#include "imageFormat.h"
 
 
 /**
- * Crop a single-channel grayscale image to the specified region of interest (ROI).
+ * Crop a uint8 grayscale image to the specified region of interest (ROI).
  *
- * @param[in] input Pointer to the single-channel float input image in CUDA memory.
- * @param[out] output Pointer to the single-channel float output image in CUDA memory.
+ * @param[in] input Pointer to the input image in CUDA memory.
+ * @param[out] output Pointer to the output image in CUDA memory.
  *                    The output image should have the same dimensions as the ROI.
  * @param roi The region of interest from the input image that will be copied to
  *            the output image. This `int4` vector forms a crop rectangle as follows:
@@ -41,20 +42,20 @@
  *               - `roi.z -> right`
  *               - `roi.w -> bottom`
  *
+ *            The ROI coordinates must not be negative, otherwise an error will be returned.
+ *
  * @param inputWidth width of the input image (in pixels)
  * @param inputWidth height of the input image (in pixels)
  *
  * @ingroup cuda
  */
-cudaError_t cudaCrop( float* input, float* output, const int4& roi, 
-				  size_t inputWidth, size_t inputHeight );
-
+cudaError_t cudaCrop( uint8_t* input, uint8_t* output, const int4& roi, size_t inputWidth, size_t inputHeight );
 
 /**
- * Crop an RGBA image to the specified region of interest (ROI).
+ * Crop a floating-point grayscale image to the specified region of interest (ROI).
  *
- * @param[in] input Pointer to the float4 RGBA input image in CUDA memory.
- * @param[out] output Pointer to the float4 RGBA output image in CUDA memory.
+ * @param[in] input Pointer to the input image in CUDA memory.
+ * @param[out] output Pointer to the output image in CUDA memory.
  *                    The output image should have the same dimensions as the ROI.
  * @param roi The region of interest from the input image that will be copied to
  *            the output image. This `int4` vector forms a crop rectangle as follows:
@@ -64,13 +65,132 @@ cudaError_t cudaCrop( float* input, float* output, const int4& roi,
  *               - `roi.z -> right`
  *               - `roi.w -> bottom`
  *
+ *            The ROI coordinates must not be negative, otherwise an error will be returned.
+ *
  * @param inputWidth width of the input image (in pixels)
  * @param inputWidth height of the input image (in pixels)
  *
  * @ingroup cuda
  */
-cudaError_t cudaCropRGBA( float4* input, float4* output, const int4& roi, 
-					 size_t inputWidth, size_t inputHeight );
+cudaError_t cudaCrop( float* input, float* output, const int4& roi, size_t inputWidth, size_t inputHeight );
+
+/**
+ * Crop a uchar3 RGB/BGR image to the specified region of interest (ROI).
+ *
+ * @param[in] input Pointer to the input image in CUDA memory.
+ * @param[out] output Pointer to the output image in CUDA memory.
+ *                    The output image should have the same dimensions as the ROI.
+ * @param roi The region of interest from the input image that will be copied to
+ *            the output image. This `int4` vector forms a crop rectangle as follows:
+ *
+ *               - `roi.x -> left`
+ *               - `roi.y -> top`
+ *               - `roi.z -> right`
+ *               - `roi.w -> bottom`
+ *
+ *            The ROI coordinates must not be negative, otherwise an error will be returned.
+ *
+ * @param inputWidth width of the input image (in pixels)
+ * @param inputWidth height of the input image (in pixels)
+ *
+ * @ingroup cuda
+ */
+cudaError_t cudaCrop( uchar3* input, uchar3* output, const int4& roi, size_t inputWidth, size_t inputHeight );
+
+/**
+ * Crop a uchar4 RGBA/BGRA image to the specified region of interest (ROI).
+ *
+ * @param[in] input Pointer to the input image in CUDA memory.
+ * @param[out] output Pointer to the output image in CUDA memory.
+ *                    The output image should have the same dimensions as the ROI.
+ * @param roi The region of interest from the input image that will be copied to
+ *            the output image. This `int4` vector forms a crop rectangle as follows:
+ *
+ *               - `roi.x -> left`
+ *               - `roi.y -> top`
+ *               - `roi.z -> right`
+ *               - `roi.w -> bottom`
+ *
+ *            The ROI coordinates must not be negative, otherwise an error will be returned.
+ *
+ * @param inputWidth width of the input image (in pixels)
+ * @param inputWidth height of the input image (in pixels)
+ *
+ * @ingroup cuda
+ */
+cudaError_t cudaCrop( uchar4* input, uchar4* output, const int4& roi, size_t inputWidth, size_t inputHeight );
+
+/**
+ * Crop a float3 RGB/BGR image to the specified region of interest (ROI).
+ *
+ * @param[in] input Pointer to the input image in CUDA memory.
+ * @param[out] output Pointer to the output image in CUDA memory.
+ *                    The output image should have the same dimensions as the ROI.
+ * @param roi The region of interest from the input image that will be copied to
+ *            the output image. This `int4` vector forms a crop rectangle as follows:
+ *
+ *               - `roi.x -> left`
+ *               - `roi.y -> top`
+ *               - `roi.z -> right`
+ *               - `roi.w -> bottom`
+ *
+ *            The ROI coordinates must not be negative, otherwise an error will be returned.
+ *
+ * @param inputWidth width of the input image (in pixels)
+ * @param inputWidth height of the input image (in pixels)
+ *
+ * @ingroup cuda
+ */
+cudaError_t cudaCrop( float3* input, float3* output, const int4& roi, size_t inputWidth, size_t inputHeight );
+
+/**
+ * Crop a float4 RGBA/BGRA image to the specified region of interest (ROI).
+ *
+ * @param[in] input Pointer to the input image in CUDA memory.
+ * @param[out] output Pointer to the output image in CUDA memory.
+ *                    The output image should have the same dimensions as the ROI.
+ * @param roi The region of interest from the input image that will be copied to
+ *            the output image. This `int4` vector forms a crop rectangle as follows:
+ *
+ *               - `roi.x -> left`
+ *               - `roi.y -> top`
+ *               - `roi.z -> right`
+ *               - `roi.w -> bottom`
+ *
+ *            The ROI coordinates must not be negative, otherwise an error will be returned.
+ *
+ * @param inputWidth width of the input image (in pixels)
+ * @param inputWidth height of the input image (in pixels)
+ *
+ * @ingroup cuda
+ */
+cudaError_t cudaCrop( float4* input, float4* output, const int4& roi, size_t inputWidth, size_t inputHeight );
+
+/**
+ * Crop a float4 RGBA/BGRA image to the specified region of interest (ROI).
+ *
+ * @param[in] input Pointer to the input image in CUDA memory.
+ * @param[out] output Pointer to the output image in CUDA memory.
+ *                    The output image should have the same dimensions as the ROI.
+ * @param roi The region of interest from the input image that will be copied to
+ *            the output image. This `int4` vector forms a crop rectangle as follows:
+ *
+ *               - `roi.x -> left`
+ *               - `roi.y -> top`
+ *               - `roi.z -> right`
+ *               - `roi.w -> bottom`
+ *
+ *            The ROI coordinates must not be negative, otherwise an error will be returned.
+ *
+ * @param inputWidth width of the input image (in pixels)
+ * @param inputWidth height of the input image (in pixels)
+ * @param format format of the image - valid formats are gray8, gray32f, rgb8/bgr8, 
+ *               rgba8/bgra8, rgb32f/bgr32f, and rgba32f/bgra32f.
+ *
+ * @ingroup cuda
+ */
+cudaError_t cudaCrop( void* input, void* output, const int4& roi, size_t inputWidth, size_t inputHeight, imageFormat format );
+
 
 #endif
 

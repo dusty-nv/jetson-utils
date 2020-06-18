@@ -24,8 +24,8 @@
 
 
 
-// gpuResample
-template <typename T>
+// gpuResize
+template<typename T>
 __global__ void gpuResize( float2 scale, T* input, int iWidth, T* output, int oWidth, int oHeight )
 {
 	const int x = blockIdx.x * blockDim.x + threadIdx.x;
@@ -42,10 +42,10 @@ __global__ void gpuResize( float2 scale, T* input, int iWidth, T* output, int oW
 	output[y*oWidth+x] = px;
 }
 
-
-// cudaResize
-cudaError_t cudaResize( float* input, size_t inputWidth, size_t inputHeight,
-				        float* output, size_t outputWidth, size_t outputHeight )
+// launchResize
+template<typename T>
+static cudaError_t launchResize( T* input, size_t inputWidth, size_t inputHeight,
+				             T* output, size_t outputWidth, size_t outputHeight )
 {
 	if( !input || !output )
 		return cudaErrorInvalidDevicePointer;
@@ -54,40 +54,81 @@ cudaError_t cudaResize( float* input, size_t inputWidth, size_t inputHeight,
 		return cudaErrorInvalidValue;
 
 	const float2 scale = make_float2( float(inputWidth) / float(outputWidth),
-							          float(inputHeight) / float(outputHeight) );
+							     float(inputHeight) / float(outputHeight) );
 
 	// launch kernel
 	const dim3 blockDim(8, 8);
 	const dim3 gridDim(iDivUp(outputWidth,blockDim.x), iDivUp(outputHeight,blockDim.y));
 
-	gpuResize<float><<<gridDim, blockDim>>>(scale, input, inputWidth, output, outputWidth, outputHeight);
+	gpuResize<T><<<gridDim, blockDim>>>(scale, input, inputWidth, output, outputWidth, outputHeight);
 
 	return CUDA(cudaGetLastError());
 }
 
-
-// cudaResizeRGBA
-cudaError_t cudaResizeRGBA( float4* input,  size_t inputWidth, size_t inputHeight,
-				            float4* output, size_t outputWidth, size_t outputHeight )
+// cudaResize (uint8 grayscale)
+cudaError_t cudaResize( uint8_t* input, size_t inputWidth, size_t inputHeight, uint8_t* output, size_t outputWidth, size_t outputHeight )
 {
-	if( !input || !output )
-		return cudaErrorInvalidDevicePointer;
-
-	if( inputWidth == 0 || outputWidth == 0 || inputHeight == 0 || outputHeight == 0 )
-		return cudaErrorInvalidValue;
-
-	const float2 scale = make_float2( float(inputWidth) / float(outputWidth),
-							    float(inputHeight) / float(outputHeight) );
-
-	// launch kernel
-	const dim3 blockDim(8, 8);
-	const dim3 gridDim(iDivUp(outputWidth,blockDim.x), iDivUp(outputHeight,blockDim.y));
-
-	gpuResize<float4><<<gridDim, blockDim>>>(scale, input, inputWidth, output, outputWidth, outputHeight);
-
-	return CUDA(cudaGetLastError());
+	return launchResize<uint8_t>(input, inputWidth, inputHeight, output, outputWidth, outputHeight);
 }
 
+// cudaResize (float grayscale)
+cudaError_t cudaResize( float* input, size_t inputWidth, size_t inputHeight, float* output, size_t outputWidth, size_t outputHeight )
+{
+	return launchResize<float>(input, inputWidth, inputHeight, output, outputWidth, outputHeight);
+}
+
+// cudaResize (uchar3)
+cudaError_t cudaResize( uchar3* input, size_t inputWidth, size_t inputHeight, uchar3* output, size_t outputWidth, size_t outputHeight )
+{
+	return launchResize<uchar3>(input, inputWidth, inputHeight, output, outputWidth, outputHeight);
+}
+
+// cudaResize (uchar4)
+cudaError_t cudaResize( uchar4* input, size_t inputWidth, size_t inputHeight, uchar4* output, size_t outputWidth, size_t outputHeight )
+{
+	return launchResize<uchar4>(input, inputWidth, inputHeight, output, outputWidth, outputHeight);
+}
+
+// cudaResize (float3)
+cudaError_t cudaResize( float3* input, size_t inputWidth, size_t inputHeight, float3* output, size_t outputWidth, size_t outputHeight )
+{
+	return launchResize<float3>(input, inputWidth, inputHeight, output, outputWidth, outputHeight);
+}
+
+// cudaResize (float4)
+cudaError_t cudaResize( float4* input, size_t inputWidth, size_t inputHeight, float4* output, size_t outputWidth, size_t outputHeight )
+{
+	return launchResize<float4>(input, inputWidth, inputHeight, output, outputWidth, outputHeight);
+}
+
+//-----------------------------------------------------------------------------------
+cudaError_t cudaResize( void* input,  size_t inputWidth,  size_t inputHeight,
+				    void* output, size_t outputWidth, size_t outputHeight, imageFormat format )
+{
+	if( format == IMAGE_RGB8 || format == IMAGE_BGR8 )
+		return cudaResize((uchar3*)input, inputWidth, inputHeight, (uchar3*)output, outputWidth, outputHeight);
+	else if( format == IMAGE_RGBA8 || format == IMAGE_BGRA8 )
+		return cudaResize((uchar4*)input, inputWidth, inputHeight, (uchar4*)output, outputWidth, outputHeight);
+	else if( format == IMAGE_RGB32F || format == IMAGE_BGR32F )
+		return cudaResize((float3*)input, inputWidth, inputHeight, (float3*)output, outputWidth, outputHeight);
+	else if( format == IMAGE_RGBA32F || format == IMAGE_BGRA32F )
+		return cudaResize((float4*)input, inputWidth, inputHeight, (float4*)output, outputWidth, outputHeight);
+	else if( format == IMAGE_GRAY8 )
+		return cudaResize((uint8_t*)input, inputWidth, inputHeight, (uint8_t*)output, outputWidth, outputHeight);
+	else if( format == IMAGE_GRAY32F )
+		return cudaResize((float*)input, inputWidth, inputHeight, (float*)output, outputWidth, outputHeight);
+
+	LogError(LOG_CUDA "cudaResize() -- invalid image format '%s'\n", imageFormatToStr(format));
+	LogError(LOG_CUDA "                supported formats are:\n");
+	LogError(LOG_CUDA "                    * gray8\n");
+	LogError(LOG_CUDA "                    * gray32f\n");
+	LogError(LOG_CUDA "                    * rgb8, bgr8\n");
+	LogError(LOG_CUDA "                    * rgba8, bgra8\n");
+	LogError(LOG_CUDA "                    * rgb32f, bgr32f\n");
+	LogError(LOG_CUDA "                    * rgba32f, bgra32f\n");
+
+	return cudaErrorInvalidValue;
+}
 
 
 

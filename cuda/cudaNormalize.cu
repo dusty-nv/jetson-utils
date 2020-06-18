@@ -26,7 +26,8 @@
 
 // gpuNormalize
 template <typename T>
-__global__ void gpuNormalize( T* input, T* output, int width, int height, float scaling_factor, float max_input )
+__global__ void gpuNormalize( T* input, T* output, int width, int height, 
+					     float2 input_range, float scaling_factor )
 {
 	const int x = blockIdx.x * blockDim.x + threadIdx.x;
 	const int y = blockIdx.y * blockDim.y + threadIdx.y;
@@ -36,14 +37,16 @@ __global__ void gpuNormalize( T* input, T* output, int width, int height, float 
 
 	const T px = input[ y * width + x ];
 
-	output[y*width+x] = make_vec<T>(px.x * scaling_factor,
-							  px.y * scaling_factor,
-							  px.z * scaling_factor,
-							  alpha(px, max_input) * scaling_factor);
+	#define rescale(v) ((v - input_range.x) * scaling_factor)
+
+	output[y*width+x] = make_vec<T>(rescale(px.x),
+							  rescale(px.y),
+							  rescale(px.z),
+							  rescale(alpha(px, input_range.y)));
 }
 
 template<typename T>
-cudaError_t launchNormalizeRGB( T* input, const float2& input_range,
+static cudaError_t launchNormalizeRGB( T* input, const float2& input_range,
 						  T* output, const float2& output_range,
 						  size_t  width,  size_t height )
 {
@@ -59,30 +62,96 @@ cudaError_t launchNormalizeRGB( T* input, const float2& input_range,
 	const dim3 blockDim(32,8);
 	const dim3 gridDim(iDivUp(width,blockDim.x), iDivUp(height,blockDim.y));
 
-	gpuNormalize<T><<<gridDim, blockDim>>>(input, output, width, height, multiplier, input_range.y);
+	gpuNormalize<T><<<gridDim, blockDim>>>(input, output, width, height, input_range, multiplier);
 
 	return CUDA(cudaGetLastError());
 }
 
 
-// cudaNormalizeRGB
-cudaError_t cudaNormalizeRGB( float3* input, const float2& input_range,
-						float3* output, const float2& output_range,
-						size_t  width,  size_t height )
+// cudaNormalize (float3)
+cudaError_t cudaNormalize( float3* input, const float2& input_range,
+					  float3* output, const float2& output_range,
+					  size_t  width,  size_t height )
 {
 	return launchNormalizeRGB<float3>(input, input_range, output, output_range, width, height);
 }
 
 
-// cudaNormalizeRGBA
-cudaError_t cudaNormalizeRGBA( float4* input, const float2& input_range,
-						 float4* output, const float2& output_range,
-						 size_t  width,  size_t height )
+// cudaNormalize (float4)
+cudaError_t cudaNormalize( float4* input, const float2& input_range,
+					  float4* output, const float2& output_range,
+					  size_t  width,  size_t height )
 {
 	return launchNormalizeRGB<float4>(input, input_range, output, output_range, width, height);
 }
 
 
+//-----------------------------------------------------------------------------------
+template <typename T>
+__global__ void gpuNormalizeGray( T* input, T* output, int width, int height, 
+					     float2 input_range, float scaling_factor )
+{
+	const int x = blockIdx.x * blockDim.x + threadIdx.x;
+	const int y = blockIdx.y * blockDim.y + threadIdx.y;
 
+	if( x >= width || y >= height )
+		return;
+
+	const T px = rescale(input[ y * width + x ]);
+	output[y*width+x] = px;
+}
+
+template<typename T>
+static cudaError_t launchNormalizeGray( T* input, const float2& input_range,
+						  	     T* output, const float2& output_range,
+						  		size_t width, size_t height )
+{
+	if( !input || !output )
+		return cudaErrorInvalidDevicePointer;
+
+	if( width == 0 || height == 0  )
+		return cudaErrorInvalidValue;
+
+	const float multiplier = output_range.y / input_range.y;
+
+	// launch kernel
+	const dim3 blockDim(32,8);
+	const dim3 gridDim(iDivUp(width,blockDim.x), iDivUp(height,blockDim.y));
+
+	gpuNormalizeGray<T><<<gridDim, blockDim>>>(input, output, width, height, input_range, multiplier);
+
+	return CUDA(cudaGetLastError());
+}
+
+
+// cudaNormalize (float)
+cudaError_t cudaNormalize( float* input, const float2& input_range,
+					  float* output, const float2& output_range,
+					  size_t width, size_t height )
+{
+	return launchNormalizeGray<float>(input, input_range, output, output_range, width, height);
+}
+
+
+//-----------------------------------------------------------------------------------
+cudaError_t cudaNormalize( void* input,  const float2& input_range,
+					  void* output, const float2& output_range,
+					  size_t width, size_t height, imageFormat format )
+{
+	if( format == IMAGE_RGB32F || format == IMAGE_BGR32F )
+		return cudaNormalize((float3*)input, input_range, (float3*)output, output_range, width, height);
+	else if( format == IMAGE_RGBA32F || format == IMAGE_BGRA32F )
+		return cudaNormalize((float4*)input, input_range, (float4*)output, output_range, width, height);
+	else if( format == IMAGE_GRAY32F )
+		return cudaNormalize((float*)input, input_range, (float*)output, output_range, width, height);
+
+	LogError(LOG_CUDA "cudaNormalize() -- invalid image format '%s'\n", imageFormatToStr(format));
+	LogError(LOG_CUDA "                   supported formats are:\n");
+	LogError(LOG_CUDA "                       * gray32f\n");
+	LogError(LOG_CUDA "                       * rgb32f, bgr32f\n");
+	LogError(LOG_CUDA "                       * rgba32f, bgra32f\n");
+
+	return cudaErrorInvalidValue;
+}
 
 
