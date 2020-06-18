@@ -163,6 +163,8 @@ bool gstCamera::buildLaunchStr()
 			ss << "width=(int)" << GetWidth() << ", height=(int)" << GetHeight() << " ! "; 
 		}
 		
+		//ss << "queue max-size-buffers=16 ! ";
+
 		if( mOptions.codec == videoOptions::CODEC_H264 )
 			ss << "h264parse ! omxh264dec ! video/x-raw ! ";
 		else if( mOptions.codec == videoOptions::CODEC_H265 )
