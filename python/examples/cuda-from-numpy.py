@@ -23,25 +23,37 @@
 
 import jetson.utils
 import argparse
-import numpy
+import numpy as np
 
 # parse the command line
 parser = argparse.ArgumentParser(description='Copy a test image from numpy to CUDA and save it to disk')
 
-parser.add_argument("--width", type=int, default=512, help="width of the array (in float elements)")
-parser.add_argument("--height", type=int, default=256, help="height of the array (in float elements)")
-parser.add_argument("--depth", type=int, default=4, help="depth of the array (in float elements)")
+parser.add_argument("--width", type=int, default=512, help="width of the array (in pixels)")
+parser.add_argument("--height", type=int, default=256, help="height of the array (in pixels)")
+parser.add_argument("--depth", type=int, default=4, help="number of color channels in the array (1, 3, or 4)")
+parser.add_argument("--dtype", type=str, default="float32", help="numpy data type: " + " | ".join(sorted({str(key) for key in np.sctypeDict.keys()})))
 parser.add_argument("--filename", type=str, default="cuda-from-numpy.jpg", help="filename of the output test image")
 
 opt = parser.parse_args()
 
+
 # create numpy ndarray
-array = numpy.ndarray(shape=(opt.height, opt.width, opt.depth))
+array = np.ndarray(shape=(opt.height, opt.width, opt.depth), dtype=np.dtype(opt.dtype))
+
+print('numpy array shape:  ' + str(array.shape))
+print('numpy array dtype:  ' + str(array.dtype))
 
 # fill array with test colors
 for y in range(opt.height):
 	for x in range(opt.width):
-		array[y, x] = [ 0, float(x) / float(opt.width) * 255, float(y) / float(opt.height) * 255, 255]
+		px = [ 0, float(x) / float(opt.width) * 255, float(y) / float(opt.height) * 255, 255]
+		
+		if opt.depth == 1:
+			px = [ px[0] * 0.2989 + px[1] * 0.5870 + px[2] * 0.1140 ];
+		elif opt.depth == 3:
+			px.pop()
+
+		array[y, x] = px
 
 # copy to CUDA memory
 cuda_mem = jetson.utils.cudaFromNumpy(array)
