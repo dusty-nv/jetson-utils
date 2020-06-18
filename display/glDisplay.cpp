@@ -629,7 +629,7 @@ bool glDisplay::Render( void* image, uint32_t width, uint32_t height, imageForma
 	bool display_success = true;
 
 	// determine input format
-	if( format == IMAGE_RGB8 || format == IMAGE_RGBA8 || format == IMAGE_RGB32F || format == IMAGE_RGBA32F )
+	if( imageFormatIsRGB(format) )
 	{
 		// resize the window once to match the feed, but let the user resize/maximize
 		// only resize again if the window is then smaller than the feed
