@@ -289,6 +289,8 @@ bool gstEncoder::buildLaunchStr()
 		ss << "omxvp8enc bitrate=" << mOptions.bitRate << " ! video/x-vp8 ! ";
 	else if( mOptions.codec == videoOptions::CODEC_VP9 )
 		ss << "omxvp9enc bitrate=" << mOptions.bitRate << " ! video/x-vp9 ! ";
+	else if( mOptions.codec == videoOptions::CODEC_MJPEG )
+		ss << "nvjpegenc ! image/jpeg ! ";
 #else
 	if( mOptions.codec == videoOptions::CODEC_H264 )
 		ss << "nv_omx_h264enc quality-level=2 ! video/x-h264 ! ";
@@ -307,6 +309,7 @@ bool gstEncoder::buildLaunchStr()
 		LogError(LOG_GSTREAMER "                 * h265\n");
 		LogError(LOG_GSTREAMER "                 * vp8\n");
 		LogError(LOG_GSTREAMER "                 * vp9\n");
+		LogError(LOG_GSTREAMER "                 * mjpeg\n");
 	}
 
 	//if( fileLen > 0 && ipLen > 0 )
