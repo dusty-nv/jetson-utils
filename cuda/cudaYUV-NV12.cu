@@ -135,7 +135,7 @@ __global__ void NV12ToRGB(uint32_t* srcImage, size_t nSourcePitch,
 
 
 template<typename T> 
-cudaError_t launchNV12ToRGB( void* srcDev, T* dstDev, size_t width, size_t height )
+static cudaError_t launchNV12ToRGB( void* srcDev, T* dstDev, size_t width, size_t height )
 {
 	if( !srcDev || !dstDev )
 		return cudaErrorInvalidDevicePointer;

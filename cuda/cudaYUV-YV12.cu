@@ -99,7 +99,7 @@ __global__ void I420ToRGB(uint8_t* srcImage, int srcPitch,
 }
 
 template <typename T, bool formatYV12>
-cudaError_t launch420ToRGB(void* srcDev, T* dstDev, size_t width, size_t height) 
+static cudaError_t launch420ToRGB(void* srcDev, T* dstDev, size_t width, size_t height) 
 {
 	if( !srcDev || !dstDev )
 		return cudaErrorInvalidDevicePointer;
@@ -242,7 +242,7 @@ __global__ void RGBToYV12( T* src, int srcAlignedWidth, uint8_t* dst, int dstPit
 } 
 
 template<typename T, bool formatYV12>
-cudaError_t launchRGBTo420( T* input, size_t inputPitch, void* output, size_t outputPitch, size_t width, size_t height)
+static cudaError_t launchRGBTo420( T* input, size_t inputPitch, void* output, size_t outputPitch, size_t width, size_t height)
 {
 	if( !input || !inputPitch || !output || !outputPitch || !width || !height )
 		return cudaErrorInvalidValue;
@@ -356,43 +356,4 @@ cudaError_t cudaRGBAToYV12( float4* input, void* output, size_t width, size_t he
 	return cudaRGBAToYV12( input, width * sizeof(float4), output, width * sizeof(uint8_t), width, height );
 }
 
-
-
-#if 0
-__global__ void Gray_to_YV12(const GlobPtrSz<uint8_t> src, GlobPtr<uint8_t> dst)
-{
-	const int x = (blockIdx.x * blockDim.x + threadIdx.x) * 2;
-	const int y = (blockIdx.y * blockDim.y + threadIdx.y) * 2;
-
-	if (x + 1 >= src.cols || y + 1 >= src.rows)
-		return;
-
-	// get pointers to the data
-	const size_t planeSize = src.rows * dst.step;
-   GlobPtr<uint8_t> y_plane = globPtr(dst.data, dst.step);
-   GlobPtr<uint8_t> u_plane = globPtr(y_plane.data + planeSize, dst.step / 2);
-   GlobPtr<uint8_t> v_plane = globPtr(u_plane.data + (planeSize / 4), dst.step / 2);
-
-   uint8_t pix;
-   uint8_t y_val, u_val, v_val;
-
-   pix = src(y, x);
-   rgb_to_y(pix, pix, pix, y_val);
-   y_plane(y, x) = y_val;
-
-   pix = src(y, x + 1);
-   rgb_to_y(pix, pix, pix, y_val);
-   y_plane(y, x + 1) = y_val;
-
-   pix = src(y + 1, x);
-   rgb_to_y(pix, pix, pix, y_val);
-   y_plane(y + 1, x) = y_val;
-
-   pix = src(y + 1, x + 1);
-   rgb_to_yuv(pix, pix, pix, y_val, u_val, v_val);
-   y_plane(y + 1, x + 1) = y_val;
-   u_plane(y / 2, x / 2) = u_val;
-   v_plane(y / 2, x / 2) = v_val;
-}
-#endif
 

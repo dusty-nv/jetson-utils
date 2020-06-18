@@ -55,7 +55,7 @@ __global__ void RGBToGray(T_in* srcImage, T_out* dstImage, int width, int height
 }
 
 template<typename T_in, typename T_out, bool isBGR> 
-cudaError_t launchRGBToGray( T_in* srcDev, T_out* dstDev, size_t width, size_t height )
+static cudaError_t launchRGBToGray( T_in* srcDev, T_out* dstDev, size_t width, size_t height )
 {
 	if( !srcDev || !dstDev )
 		return cudaErrorInvalidDevicePointer;
@@ -144,7 +144,7 @@ __global__ void RGBToGray_Norm(T_in* srcImage, T_out* dstImage, int width, int h
 	if( y >= height )
 		return;
 
-	#define rescale(x) ((x - min_pixel_value) * scaling_factor)
+	#define rescale(v) ((v - min_pixel_value) * scaling_factor)
 
 	const T_in px = srcImage[pixel];
 
@@ -155,7 +155,7 @@ __global__ void RGBToGray_Norm(T_in* srcImage, T_out* dstImage, int width, int h
 }
 
 template<typename T_in, typename T_out, bool isBGR> 
-cudaError_t launchRGBToGray_Norm( T_in* srcDev, T_out* dstDev, size_t width, size_t height, const float2& inputRange )
+static cudaError_t launchRGBToGray_Norm( T_in* srcDev, T_out* dstDev, size_t width, size_t height, const float2& inputRange )
 {
 	if( !srcDev || !dstDev )
 		return cudaErrorInvalidDevicePointer;
@@ -296,7 +296,7 @@ __global__ void GrayToRGB_Norm(T_in* srcImage, T_out* dstImage, int width, int h
 }
 
 template<typename T_in, typename T_out> 
-cudaError_t launchGrayToRGB_Norm( T_in* srcDev, T_out* dstDev, size_t width, size_t height, const float2& inputRange )
+static cudaError_t launchGrayToRGB_Norm( T_in* srcDev, T_out* dstDev, size_t width, size_t height, const float2& inputRange )
 {
 	if( !srcDev || !dstDev )
 		return cudaErrorInvalidDevicePointer;

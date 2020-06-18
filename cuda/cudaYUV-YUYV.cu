@@ -146,7 +146,7 @@ __global__ void YUYVToRGBA( uchar4* src, T* dst, int halfWidth, int height )
 } 
 
 template<typename T, imageFormat format>
-cudaError_t launchYUYVToRGB( void* input, T* output, size_t width, size_t height)
+static cudaError_t launchYUYVToRGB( void* input, T* output, size_t width, size_t height)
 {
 	if( !input || !output || !width || !height )
 		return cudaErrorInvalidValue;

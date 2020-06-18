@@ -47,7 +47,7 @@ __global__ void RGBToBGR(T* srcImage, T* dstImage, int width, int height)
 }
 
 template<typename T> 
-cudaError_t launchRGBToBGR( T* srcDev, T* dstDev, size_t width, size_t height )
+static cudaError_t launchRGBToBGR( T* srcDev, T* dstDev, size_t width, size_t height )
 {
 	if( !srcDev || !dstDev )
 		return cudaErrorInvalidDevicePointer;
@@ -106,7 +106,7 @@ __global__ void RGBToRGB(T_in* srcImage, T_out* dstImage, int width, int height)
 }
 
 template<typename T_in, typename T_out, bool isBGR> 
-cudaError_t launchRGBToRGB( T_in* srcDev, T_out* dstDev, size_t width, size_t height )
+static cudaError_t launchRGBToRGB( T_in* srcDev, T_out* dstDev, size_t width, size_t height )
 {
 	if( !srcDev || !dstDev )
 		return cudaErrorInvalidDevicePointer;
@@ -197,7 +197,7 @@ cudaError_t cudaRGBA32ToRGB32( float4* srcDev, float3* dstDev, size_t width, siz
 //-----------------------------------------------------------------------------------
 template<typename T_in, typename T_out, bool isBGRA>
 __global__ void RGBToRGB_Norm(T_in* srcImage, T_out* dstImage, int width, int height,
-							  float min_pixel_value, float scaling_factor)
+						float2 input_range, float scaling_factor)
 {
 	const int x = (blockIdx.x * blockDim.x) + threadIdx.x;
 	const int y = (blockIdx.y * blockDim.y) + threadIdx.y;
@@ -212,16 +212,16 @@ __global__ void RGBToRGB_Norm(T_in* srcImage, T_out* dstImage, int width, int he
 
 	const T_in px = srcImage[pixel];
 
-	#define rescale(x) ((x - min_pixel_value) * scaling_factor)
+	#define rescale(v) ((v - input_range.x) * scaling_factor)
 
 	if( isBGRA )
-		dstImage[pixel] = make_vec<T_out>(rescale(px.z), rescale(px.y), rescale(px.x), alpha(px));
+		dstImage[pixel] = make_vec<T_out>(rescale(px.z), rescale(px.y), rescale(px.x), rescale(alpha(px,input_range.y)));
 	else
-		dstImage[pixel] = make_vec<T_out>(rescale(px.x), rescale(px.y), rescale(px.z), alpha(px));
+		dstImage[pixel] = make_vec<T_out>(rescale(px.x), rescale(px.y), rescale(px.z), rescale(alpha(px,input_range.y)));
 }
 
 template<typename T_in, typename T_out, bool isBGR> 
-cudaError_t launchRGBToRGB_Norm( T_in* srcDev, T_out* dstDev, size_t width, size_t height, const float2& inputRange )
+static cudaError_t launchRGBToRGB_Norm( T_in* srcDev, T_out* dstDev, size_t width, size_t height, const float2& inputRange )
 {
 	if( !srcDev || !dstDev )
 		return cudaErrorInvalidDevicePointer;
@@ -234,7 +234,7 @@ cudaError_t launchRGBToRGB_Norm( T_in* srcDev, T_out* dstDev, size_t width, size
 	const dim3 blockDim(32,8,1);
 	const dim3 gridDim(iDivUp(width,blockDim.x), iDivUp(height,blockDim.y), 1);
 
-	RGBToRGB_Norm<T_in, T_out, isBGR><<<gridDim, blockDim>>>( srcDev, dstDev, width, height, inputRange.x, multiplier);
+	RGBToRGB_Norm<T_in, T_out, isBGR><<<gridDim, blockDim>>>( srcDev, dstDev, width, height, inputRange, multiplier);
 	
 	return CUDA(cudaGetLastError());
 }
