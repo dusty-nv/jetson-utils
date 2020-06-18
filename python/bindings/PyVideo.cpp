@@ -356,6 +356,7 @@ static int PyVideoOutput_Init( PyVideoOutput_Object* self, PyObject *args, PyObj
 	// parse argument list
 	size_t argc = 0;
 	char** argv = NULL;
+	bool   headless = false;
 
 	if( argList != NULL && PyList_Check(argList) && PyList_Size(argList) > 0 )
 	{
@@ -381,7 +382,10 @@ static int PyVideoOutput_Init( PyVideoOutput_Object* self, PyObject *args, PyObj
 					return -1;
 				}
 
-				LogDebug(LOG_PY_UTILS "videSource.__init__() argv[%zu] = '%s'\n", n, argv[n]);
+				if( strcasecmp(argv[n], "--headless") == 0 )
+					headless = true;
+
+				LogDebug(LOG_PY_UTILS "videoSource.__init__() argv[%zu] = '%s'\n", n, argv[n]);
 			}
 		}
 	}
@@ -396,8 +400,17 @@ static int PyVideoOutput_Init( PyVideoOutput_Object* self, PyObject *args, PyObj
 
 	if( !source )
 	{
-		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "failed to create videoOutput device");
-		return -1;
+		//if( headless )
+		//{
+			LogWarning(LOG_PY_UTILS "no output streams, creating fake null output\n");
+			source = videoOutput::CreateNullOutput();
+		//}
+			
+		if( !source )
+		{
+			PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "failed to create videoOutput device");
+			return -1;
+		}
 	}
 
 	self->output = source;

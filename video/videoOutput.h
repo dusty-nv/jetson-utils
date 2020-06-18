@@ -70,6 +70,11 @@ public:
 	/**
 	 *
 	 */
+	static videoOutput* CreateNullOutput();
+	
+	/**
+	 *
+	 */
 	virtual ~videoOutput();
 
 	/**

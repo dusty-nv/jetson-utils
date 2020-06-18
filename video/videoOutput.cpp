@@ -151,6 +151,21 @@ videoOutput* videoOutput::Create( const int argc, char** argv, int positionArg )
 	return Create(cmdLine);
 }
 
+// CreateNullOutput
+videoOutput* videoOutput::CreateNullOutput()
+{
+	videoOptions opt;
+	opt.ioType = videoOptions::OUTPUT;
+
+	videoOutput* output = new videoOutput(opt);
+	
+	if( !output )
+		return NULL;
+
+	output->mStreaming = true;
+	return output;
+}
+	
 // Open
 bool videoOutput::Open()
 {
