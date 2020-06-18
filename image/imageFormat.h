@@ -48,6 +48,7 @@ enum imageFormat
 	// YUV
 	IMAGE_YUYV,
 	IMAGE_YUY2=IMAGE_YUYV,
+	IMAGE_YVYU,
 	IMAGE_UYVY,		
 	IMAGE_I420,
 	IMAGE_YV12,
@@ -107,7 +108,7 @@ inline size_t imageFormatDepth( imageFormat format );
 inline size_t imageFormatSize( imageFormat format, size_t width, size_t height );
 
 /**
- * @returns true if the imageFormat is RGB/RGBA 
+ * @returns true if the imageFormat is a RGB/RGBA format 
  *               (IMAGE_RGB8, IMAGE_RGBA8, IMAGE_RGB32F, IMAGE_RGBA32F)
  *               otherwise, returns false.
  * @ingroup image
@@ -115,7 +116,30 @@ inline size_t imageFormatSize( imageFormat format, size_t width, size_t height )
 inline bool imageFormatIsRGB( imageFormat format );
 
 /**
- * @returns true if the imageFormat is Bayer 
+ * @returns true if the imageFormat is a BGR/BGRA format 
+ *               (IMAGE_BGR8, IMAGE_BGRA8, IMAGE_BGR32F, IMAGE_BGRA32F)
+ *               otherwise, returns false.
+ * @ingroup image
+ */
+inline bool imageFormatIsRGB( imageFormat format );
+
+/**
+ * @returns true if the imageFormat is a YUV format 
+ *               (IMAGE_YUYV, IMAGE_YVYU, IMAGE_UYVY, IMAGE_I420, IMAGE_YV12, IMAGE_NV12)
+ *               otherwise, returns false.
+ * @ingroup image
+ */
+inline bool imageFormatIsYUV( imageFormat format );
+
+/**
+ * @returns true if the imageFormat is grayscale (IMAGE_GRAY8, IMAGE_GRAY32)
+ *               otherwise, returns false.
+ * @ingroup image
+ */
+inline bool imageFormatIsGray( imageFormat format );
+
+/**
+ * @returns true if the imageFormat is a Bayer format
  *               (IMAGE_BAYER_BGGR, IMAGE_BAYER_GBRG, IMAGE_BAYER_GRBG, IMAGE_BAYER_RGGB)
  *               otherwise, returns false.
  * @ingroup image

@@ -45,6 +45,7 @@ inline const char* imageFormatToStr( imageFormat format )
 		case IMAGE_NV12:	 	return "nv12";
 		case IMAGE_UYVY:	 	return "uyvy";
 		case IMAGE_YUYV:	 	return "yuyv";
+		case IMAGE_YVYU:		return "yvyu";
 		case IMAGE_BAYER_BGGR:	return "bayer_bggr";
 		case IMAGE_BAYER_GBRG:	return "bayer_gbrg";
 		case IMAGE_BAYER_GRBG:	return "bayer_grbg";
@@ -60,16 +61,47 @@ inline const char* imageFormatToStr( imageFormat format )
 // imageFormatIsRGB
 inline bool imageFormatIsRGB( imageFormat format )
 {
-	if( format == IMAGE_RGB8 || format == IMAGE_RGBA8 || format == IMAGE_RGB32F || format == IMAGE_RGBA32F )
+	//if( format == IMAGE_RGB8 || format == IMAGE_RGBA8 || format == IMAGE_RGB32F || format == IMAGE_RGBA32F )
+	//	return true;
+	if( format >= IMAGE_RGB8 && format <= IMAGE_RGBA32F )
+		return true;
+	
+	return false;
+}
+
+// imageFormatIsBGR
+inline bool imageFormatIsBGR( imageFormat format )
+{
+	if( format >= IMAGE_BGR8 && format <= IMAGE_BGRA32F )
+		return true;
+	
+	return false;
+}
+
+// imageFormatIsYUV
+inline bool imageFormatIsYUV( imageFormat format )
+{
+	if( format >= IMAGE_YUYV && format <= IMAGE_NV12 )
 		return true;
 		
+	return false;
+}
+
+// imageFormatIsGray
+inline bool imageFormatIsGray( imageFormat format )
+{
+	if( format == IMAGE_GRAY8 || format == IMAGE_GRAY32F )
+		return true;
+	
 	return false;
 }
 
 // imageFormatIsBayer
 inline bool imageFormatIsBayer( imageFormat format )
 {
-	if( format == IMAGE_BAYER_BGGR || format == IMAGE_BAYER_GBRG || format == IMAGE_BAYER_GRBG || format == IMAGE_BAYER_RGGB )
+	//if( format == IMAGE_BAYER_BGGR || format == IMAGE_BAYER_GBRG || format == IMAGE_BAYER_GRBG || format == IMAGE_BAYER_RGGB )
+	//	return true;
+	if( format >= IMAGE_BAYER_BGGR && format <= IMAGE_BAYER_RGGB )
 		return true;
 		
 	return false;
@@ -139,7 +171,8 @@ inline size_t imageFormatChannels( imageFormat format )
 		case IMAGE_YV12:
 		case IMAGE_NV12:
 		case IMAGE_UYVY:
-		case IMAGE_YUYV:		return 3;
+		case IMAGE_YUYV:		
+		case IMAGE_YVYU:		return 3;
 		case IMAGE_BAYER_BGGR:
 		case IMAGE_BAYER_GBRG:
 		case IMAGE_BAYER_GRBG:
@@ -169,7 +202,8 @@ inline size_t imageFormatDepth( imageFormat format )
 		case IMAGE_YV12:
 		case IMAGE_NV12:		return 12;
 		case IMAGE_UYVY:
-		case IMAGE_YUYV:		return 16;
+		case IMAGE_YUYV:		
+		case IMAGE_YVYU:		return 16;
 		case IMAGE_BAYER_BGGR:
 		case IMAGE_BAYER_GBRG:
 		case IMAGE_BAYER_GRBG:
