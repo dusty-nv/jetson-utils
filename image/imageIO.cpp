@@ -139,7 +139,7 @@ bool loadImage( const char* filename, void** output, int* width, int* height, im
 	}
 
 	// check that the requested format is supported
-	if( format != IMAGE_RGB8 && format != IMAGE_RGBA8 && format != IMAGE_RGB32F && format != IMAGE_RGBA32F )
+	if( !imageFormatIsRGB(format) )
 	{
 		LogError(LOG_IMAGE "loadImage() -- unsupported output image format requested (%s)\n", imageFormatToStr(format));
 		LogError(LOG_IMAGE "               supported output formats are:\n");
@@ -259,7 +259,7 @@ bool saveImage( const char* filename, void* ptr, int width, int height, imageFor
 		quality = 100;
 	
 	// check that the requested format is supported
-	if( format != IMAGE_RGB8 && format != IMAGE_RGBA8 && format != IMAGE_RGB32F && format != IMAGE_RGBA32F )
+	if( !imageFormatIsRGB(format) && !imageFormatIsGray(format) )
 	{
 		LogError(LOG_IMAGE "saveImage() -- unsupported input image format (%s)\n", imageFormatToStr(format));
 		LogError(LOG_IMAGE "               supported input image formats are:\n");
@@ -267,6 +267,8 @@ bool saveImage( const char* filename, void* ptr, int width, int height, imageFor
 		LogError(LOG_IMAGE "                   * rgba8\n");		
 		LogError(LOG_IMAGE "                   * rgb32f\n");		
 		LogError(LOG_IMAGE "                   * rgba32f\n");
+		LogError(LOG_IMAGE "                   * gray8\n");
+		LogError(LOG_IMAGE "                   * gray32\n");
 
 		return false;
 	}
@@ -277,10 +279,19 @@ bool saveImage( const char* filename, void* ptr, int width, int height, imageFor
 	const size_t size     = stride * height;
 	unsigned char* img    = (unsigned char*)ptr;
 
-	// convert from uint8 to float
-	if( format == IMAGE_RGB32F || format == IMAGE_RGBA32F )
+	// if needed, convert from float to uint8
+	const imageBaseType baseType = imageFormatBaseType(format);
+
+	if( baseType == IMAGE_FLOAT )
 	{
-		const imageFormat outputFormat = (channels == 3) ? IMAGE_RGB8 : IMAGE_RGBA8;
+		imageFormat outputFormat = IMAGE_UNKNOWN;
+
+		if( channels == 1 )
+			outputFormat = IMAGE_GRAY8;
+		else if( channels == 3 )
+			outputFormat = IMAGE_RGB8;
+		else if( channels == 4 )
+			outputFormat = IMAGE_RGBA8;
 
 		if( !cudaAllocMapped((void**)&img, size) )
 		{
@@ -298,7 +309,7 @@ bool saveImage( const char* filename, void* ptr, int width, int height, imageFor
 	}
 	
 	#define release_return(x) 	\
-		if( format == IMAGE_RGB32F || format == IMAGE_RGBA32F ) \
+		if( baseType == IMAGE_FLOAT ) \
 			CUDA(cudaFreeHost(img)); \
 		return x;
 	
