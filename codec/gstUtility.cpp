@@ -49,6 +49,8 @@ imageFormat gst_parse_format( GstStructure* caps )
 		return IMAGE_YV12;
 	else if( strcasecmp(format, "yuyv") == 0 )
 		return IMAGE_YUYV;
+	else if( strcasecmp(format, "yvyu") == 0 )
+		return IMAGE_YVYU;
 	else if( strcasecmp(format, "uyvy") == 0 )
 		return IMAGE_UYVY;
 	else if( strcasecmp(format, "bggr") == 0 )
@@ -72,6 +74,7 @@ const char* gst_format_to_string( imageFormat format )
 		case IMAGE_I420:	return "I420";
 		case IMAGE_NV12:	return "NV12";
 		case IMAGE_YV12:	return "YV12";
+		case IMAGE_YVYU:	return "YVYU";
 		case IMAGE_UYVY:	return "UYVY";
 		case IMAGE_BAYER_BGGR:	return "bggr";
 		case IMAGE_BAYER_GBRG:	return "gbrg";
@@ -354,7 +357,7 @@ gboolean gst_message_print(GstBus* bus, GstMessage* message, gpointer user_data)
 		}
 		default:
 		{
-			LogVerbose(LOG_GSTREAMER "gstreamer msg %s ==> %s\n", gst_message_type_get_name(GST_MESSAGE_TYPE(message)), GST_OBJECT_NAME(message->src));
+			LogVerbose(LOG_GSTREAMER "gstreamer message %s ==> %s\n", gst_message_type_get_name(GST_MESSAGE_TYPE(message)), GST_OBJECT_NAME(message->src));
 			break;
 		}
 	}
