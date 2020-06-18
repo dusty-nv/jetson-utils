@@ -132,13 +132,15 @@ PyObject* PyNumpy_FromCUDA( PyObject* self, PyObject* args, PyObject* kwds )
 }
 
 
-
 // cudaFromNumpy()
-PyObject* PyNumpy_ToCUDA( PyObject* self, PyObject* args )
+PyObject* PyNumpy_ToCUDA( PyObject* self, PyObject* args, PyObject* kwds )
 {
 	PyObject* object = NULL;
 
-	if( !PyArg_ParseTuple(args, "O", &object) )
+	int pyBGR=0;
+	static char* kwlist[] = {"array", "isBGR", NULL};
+
+	if( !PyArg_ParseTupleAndKeywords(args, kwds, "O|i", kwlist, &object, &pyBGR) )
 	{
 		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaFromNumpy() failed to parse array argument");
 		return NULL;
@@ -149,6 +151,8 @@ PyObject* PyNumpy_ToCUDA( PyObject* self, PyObject* args )
 		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "Object passed to cudaFromNumpy() wasn't a numpy ndarray");
 		return NULL;
 	}
+
+	const bool isBGR = (pyBGR > 0);
 
 	// detect uint8 array - otherwise cast to float
 	const int inputType = PyArray_TYPE((PyArrayObject*)object);
@@ -227,9 +231,9 @@ PyObject* PyNumpy_ToCUDA( PyObject* self, PyObject* args )
 			if( dims[2] == 1 )
 				format = IMAGE_GRAY32F;
 			else if( dims[2] == 3 )
-				format = IMAGE_RGB32F;
+				format = isBGR ? IMAGE_BGR32F : IMAGE_RGB32F;
 			else if( dims[2] == 4 )
-				format = IMAGE_RGBA32F;
+				format = isBGR ? IMAGE_BGRA32F : IMAGE_RGBA32F;
 		}
 	}
 	else if( outputType == NPY_UINT8 )
@@ -243,9 +247,9 @@ PyObject* PyNumpy_ToCUDA( PyObject* self, PyObject* args )
 			if( dims[2] == 1 )
 				format = IMAGE_GRAY8;
 			else if( dims[2] == 3 )
-				format = IMAGE_RGB8;
+				format = isBGR ? IMAGE_BGR8 : IMAGE_RGB8;
 			else if( dims[2] == 4 )
-				format = IMAGE_RGBA8;
+				format = isBGR ? IMAGE_BGRA8 : IMAGE_RGBA8;
 		}
 	}
 
@@ -277,7 +281,7 @@ PyObject* PyNumpy_ToCUDA( PyObject* self, PyObject* args )
 
 static PyMethodDef pyImageIO_Functions[] = 
 {
-	{ "cudaFromNumpy", (PyCFunction)PyNumpy_ToCUDA, METH_VARARGS, "Copy a numpy ndarray to CUDA memory" },
+	{ "cudaFromNumpy", (PyCFunction)PyNumpy_ToCUDA, METH_VARARGS|METH_KEYWORDS, "Copy a numpy ndarray to CUDA memory" },
 	{ "cudaToNumpy", (PyCFunction)PyNumpy_FromCUDA, METH_VARARGS|METH_KEYWORDS, "Create a numpy ndarray wrapping the CUDA memory, without copying it" },	
 	{NULL}  /* Sentinel */
 };

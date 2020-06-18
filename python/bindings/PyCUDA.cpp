@@ -24,6 +24,9 @@
 
 #include "cudaMappedMemory.h"
 #include "cudaColorspace.h"
+#include "cudaNormalize.h"
+#include "cudaResize.h"
+#include "cudaCrop.h"
 #include "cudaFont.h"
 
 #include "logging.h"
@@ -918,13 +921,13 @@ PyObject* PyCUDA_Malloc( PyObject* self, PyObject* args, PyObject* kwds )
 PyObject* PyCUDA_AllocMapped( PyObject* self, PyObject* args, PyObject* kwds )
 {
 	int size = 0;
-	int width = 0;
-	int height = 0;
+	float width = 0;
+	float height = 0;
 
 	const char* formatStr = NULL;
 	static char* kwlist[] = {"size", "width", "height", "format", NULL};
 
-	if( !PyArg_ParseTupleAndKeywords(args, kwds, "|iiis", kwlist, &size, &width, &height, &formatStr))
+	if( !PyArg_ParseTupleAndKeywords(args, kwds, "|iffs", kwlist, &size, &width, &height, &formatStr))
 	{
 		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaAllocMapped() failed to parse arguments");
 		return NULL;
@@ -1016,10 +1019,168 @@ PyObject* PyCUDA_ConvertColor( PyObject* self, PyObject* args, PyObject* kwds )
 		return NULL;
 	}
 
+	if( input->width != output->width || input->height != output->height )
+	{
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaConvertColor() input and output image resolutions are different");
+		return NULL;
+	}
+
 	// run the CUDA function
 	if( CUDA_FAILED(cudaConvertColor(input->base.ptr, input->format, output->base.ptr, output->format, input->width, input->height)) )
 	{
 		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaConvertColor() failed");
+		return NULL;
+	}
+
+	// return void
+	Py_RETURN_NONE;
+}
+
+
+// PyCUDA_Resize
+PyObject* PyCUDA_Resize( PyObject* self, PyObject* args, PyObject* kwds )
+{
+	// parse arguments
+	PyObject* pyInput  = NULL;
+	PyObject* pyOutput = NULL;
+	
+	static char* kwlist[] = {"input", "output", NULL};
+
+	if( !PyArg_ParseTupleAndKeywords(args, kwds, "OO", kwlist, &pyInput, &pyOutput))
+	{
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaResize() failed to parse args");
+		return NULL;
+	}
+	
+	// get pointers to image data
+	PyCudaImage* input = PyCUDA_GetImage(pyInput);
+	PyCudaImage* output = PyCUDA_GetImage(pyOutput);
+
+	if( !input || !output )
+	{
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaResize() failed to get input/output image pointers (should be cudaImage)");
+		return NULL;
+	}
+
+	if( input->format != output->format )
+	{
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaResize() input and output image formats are different");
+		return NULL;
+	}
+
+	// run the CUDA function
+	if( CUDA_FAILED(cudaResize(input->base.ptr, input->width, input->height, output->base.ptr, output->width, output->height, output->format)) )
+	{
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaResize() failed");
+		return NULL;
+	}
+
+	// return void
+	Py_RETURN_NONE;
+}
+
+
+// PyCUDA_Crop
+PyObject* PyCUDA_Crop( PyObject* self, PyObject* args, PyObject* kwds )
+{
+	// parse arguments
+	PyObject* pyInput  = NULL;
+	PyObject* pyOutput = NULL;
+	
+	float left, top, right, bottom;
+	static char* kwlist[] = {"input", "output", "roi", NULL};
+
+	if( !PyArg_ParseTupleAndKeywords(args, kwds, "OO(ffff)", kwlist, &pyInput, &pyOutput, &left, &top, &right, &bottom))
+	{
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaCrop() failed to parse args");
+		return NULL;
+	}
+	
+	// get pointers to image data
+	PyCudaImage* input = PyCUDA_GetImage(pyInput);
+	PyCudaImage* output = PyCUDA_GetImage(pyOutput);
+
+	if( !input || !output )
+	{
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaCrop() failed to get input/output image pointers (should be cudaImage)");
+		return NULL;
+	}
+
+	if( input->format != output->format )
+	{
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaCrop() input and output image formats are different");
+		return NULL;
+	}
+
+	// validate ROI
+	const float roi_width  = right - left;
+	const float roi_height = bottom - top;
+
+	if( left < 0 || top < 0 || right < 0 || bottom < 0 ||
+	    right >= input->width || bottom >= input->height ||
+	    roi_width <= 0 || roi_height <= 0 || 
+	    roi_width > output->width || roi_height > output->height )
+	{
+		PyErr_SetString(PyExc_ValueError, LOG_PY_UTILS "cudaCrop() had an invalid ROI");
+		return NULL;
+	}
+
+	// run the CUDA function
+	if( CUDA_FAILED(cudaCrop(input->base.ptr, output->base.ptr, make_int4(left, top, right, bottom), input->width, input->height, input->format)) )
+	{
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaCrop() failed");
+		return NULL;
+	}
+
+	// return void
+	Py_RETURN_NONE;
+}
+
+
+// PyCUDA_Normalize
+PyObject* PyCUDA_Normalize( PyObject* self, PyObject* args, PyObject* kwds )
+{
+	// parse arguments
+	PyObject* pyInput  = NULL;
+	PyObject* pyOutput = NULL;
+	
+	float input_min, input_max;
+	float output_min, output_max;
+	
+	static char* kwlist[] = {"input", "inputRange", "output", "outputRange", NULL};
+
+	if( !PyArg_ParseTupleAndKeywords(args, kwds, "O(ff)O(ff)", kwlist, &pyInput, &input_min, &input_max, &pyOutput, &output_min, &output_max))
+	{
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaNormalize() failed to parse args");
+		return NULL;
+	}
+	
+	// get pointers to image data
+	PyCudaImage* input = PyCUDA_GetImage(pyInput);
+	PyCudaImage* output = PyCUDA_GetImage(pyOutput);
+
+	if( !input || !output )
+	{
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaNormalize() failed to get input/output image pointers (should be cudaImage)");
+		return NULL;
+	}
+
+	if( input->format != output->format )
+	{
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaNormalize() input and output image formats are different");
+		return NULL;
+	}
+
+	if( input->width != output->width || input->height != output->height )
+	{
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaNormalize() input and output image resolutions are different");
+		return NULL;
+	}
+
+	// run the CUDA function
+	if( CUDA_FAILED(cudaNormalize(input->base.ptr, make_float2(input_min, input_max), output->base.ptr, make_float2(output_min, output_max), output->width, output->height, output->format)) )
+	{
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaNormalize() failed");
 		return NULL;
 	}
 
@@ -1364,6 +1525,9 @@ static PyMethodDef pyCUDA_Functions[] =
 	{ "cudaAllocMapped", (PyCFunction)PyCUDA_AllocMapped, METH_VARARGS|METH_KEYWORDS, "Allocate CUDA ZeroCopy mapped memory" },
 	{ "cudaDeviceSynchronize", (PyCFunction)PyCUDA_DeviceSynchronize, METH_NOARGS, "Wait for the GPU to complete all work" },
 	{ "cudaConvertColor", (PyCFunction)PyCUDA_ConvertColor, METH_VARARGS|METH_KEYWORDS, "Perform colorspace conversion on the GPU" },
+	{ "cudaCrop", (PyCFunction)PyCUDA_Crop, METH_VARARGS|METH_KEYWORDS, "Crop an image on the GPU" },		
+	{ "cudaResize", (PyCFunction)PyCUDA_Resize, METH_VARARGS|METH_KEYWORDS, "Resize an image on the GPU" },
+	{ "cudaNormalize", (PyCFunction)PyCUDA_Normalize, METH_VARARGS|METH_KEYWORDS, "Normalize the pixel intensities of an image between two ranges" },
 	{ "adaptFontSize", (PyCFunction)PyCUDA_AdaptFontSize, METH_VARARGS, "Determine an appropriate font size for the given image dimension" },
 	{NULL}  /* Sentinel */
 };
