@@ -203,6 +203,41 @@ cudaError_t cudaYUYVToRGBA( void* input, float4* output, size_t width, size_t he
 
 
 //////////////////////////////////////////////////////////////////////////////////
+/// @name YUV YVYU 4:2:2 packed to RGB
+/// @see cudaConvertColor() from cudaColorspace.h for automated format conversion
+/// @ingroup colorspace
+//////////////////////////////////////////////////////////////////////////////////
+
+///@{
+
+/**
+ * Convert a YVYU 422 packed image into RGB uchar3.
+ * @ingroup colorspace
+ */
+cudaError_t cudaYVYUToRGB( void* input, uchar3* output, size_t width, size_t height );
+
+/**
+ * Convert a YVYU 422 packed image into RGB float3.
+ * @ingroup colorspace
+ */
+cudaError_t cudaYVYUToRGB( void* input, float3* output, size_t width, size_t height );
+
+/**
+ * Convert a YVYU 422 packed image into RGBA uchar4.
+ * @ingroup colorspace
+ */
+cudaError_t cudaYVYUToRGBA( void* input, uchar4* output, size_t width, size_t height );
+
+/**
+ * Convert a YVYU 422 packed image into RGBA float4.
+ * @ingroup colorspace
+ */
+cudaError_t cudaYVYUToRGBA( void* input, float4* output, size_t width, size_t height );
+
+///@}
+
+
+//////////////////////////////////////////////////////////////////////////////////
 /// @name YUV UYVY 4:2:2 packed to RGB
 /// @see cudaConvertColor() from cudaColorspace.h for automated format conversion
 /// @ingroup colorspace

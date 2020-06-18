@@ -21,7 +21,7 @@
  */
 
 #include "cudaYUV.h"
-
+#include "imageFormat.h"
 
 
 //-----------------------------------------------------------------------------------
@@ -97,7 +97,7 @@ template<> inline __host__ __device__ float8 make_vec( float x0, float y0, float
 //-----------------------------------------------------------------------------------
 // YUYV/UYVY to RGBA
 //-----------------------------------------------------------------------------------
-template <typename T, bool formatUYVY>
+template <typename T, imageFormat format>
 __global__ void YUYVToRGBA( uchar4* src, T* dst, int halfWidth, int height )
 {
 	const int x = blockIdx.x * blockDim.x + threadIdx.x;
@@ -109,13 +109,33 @@ __global__ void YUYVToRGBA( uchar4* src, T* dst, int halfWidth, int height )
 	const uchar4 macroPx = src[y * halfWidth + x];
 
 	// Y0 is the brightness of pixel 0, Y1 the brightness of pixel 1.
-	// U0 and V0 is the color of both pixels.
-	// UYVY [ U0 | Y0 | V0 | Y1 ] 
-	// YUYV [ Y0 | U0 | Y1 | V0 ]
-	const float y0 = formatUYVY ? macroPx.y : macroPx.x;
-	const float y1 = formatUYVY ? macroPx.w : macroPx.z; 
-	const float u =  formatUYVY ? macroPx.x : macroPx.y;
-	const float v =  formatUYVY ? macroPx.z : macroPx.w;
+	// U and V is the color of both pixels.
+	float y0, y1, u, v;
+
+	if( format == IMAGE_YUYV )
+	{
+		// YUYV [ Y0 | U0 | Y1 | V0 ]
+		y0 = macroPx.x;
+		y1 = macroPx.z;
+		u  = macroPx.y;
+		v  = macroPx.w;
+	}
+	else if( format == IMAGE_YVYU )
+	{
+		// YVYU [ Y0 | V0 | Y1 | U0 ]
+		y0 = macroPx.x;
+		y1 = macroPx.z;
+		u  = macroPx.w;
+		v  = macroPx.y;
+	}
+	else // if( format == IMAGE_UYVY )
+	{
+		// UYVY [ U0 | Y0 | V0 | Y1 ]
+		y0 = macroPx.y;
+		y1 = macroPx.w;
+		u  = macroPx.x;
+		v  = macroPx.z;
+	}
 
 	// this function outputs two pixels from one YUYV macropixel
 	const float3 px0 = YUV2RGB(y0, u, v);
@@ -125,7 +145,7 @@ __global__ void YUYVToRGBA( uchar4* src, T* dst, int halfWidth, int height )
 								  px1.x, px1.y, px1.z, 255);
 } 
 
-template<typename T, bool formatUYVY>
+template<typename T, imageFormat format>
 cudaError_t launchYUYVToRGB( void* input, T* output, size_t width, size_t height)
 {
 	if( !input || !output || !width || !height )
@@ -135,7 +155,7 @@ cudaError_t launchYUYVToRGB( void* input, T* output, size_t width, size_t height
 	const dim3 blockDim(8,8);
 	const dim3 gridDim(iDivUp(halfWidth, blockDim.x), iDivUp(height, blockDim.y));
 
-	YUYVToRGBA<T, formatUYVY><<<gridDim, blockDim>>>((uchar4*)input, output, halfWidth, height);
+	YUYVToRGBA<T, format><<<gridDim, blockDim>>>((uchar4*)input, output, halfWidth, height);
 
 	return CUDA(cudaGetLastError());
 }
@@ -144,25 +164,25 @@ cudaError_t launchYUYVToRGB( void* input, T* output, size_t width, size_t height
 // cudaYUYVToRGB (uchar3)
 cudaError_t cudaYUYVToRGB( void* input, uchar3* output, size_t width, size_t height )
 {
-	return launchYUYVToRGB<uchar6, false>(input, (uchar6*)output, width, height);
+	return launchYUYVToRGB<uchar6, IMAGE_YUYV>(input, (uchar6*)output, width, height);
 }
 
 // cudaYUYVToRGB (float3)
 cudaError_t cudaYUYVToRGB( void* input, float3* output, size_t width, size_t height )
 {
-	return launchYUYVToRGB<float6, false>(input, (float6*)output, width, height);
+	return launchYUYVToRGB<float6, IMAGE_YUYV>(input, (float6*)output, width, height);
 }
 
 // cudaYUYVToRGBA (uchar4)
 cudaError_t cudaYUYVToRGBA( void* input, uchar4* output, size_t width, size_t height )
 {
-	return launchYUYVToRGB<uchar8, false>(input, (uchar8*)output, width, height);
+	return launchYUYVToRGB<uchar8, IMAGE_YUYV>(input, (uchar8*)output, width, height);
 }
 
 // cudaYUYVToRGBA (float4)
 cudaError_t cudaYUYVToRGBA( void* input, float4* output, size_t width, size_t height )
 {
-	return launchYUYVToRGB<float8, false>(input, (float8*)output, width, height);
+	return launchYUYVToRGB<float8, IMAGE_YUYV>(input, (float8*)output, width, height);
 }
 
 //-----------------------------------------------------------------------------------
@@ -170,25 +190,50 @@ cudaError_t cudaYUYVToRGBA( void* input, float4* output, size_t width, size_t he
 // cudaUYVYToRGB (uchar3)
 cudaError_t cudaUYVYToRGB( void* input, uchar3* output, size_t width, size_t height )
 {
-	return launchYUYVToRGB<uchar6, true>(input, (uchar6*)output, width, height);
+	return launchYUYVToRGB<uchar6, IMAGE_UYVY>(input, (uchar6*)output, width, height);
 }
 
 // cudaUYVYToRGB (float3)
 cudaError_t cudaUYVYToRGB( void* input, float3* output, size_t width, size_t height )
 {
-	return launchYUYVToRGB<float6, true>(input, (float6*)output, width, height);
+	return launchYUYVToRGB<float6, IMAGE_UYVY>(input, (float6*)output, width, height);
 }
 
 // cudaUYVYToRGBA (uchar4)
 cudaError_t cudaUYVYToRGBA( void* input, uchar4* output, size_t width, size_t height )
 {
-	return launchYUYVToRGB<uchar8, true>(input, (uchar8*)output, width, height);
+	return launchYUYVToRGB<uchar8, IMAGE_UYVY>(input, (uchar8*)output, width, height);
 }
 
 // cudaUYVYToRGBA (float4)
 cudaError_t cudaUYVYToRGBA( void* input, float4* output, size_t width, size_t height )
 {
-	return launchYUYVToRGB<float8, true>(input, (float8*)output, width, height);
+	return launchYUYVToRGB<float8, IMAGE_UYVY>(input, (float8*)output, width, height);
 }
 
+//-----------------------------------------------------------------------------------
+
+// cudaYVYUToRGB (uchar3)
+cudaError_t cudaYVYUToRGB( void* input, uchar3* output, size_t width, size_t height )
+{
+	return launchYUYVToRGB<uchar6, IMAGE_YVYU>(input, (uchar6*)output, width, height);
+}
+
+// cudaYUYVToRGB (float3)
+cudaError_t cudaYVYUToRGB( void* input, float3* output, size_t width, size_t height )
+{
+	return launchYUYVToRGB<float6, IMAGE_YVYU>(input, (float6*)output, width, height);
+}
+
+// cudaYUYVToRGBA (uchar4)
+cudaError_t cudaYVYUToRGBA( void* input, uchar4* output, size_t width, size_t height )
+{
+	return launchYUYVToRGB<uchar8, IMAGE_YVYU>(input, (uchar8*)output, width, height);
+}
+
+// cudaYUYVToRGBA (float4)
+cudaError_t cudaYVYUToRGBA( void* input, float4* output, size_t width, size_t height )
+{
+	return launchYUYVToRGB<float8, IMAGE_YVYU>(input, (float8*)output, width, height);
+}
 

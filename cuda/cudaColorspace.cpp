@@ -80,6 +80,17 @@ cudaError_t cudaConvertColor( void* input, imageFormat inputFormat,
 		else if( outputFormat == IMAGE_RGBA32F )
 			return CUDA(cudaYUYVToRGBA(input, (float4*)output, width, height));
 	}
+	else if( inputFormat == IMAGE_YVYU )
+	{
+		if( outputFormat == IMAGE_RGB8 )
+			return CUDA(cudaYVYUToRGB(input, (uchar3*)output, width, height));
+		else if( outputFormat == IMAGE_RGB32F )
+			return CUDA(cudaYVYUToRGB(input, (float3*)output, width, height));
+		else if( outputFormat == IMAGE_RGBA8 )
+			return CUDA(cudaYVYUToRGBA(input, (uchar4*)output, width, height));
+		else if( outputFormat == IMAGE_RGBA32F )
+			return CUDA(cudaYVYUToRGBA(input, (float4*)output, width, height));
+	}
 	else if( inputFormat == IMAGE_UYVY )
 	{
 		if( outputFormat == IMAGE_RGB8 )
