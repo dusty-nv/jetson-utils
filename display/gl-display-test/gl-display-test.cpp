@@ -205,9 +205,9 @@ int main( int argc, char** argv )
 							   str, 0, 36, make_float4(255.0f, 190.0f, 0.0f, 255.0f));
 
 				// rescale image pixel intensities for display
-				CUDA(cudaNormalizeRGBA((float4*)textureCUDA, make_float2(0.0f, 255.0f), 
-								   (float4*)textureCUDA, make_float2(0.0f, 1.0f), 
-		 						   texture->GetWidth(), texture->GetHeight()));
+				CUDA(cudaNormalize((float4*)textureCUDA, make_float2(0.0f, 255.0f), 
+							    (float4*)textureCUDA, make_float2(0.0f, 1.0f), 
+		 					    texture->GetWidth(), texture->GetHeight()));
 
 				texture->Unmap();
 			}
