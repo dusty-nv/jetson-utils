@@ -144,8 +144,25 @@ PyObject* PyNumpy_ToCUDA( PyObject* self, PyObject* args )
 		return NULL;
 	}
 		
+	if( !PyArray_Check(object) )
+	{
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "Object passed to cudaFromNumpy() wasn't a numpy ndarray");
+		return NULL;
+	}
+
+	// detect uint8 array - otherwise cast to float
+	const int inputType = PyArray_TYPE((PyArrayObject*)object);
+	int outputType = NPY_FLOAT32;
+	int typeSize = sizeof(float);
+
+	if( inputType == NPY_UINT8 )
+	{
+		outputType = NPY_UINT8;
+		typeSize = sizeof(uint8_t);
+	}
+	
 	// cast to numpy array
-	PyArrayObject* array = (PyArrayObject*)PyArray_FROM_OTF(object, NPY_FLOAT32, NPY_ARRAY_IN_ARRAY|NPY_ARRAY_FORCECAST);
+	PyArrayObject* array = (PyArrayObject*)PyArray_FROM_OTF(object, outputType, NPY_ARRAY_IN_ARRAY|NPY_ARRAY_FORCECAST);
 
 	if( !array )
 		return NULL;
@@ -165,7 +182,7 @@ PyObject* PyNumpy_ToCUDA( PyObject* self, PyObject* args )
 			size *= dims[n];
 	}
 
-	size *= sizeof(float);
+	size *= typeSize;
 
 	if( size == 0 )
 	{
@@ -196,11 +213,47 @@ PyObject* PyNumpy_ToCUDA( PyObject* self, PyObject* args )
 		return NULL;
 	}	
 
+	// detect the image format
+	imageFormat format = IMAGE_UNKNOWN;
+
+	if( outputType == NPY_FLOAT32 )
+	{
+		if( ndim == 2 )
+		{
+			format = IMAGE_GRAY32F;
+		}
+		else if( ndim == 3 )
+		{
+			if( dims[2] == 1 )
+				format = IMAGE_GRAY32F;
+			else if( dims[2] == 3 )
+				format = IMAGE_RGB32F;
+			else if( dims[2] == 4 )
+				format = IMAGE_RGBA32F;
+		}
+	}
+	else if( outputType == NPY_UINT8 )
+	{
+		if( ndim == 2 )
+		{
+			format = IMAGE_GRAY8;
+		}
+		else if( ndim == 3 )
+		{
+			if( dims[2] == 1 )
+				format = IMAGE_GRAY8;
+			else if( dims[2] == 3 )
+				format = IMAGE_RGB8;
+			else if( dims[2] == 4 )
+				format = IMAGE_RGBA8;
+		}
+	}
+
 	// register CUDA memory capsule
 	PyObject* capsule = NULL;
 
-	if( ndim == 3 && (dims[2] == 3 || dims[2] == 4) )
-		capsule = PyCUDA_RegisterImage(gpuPtr, dims[1], dims[0], (dims[2] == 3) ? IMAGE_RGB32F : IMAGE_RGBA32F, true);
+	if( format != IMAGE_UNKNOWN )	
+		capsule = PyCUDA_RegisterImage(gpuPtr, dims[1], dims[0], format, true);
 	else
 		capsule = PyCUDA_RegisterMemory(gpuPtr, size, true);
 

@@ -365,6 +365,246 @@ static PyObject* PyCudaImage_GetFormat( PyCudaImage* self, void* closure )
 	return PYSTRING_FROM_STRING(imageFormatToStr(self->format));
 }
 
+// PyCudaImage_ParseSubscriptTuple
+static int PyCudaImage_ParseSubscriptTuple(PyCudaImage* self, PyObject* tuple, int* numComponents, bool* exceptionSet)
+{
+	if( !PyTuple_Check(tuple) )
+		return -1;
+
+	// support between 1 and 3 tuple indices:
+	//    1. img[y*width+x]
+	//    2. img[y,x]
+	//    3. img[y,x,channel]
+	const Py_ssize_t tupleSize = PyTuple_Size(tuple);
+
+	if( tupleSize <= 0 || tupleSize > 3 )
+		return -1;
+
+	const size_t imgChannels = imageFormatChannels(self->format);
+	const size_t dimSize[] = { self->height, self->width, imgChannels };
+	int dims[] = {-1, -1, -1};
+
+	for( int n=0; n < tupleSize; n++ )
+	{
+		const long dim = PYLONG_AS_LONG(PyTuple_GetItem(tuple, n));
+
+		if( dim == -1 && PyErr_Occurred() != NULL )
+		{
+			PyErr_SetString(PyExc_TypeError, LOG_PY_UTILS "cudaImage subscript had invalid element in key tuple");
+			*exceptionSet = true;
+			return -1;
+		}
+		
+		dims[n] = dim;
+
+		// wrap around negative indices
+		if( dims[n] < 0 )
+			dims[n] += dimSize[n];
+
+		// confirm the dim is in-range
+		if( dims[n] < 0 || dims[n] >= dimSize[n] )
+		{
+			PyErr_SetString(PyExc_IndexError, LOG_PY_UTILS "cudaImage subscript was out of range");
+			*exceptionSet = true;
+			return -1;
+		}
+	}
+	
+	const size_t pixelDepth = imageFormatDepth(self->format);
+	const size_t baseDepth = pixelDepth / imgChannels;
+	
+	if( tupleSize == 1 )
+	{
+		// pixel index - img[y * img.width + x]
+		*numComponents = imageFormatChannels(self->format);
+		return (dims[0] * pixelDepth) / 8;
+	}
+	else if( tupleSize == 2 )
+	{
+		// y, x index - img[y,x]
+		*numComponents = imageFormatChannels(self->format);
+		return ((dims[0] * self->width + dims[1]) * pixelDepth) / 8;
+	}
+	else if( tupleSize == 3 )
+	{
+		// individual component index - img[y,x,channel]
+		*numComponents = 1;
+		return (((dims[0] * self->width + dims[1]) * pixelDepth) + dims[2] * baseDepth) / 8;	// return byte offset
+	}
+
+	return -1;
+}
+
+// PyCudaImage_ParseSubscriptOffset
+static int PyCudaImage_ParseSubscript(PyCudaImage* self, PyObject* key, int* numComponents)
+{
+	//PyObject_Print(PyObject_Type(key), stdout, Py_PRINT_RAW);
+	int offset = PYLONG_AS_LONG(key);
+
+	if( offset == -1 && PyErr_Occurred() != NULL )
+	{
+		PyErr_Clear();
+		bool exceptionSet = false;
+		offset = PyCudaImage_ParseSubscriptTuple(self, key, numComponents, &exceptionSet);
+
+		if( offset < 0 )
+		{
+			if( !exceptionSet )
+				PyErr_SetString(PyExc_TypeError, LOG_PY_UTILS "cudaImage subscript had invalid key");
+
+			return -1;
+		}
+
+		return offset;
+	}
+
+	// negative indexes wrap around
+	if( offset < 0 )
+		offset = self->width * self->height + offset;
+
+	// bounds checking
+	if( offset < 0 || offset >= (self->width * self->height) )
+	{
+		PyErr_SetString(PyExc_IndexError, LOG_PY_UTILS "cudaImage subscript was out of range");
+		return -1;
+	}
+
+	*numComponents = imageFormatChannels(self->format);
+	offset = (offset * imageFormatDepth(self->format)) / 8;
+	return offset;
+}
+
+// PyCudaImage_GetItem
+static PyObject* PyCudaImage_GetItem(PyCudaImage *self, PyObject *key)
+{
+	if( !self->base.mapped )
+	{
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaImage subscript operator can only operate on mapped/zeroCopy memory");
+		return NULL;
+	}
+
+	int numComponents = 0;
+	const int offset = PyCudaImage_ParseSubscript(self, key, &numComponents);
+
+	if( offset < 0 )
+		return NULL;
+	
+	// apply offset to the data pointer
+	uint8_t* ptr = ((uint8_t*)self->base.ptr) + offset;
+
+	// return the pixel as a tuple
+	PyObject* tuple = PyTuple_New(numComponents);
+	const imageBaseType baseType = imageFormatBaseType(self->format);
+
+	for( int n=0; n < numComponents; n++ )
+	{
+		PyObject* component = NULL;
+
+		if( baseType == IMAGE_FLOAT )
+			component = PyFloat_FromDouble(((float*)ptr)[n]);
+		else if( baseType == IMAGE_UINT8 )
+			component = PYLONG_FROM_UNSIGNED_LONG(ptr[n]);
+		
+		PyTuple_SetItem(tuple, n, component);
+	}
+
+	return tuple;
+}
+
+// PyCudaImage_SetItem
+static int PyCudaImage_SetItem( PyCudaImage* self, PyObject* key, PyObject* value )
+{
+	if( !self->base.mapped )
+	{
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaImage subscript operator can only operate on mapped/zeroCopy memory");
+		return -1;
+	}
+
+	int numComponents = 0;
+	const int offset = PyCudaImage_ParseSubscript(self, key, &numComponents);
+
+	if( offset < 0 )
+		return -1;
+	
+	// apply offset to the data pointer
+	uint8_t* ptr = ((uint8_t*)self->base.ptr) + offset;
+	const size_t imgChannels = imageFormatChannels(self->format);
+	const imageBaseType baseType = imageFormatBaseType(self->format);
+	
+	// if this is a list, convert it to tuple
+	PyObject* list = NULL;
+	
+	if( PyList_Check(value) )
+	{
+		list = PyList_AsTuple(value);
+		value = list;
+	}
+	
+	// macro to parse object and assign it to a channel
+	#define assign_pixel_channel(channel, value)    \
+	{												\
+		const float val = PyFloat_AsDouble(value);  \
+													\
+		if( PyErr_Occurred() != NULL )				\
+		{											\
+			PyErr_SetString(PyExc_TypeError, LOG_PY_UTILS "cudaImage subscript was assigned an invalid value (int or float expected)"); \
+			return -1; 								\
+		} 											\
+													\
+		if( baseType == IMAGE_FLOAT )				\
+			((float*)ptr)[channel] = val;			\
+		else if( baseType == IMAGE_UINT8 )			\
+			ptr[channel] = val;						\
+	}
+	
+	// check if this is a tuple
+	if( !PyTuple_Check(value) )
+	{
+		// if an individual channel is being set, try a single float/int
+		if( numComponents == 1 )
+		{
+			assign_pixel_channel(0, value);
+			return 0;
+		}
+
+		PyErr_SetString(PyExc_TypeError, LOG_PY_UTILS "cudaImage subscript was assigned an invalid value (tuple or list expected)");
+		return -1;
+	}
+	
+	// check that the tuple length matches the number of image channels
+	const Py_ssize_t tupleSize = PyTuple_Size(value);
+
+	if( tupleSize != numComponents )
+	{
+		PyErr_SetString(PyExc_TypeError, LOG_PY_UTILS "cudaImage subscript was assigned a tuple with a different length than the number of image channels");
+		return -1;
+	}
+
+	// assign each tuple element to a channel
+	for( int n=0; n < tupleSize; n++ )
+	{
+		PyObject* tupleItem = PyTuple_GetItem(value, n);
+		assign_pixel_channel(n, tupleItem);
+	}
+
+	if( list != NULL )
+		Py_DECREF(list);
+	
+	return 0;
+}
+
+// PyCudaImage_Length
+static Py_ssize_t PyCudaImage_Length(PyCudaImage* self) 
+{
+	return self->width * self->height;
+}
+
+static PyMappingMethods pyCudaImage_AsMapping = {
+	(lenfunc)PyCudaImage_Length,
+	(binaryfunc)PyCudaImage_GetItem,
+	(objobjargproc)PyCudaImage_SetItem,
+};
+
 #if PY_MAJOR_VERSION >= 3
 // PyCudaImage_GetBuffer
 static int PyCudaImage_GetBuffer(PyCudaImage* self, Py_buffer* view, int flags)
@@ -423,6 +663,7 @@ static PyBufferProcs pyCudaImage_AsBuffer = {
 	(getbufferproc)PyCudaImage_GetBuffer,
 	(releasebufferproc)0,  // we do not require any special release function
 };
+
 #endif
 
 static PyGetSetDef pyCudaImage_GetSet[] = 
@@ -450,14 +691,15 @@ bool PyCudaImage_RegisterType( PyObject* module )
 	pyCudaImage_Type.tp_base      = &pyCudaMemory_Type;
 	pyCudaImage_Type.tp_methods   = NULL;
 	pyCudaImage_Type.tp_getset    = pyCudaImage_GetSet;
+	pyCudaImage_Type.tp_as_mapping = &pyCudaImage_AsMapping;
 	pyCudaImage_Type.tp_new 	     = PyCudaImage_New;
 	pyCudaImage_Type.tp_init	     = (initproc)PyCudaImage_Init;
 	pyCudaImage_Type.tp_dealloc	= NULL; /*(destructor)PyCudaMemory_Dealloc*/;
 	pyCudaImage_Type.tp_str		= (reprfunc)PyCudaImage_ToString;
 	pyCudaImage_Type.tp_doc  	= "CUDA image";
-	 
+	
 #if PY_MAJOR_VERSION >= 3
-	pyCudaImage_Type.tp_as_buffer = &pyCudaImage_AsBuffer;
+	pyCudaImage_Type.tp_as_buffer  = &pyCudaImage_AsBuffer;
 #endif
 
 	if( PyType_Ready(&pyCudaImage_Type) < 0 )
