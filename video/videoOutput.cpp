@@ -214,6 +214,7 @@ const char* videoOutput::TypeToStr( uint32_t type )
 	else if( type == imageWriter::Type )
 		return "imageWriter";
 
+	LogWarning(LOG_VIDEO "unknown videoOutput type - %u\n", type);
 	return "(unknown)";
 }
 
