@@ -61,6 +61,11 @@ public:
 	/**
 	 *
 	 */
+	virtual inline uint32_t GetType() const		{ return Type; }
+
+	/**
+	 *
+	 */
 	static const uint32_t Type = (1 << 5);
 
 	/**
