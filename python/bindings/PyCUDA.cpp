@@ -25,6 +25,7 @@
 #include "cudaMappedMemory.h"
 #include "cudaColorspace.h"
 #include "cudaNormalize.h"
+#include "cudaOverlay.h"
 #include "cudaResize.h"
 #include "cudaCrop.h"
 #include "cudaFont.h"
@@ -362,6 +363,22 @@ static PyObject* PyCudaImage_GetHeight( PyCudaImage* self, void* closure )
 	return PYLONG_FROM_UNSIGNED_LONG(self->height);
 }
 
+// PyCudaImage_GetShape
+static PyObject* PyCudaImage_GetShape( PyCudaImage* self, void* closure )
+{
+	PyObject* height   = PYLONG_FROM_UNSIGNED_LONG(self->shape[0]);
+	PyObject* width    = PYLONG_FROM_UNSIGNED_LONG(self->shape[1]);
+	PyObject* channels = PYLONG_FROM_UNSIGNED_LONG(self->shape[2]);
+
+	PyObject* tuple = PyTuple_Pack(3, height, width, channels);
+
+	Py_DECREF(height);
+	Py_DECREF(width);
+	Py_DECREF(channels);
+
+	return tuple;
+}
+
 // PyCudaImage_GetFormat
 static PyObject* PyCudaImage_GetFormat( PyCudaImage* self, void* closure )
 {
@@ -673,6 +690,7 @@ static PyGetSetDef pyCudaImage_GetSet[] =
 {
 	{ "width", (getter)PyCudaImage_GetWidth, NULL, "Width of the image (in pixels)", NULL},
 	{ "height", (getter)PyCudaImage_GetHeight, NULL, "Height of the image (in pixels)", NULL},
+	{ "shape", (getter)PyCudaImage_GetShape, NULL, "Image dimensions in (height, width, channels) tuple", NULL},
 	{ "format", (getter)PyCudaImage_GetFormat, NULL, "Pixel format of the image", NULL},
 	{ NULL } /* Sentinel */
 };
@@ -1188,6 +1206,52 @@ PyObject* PyCUDA_Normalize( PyObject* self, PyObject* args, PyObject* kwds )
 	Py_RETURN_NONE;
 }
 
+
+// PyCUDA_Overlay
+PyObject* PyCUDA_Overlay( PyObject* self, PyObject* args, PyObject* kwds )
+{
+	// parse arguments
+	PyObject* pyInput  = NULL;
+	PyObject* pyOutput = NULL;
+	
+	float x = 0.0f;
+	float y = 0.0f;
+
+	static char* kwlist[] = {"input", "output", "x", "y", NULL};
+
+	if( !PyArg_ParseTupleAndKeywords(args, kwds, "OO|ff", kwlist, &pyInput, &pyOutput, &x, &y))
+	{
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaOverlay() failed to parse args");
+		return NULL;
+	}
+	
+	// get pointers to image data
+	PyCudaImage* input = PyCUDA_GetImage(pyInput);
+	PyCudaImage* output = PyCUDA_GetImage(pyOutput);
+
+	if( !input || !output )
+	{
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaOverlay() failed to get input/output image pointers (should be cudaImage)");
+		return NULL;
+	}
+
+	if( input->format != output->format )
+	{
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaOverlay() input and output image formats are different");
+		return NULL;
+	}
+
+	// run the CUDA function
+	if( CUDA_FAILED(cudaOverlay(input->base.ptr, input->width, input->height, output->base.ptr, output->width, output->height, output->format, x, y)) )
+	{
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaOverlay() failed");
+		return NULL;
+	}
+
+	// return void
+	Py_RETURN_NONE;
+}
+
 //-------------------------------------------------------------------------------
 // PyFont container
 typedef struct {
@@ -1528,6 +1592,7 @@ static PyMethodDef pyCUDA_Functions[] =
 	{ "cudaCrop", (PyCFunction)PyCUDA_Crop, METH_VARARGS|METH_KEYWORDS, "Crop an image on the GPU" },		
 	{ "cudaResize", (PyCFunction)PyCUDA_Resize, METH_VARARGS|METH_KEYWORDS, "Resize an image on the GPU" },
 	{ "cudaNormalize", (PyCFunction)PyCUDA_Normalize, METH_VARARGS|METH_KEYWORDS, "Normalize the pixel intensities of an image between two ranges" },
+	{ "cudaOverlay", (PyCFunction)PyCUDA_Overlay, METH_VARARGS|METH_KEYWORDS, "Overlay the input image onto the composite output image at position (x,y)" },
 	{ "adaptFontSize", (PyCFunction)PyCUDA_AdaptFontSize, METH_VARARGS, "Determine an appropriate font size for the given image dimension" },
 	{NULL}  /* Sentinel */
 };
