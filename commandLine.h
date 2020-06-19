@@ -126,6 +126,11 @@ public:
 	void AddFlag( const char* flag );
 
 	/**
+	 * Print out the command line for reference.
+	 */
+	void Print() const;
+
+	/**
 	 * The argument count that the object was created with from main()
 	 */
 	int argc;

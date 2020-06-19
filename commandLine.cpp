@@ -330,3 +330,15 @@ void commandLine::AddFlag( const char* flag )
 }
 
 
+// Print
+void commandLine::Print() const
+{
+	for( int n=0; n < argc; n++ )
+		printf("%s ", argv[n]);
+
+	printf("\n");
+}
+
+
+
+
