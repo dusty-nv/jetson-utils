@@ -82,7 +82,10 @@ imageLoader::imageLoader( const videoOptions& options ) : videoSource(options)
 	for( size_t n=0; n < numFiles; n++ )
 	{
 		if( fileHasExtension(files[n], SupportedExtensions) )
+		{
+			LogDebug(LOG_IMAGE "imageLoader -- found file %s\n", files[n].c_str());
 			mFiles.push_back(files[n]);
+		}
 	} 
 
 	if( mFiles.size() == 0 )
