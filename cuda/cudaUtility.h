@@ -103,8 +103,19 @@ inline cudaError_t cudaCheckError(cudaError_t retval, const char* txt, const cha
 
 
 /**
- * Check for non-NULL pointer before deleting it,
- * and then set the pointer to NULL.
+ * Check for non-NULL pointer before freeing it, and then set the pointer to NULL.
+ * @ingroup util
+ */
+#define CUDA_FREE(x) 		if(x != NULL) { cudaFree(x); x = NULL; }
+
+/**
+ * Check for non-NULL pointer before freeing it, and then set the pointer to NULL.
+ * @ingroup util
+ */
+#define CUDA_FREE_HOST(x)	if(x != NULL) { cudaFreeHost(x); x = NULL; }
+
+/**
+ * Check for non-NULL pointer before deleting it, and then set the pointer to NULL.
  * @ingroup util
  */
 #define SAFE_DELETE(x) 		if(x != NULL) { delete x; x = NULL; }
