@@ -554,7 +554,7 @@ bool cudaFont::OverlayText( void* image, imageFormat format, uint32_t width, uin
 
 	// draw background rects
 	if( has_bg && numRects > 0 )
-		CUDA(cudaRectFill(image, image, format, width, height, mRectsGPU + mRectIndex, numRects, bg_color));
+		CUDA(cudaRectFill(image, image, width, height, format, mRectsGPU + mRectIndex, numRects, bg_color));
 
 	// draw text characters
 	CUDA(cudaOverlayText( mFontMapGPU, maxGlyphSize, mFontMapWidth,

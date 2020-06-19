@@ -29,31 +29,65 @@
 
 
 /**
+ * Overlay the input image onto the output image at location (x,y)
+ * If the composted image doesn't entirely fit in the output, it will be cropped. 
+ * @ingroup cuda
+ */
+cudaError_t cudaOverlay( void* input, size_t inputWidth, size_t inputHeight,
+					void* output, size_t outputWidth, size_t outputHeight,
+					imageFormat format, int x, int y );
+			
+/**
+ * Overlay the input image composted onto the output image at location (x,y)
+ * If the composted image doesn't entirely fit in the output, it will be cropped.
+ * @ingroup cuda
+ */
+template<typename T> 
+cudaError_t cudaOverlay( T* input, size_t inputWidth, size_t inputHeight,
+					T* output, size_t outputWidth, size_t outputHeight,
+					int x, int y )
+{ 
+	return cudaOverlay(input, inputWidth, inputHeight, output, outputWidth, outputHeight, imageFormatFromType<T>(), x, y); 
+}
+
+/**
+ * Overlay the input image composted onto the output image at location (x,y)
+ * If the composted image doesn't entirely fit in the output, it will be cropped.
+ * @ingroup cuda
+ */
+template<typename T> 
+cudaError_t cudaOverlay( T* input, const int2& inputDims,
+					T* output, const int2& outputDims,
+					int x, int y )
+{ 
+	return cudaOverlay(input, inputDims.x, inputDims.y, output, outputDims.x, outputDims.y, imageFormatFromType<T>(), x, y); 
+}
+	
+
+			
+/**
  * cudaRectFill
  * @ingroup cuda
  */
-cudaError_t cudaRectFill( void* input, void* output, imageFormat format, 
-					 uint32_t width, uint32_t height, 
-					 float4* rects, int numRects, 
-					 const float4& color );
+cudaError_t cudaRectFill( void* input, void* output, size_t width, size_t height, imageFormat format, 
+						  float4* rects, int numRects, const float4& color );
 
 /**
  * cudaRectFill
  * @ingroup cuda
  */
-template<typename T> cudaError_t cudaRectFill( T* input, T* output, 
-				 					  uint32_t width, uint32_t height, 
-				 					  float4* rects, int numRects, 
-				 					  const float4& color )	
+template<typename T> 
+cudaError_t cudaRectFill( T* input, T* output, size_t width, size_t height, 
+				 		  float4* rects, int numRects, const float4& color )	
 { 
-	return cudaRectFill(input, output, imageFormatFromType<T>(), width, height, rects, numRects, color); 
+	return cudaRectFill(input, output, width, height, imageFormatFromType<T>(), rects, numRects, color); 
 }
 
 /**
  * cudaRectOutline
  * @ingroup cuda
  */
-//cudaError_t cudaRectOutline( float4* input, float4* output, uint32_t width, uint32_t height, float4* boundingBoxes, int numBoxes, const float4& color );
+//cudaError_t cudaRectOutline( float4* input, float4* output, size_t width, size_t height, float4* boundingBoxes, int numBoxes, const float4& color );
 
 
 #endif
