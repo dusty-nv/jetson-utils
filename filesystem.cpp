@@ -271,7 +271,12 @@ std::string pathJoin( const std::string& a, const std::string& b )
 // fileExtension
 std::string fileExtension( const std::string& path )
 {
-	std::string ext = path.substr(path.find_last_of(".") + 1);
+	const std::string::size_type dotIdx = path.find_last_of(".");
+
+	if( dotIdx == std::string::npos )
+		return "";
+
+	std::string ext = path.substr(dotIdx + 1);
 	transform(ext.begin(), ext.end(), ext.begin(), tolower);
 	return ext;
 }
