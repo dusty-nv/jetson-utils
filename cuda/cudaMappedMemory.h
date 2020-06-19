@@ -31,8 +31,7 @@
 /**
  * Allocate ZeroCopy mapped memory, shared between CUDA and CPU.
  *
- * @note although two pointers are returned, one for CPU and GPU,
- *       they both resolve to the same physical memory.
+ * @note although two pointers are returned, one for CPU and GPU, they both resolve to the same physical memory.
  *
  * @param[out] cpuPtr Returned CPU pointer to the shared memory.
  * @param[out] gpuPtr Returned GPU pointer to the shared memory.
@@ -63,9 +62,8 @@ inline bool cudaAllocMapped( void** cpuPtr, void** gpuPtr, size_t size )
 /**
  * Allocate ZeroCopy mapped memory, shared between CUDA and CPU.
  *
- * @note this overload of cudaAllocMapped returns one pointer,
- *       assumes that the CPU and GPU addresses will match  
- *       (as is the case with any recent CUDA version).
+ * @note this overload of cudaAllocMapped returns one pointer, assumes that the 
+ *       CPU and GPU addresses will match (as is the case with any recent CUDA version).
  *
  * @param[out] ptr Returned pointer to the shared CPU/GPU memory.
  * @param[in] size Size (in bytes) of the shared memory to allocate.
@@ -92,6 +90,44 @@ inline bool cudaAllocMapped( void** ptr, size_t size )
 
 	*ptr = gpuPtr;
 	return true;
+}
+
+/**
+ * Allocate ZeroCopy mapped memory, shared between CUDA and CPU.
+ *
+ * This is a templated version for allocating images from vector types
+ * like uchar3, uchar4, float3, float4, ect.  The overall size of the
+ * allocation will be calculated as `width * height * sizeof(T)`.
+ *
+ * @param[out] ptr Returned pointer to the shared CPU/GPU memory.
+ * @param[in] width Width (in pixels) to allocate.
+ * @param[in] height Height (in pixels) to allocate. 
+ *
+ * @returns `true` if the allocation succeeded, `false` otherwise.
+ * @ingroup cuda
+ */
+template<typename T> inline bool cudaAllocMapped( T** ptr, size_t width, size_t height )
+{
+	return cudaAllocMapped((void**)ptr, width * height * sizeof(T));
+}
+
+
+/**
+ * Allocate ZeroCopy mapped memory, shared between CUDA and CPU.
+ *
+ * This is a templated version for allocating images from vector types
+ * like uchar3, uchar4, float3, float4, ect.  The overall size of the
+ * allocation will be calculated as `dims.x * dims.y * sizeof(T)`.
+ *
+ * @param[out] ptr Returned pointer to the shared CPU/GPU memory.
+ * @param[in] dims `int2` vector where `width=dims.x` and `height=dims.y`
+ *
+ * @returns `true` if the allocation succeeded, `false` otherwise.
+ * @ingroup cuda
+ */
+template<typename T> inline bool cudaAllocMapped( T** ptr, const int2& dims )
+{
+	return cudaAllocMapped((void**)ptr, dims.x * dims.y * sizeof(T));
 }
 
 
