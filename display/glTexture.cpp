@@ -471,6 +471,12 @@ void* glTexture::Map( uint32_t device, uint32_t flags )
 	if( !dmaBuffer )
 		return NULL;
 
+	// set pixel alignment flags (default is 4, but sometimes fails on rgb8 depending on resolution)
+	GL(glPixelStorei(GL_UNPACK_ALIGNMENT, 1));
+	//GL(glPixelStorei(GL_UNPACK_ROW_LENGTH, mWidth));
+	//GL(glPixelStorei(GL_UNPACK_IMAGE_HEIGHT, mHeight));
+
+	// either map in CPU mode or with CUDA interop
 	if( device == GL_MAP_CPU )
 	{
 		GL(glBindBuffer(dmaType, dmaBuffer));
