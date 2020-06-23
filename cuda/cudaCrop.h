@@ -47,7 +47,7 @@
  * @param inputWidth width of the input image (in pixels)
  * @param inputWidth height of the input image (in pixels)
  *
- * @ingroup cuda
+ * @ingroup crop
  */
 cudaError_t cudaCrop( uint8_t* input, uint8_t* output, const int4& roi, size_t inputWidth, size_t inputHeight );
 
@@ -70,7 +70,7 @@ cudaError_t cudaCrop( uint8_t* input, uint8_t* output, const int4& roi, size_t i
  * @param inputWidth width of the input image (in pixels)
  * @param inputWidth height of the input image (in pixels)
  *
- * @ingroup cuda
+ * @ingroup crop
  */
 cudaError_t cudaCrop( float* input, float* output, const int4& roi, size_t inputWidth, size_t inputHeight );
 
@@ -93,7 +93,7 @@ cudaError_t cudaCrop( float* input, float* output, const int4& roi, size_t input
  * @param inputWidth width of the input image (in pixels)
  * @param inputWidth height of the input image (in pixels)
  *
- * @ingroup cuda
+ * @ingroup crop
  */
 cudaError_t cudaCrop( uchar3* input, uchar3* output, const int4& roi, size_t inputWidth, size_t inputHeight );
 
@@ -116,7 +116,7 @@ cudaError_t cudaCrop( uchar3* input, uchar3* output, const int4& roi, size_t inp
  * @param inputWidth width of the input image (in pixels)
  * @param inputWidth height of the input image (in pixels)
  *
- * @ingroup cuda
+ * @ingroup crop
  */
 cudaError_t cudaCrop( uchar4* input, uchar4* output, const int4& roi, size_t inputWidth, size_t inputHeight );
 
@@ -139,7 +139,7 @@ cudaError_t cudaCrop( uchar4* input, uchar4* output, const int4& roi, size_t inp
  * @param inputWidth width of the input image (in pixels)
  * @param inputWidth height of the input image (in pixels)
  *
- * @ingroup cuda
+ * @ingroup crop
  */
 cudaError_t cudaCrop( float3* input, float3* output, const int4& roi, size_t inputWidth, size_t inputHeight );
 
@@ -162,7 +162,7 @@ cudaError_t cudaCrop( float3* input, float3* output, const int4& roi, size_t inp
  * @param inputWidth width of the input image (in pixels)
  * @param inputWidth height of the input image (in pixels)
  *
- * @ingroup cuda
+ * @ingroup crop
  */
 cudaError_t cudaCrop( float4* input, float4* output, const int4& roi, size_t inputWidth, size_t inputHeight );
 
@@ -187,7 +187,7 @@ cudaError_t cudaCrop( float4* input, float4* output, const int4& roi, size_t inp
  * @param format format of the image - valid formats are gray8, gray32f, rgb8/bgr8, 
  *               rgba8/bgra8, rgb32f/bgr32f, and rgba32f/bgra32f.
  *
- * @ingroup cuda
+ * @ingroup crop
  */
 cudaError_t cudaCrop( void* input, void* output, const int4& roi, size_t inputWidth, size_t inputHeight, imageFormat format );
 

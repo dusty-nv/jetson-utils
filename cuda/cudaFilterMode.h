@@ -30,7 +30,7 @@
 /**
  * Enumeration of interpolation filtering modes.
  * @see cudaFilterModeFromStr() and cudaFilterModeToStr()
- * @ingroup cuda
+ * @ingroup cudaFilter
  */
 enum cudaFilterMode
 {
@@ -41,20 +41,20 @@ enum cudaFilterMode
 /**
  * Parse a cudaFilterMode enum from a string.
  * @returns The parsed cudaFilterMode, or default_value on error.
- * @ingroup cuda
+ * @ingroup cudaFilter
  */
 cudaFilterMode cudaFilterModeFromStr( const char* filter, cudaFilterMode default_value=FILTER_LINEAR );
 
 /**
  * Convert a cudaFilterMode enum to a string.
- * @ingroup cuda
+ * @ingroup cudaFilter
  */
 const char* cudaFilterModeToStr( cudaFilterMode filter );
 
 
 /**
  * Enumeration of image layout formats.
- * @ingroup cuda
+ * @ingroup cudaFilter
  */
 enum cudaDataFormat
 {

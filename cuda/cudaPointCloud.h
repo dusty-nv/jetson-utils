@@ -34,7 +34,7 @@ class glCamera;
 
 /**
  * CUDA-accelerated point cloud processing.
- * @ingroup cuda
+ * @ingroup pointCloud
  */
 class cudaPointCloud
 {

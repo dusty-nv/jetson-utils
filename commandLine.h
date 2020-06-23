@@ -29,8 +29,8 @@
 
 
 /**
- * Command line parser class.
- * @ingroup util
+ * Command line parser for extracting flags, values, and strings.
+ * @ingroup commandLine
  */
 class commandLine
 {
@@ -144,7 +144,7 @@ public:
 
 /**
  * Specify a positional argument index.
- * @ingroup util
+ * @ingroup commandLine
  */
 #define ARG_POSITION(x) x
 

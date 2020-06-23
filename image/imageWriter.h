@@ -40,7 +40,7 @@
  * When given just the path of a directory as output, it will default to
  * incremental `%i.jpg` sequencing and save in JPG format.
  *
- * imageWriter implements the videoOutput interface and is intended to
+ * @note imageWriter implements the videoOutput interface and is intended to
  * be used through that as opposed to directly.  videoOutput implements
  * additional command-line parsing of videoOptions to construct instances.
  *

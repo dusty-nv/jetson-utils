@@ -49,12 +49,12 @@ struct _GstAppSink;
  * gstCamera uses CUDA underneath for any necessary colorspace conversion, and provides
  * the captured image frames in CUDA device memory, or zero-copy shared CPU/GPU memory.
  *
- * gstCamera now implements the videoSource interface and is intended to be used through 
+ * @note gstCamera now implements the videoSource interface and is intended to be used through 
  * that as opposed to directly. videoSource implements additional command-line parsing of 
  * videoOptions to construct instances. Some legacy APIs of gstCamera are now marked deprecated.
  *
  * @see videoSource
- * @ingroup gstCamera
+ * @ingroup camera
  */
 class gstCamera : public videoSource
 {

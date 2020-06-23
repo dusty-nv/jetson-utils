@@ -28,6 +28,13 @@
 #include "cudaMath.h"
 
 
+//////////////////////////////////////////////////////////////////////////////////////////
+/// @name CUDA device functions for reading a single pixel, either in HWC or CHW layout.
+/// @ingroup cudaFilter
+//////////////////////////////////////////////////////////////////////////////////////////
+
+///@{
+
 /**
  * CUDA device function for reading a pixel from an image, either in HWC or CHW layout.
  *
@@ -38,7 +45,6 @@
  * @param height height of the input image
  *
  * @returns the raw pixel data from the input image
- * @ingroup cuda
  */
 template<cudaDataFormat layout, typename T>
 __device__ inline T cudaReadPixel( T* input, int x, int y, int width, int height )
@@ -72,6 +78,7 @@ float4 cudaReadPixel<FORMAT_CHW>( float4* input, int x, int y, int width, int he
 	return make_float4(ptr[offset], ptr[pixels + offset], ptr[pixels * 2 + offset], ptr[pixels * 3 + offset]);
 }
 
+///@}
 
 /**
  * CUDA device function for sampling a pixel with bilinear or point filtering.
@@ -86,7 +93,7 @@ float4 cudaReadPixel<FORMAT_CHW>( float4* input, int x, int y, int width, int he
  * @param height height of the input image
  *
  * @returns the filtered pixel from the input image
- * @ingroup cuda
+ * @ingroup cudaFilter
  */ 
 template<cudaFilterMode filter, cudaDataFormat format=FORMAT_HWC, typename T>
 __device__ inline T cudaFilterPixel( T* input, float x, float y, int width, int height )
@@ -151,7 +158,7 @@ __device__ inline T cudaFilterPixel( T* input, float x, float y, int width, int 
  * @param output_height height of the output image
  *
  * @returns the filtered pixel from the input image
- * @ingroup cuda
+ * @ingroup cudaFilter
  */ 
 template<cudaFilterMode filter, cudaDataFormat format=FORMAT_HWC, typename T>
 __device__ inline T cudaFilterPixel( T* input, int x, int y,

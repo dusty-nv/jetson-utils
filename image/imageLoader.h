@@ -42,7 +42,7 @@
  * When given just the path to a directory, it will load all valid images from
  * that directory.
  *
- * imageLoader implements the videoSource interface and is intended to
+ * @note imageLoader implements the videoSource interface and is intended to
  * be used through that as opposed to directly.  videoSource implements
  * additional command-line parsing of videoOptions to construct instances.
  *

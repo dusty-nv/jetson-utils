@@ -31,7 +31,7 @@
 /**
  * Overlay the input image onto the output image at location (x,y)
  * If the composted image doesn't entirely fit in the output, it will be cropped. 
- * @ingroup cuda
+ * @ingroup overlay
  */
 cudaError_t cudaOverlay( void* input, size_t inputWidth, size_t inputHeight,
 					void* output, size_t outputWidth, size_t outputHeight,
@@ -40,7 +40,7 @@ cudaError_t cudaOverlay( void* input, size_t inputWidth, size_t inputHeight,
 /**
  * Overlay the input image composted onto the output image at location (x,y)
  * If the composted image doesn't entirely fit in the output, it will be cropped.
- * @ingroup cuda
+ * @ingroup overlay
  */
 template<typename T> 
 cudaError_t cudaOverlay( T* input, size_t inputWidth, size_t inputHeight,
@@ -53,7 +53,7 @@ cudaError_t cudaOverlay( T* input, size_t inputWidth, size_t inputHeight,
 /**
  * Overlay the input image composted onto the output image at location (x,y)
  * If the composted image doesn't entirely fit in the output, it will be cropped.
- * @ingroup cuda
+ * @ingroup overlay
  */
 template<typename T> 
 cudaError_t cudaOverlay( T* input, const int2& inputDims,
@@ -62,19 +62,18 @@ cudaError_t cudaOverlay( T* input, const int2& inputDims,
 { 
 	return cudaOverlay(input, inputDims.x, inputDims.y, output, outputDims.x, outputDims.y, imageFormatFromType<T>(), x, y); 
 }
+		
 	
-
-			
 /**
  * cudaRectFill
- * @ingroup cuda
+ * @ingroup overlay
  */
 cudaError_t cudaRectFill( void* input, void* output, size_t width, size_t height, imageFormat format, 
 						  float4* rects, int numRects, const float4& color );
 
 /**
  * cudaRectFill
- * @ingroup cuda
+ * @ingroup overlay
  */
 template<typename T> 
 cudaError_t cudaRectFill( T* input, T* output, size_t width, size_t height, 
@@ -85,7 +84,7 @@ cudaError_t cudaRectFill( T* input, T* output, size_t width, size_t height,
 
 /**
  * cudaRectOutline
- * @ingroup cuda
+ * @ingroup overlay
  */
 //cudaError_t cudaRectOutline( float4* input, float4* output, size_t width, size_t height, float4* boundingBoxes, int numBoxes, const float4& color );
 

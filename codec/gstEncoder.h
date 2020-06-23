@@ -35,7 +35,7 @@
  * or stream over the network to a remote host via RTP/RTSP using UDP/IP.
  * The supported encoder codecs are H.264, H.265, VP8, VP9, and MJPEG.
  *
- * gstEncoder implements the videoOutput interface and is intended to
+ * @note gstEncoder implements the videoOutput interface and is intended to
  * be used through that as opposed to directly.  videoOutput implements
  * additional command-line parsing of videoOptions to construct instances.
  *

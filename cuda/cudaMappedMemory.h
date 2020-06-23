@@ -38,7 +38,7 @@
  * @param[in] size Size (in bytes) of the shared memory to allocate.
  *
  * @returns `true` if the allocation succeeded, `false` otherwise.
- * @ingroup cuda
+ * @ingroup cudaMemory
  */
 inline bool cudaAllocMapped( void** cpuPtr, void** gpuPtr, size_t size )
 {
@@ -69,7 +69,7 @@ inline bool cudaAllocMapped( void** cpuPtr, void** gpuPtr, size_t size )
  * @param[in] size Size (in bytes) of the shared memory to allocate.
  *
  * @returns `true` if the allocation succeeded, `false` otherwise.
- * @ingroup cuda
+ * @ingroup cudaMemory
  */
 inline bool cudaAllocMapped( void** ptr, size_t size )
 {
@@ -104,7 +104,7 @@ inline bool cudaAllocMapped( void** ptr, size_t size )
  * @param[in] height Height (in pixels) to allocate. 
  *
  * @returns `true` if the allocation succeeded, `false` otherwise.
- * @ingroup cuda
+ * @ingroup cudaMemory
  */
 template<typename T> inline bool cudaAllocMapped( T** ptr, size_t width, size_t height )
 {
@@ -123,7 +123,7 @@ template<typename T> inline bool cudaAllocMapped( T** ptr, size_t width, size_t 
  * @param[in] dims `int2` vector where `width=dims.x` and `height=dims.y`
  *
  * @returns `true` if the allocation succeeded, `false` otherwise.
- * @ingroup cuda
+ * @ingroup cudaMemory
  */
 template<typename T> inline bool cudaAllocMapped( T** ptr, const int2& dims )
 {

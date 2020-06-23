@@ -33,7 +33,7 @@
  * For example, convert an image with values between `[0,1]` to `[0,255]`
  * @param input_range the range of pixel values of the input image (e.g. `[0,1]`)
  * @param output_range the desired range of pixel values of the output image (e.g. `[0,255]`)
- * @ingroup cuda
+ * @ingroup normalization
  */
 cudaError_t cudaNormalize( float* input,  const float2& input_range,
 					  float* output, const float2& output_range,
@@ -44,7 +44,7 @@ cudaError_t cudaNormalize( float* input,  const float2& input_range,
  * For example, convert an image with values between `[0,1]` to `[0,255]`
  * @param input_range the range of pixel values of the input image (e.g. `[0,1]`)
  * @param output_range the desired range of pixel values of the output image (e.g. `[0,255]`)
- * @ingroup cuda
+ * @ingroup normalization
  */
 cudaError_t cudaNormalize( float3* input,  const float2& input_range,
 					  float3* output, const float2& output_range,
@@ -55,7 +55,7 @@ cudaError_t cudaNormalize( float3* input,  const float2& input_range,
  * For example, convert an image with values between `[0,1]` to `[0,255]`
  * @param input_range the range of pixel values of the input image (e.g. `[0,1]`)
  * @param output_range the desired range of pixel values of the output image (e.g. `[0,255]`)
- * @ingroup cuda
+ * @ingroup normalization
  */
 cudaError_t cudaNormalize( float4* input,  const float2& input_range,
 					  float4* output, const float2& output_range,
@@ -67,7 +67,7 @@ cudaError_t cudaNormalize( float4* input,  const float2& input_range,
  * @param input_range the range of pixel values of the input image (e.g. `[0,1]`)
  * @param output_range the desired range of pixel values of the output image (e.g. `[0,255]`)
  * @param format the image format - valid formats are gray32f, rgb32f/bgr32f, and rgba32f/bgra32f.
- * @ingroup cuda
+ * @ingroup normalization
  */
 cudaError_t cudaNormalize( void* input,  const float2& input_range,
 					  void* output, const float2& output_range,

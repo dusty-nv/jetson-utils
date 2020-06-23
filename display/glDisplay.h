@@ -37,7 +37,7 @@
 /**
  * OpenGL display window and image/video renderer with CUDA interoperability.
  *
- * glDisplay implements the videoOutput interface and is intended to
+ * @note glDisplay implements the videoOutput interface and is intended to
  * be used through that as opposed to directly.  videoOutput implements
  * additional command-line parsing of videoOptions to construct instances.
  *
@@ -221,126 +221,6 @@ public:
 	///@}
 
 	//////////////////////////////////////////////////////////////////////////////////
-	/// @name Mouse + Keyboard State
-	//////////////////////////////////////////////////////////////////////////////////
-
-	///@{
-
-	/**
-	 * Get the mouse position.
-	 */
-	inline const int* GetMousePosition() const			{ return mMousePos; }
-
-	/**
-	 * Get the mouse position.
-	 */
-	inline void GetMousePosition( int* x, int* y ) const	{ if(x) *x = mMousePos[0]; if(y) *y = mMousePos[1]; }
-
-	/**
-	 * Get the mouse button state.
-	 *
-	 * @param button the button number, starting with 1.
-	 *               In X11, the left mouse button is 1.
-	 *               Here are the mouse button numbers:
-	 *
-	 *	            - 1 MOUSE_LEFT       (left button)
-	 *               - 2 MOUSE_MIDDLE     (middle button / scroll wheel button)
-	 *               - 3 MOUSE_RIGHT      (right button)
-	 *               - 4 MOUSE_WHEEL_UP   (scroll wheel up)
-	 *               - 5 MOUSE_WHEEL_DOWN (scroll wheel down)
-	 *
-	 * @returns true if the button is pressed, otherwise false
-	 */
-	inline bool GetMouseButton( uint32_t button ) const	{ if(button > sizeof(mMouseButtons)) return false; return mMouseButtons[button]; }
-
-	/**
-	 * Get the state of a key (lowercase, without modifiers applied)
-	 *
-	 * Similar to glEvent::KEY_STATE, GetKey() queries the raw key state
-	 * without being translated by modifier keys such as Shift, CapsLock, 
-	 * NumLock, ect.  Alphanumeric keys will be left as lowercase, so
-	 * query lowercase keys - uppercase keys will always return false.   
-	 *       
-	 * @param key the `XK_` key symbol (see `/usr/include/X11/keysymdef.h`)
-	 *
-	 *            Uppercase keys like XK_A or XK_plus will always return false.
-	 *            Instead, query the lowercase keys such as XK_a, XK_1, ect.
-	 *
-	 *            Other keys like F1-F12, shift, tab, ctrl/alt, arrow keys, 
-	 *            backspace, delete, escape, and enter can all be queried.
-	 *
-	 *            GetKey() caches the first 1024 key symbols. Other keys will
-	 *            return false, but can be subscribed to through a glEventHander.
-	 *
-	 * @returns true if the key is pressed, otherwise false
-	 */
-	inline bool GetKey( uint32_t key ) const 			{ const uint32_t idx = key - KEY_OFFSET; if(idx > sizeof(mKeyStates)) return false; return mKeyStates[idx]; }
-
-	///@}
-
-	//////////////////////////////////////////////////////////////////////////////////
-	/// @name Event Handling
-	//////////////////////////////////////////////////////////////////////////////////
-
-	///@{
-
-	/**
-	 * Process UI event messages.  Any queued events will be dispatched to the
-	 * event message handlers that were registered with RegisterEventHandler()
-	 *
-	 * ProcessEvents() usually gets called automatically by BeginFrame(), so it
-	 * is not typically necessary to explicitly call it unless you passed `false`
-	 * to BeginFrame() and wish to process events at another time of your choosing.
-	 *
-	 * @see glEventType
-	 * @see glEventHandler 
-	 */
-	void ProcessEvents();
-
-	/**
-	 * Register an event message handler that will be called by ProcessEvents()
-	 * @param callback function pointer to the event message handler callback
-	 * @param user optional user-specified pointer that will be passed to all
-	 *             invocations of this event handler (typically an object)
-	 */
-	void AddEventHandler( glEventHandler callback, void* user=NULL );
-
-	/**
-	 * Remove an event message handler from being called by ProcessEvents()
-	 * RemoveEventHandler() will search for previously registered event
-	 * handlers that have the same function pointer and/or user pointer,
-	 * and remove them for being called again in the future.
-	 */
-	void RemoveEventHandler( glEventHandler callback, void* user=NULL );
-
-	///@}
-
-	//////////////////////////////////////////////////////////////////////////////////
-	/// @name Status Bar Text
-	//////////////////////////////////////////////////////////////////////////////////
-
-	///@{
-
-	/**
-	 * Set the window title string.
-	 */
-	virtual void SetStatus( const char* str );
-
-	/**
-	 * Set the window title string.
-	 * @deprecated SetTitle() has been superceded by SetStatus() from videoOutput API.
-	 *             SetTitle() is functionally the same as SetStatus().
-	 */
-	void SetTitle( const char* str );
-
-	/**
-	 * Default title bar name
-	 */
-	static const char* DEFAULT_TITLE;
-
-	///@}
-
-	//////////////////////////////////////////////////////////////////////////////////
 	/// @name Window Resizing
 	//////////////////////////////////////////////////////////////////////////////////
 
@@ -348,6 +228,7 @@ public:
 
 	/**
 	 * Set the window's size.
+
 	 *
 	 * @param width the desired width of the window, in pixels.
 	 * @param height the desired height of the window, in pixels.
@@ -405,6 +286,127 @@ public:
 	 * Reset to the full viewport (and change back GL_PROJECTION)
 	 */
 	void ResetViewport();
+
+	///@}
+
+	//////////////////////////////////////////////////////////////////////////////////
+	/// @name Status Bar Text
+	//////////////////////////////////////////////////////////////////////////////////
+
+	///@{
+
+	/**
+	 * Set the window title string.
+	 */
+	virtual void SetStatus( const char* str );
+
+	/**
+	 * Set the window title string.
+	 * @deprecated SetTitle() has been superceded by SetStatus() from videoOutput API.
+	 *             SetTitle() is functionally the same as SetStatus().
+	 */
+	void SetTitle( const char* str );
+
+	/**
+	 * Default title bar name
+	 */
+	static const char* DEFAULT_TITLE;
+
+	///@}
+
+	//////////////////////////////////////////////////////////////////////////////////
+	/// @name Event Handling
+	//////////////////////////////////////////////////////////////////////////////////
+
+	///@{
+
+	/**
+	 * Process UI event messages.  Any queued events will be dispatched to the
+	 * event message handlers that were registered with RegisterEventHandler()
+	 *
+	 * ProcessEvents() usually gets called automatically by BeginFrame(), so it
+	 * is not typically necessary to explicitly call it unless you passed `false`
+	 * to BeginFrame() and wish to process events at another time of your choosing.
+	 *
+	 * @see glEventType
+	 * @see glEventHandler 
+	 */
+	void ProcessEvents();
+
+	/**
+	 * Register an event message handler that will be called by ProcessEvents()
+	 * @param callback function pointer to the event message handler callback
+	 * @param user optional user-specified pointer that will be passed to all
+	 *             invocations of this event handler (typically an object)
+	 */
+	void AddEventHandler( glEventHandler callback, void* user=NULL );
+
+	/**
+	 * Remove an event message handler from being called by ProcessEvents()
+	 * RemoveEventHandler() will search for previously registered event
+	 * handlers that have the same function pointer and/or user pointer,
+	 * and remove them for being called again in the future.
+
+	 */
+	void RemoveEventHandler( glEventHandler callback, void* user=NULL );
+
+	///@}
+
+	//////////////////////////////////////////////////////////////////////////////////
+	/// @name Mouse + Keyboard State
+	//////////////////////////////////////////////////////////////////////////////////
+
+	///@{
+
+	/**
+	 * Get the mouse position.
+	 */
+	inline const int* GetMousePosition() const			{ return mMousePos; }
+
+	/**
+	 * Get the mouse position.
+	 */
+	inline void GetMousePosition( int* x, int* y ) const	{ if(x) *x = mMousePos[0]; if(y) *y = mMousePos[1]; }
+
+	/**
+	 * Get the mouse button state.
+	 *
+	 * @param button the button number, starting with 1.
+	 *               In X11, the left mouse button is 1.
+	 *               Here are the mouse button numbers:
+	 *
+	 *	            - 1 MOUSE_LEFT       (left button)
+	 *               - 2 MOUSE_MIDDLE     (middle button / scroll wheel button)
+	 *               - 3 MOUSE_RIGHT      (right button)
+	 *               - 4 MOUSE_WHEEL_UP   (scroll wheel up)
+	 *               - 5 MOUSE_WHEEL_DOWN (scroll wheel down)
+	 *
+	 * @returns true if the button is pressed, otherwise false
+	 */
+	inline bool GetMouseButton( uint32_t button ) const	{ if(button > sizeof(mMouseButtons)) return false; return mMouseButtons[button]; }
+
+	/**
+	 * Get the state of a key (lowercase, without modifiers applied)
+	 *
+	 * Similar to glEvent::KEY_STATE, GetKey() queries the raw key state
+	 * without being translated by modifier keys such as Shift, CapsLock, 
+	 * NumLock, ect.  Alphanumeric keys will be left as lowercase, so
+	 * query lowercase keys - uppercase keys will always return false.   
+	 *       
+	 * @param key the `XK_` key symbol (see `/usr/include/X11/keysymdef.h`)
+	 *
+	 *            Uppercase keys like XK_A or XK_plus will always return false.
+	 *            Instead, query the lowercase keys such as XK_a, XK_1, ect.
+	 *
+	 *            Other keys like F1-F12, shift, tab, ctrl/alt, arrow keys, 
+	 *            backspace, delete, escape, and enter can all be queried.
+	 *
+	 *            GetKey() caches the first 1024 key symbols. Other keys will
+	 *            return false, but can be subscribed to through a glEventHander.
+	 *
+	 * @returns true if the key is pressed, otherwise false
+	 */
+	inline bool GetKey( uint32_t key ) const 			{ const uint32_t idx = key - KEY_OFFSET; if(idx > sizeof(mKeyStates)) return false; return mKeyStates[idx]; }
 
 	///@}
 

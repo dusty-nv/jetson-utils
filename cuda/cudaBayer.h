@@ -32,7 +32,7 @@
  * Demosaick an 8-bit Bayer image to uchar3 RGB.
  * @params format the Bayer pattern of the input image, should be one of: 	
  *                IMAGE_BAYER_BGGR, IMAGE_BAYER_GBRG, IMAGE_BAYER_GRBG, IMAGE_BAYER_RGGB
- * @ingroup cuda
+ * @ingroup colorspace
  */
 cudaError_t cudaBayerToRGB( uint8_t* input, uchar3* output, size_t width, size_t height, imageFormat format );
 
@@ -40,7 +40,7 @@ cudaError_t cudaBayerToRGB( uint8_t* input, uchar3* output, size_t width, size_t
  * Demosaick an 8-bit Bayer image to uchar4 RGBA.
  * @params format the Bayer pattern of the input image, should be one of: 	
  *                IMAGE_BAYER_BGGR, IMAGE_BAYER_GBRG, IMAGE_BAYER_GRBG, IMAGE_BAYER_RGGB
- * @ingroup cuda
+ * @ingroup colorspace
  */
 cudaError_t cudaBayerToRGBA( uint8_t* input, uchar3* output, size_t width, size_t height, imageFormat format );
 
