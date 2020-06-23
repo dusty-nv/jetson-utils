@@ -49,6 +49,11 @@ struct _GstAppSink;
  * gstCamera uses CUDA underneath for any necessary colorspace conversion, and provides
  * the captured image frames in CUDA device memory, or zero-copy shared CPU/GPU memory.
  *
+ * gstCamera now implements the videoSource interface and is intended to be used through 
+ * that as opposed to directly. videoSource implements additional command-line parsing of 
+ * videoOptions to construct instances. Some legacy APIs of gstCamera are now marked deprecated.
+ *
+ * @see videoSource
  * @ingroup gstCamera
  */
 class gstCamera : public videoSource
@@ -130,11 +135,13 @@ public:
 
 	/**
 	 * Capture the next image frame from the camera.
+	 * @see videoSource::Capture
 	 */
 	template<typename T> bool Capture( T** image, uint64_t timeout=UINT64_MAX )		{ return Capture((void**)image, imageFormatFromType<T>(), timeout); }
 	
 	/**
 	 * Capture the next image frame from the camera.
+	 * @see videoSource::Capture
 	 */
 	virtual bool Capture( void** image, imageFormat format, uint64_t timeout=UINT64_MAX );
 
@@ -174,12 +181,12 @@ public:
 	bool CaptureRGBA( float** image, uint64_t timeout=UINT64_MAX, bool zeroCopy=false );
 
 	/**
-	 *
+	 * Return the interface type (gstCamera::Type)
 	 */
 	virtual inline uint32_t GetType() const		{ return Type; }
 
 	/**
-	 *
+	 * Unique type identifier of gstCamera class.
 	 */
 	static const uint32_t Type = (1 << 0);
 

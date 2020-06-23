@@ -46,10 +46,10 @@ inline const char* imageFormatToStr( imageFormat format )
 		case IMAGE_UYVY:	 	return "uyvy";
 		case IMAGE_YUYV:	 	return "yuyv";
 		case IMAGE_YVYU:		return "yvyu";
-		case IMAGE_BAYER_BGGR:	return "bayer_bggr";
-		case IMAGE_BAYER_GBRG:	return "bayer_gbrg";
-		case IMAGE_BAYER_GRBG:	return "bayer_grbg";
-		case IMAGE_BAYER_RGGB:	return "bayer_rggb";
+		case IMAGE_BAYER_BGGR:	return "bayer-bggr";
+		case IMAGE_BAYER_GBRG:	return "bayer-gbrg";
+		case IMAGE_BAYER_GRBG:	return "bayer-grbg";
+		case IMAGE_BAYER_RGGB:	return "bayer-rggb";
 		case IMAGE_GRAY8:	 	return "gray8";
 		case IMAGE_GRAY32F:  	return "gray32f";
 		case IMAGE_UNKNOWN: 	return "unknown";

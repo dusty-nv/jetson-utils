@@ -77,8 +77,6 @@ int main( int argc, char** argv )
 		return 0;
 	}
 
-	display->EnableDebug();	// print events
-
 
 	/*
 	 * allocate openGL texture

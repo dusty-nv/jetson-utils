@@ -61,7 +61,6 @@ glDisplay::glDisplay( const videoOptions& options ) : videoOutput(options)
 	mContextGL     = NULL;
 	mDisplayX      = NULL;
 	mRendering     = false;
-	mEnableDebug   = false;
 	mResizedToFeed = false;
 	mActiveCursor  = OriginalCursor;
 	mDefaultCursor = OriginalCursor;
@@ -1016,13 +1015,6 @@ std::vector<glWidget*> glDisplay::FindWidgets( int x, int y )
 	}
 
 	return widgets;
-}
-
-
-// EnableDebug
-void glDisplay::EnableDebug()
-{
-	mEnableDebug = true;
 }
 
 

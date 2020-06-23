@@ -35,7 +35,13 @@
 
 
 /**
- * OpenGL display window / video viewer
+ * OpenGL display window and image/video renderer with CUDA interoperability.
+ *
+ * glDisplay implements the videoOutput interface and is intended to
+ * be used through that as opposed to directly.  videoOutput implements
+ * additional command-line parsing of videoOptions to construct instances.
+ *
+ * @see videoOutput
  * @ingroup OpenGL
  */
 class glDisplay : public videoOutput
@@ -66,6 +72,48 @@ public:
 	~glDisplay();
 
 	/**
+	 * Returns true if the window is open.
+	 */
+	inline bool IsOpen() const 				{ return mStreaming; }
+
+	/**
+	 * Returns true if the window has been closed.
+	 */
+	inline bool IsClosed() const				{ return !mStreaming; }
+
+	/**
+	 * Returns true if between BeginRender() and EndRender()
+	 */
+	inline bool IsRendering() const			{ return mRendering; }
+
+	/**
+	 * Get the average frame time (in milliseconds).
+	 */
+	inline float GetFPS() const				{ return 1000000000.0f / mAvgTime; }
+
+	/**
+	 * Get the ID of this display instance into glGetDisplay()
+	 */
+	inline uint32_t GetID() const				{ return mID; }
+
+	/**
+	 * Return the interface type (glDisplay::Type)
+	 */
+	virtual inline uint32_t GetType() const		{ return Type; }
+
+	/**
+	 * Unique type identifier of glDisplay class.
+	 */
+	static const uint32_t Type = (1 << 3);
+
+
+	//////////////////////////////////////////////////////////////////////////////////
+	/// @name Frame Begin + End
+	//////////////////////////////////////////////////////////////////////////////////
+
+	///@{
+
+	/**
  	 * Clear window and begin rendering a frame.
 	 * If processEvents is true, ProcessEvents() will automatically be called.
 	 */
@@ -75,6 +123,14 @@ public:
 	 * Finish rendering and refresh / flip the backbuffer.
 	 */
 	void EndRender();
+
+	///@}
+
+	//////////////////////////////////////////////////////////////////////////////////
+	/// @name Image Rendering
+	//////////////////////////////////////////////////////////////////////////////////
+
+	///@{
 
 	/**
 	 * Render an OpenGL texture
@@ -91,12 +147,16 @@ public:
 	void Render( float* image, uint32_t width, uint32_t height, float x=0.0f, float y=30.0f, bool normalize=true );
 
 	/**
-	 *
+	 * Render a CUDA image (uchar3, uchar4, float3, float4) using OpenGL interop.
+	 * This is similar to RenderOnce(), in that it will begin/end the frame also.
+	 * @see videoOutput::Render
 	 */
 	template<typename T> bool Render( T* image, uint32_t width, uint32_t height )		{ return Render((void**)image, width, height, imageFormatFromType<T>()); }
 	
 	/**
-	 *
+	 * Render a CUDA image (uchar3, uchar4, float3, float4) using OpenGL interop.
+	 * This is similar to RenderOnce(), in that it will begin/end the frame also.
+	 * @see videoOutput::Render
 	 */
 	virtual bool Render( void* image, uint32_t width, uint32_t height, imageFormat format );
 
@@ -126,6 +186,14 @@ public:
 	 */
 	void RenderOnce( float* image, uint32_t width, uint32_t height, float x=5.0f, float y=30.0f, bool normalize=true );
 
+	///@}
+
+	//////////////////////////////////////////////////////////////////////////////////
+	/// @name Vector Rendering
+	//////////////////////////////////////////////////////////////////////////////////
+
+	///@{
+
 	/**
 	 * Render a line in screen coordinates with the specified color
 	 * @note the RGBA color values are expected to be in the range of [0-1]
@@ -150,30 +218,13 @@ public:
 	 */
 	void RenderRect( float r, float g, float b, float a=1.0f );
 
-	/**
-	 * Returns true if the window is open.
-	 */
-	inline bool IsOpen() const 		{ return mStreaming; }
+	///@}
 
-	/**
-	 * Returns true if the window has been closed.
-	 */
-	inline bool IsClosed() const		{ return !mStreaming; }
+	//////////////////////////////////////////////////////////////////////////////////
+	/// @name Mouse + Keyboard State
+	//////////////////////////////////////////////////////////////////////////////////
 
-	/**
-	 * Returns true if between BeginRender() and EndRender()
-	 */
-	inline bool IsRendering() const	{ return mRendering; }
-
-	/**
-	 * Get the average frame time (in milliseconds).
-	 */
-	inline float GetFPS() const		{ return 1000000000.0f / mAvgTime; }
-
-	/**
-	 * Get the ID of this display instance into glGetDisplay()
-	 */
-	inline uint32_t GetID() const		{ return mID; }
+	///@{
 
 	/**
 	 * Get the mouse position.
@@ -225,6 +276,14 @@ public:
 	 */
 	inline bool GetKey( uint32_t key ) const 			{ const uint32_t idx = key - KEY_OFFSET; if(idx > sizeof(mKeyStates)) return false; return mKeyStates[idx]; }
 
+	///@}
+
+	//////////////////////////////////////////////////////////////////////////////////
+	/// @name Event Handling
+	//////////////////////////////////////////////////////////////////////////////////
+
+	///@{
+
 	/**
 	 * Process UI event messages.  Any queued events will be dispatched to the
 	 * event message handlers that were registered with RegisterEventHandler()
@@ -254,20 +313,38 @@ public:
 	 */
 	void RemoveEventHandler( glEventHandler callback, void* user=NULL );
 
-	/**
-	 * Enable debugging of events.
-	 */
-	void EnableDebug();
+	///@}
 
-	/**
-	 * Set the window title string.
-	 */
-	void SetTitle( const char* str );
+	//////////////////////////////////////////////////////////////////////////////////
+	/// @name Status Bar Text
+	//////////////////////////////////////////////////////////////////////////////////
+
+	///@{
 
 	/**
 	 * Set the window title string.
 	 */
 	virtual void SetStatus( const char* str );
+
+	/**
+	 * Set the window title string.
+	 * @deprecated SetTitle() has been superceded by SetStatus() from videoOutput API.
+	 *             SetTitle() is functionally the same as SetStatus().
+	 */
+	void SetTitle( const char* str );
+
+	/**
+	 * Default title bar name
+	 */
+	static const char* DEFAULT_TITLE;
+
+	///@}
+
+	//////////////////////////////////////////////////////////////////////////////////
+	/// @name Window Resizing
+	//////////////////////////////////////////////////////////////////////////////////
+
+	///@{
 
 	/**
 	 * Set the window's size.
@@ -289,6 +366,14 @@ public:
 	 * Determine if the window is maximized or not.
 	 */
 	bool IsMaximized();
+
+	///@}
+
+	//////////////////////////////////////////////////////////////////////////////////
+	/// @name Viewport Options
+	//////////////////////////////////////////////////////////////////////////////////
+
+	///@{
 
 	/**
 	 * Retrieve the window's background color.
@@ -320,6 +405,14 @@ public:
 	 * Reset to the full viewport (and change back GL_PROJECTION)
 	 */
 	void ResetViewport();
+
+	///@}
+
+	//////////////////////////////////////////////////////////////////////////////////
+	/// @name Mouse Cursor
+	//////////////////////////////////////////////////////////////////////////////////
+
+	///@{
 
 	/**
 	 * Set the active mouse cursor.
@@ -372,6 +465,14 @@ public:
 	 */
 	void ResetDefaultCursor( bool activate=true );
 
+	///@}
+
+	//////////////////////////////////////////////////////////////////////////////////
+	/// @name Mouse Dragging
+	//////////////////////////////////////////////////////////////////////////////////
+
+	///@{
+
 	/**
 	 * Drag behavior enum
 	 *
@@ -410,6 +511,14 @@ public:
 	 * Get the current dragging coordinates, or return false if not dragging.
 	 */
 	bool GetDragCoords( int* x1, int* y1, int* x2, int* y2 );
+
+	///@}
+
+	//////////////////////////////////////////////////////////////////////////////////
+	/// @name Widgets
+	//////////////////////////////////////////////////////////////////////////////////
+
+	///@{
 
 	/**
 	 * Add a widget to the window that recieves events and is rendered.
@@ -456,20 +565,7 @@ public:
 	 */
 	std::vector<glWidget*> FindWidgets( int x, int y );
 
-	/**
-	 *
-	 */
-	virtual inline uint32_t GetType() const		{ return Type; }
-
-	/**
-	 *
-	 */
-	static const uint32_t Type = (1 << 3);
-
-	/**
-	 * Default title bar name
-	 */
-	static const char* DEFAULT_TITLE;
+	///@}
 
 protected:
 	glDisplay( const videoOptions& options );
@@ -501,7 +597,6 @@ protected:
 	int	        mActiveCursor;
 	int          mDefaultCursor;
 	bool		   mRendering;
-	bool		   mEnableDebug;
 	bool		   mResizedToFeed;
 	Atom		   mWindowClosedMsg;
 	DragMode	   mDragMode;

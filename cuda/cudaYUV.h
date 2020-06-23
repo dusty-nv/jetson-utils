@@ -245,7 +245,7 @@ cudaError_t cudaUYVYToRGBA( void* input, float4* output, size_t width, size_t he
 
 
 //////////////////////////////////////////////////////////////////////////////////
-/// @name YUV NV12 to RGB
+/// @name YUV NV12 4:2:0 to RGB
 /// @see cudaConvertColor() from cudaColorspace.h for automated format conversion
 /// @ingroup colorspace
 //////////////////////////////////////////////////////////////////////////////////

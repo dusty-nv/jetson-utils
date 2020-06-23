@@ -34,7 +34,17 @@ struct _GstAppSink;
 
 
 /**
- * Hardware-accelerated H.264/H.265 video decoder for Jetson using GStreamer.
+ * Hardware-accelerated video decoder for Jetson using GStreamer.
+ *
+ * gstDecoder supports loading video files from disk (MKV, MP4, AVI, FLV)
+ * and RTP/RTSP network streams over UDP/IP. The supported decoder codecs
+ * are H.264, H.265, VP8, VP9, MPEG-2, MPEG-4, and MJPEG.
+ *
+ * gstDecoder implements the videoSource interface and is intended to
+ * be used through that as opposed to directly.  videoSource implements
+ * additional command-line parsing of videoOptions to construct instances.
+ *
+ * @see videoSource
  * @ingroup codec
  */
 class gstDecoder : public videoSource
@@ -56,47 +66,65 @@ public:
 	~gstDecoder();
 	
 	/**
-	 * Capture
+	 * Capture the next decoded frame.
+	 * @see videoSource::Capture()
 	 */
 	template<typename T> bool Capture( T** image, uint64_t timeout=UINT64_MAX )		{ return Capture((void**)image, imageFormatFromType<T>(), timeout); }
 	
 	/**
-	 * Capture
+	 * Capture the next decoded frame.
+	 * @see videoSource::Capture()
 	 */
 	virtual bool Capture( void** image, imageFormat format, uint64_t timeout=UINT64_MAX );
 
 	/**
-	 * Open
+	 * Open the stream.
+	 * @see videoSource::Open()
 	 */
 	virtual bool Open();
 
 	/**
-	 * Close
+	 * Close the stream.
+	 * @see videoSource::Close()
 	 */
 	virtual void Close();
 
 	/**
-	 * IsEOS
+	 * Return true if End Of Stream (EOS) has been reached.
+	 * In the context of gstDecoder, EOS means that playback 
+	 * has reached the end of the file, and looping is either
+	 * disabled or all loops have already been run.  In the case
+	 * of RTP/RTSP, it means that the stream has terminated.
 	 */
 	inline bool IsEOS() const				{ return mEOS; }
 
 	/**
-	 *
+	 * Return the interface type (gstDecoder::Type)
 	 */
 	virtual inline uint32_t GetType() const		{ return Type; }
 
 	/**
-	 *
+	 * Unique type identifier of gstDecoder class.
 	 */
 	static const uint32_t Type = (1 << 1);
 
 	/**
+	 * String array of supported video file extensions, terminated
+	 * with a NULL sentinel value.  The supported extension are:
 	 *
+	 *    - MKV
+	 *    - MP4 / QT
+	 *    - AVI
+	 *    - FLV
+	 *
+	 * @see IsSupportedExtension() to check a string against this list.
 	 */
 	static const char* SupportedExtensions[];
 
 	/**
-	 *
+	 * Return true if the extension is in the list of SupportedExtensions.
+	 * @param ext string containing the extension to be checked (should not contain leading dot)
+	 * @see SupportedExtensions for the list of supported video file extensions.
 	 */
 	static bool IsSupportedExtension( const char* ext );
 
