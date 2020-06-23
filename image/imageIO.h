@@ -33,7 +33,7 @@
  *
  * Supported image file formats by loadImage() include:
  * 
- *   - JPEG
+ *   - JPG
  *   - PNG
  *   - TGA
  *   - BMP
@@ -64,7 +64,7 @@ template<typename T> bool loadImage( const char* filename, T** ptr, int* width, 
  *
  * Supported image file formats by loadImage() include:
  * 
- *   - JPEG
+ *   - JPG
  *   - PNG
  *   - TGA
  *   - BMP
@@ -115,7 +115,7 @@ bool loadImageRGBA( const char* filename, float4** cpu, float4** gpu, int* width
  *
  * Supported image file formats by saveImage() include:  
  *
- *   - JPEG
+ *   - JPG
  *   - PNG
  *   - TGA
  *   - BMP
@@ -142,7 +142,7 @@ template<typename T> bool saveImage( const char* filename, T* ptr, int width, in
  *
  * Supported image file formats by saveImage() include:  
  *
- *   - JPEG
+ *   - JPG
  *   - PNG
  *   - TGA
  *   - BMP

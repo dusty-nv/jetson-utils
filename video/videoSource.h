@@ -30,28 +30,23 @@
 
 
 /**
- * The videoSource API is for capturing frames from video input devices
- * such as MIPI CSI cameras, V4L2 cameras, video/images files from disk,
- * directories containing a sequence of images, and from RTP/RTSP network
- * video streams over UDP/IP.
+ * The videoSource API is for capturing frames from video input devices such as MIPI CSI cameras, 
+ * V4L2 cameras, video/images files from disk, directories containing a sequence of images, 
+ * and from RTP/RTSP network video streams over UDP/IP.
+ *
+ * videoSource interfaces are implemented by gstCamera, gstDecoder, and imageLoader.
+ * The specific implementation is selected at runtime based on the type of resource URI.
  *
  * videoSource supports the following protocols and resource URI's:
  *
  *     -  `csi://0` for MIPI CSI cameras, where `0` can be replaced with the camera port.
  *        It is also assumed that if a number with no protocol is specified (e.g. `"0"`),
- *        this means the MIPI CSI camera of that number (`"0"` ~= `csi://0`)
+ *        this means to use the MIPI CSI camera of that number (`"0"` -> `csi://0`).
  *
  *     - `v4l2:///dev/video0` for V4L2 cameras, where `/dev/video0` can be replaced with
  *        a different video device (e.g. `v4l2:///dev/video1` for V4L2 video device `1`).
  *        If no protocol is specified but the string begins with `/dev/video`, then it is
- *        assumed that the protocol is V4L2 (`/dev/video0` ~= `v4l2:///dev/video0`)
- *
- *     - `file:///home/user/my_video.mp4` for disk-based videos, images, and directories of images.
- *        You can leave off the `file://` protocol identifier and it will be deduced from the path.
- *        It can be a relative or absolute path.  If a directory is specified that contains images,
- *        those images will be loaded in sequence (sorted alphanumerically).  The path can also
- *        contain wildcard characters, for example `"images/*.jpg"` - however when using wildcards
- *        from the command line, enclose the string in quotes otherwise the OS will pre-expand them.
+ *        assumed that the protocol is V4L2 (`/dev/video0` -> `v4l2:///dev/video0`)
  *
  *     - `rtp://@:1234` to recieve an RTP network stream, where `1234` is the port and `@` is shorthand
  *        for localhost.  `@` can also be substituted for the IP address of a multicast group.
@@ -62,7 +57,18 @@
  *     - `rtsp://192.168.1.1:1234` to subscribe to an RTSP network stream, where `192.168.1.1` should
  *        be substituted for the remote host's IP address or hostname, and `1234` is the port.
  *  
- * @see URI for more info about resource URI formats.
+ *     - `file:///home/user/my_video.mp4` for disk-based videos, images, and directories of images.
+ *        You can leave off the `file://` protocol identifier and it will be deduced from the path.
+ *        It can be a relative or absolute path.  If a directory is specified that contains images,
+ *        those images will be loaded in sequence (sorted alphanumerically).  The path can also
+ *        contain wildcard characters, for example `"images/*.jpg"` - however when using wildcards
+ *        from the command line, enclose the string in quotes otherwise the OS will pre-expand them.
+ *        Supported video formats for loading include MKV, MP4, AVI, and FLV. Supported codecs for 
+ *        decoding include H.264, H.265, VP8, VP9, MPEG-2, MPEG-4, and MJPEG. Supported image formats
+ *        for loading include JPG, PNG, TGA, BMP, GIF, PSD, HDR, PIC, and PNM (PPM/PGM binary).
+ *  
+ * @see URI for info about resource URI formats.
+ * @see videoOptions for additional options and command-line arguments.
  * @ingroup video
  */
 class videoSource
@@ -149,7 +155,7 @@ public:
 	 * Capture the next image from the video stream.
 	 *
 	 * The image formats supported by Capture() are `IMAGE_RGB8` (uchar3), `IMAGE_RGBA8` (uchar4), 
-	 * `IMAGE_RGB32F` (float3), and `IMAGE_RGBA32F` (float4). @see imageFormats for more info.
+	 * `IMAGE_RGB32F` (float3), and `IMAGE_RGBA32F` (float4). @see imageFormat for more info.
 	 *
 	 * @param[out] image output pointer that will be set to the memory containing the image.
  	 *                   If this interface has it's videoOptions::zeroCopy flag set to true,
@@ -235,17 +241,21 @@ public:
 	inline bool IsType( uint32_t type ) const		{ return (type == GetType()); }
 
 	/**
+	 * Check if a this stream is of a particular type.
+	 * Can be used with gstCamera, gstDecoder, and imageLoader.  For example:  
 	 *
+	 *    if( stream->IsType<gstCamera>() )
+	 *         gstCamera* camera = (gstCamera*)stream;	// safe to cast
 	 */
 	template<typename T> bool IsType() const		{ return IsType(T::Type); }
 
 	/**
-	 *
+	 * Convert this stream's class type to string.
 	 */
 	inline const char* TypeToStr() const			{ return TypeToStr(GetType()); }
 
 	/**
-	 *
+	 * Convert a class type to a string.
 	 */
 	static const char* TypeToStr( uint32_t type );
 
