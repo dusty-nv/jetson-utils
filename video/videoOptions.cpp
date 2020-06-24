@@ -101,7 +101,6 @@ bool videoOptions::Parse( const char* URI, const commandLine& cmdLine, videoOpti
 	frameRate  = cmdLine.GetUnsignedInt("framerate", frameRate);
 	numBuffers = cmdLine.GetUnsignedInt("num-buffers", numBuffers);
 	zeroCopy 	 = cmdLine.GetFlag("zero-copy");
-	loop       = cmdLine.GetInt("loop");
 
 	// width
 	width = (type == INPUT) ? cmdLine.GetUnsignedInt("input-width")
@@ -118,12 +117,18 @@ bool videoOptions::Parse( const char* URI, const commandLine& cmdLine, videoOpti
 		height = cmdLine.GetUnsignedInt("height");
 
 	// flip-method
-	const char* flipStr = (type == INPUT) ? cmdLine.GetString("input-flip-method")
-								   : cmdLine.GetString("output-flip-method");
+	const char* flipStr = (type == INPUT) ? cmdLine.GetString("input-flip")
+								   : cmdLine.GetString("output-flip");
 
 	if( !flipStr )
-		flipStr = cmdLine.GetString("flip-method");
+	{
+		flipStr = (type == INPUT) ? cmdLine.GetString("input-flip-method")
+							 : cmdLine.GetString("output-flip-method");
 
+		if( !flipStr )
+			flipStr = cmdLine.GetString("flip-method");
+	}
+	
 	flipMethod = videoOptions::FlipMethodFromStr(flipStr);
 
 	// codec
@@ -140,6 +145,15 @@ bool videoOptions::Parse( const char* URI, const commandLine& cmdLine, videoOpti
 	if( type == OUTPUT )
 		bitRate = cmdLine.GetUnsignedInt("bitrate", bitRate);
 
+	// loop
+	if( type == INPUT )
+	{
+		loop = cmdLine.GetInt("input-loop", -999);
+		
+		if( loop == -999 )
+			loop = cmdLine.GetInt("loop");
+	}
+	
 	return true;
 }
 
