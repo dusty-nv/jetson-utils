@@ -164,8 +164,8 @@ public:
 	 *   - `rotate-180`           (Rotate 180 degrees)
 	 *   - `clockwise`            (Rotate clockwise 90 degrees)
 	 *   - `horizontal-flip`      (Flip horizontally)
-	 *   - `upper-right-diagonal` (Flip across upper right/lower left diagonal)
 	 *   - `vertical-flip`        (Flip vertically)
+	 *   - `upper-right-diagonal` (Flip across upper right/lower left diagonal)
 	 *   - `upper-left-diagonal`  (Flip across upper left/lower right diagonal)
 	 */
 	FlipMethod flipMethod;
