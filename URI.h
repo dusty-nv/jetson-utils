@@ -51,8 +51,8 @@
  *        as these values cannot be discovered from the RTP stream itself and need to be provided.
  *        @see videoOptions for more info about `--input-codec`, `--input-width`, and `--input-height`.
  *
- *     - `rtsp://192.168.1.1:1234` to subscribe to an RTSP network stream, where `192.168.1.1` should
- *        be substituted for the remote host's IP address or hostname, and `1234` is the port.
+ *     - `rtsp://<remote-host>:1234` to subscribe to an RTSP network stream, where `<remote-host>`
+ *        should be substituted for the remote host's IP address or hostname, and `1234` is the port.
  *
  *     - `file:///home/user/my_video.mp4` for disk-based videos, images, and directories of images.
  *        You can leave off the `file://` protocol identifier and it will be deduced from the path.
@@ -70,8 +70,8 @@
  *     - `display://0` for rendering to display using OpenGL, where `0` corresponds to the display number.
  *        By default, an OpenGL window will be created, unless the `--headless` command line option is used.
  *
- *     - `rtp://192.168.1.1:1234` to broadcast a compressed RTP stream to a remote host, where you should
- *        substitute `192.168.1.1` with the remote host's IP address or hostname, and `1234` is the port.
+ *     - `rtp://<remote-host>:1234` to broadcast a compressed RTP stream to a remote host, where you should
+ *        substitute `<remote-host>` with the remote host's IP address or hostname, and `1234` is the port.
  *
  *     - `file:///home/user/my_video.mp4` for saving videos, images, and directories of images to disk.
  *        You can leave off the `file://` protocol identifier and it will be deduced from the path.

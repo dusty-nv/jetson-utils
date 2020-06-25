@@ -30,39 +30,38 @@
 
 
 /**
- * Command-line options able to be passed to videoSource::Create()
+ * Standard command-line options able to be passed to videoSource::Create()
  * @ingroup video
  */
 #define VIDEO_SOURCE_USAGE_STRING  "videoSource arguments: \n" 							\
-		  "  input_URI INPUT       resource URI of the input stream, for example:\n"		\
-		  "                            * /dev/video0 (V4L2 camera #0)\n"					\
-		  "                            * csi://0 (MIPI CSI camera #0)\n"					\
-		  "                            * rtp://@:1234 (RTP stream, port 1234)\n"			\
-		  "                            * rtsp://<host-ip>:1234 (RTSP stream)\n"			\
-		  "                            * file://my_image.jpg (image file)\n"				\
-		  "                            * file://my_directory/ (directory of images)\n"		\
-		  "  --input-width=WIDTH   explicitly request a resolution of the input stream\n"    \
-		  "  --input-height=HEIGHT resolution is optional, except required for RTP\n"        \
-		  "  --input-codec=CODEC   RTP requires the codec to be set, one of these:\n"		\
-		  "                            * h264, h265\n"								\
-		  "                            * vp8, vp9\n"									\
-		  "                            * mpeg2, mpeg4\n"								\
-		  "                            * mjpeg\n"        								\
-		  "  --input-flip=FLIP     flip method to apply to input (excludes V4L2):\n" 		\
-		  "                            * none (default)\n" 							\
-		  "                            * counterclockwise\n" 							\
-		  "                            * rotate-180\n" 								\
-		  "                            * clockwise\n" 								\
-		  "                            * horizontal\n" 								\
-		  "                            * vertical\n" 								\
-		  "                            * upper-right-diagonal\n" 						\
-		  "                            * upper-left-diagonal\n" 						\
-		  "                            * coco-chair\n" 								\
-		  "                            * coco-dog\n" 								\
-		  "  --input-loop=LOOP     for file-based inputs, the number of loops to run:\n"	\
-		  "                            * -1 = loop forever\n"							\
-		  "                            *  0 = don't loop (default)\n"					\
-		  "                            * >0 = set number of loops\n"
+		  "    input_URI            resource URI of the input stream, for example:\n"		\
+		  "                             * /dev/video0             (V4L2 camera #0)\n"		\
+		  "                             * csi://0                 (MIPI CSI camera #0)\n"	\
+		  "                             * rtp://@:1234            (RTP stream)\n"			\
+		  "                             * rtsp://<remote-ip>:1234 (RTSP stream)\n"			\
+		  "                             * file://my_image.jpg     (image file)\n"			\
+		  "                             * file://my_video.mp4     (video file)\n"			\
+		  "                             * file://my_directory/    (directory of images)\n"	\
+		  "  --input-width=WIDTH    explicitly request a resolution of the input stream\n"   \
+		  "  --input-height=HEIGHT  (resolution is optional, except required for RTP)\n"     \
+		  "  --input-codec=CODEC    RTP requires the codec to be set, one of these:\n"		\
+		  "                             * h264, h265\n"								\
+		  "                             * vp8, vp9\n"								\
+		  "                             * mpeg2, mpeg4\n"								\
+		  "                             * mjpeg\n"        							\
+		  "  --input-flip=FLIP      flip method to apply to input (excludes V4L2):\n" 		\
+		  "                             * none (default)\n" 							\
+		  "                             * counterclockwise\n" 							\
+		  "                             * rotate-180\n" 								\
+		  "                             * clockwise\n" 								\
+		  "                             * horizontal\n" 								\
+		  "                             * vertical\n" 								\
+		  "                             * upper-right-diagonal\n" 						\
+		  "                             * upper-left-diagonal\n" 						\
+		  "  --input-loop=LOOP      for file-based inputs, the number of loops to run:\n"	\
+		  "                             * -1 = loop forever\n"							\
+		  "                             *  0 = don't loop (default)\n"					\
+		  "                             * >0 = set number of loops\n"
 
 
 /**
@@ -90,8 +89,8 @@
  *        as these values cannot be discovered from the RTP stream itself and need to be provided.
  *        @see videoOptions for more info about `--input-codec`, `--input-width`, and `--input-height`.
  *
- *     - `rtsp://192.168.1.1:1234` to subscribe to an RTSP network stream, where `192.168.1.1` should
- *        be substituted for the remote host's IP address or hostname, and `1234` is the port.
+ *     - `rtsp://<remote-host>:1234` to subscribe to an RTSP network stream, where `<remote-host>`
+ *        should be substituted for the remote host's IP address or hostname, and `1234` is the port.
  *  
  *     - `file:///home/user/my_video.mp4` for disk-based videos, images, and directories of images.
  *        You can leave off the `file://` protocol identifier and it will be deduced from the path.

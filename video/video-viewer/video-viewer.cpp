@@ -40,10 +40,32 @@ void sig_handler(int signo)
 	}
 }
 
+int usage()
+{
+	printf("usage: video-viewer [--help] input_URI [output_URI]\n\n");
+	printf("View/output a video or image stream.\n");
+	printf("See below for additional arguments that may not be shown above.\n\n");
+	printf("positional arguments:\n");
+	printf("    input_URI       resource URI of input stream  (see videoSource below)\n");
+	printf("    output_URI      resource URI of output stream (see videoOutput below)\n\n");
+
+	printf("%s\n", videoSource::Usage());
+	printf("%s\n", videoOutput::Usage());
+	printf("%s\n", Log::Usage());
+
+	return 0;
+}
 
 int main( int argc, char** argv )
 {
+	/*
+	 * parse command line
+	 */
 	commandLine cmdLine(argc, argv);
+
+	if( cmdLine.GetFlag("help") )
+		return usage();
+
 
 	/*
 	 * attach signal handler

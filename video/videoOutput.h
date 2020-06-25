@@ -32,6 +32,27 @@
 
 
 /**
+ * Standard command-line options able to be passed to videoOutput::Create()
+ * @ingroup video
+ */
+#define VIDEO_OUTPUT_USAGE_STRING  "videoOutput arguments: \n" 							\
+		  "    output_URI           resource URI of the output stream, for example:\n"		\
+		  "                             * file://my_image.jpg    (image file)\n"			\
+		  "                             * file://my_video.mp4    (video file)\n"			\
+		  "                             * file://my_directory/   (directory of images)\n"	\
+		  "                             * rtp://<remote-ip>:1234 (RTP stream)\n"			\
+		  "                             * display://0            (OpenGL window)\n" 		\
+		  "  --output-codec=CODEC   desired codec for compressed output streams:\n"		\
+		  "                            * h264 (default), h265\n"						\
+		  "                            * vp8, vp9\n"									\
+		  "                            * mpeg2, mpeg4\n"								\
+		  "                            * mjpeg\n"        								\
+		  "  --bitrate=BITRATE      desired average VBR bitrate for compressed streams,\n"   \
+		  "                         provided in bytes. The default is 4000000 (4 Mbps)\n"	\
+		  "  --headless             don't create a default OpenGL GUI window\n"
+
+
+/**
  * The videoOutput API is for rendering and transmitting frames to video input devices such as display windows, 
  * broadcasting RTP network streams to remote hosts over UDP/IP, and saving videos/images/directories to disk. 
  *
@@ -45,8 +66,8 @@
  *     - `display://0` for rendering to display using OpenGL, where `0` corresponds to the display number.
  *        By default, an OpenGL window will be created, unless the `--headless` command line option is used.
  *
- *     - `rtp://192.168.1.1:1234` to broadcast a compressed RTP stream to a remote host, where you should
- *        substitute `192.168.1.1` with the remote host's IP address or hostname, and `1234` is the port.
+ *     - `rtp://<remote-host>:1234` to broadcast a compressed RTP stream to a remote host, where you should
+ *        substitute `<remote-host>` with the remote host's IP address or hostname, and `1234` is the port.
  *
  *     - `file:///home/user/my_video.mp4` for saving videos, images, and directories of images to disk.
  *        You can leave off the `file://` protocol identifier and it will be deduced from the path.
@@ -122,6 +143,11 @@ public:
 	 */
 	virtual ~videoOutput();
 
+	/**
+	 * Usage string for command line arguments to Create()
+	 */
+	static inline const char* Usage() 		{ return VIDEO_OUTPUT_USAGE_STRING; }
+	
 	/**
 	 * Render and output the next frame to the stream.
 	 * The image formats supported by this templated version of Render() include the following:
