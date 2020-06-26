@@ -368,7 +368,18 @@ bool gstEncoder::buildLaunchStr()
 	}
 	else if( uri.protocol == "rtp" )
 	{
-		ss << "rtph264pay config-interval=1 ! udpsink host=";
+		if( mOptions.codec == videoOptions::CODEC_H264 )
+			ss << "rtph264pay";
+		else if( mOptions.codec == videoOptions::CODEC_H265 )
+			ss << "rtph265pay";
+		else if( mOptions.codec == videoOptions::CODEC_VP8 )
+			ss << "rtpvp8pay";
+		else if( mOptions.codec == videoOptions::CODEC_VP9 )
+			ss << "rtpvp9pay";
+		else if( mOptions.codec == videoOptions::CODEC_MJPEG )
+			ss << "rtpjpegpay";
+
+		ss << " config-interval=1 ! udpsink host=";
 		ss << uri.path << " ";
 
 		if( uri.port != 0 )
