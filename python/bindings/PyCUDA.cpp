@@ -338,15 +338,16 @@ static PyObject* PyCudaImage_ToString( PyCudaImage* self )
 
 	sprintf(str, 
 		   "<cudaImage object>\n"
-		   "   -- ptr:    %p\n"
-		   "   -- size:   %zu\n"
-		   "   -- width:  %u\n"
-		   "   -- height: %u\n"
-		   "   -- format: %s\n"
-		   "   -- mapped: %s\n"
+		   "   -- ptr:      %p\n"
+		   "   -- size:     %zu\n"
+		   "   -- width:    %u\n"
+		   "   -- height:   %u\n"
+		   "   -- channels: %u\n"
+		   "   -- format:   %s\n"
+		   "   -- mapped:   %s\n"
 		   "   -- freeOnDelete: %s\n",
-		   self->base.ptr, self->base.size, (uint32_t)self->width, (uint32_t)self->height, imageFormatToStr(self->format), 
-		   self->base.mapped ? "true" : "false", self->base.freeOnDelete ? "true" : "false");
+		   self->base.ptr, self->base.size, (uint32_t)self->width, (uint32_t)self->height, (uint32_t)self->shape[2],  
+		   imageFormatToStr(self->format), self->base.mapped ? "true" : "false", self->base.freeOnDelete ? "true" : "false");
 
 	return PYSTRING_FROM_STRING(str);
 }
@@ -361,6 +362,12 @@ static PyObject* PyCudaImage_GetWidth( PyCudaImage* self, void* closure )
 static PyObject* PyCudaImage_GetHeight( PyCudaImage* self, void* closure )
 {
 	return PYLONG_FROM_UNSIGNED_LONG(self->height);
+}
+
+// PyCudaImage_GetChannels
+static PyObject* PyCudaImage_GetChannels( PyCudaImage* self, void* closure )
+{
+	return PYLONG_FROM_UNSIGNED_LONG(self->shape[2]);
 }
 
 // PyCudaImage_GetShape
@@ -690,6 +697,7 @@ static PyGetSetDef pyCudaImage_GetSet[] =
 {
 	{ "width", (getter)PyCudaImage_GetWidth, NULL, "Width of the image (in pixels)", NULL},
 	{ "height", (getter)PyCudaImage_GetHeight, NULL, "Height of the image (in pixels)", NULL},
+	{ "channels", (getter)PyCudaImage_GetChannels, NULL, "Number of color channels in the image", NULL},
 	{ "shape", (getter)PyCudaImage_GetShape, NULL, "Image dimensions in (height, width, channels) tuple", NULL},
 	{ "format", (getter)PyCudaImage_GetFormat, NULL, "Pixel format of the image", NULL},
 	{ NULL } /* Sentinel */
