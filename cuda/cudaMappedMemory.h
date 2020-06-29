@@ -25,6 +25,7 @@
 
 
 #include "cudaUtility.h"
+#include "imageFormat.h"
 #include "logging.h"
 
 
@@ -91,6 +92,47 @@ inline bool cudaAllocMapped( void** ptr, size_t size )
 	*ptr = gpuPtr;
 	return true;
 }
+
+/**
+ * Allocate ZeroCopy mapped memory, shared between CUDA and CPU.
+ *
+ * This overload is for allocating images from an imageFormat type
+ * and the image dimensions.  The overall size of the allocation 
+ * will be calculated with the imageFormatSize() function.
+ *
+ * @param[out] ptr Returned pointer to the shared CPU/GPU memory.
+ * @param[in] width Width (in pixels) to allocate.
+ * @param[in] height Height (in pixels) to allocate. 
+ * @param[in] format Format of the image.
+ *
+ * @returns `true` if the allocation succeeded, `false` otherwise.
+ * @ingroup cudaMemory
+ */
+inline bool cudaAllocMapped( void** ptr, size_t width, size_t height, imageFormat format )
+{
+	return cudaAllocMapped(ptr, imageFormatSize(format, width, height));
+}
+
+
+/**
+ * Allocate ZeroCopy mapped memory, shared between CUDA and CPU.
+ *
+ * This overload is for allocating images from an imageFormat type
+ * and the image dimensions.  The overall size of the allocation 
+ * will be calculated with the imageFormatSize() function.
+ *
+ * @param[out] ptr Returned pointer to the shared CPU/GPU memory.
+ * @param[in] dims `int2` vector where `width=dims.x` and `height=dims.y`
+ * @param[in] format Format of the image.
+ *
+ * @returns `true` if the allocation succeeded, `false` otherwise.
+ * @ingroup cudaMemory
+ */
+inline bool cudaAllocMapped( void** ptr, const int2& dims, imageFormat format )
+{
+	return cudaAllocMapped(ptr, imageFormatSize(format, dims.x, dims.y));
+}
+
 
 /**
  * Allocate ZeroCopy mapped memory, shared between CUDA and CPU.
