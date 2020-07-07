@@ -35,13 +35,13 @@
  */
 #define VIDEO_SOURCE_USAGE_STRING  "videoSource arguments: \n" 							\
 		  "    input_URI            resource URI of the input stream, for example:\n"		\
-		  "                             * /dev/video0             (V4L2 camera #0)\n"		\
-		  "                             * csi://0                 (MIPI CSI camera #0)\n"	\
-		  "                             * rtp://@:1234            (RTP stream)\n"			\
-		  "                             * rtsp://<remote-ip>:1234 (RTSP stream)\n"			\
-		  "                             * file://my_image.jpg     (image file)\n"			\
-		  "                             * file://my_video.mp4     (video file)\n"			\
-		  "                             * file://my_directory/    (directory of images)\n"	\
+		  "                             * /dev/video0              (V4L2 camera #0)\n"		\
+		  "                             * csi://0                  (MIPI CSI camera #0)\n"	\
+		  "                             * rtp://@:1234             (RTP stream)\n"			\
+		  "                             * rtsp://user:pass@ip:1234 (RTSP stream)\n"			\
+		  "                             * file://my_image.jpg      (image file)\n"			\
+		  "                             * file://my_video.mp4      (video file)\n"			\
+		  "                             * file://my_directory/     (directory of images)\n"	\
 		  "  --input-width=WIDTH    explicitly request a resolution of the input stream\n"   \
 		  "  --input-height=HEIGHT  (resolution is optional, except required for RTP)\n"     \
 		  "  --input-codec=CODEC    RTP requires the codec to be set, one of these:\n"		\
@@ -89,9 +89,11 @@
  *        as these values cannot be discovered from the RTP stream itself and need to be provided.
  *        @see videoOptions for more info about `--input-codec`, `--input-width`, and `--input-height`.
  *
- *     - `rtsp://<remote-host>:1234` to subscribe to an RTSP network stream, where `<remote-host>`
- *        should be substituted for the remote host's IP address or hostname, and `1234` is the port.
- *  
+ *     - `rtsp://username:password@<remote-host>:1234` to subscribe to an RTSP network stream, where
+ *        `<remote-host>` should be substituted for the remote host's IP address or hostname, and 
+ *        `1234` is the port.  For example, `rtsp://192.168.1.2:5000`.  The `username` and `password` 
+ *        are optional, and are only used for RTSP streams that require authentication.
+ *
  *     - `file:///home/user/my_video.mp4` for disk-based videos, images, and directories of images.
  *        You can leave off the `file://` protocol identifier and it will be deduced from the path.
  *        It can be a relative or absolute path.  If a directory is specified that contains images,
