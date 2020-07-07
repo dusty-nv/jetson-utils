@@ -151,7 +151,7 @@ bool gstCamera::buildLaunchStr()
 	}
 	else
 	{
-		ss << "v4l2src device=" << mOptions.resource.path << " ! ";
+		ss << "v4l2src device=" << mOptions.resource.location << " ! ";
 		
 		if( mOptions.codec != videoOptions::CODEC_UNKNOWN )
 		{
@@ -196,7 +196,7 @@ bool gstCamera::buildLaunchStr()
 bool gstCamera::printCaps( GstCaps* device_caps )
 {
 	const uint32_t numCaps = gst_caps_get_size(device_caps);
-	LogVerbose(LOG_GSTREAMER "gstCamera -- found %u caps for v4l2 device %s\n", numCaps, mOptions.resource.path.c_str());
+	LogVerbose(LOG_GSTREAMER "gstCamera -- found %u caps for v4l2 device %s\n", numCaps, mOptions.resource.location.c_str());
 
 	if( numCaps == 0 )
 		return false;
@@ -335,7 +335,7 @@ bool gstCamera::matchCaps( GstCaps* device_caps )
 		
 	if( !bestCaps )
 	{
-		printf(LOG_GSTREAMER "gstCamera -- couldn't find a compatible codec/format for v4l2 device %s\n", mOptions.resource.path.c_str());
+		printf(LOG_GSTREAMER "gstCamera -- couldn't find a compatible codec/format for v4l2 device %s\n", mOptions.resource.location.c_str());
 		return false;
 	}
 	
@@ -397,7 +397,7 @@ bool gstCamera::discover()
 			
 			const char* devicePath = gst_structure_get_string(properties, "device.path");
 			
-			if( devicePath != NULL && strcasecmp(devicePath, mOptions.resource.path.c_str()) == 0 )
+			if( devicePath != NULL && strcasecmp(devicePath, mOptions.resource.location.c_str()) == 0 )
 			{
 				device = d;
 				break;
@@ -407,7 +407,7 @@ bool gstCamera::discover()
 	
 	if( !device )
 	{
-		LogError(LOG_GSTREAMER "gstCamera -- could not find v4l2 device %s\n", mOptions.resource.path.c_str());
+		LogError(LOG_GSTREAMER "gstCamera -- could not find v4l2 device %s\n", mOptions.resource.location.c_str());
 		return false;
 	}
 	
@@ -416,7 +416,7 @@ bool gstCamera::discover()
 	
 	if( !device_caps )
 	{
-		LogError(LOG_GSTREAMER "gstCamera -- failed to retrieve caps for v4l2 device %s\n", mOptions.resource.path.c_str());
+		LogError(LOG_GSTREAMER "gstCamera -- failed to retrieve caps for v4l2 device %s\n", mOptions.resource.location.c_str());
 		return false;
 	}
 	
@@ -441,9 +441,9 @@ bool gstCamera::init()
 	// discover device stats
 	if( !discover() )
 	{
-		if( mOptions.resource.protocol == "v4l2" && fileExists(mOptions.resource.path) )
+		if( mOptions.resource.protocol == "v4l2" && fileExists(mOptions.resource.location) )
 		{
-			LogWarning(LOG_GSTREAMER "gstCamera -- device discovery failed, but %s exists\n", mOptions.resource.path.c_str());
+			LogWarning(LOG_GSTREAMER "gstCamera -- device discovery failed, but %s exists\n", mOptions.resource.location.c_str());
 			LogWarning(LOG_GSTREAMER "             support for compressed formats is disabled\n");
 		}
 		else
@@ -648,7 +648,7 @@ void gstCamera::checkBuffer()
 		
 		if( mFormatYUV == IMAGE_UNKNOWN )
 		{
-			LogError(LOG_GSTREAMER "gstCamera -- device %s does not have a compatible decoded format\n", mOptions.resource.path.c_str());
+			LogError(LOG_GSTREAMER "gstCamera -- device %s does not have a compatible decoded format\n", mOptions.resource.location.c_str());
 			release_return;
 		}
 		

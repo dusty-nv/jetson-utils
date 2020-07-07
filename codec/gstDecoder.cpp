@@ -55,7 +55,12 @@
 //  $ git checkout 1.14.5
 //  $ ./autogen.sh --noconfigure && ./configure && make
 //  $ cd examples && ./test-launch "( videotestsrc ! x264enc ! rtph264pay name=pay0 pt=96 )"
-//  rtsp://127.0.0.1:8554/test
+//  > rtsp://127.0.0.1:8554/test
+//
+// RTSP authentication test:
+//  $ ./test-auth
+//  > rtsp://user:password@127.0.0.1:8554/test
+//  > rtsp://admin:power@127.0.0.1:8554/test
 //
 
 
@@ -172,14 +177,14 @@ bool gstDecoder::init()
 	// first, check that the file exists
 	if( mOptions.resource.protocol == "file" )
 	{
-		if( !fileExists(mOptions.resource.path) )
+		if( !fileExists(mOptions.resource.location) )
 		{
-			LogError(LOG_GSTREAMER "gstDecoder -- couldn't find file '%s'\n", mOptions.resource.path.c_str());
+			LogError(LOG_GSTREAMER "gstDecoder -- couldn't find file '%s'\n", mOptions.resource.location.c_str());
 			return false;
 		}
 	}
 	
-	LogInfo(LOG_GSTREAMER "gstDecoder -- creating decoder for %s\n", mOptions.resource.path.c_str());
+	LogInfo(LOG_GSTREAMER "gstDecoder -- creating decoder for %s\n", mOptions.resource.location.c_str());
 
 	// flag if the user wants a specific resolution
 	if( mOptions.width != 0 || mOptions.height != 0 )
@@ -429,7 +434,7 @@ bool gstDecoder::buildLaunchStr()
 
 	if( uri.protocol == "file" )
 	{
-		ss << "filesrc location=" << mOptions.resource.path << " ! ";
+		ss << "filesrc location=" << mOptions.resource.location << " ! ";
 
 		if( uri.extension == "mkv" )
 			ss << "matroskademux ! ";
@@ -474,7 +479,7 @@ bool gstDecoder::buildLaunchStr()
 		}
 
 		ss << "udpsrc port=" << uri.port;
-		ss << " multicast-group=" << uri.path << " auto-multicast=true";
+		ss << " multicast-group=" << uri.location << " auto-multicast=true";
 
 		ss << " caps=\"" << "application/x-rtp,media=(string)video,clock-rate=(int)90000,encoding-name=(string)";
 		

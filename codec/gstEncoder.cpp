@@ -362,7 +362,7 @@ bool gstEncoder::buildLaunchStr()
 			return false;
 		}
 
-		ss << "filesink location=" << uri.path;
+		ss << "filesink location=" << uri.location;
 
 		mOptions.deviceType = videoOptions::DEVICE_FILE;
 	}
@@ -380,7 +380,7 @@ bool gstEncoder::buildLaunchStr()
 			ss << "rtpjpegpay";
 
 		ss << " config-interval=1 ! udpsink host=";
-		ss << uri.path << " ";
+		ss << uri.location << " ";
 
 		if( uri.port != 0 )
 			ss << "port=" << uri.port;

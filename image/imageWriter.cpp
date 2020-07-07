@@ -93,22 +93,22 @@ bool imageWriter::Render( void* image, uint32_t width, uint32_t height, imageFor
 {
 	const bool substreams_success = videoOutput::Render(image, width, height, format);
 
-	if( mOptions.resource.path.find("%") != std::string::npos )
+	if( mOptions.resource.location.find("%") != std::string::npos )
 	{
 		// path has a format (should be '%u' or '%i')
-		sprintf(mFileOut, mOptions.resource.path.c_str(), mFileCount);
+		sprintf(mFileOut, mOptions.resource.location.c_str(), mFileCount);
 	}
 	else if( mOptions.resource.extension.size() == 0 )
 	{
 		// path is a dir, use default image numbering
 		sprintf(mFileOut, "%u.jpg", mFileCount);
-		const std::string path = pathJoin(mOptions.resource.path, mFileOut);
+		const std::string path = pathJoin(mOptions.resource.location, mFileOut);
 		strcpy(mFileOut, path.c_str());
 	}
 	else
 	{
 		// path is a single file, use it as-is
-		strcpy(mFileOut, mOptions.resource.path.c_str());
+		strcpy(mFileOut, mOptions.resource.location.c_str());
 	}
 
 	// save the image

@@ -70,9 +70,9 @@ imageLoader::imageLoader( const videoOptions& options ) : videoSource(options)
 	// list files to use
 	std::vector<std::string> files;
 
-	if( !listDir(options.resource.path, files, FILE_REGULAR) )
+	if( !listDir(options.resource.location, files, FILE_REGULAR) )
 	{
-		LogError(LOG_IMAGE "imageLoader -- failed to find '%s'\n", options.resource.path.c_str());
+		LogError(LOG_IMAGE "imageLoader -- failed to find '%s'\n", options.resource.location.c_str());
 		return;
 	}
 
@@ -90,7 +90,7 @@ imageLoader::imageLoader( const videoOptions& options ) : videoSource(options)
 
 	if( mFiles.size() == 0 )
 	{
-		LogError(LOG_IMAGE "imageLoader -- failed to find any image files under '%s'\n", options.resource.path.c_str());
+		LogError(LOG_IMAGE "imageLoader -- failed to find any image files under '%s'\n", options.resource.location.c_str());
 		return;
 	}
 }
