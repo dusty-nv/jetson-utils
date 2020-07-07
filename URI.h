@@ -51,8 +51,10 @@
  *        as these values cannot be discovered from the RTP stream itself and need to be provided.
  *        @see videoOptions for more info about `--input-codec`, `--input-width`, and `--input-height`.
  *
- *     - `rtsp://<remote-host>:1234` to subscribe to an RTSP network stream, where `<remote-host>`
- *        should be substituted for the remote host's IP address or hostname, and `1234` is the port.
+ *     - `rtsp://username:password@<remote-host>:1234` to subscribe to an RTSP network stream, where
+ *        `<remote-host>` should be substituted for the remote host's IP address or hostname, and 
+ *        `1234` is the port.  For example, `rtsp://192.168.1.2:5000`.  The `username` and `password` 
+ *        are optional, and are only used for RTSP streams that require authentication.
  *
  *     - `file:///home/user/my_video.mp4` for disk-based videos, images, and directories of images.
  *        You can leave off the `file://` protocol identifier and it will be deduced from the path.
@@ -149,13 +151,13 @@ public:
 	/**
 	 * Path, IP address, or device name
 	 */
-	std::string path;
+	std::string location;
 
 	/**
 	 * File extension (for files only, otherwise empty)
 	 */
 	std::string extension;
-
+	
 	/**
 	 * IP port, camera port, ect.
 	 */

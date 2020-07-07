@@ -63,7 +63,7 @@ bool URI::Parse( const char* uri )
 	string    = uri;
 	protocol  = "";
 	extension = "";
-	path      = "";
+	location  = "";
      port      = -1;
 	
 	// look for protocol
@@ -72,7 +72,7 @@ bool URI::Parse( const char* uri )
 	if( pos != std::string::npos )
 	{
 		protocol = string.substr(0, pos);
-		path = string.substr(pos+3, std::string::npos);
+		location = string.substr(pos+3, std::string::npos);
 	}
 	else
 	{
@@ -101,15 +101,15 @@ bool URI::Parse( const char* uri )
 			return false;
 		}
 
-		path = string;
+		location = string;
 
 		// reconstruct full URI string
 		string = protocol + "://";
 
 		if( protocol == "file" )
-			string += absolutePath(path);	// URI paths should be absolute
+			string += absolutePath(location);	// URI paths should be absolute
 		else
-			string += path;
+			string += location;
 	}
 
 	// protocol should be all lowercase for easier parsing
@@ -118,23 +118,23 @@ bool URI::Parse( const char* uri )
 	// parse extra info (device ordinals, IP addresses, ect)
 	if( protocol == "v4l2" )
 	{
-		if( sscanf(path.c_str(), "/dev/video%i", &port) != 1 )
+		if( sscanf(location.c_str(), "/dev/video%i", &port) != 1 )
 		{
-			LogError("URI -- failed to parse V4L2 device ID from %s\n", path.c_str());
+			LogError("URI -- failed to parse V4L2 device ID from %s\n", location.c_str());
 			return false;
 		}
 	}
 	else if( protocol == "csi" )
 	{
-		if( sscanf(path.c_str(), "%i", &port) != 1 )
+		if( sscanf(location.c_str(), "%i", &port) != 1 )
 		{
-			LogError("URI -- failed to parse MIPI CSI device ID from %s\n", path.c_str());
+			LogError("URI -- failed to parse MIPI CSI device ID from %s\n", location.c_str());
 			return false;
 		}
 	}
 	else if( protocol == "display" )
 	{
-		if( sscanf(path.c_str(), "%i", &port) != 1 )
+		if( sscanf(location.c_str(), "%i", &port) != 1 )
 		{
 			LogVerbose("URI -- using default display device 0\n");
 			port = 0;
@@ -142,23 +142,32 @@ bool URI::Parse( const char* uri )
 	}
 	else if( protocol == "file" )
 	{
-		extension = fileExtension(path);
+		extension = fileExtension(location);
 	}
 	else
 	{		
 		// search for ip/port format
 		std::string port_str;
-		pos = path.find(":");		
+		pos = location.find(":");		
 
 		if( pos != std::string::npos )	// "xxx.xxx.xxx.xxx:port"
-		{
-			port_str = path.substr(pos+1, std::string::npos);
-			path = path.substr(0, pos);
+		{	
+			if( protocol == "rtsp" )		// "user:pass@ip:port"
+			{
+				const std::size_t host_pos = location.find("@", pos+1);
+				const std::size_t port_pos = location.find(":", pos+1);
+				
+				if( host_pos != std::string::npos && port_pos != std::string::npos )
+					pos = port_pos;
+			}
+		
+			port_str = location.substr(pos+1, std::string::npos);
+			location = location.substr(0, pos);
 		}
-		else if( std::count(path.begin(), path.end(), '.') == 0 ) // "port"
+		else if( std::count(location.begin(), location.end(), '.') == 0 ) // "port"
 		{
-			port_str = path;
-			path = "127.0.0.1";
+			port_str = location;
+			location = "127.0.0.1";
 		}
 
 		// parse the port number
@@ -172,8 +181,8 @@ bool URI::Parse( const char* uri )
 		}
 
 		// convert "@:port" format to localhost
-		if( path == "@" )
-			path = "127.0.0.1";
+		if( location == "@" )
+			location = "127.0.0.1";
 	}
 		
 	return true;
@@ -188,9 +197,16 @@ void URI::Print( const char* prefix ) const
 
 	LogInfo("%s-- URI: %s\n", prefix, string.c_str());
 	LogInfo("%s   - protocol:  %s\n", prefix, protocol.c_str());
-	LogInfo("%s   - path:      %s\n", prefix, path.c_str());
-	LogInfo("%s   - extension: %s\n", prefix, extension.c_str());
-	LogInfo("%s   - port:      %i\n", prefix, port);
+	LogInfo("%s   - location:  %s\n", prefix, location.c_str());
+
+	if( extension.size() > 0 )
+		LogInfo("%s   - extension: %s\n", prefix, extension.c_str());
+
+	if( port > 0 )
+		LogInfo("%s   - port:      %i\n", prefix, port);
+
+	//LogInfo("%s   - username:  %s\n", prefix, username.c_str());
+	//LogInfo("%s   - password:  %s\n", prefix, password.c_str());
 }
 
 
