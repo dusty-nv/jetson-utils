@@ -155,6 +155,7 @@ protected:
 
 	std::string  mLaunchStr;
 	bool         mCustomSize;
+	bool		   mCustomRate;
 	bool         mEOS;
 	size_t	   mLoopCount;
 	size_t	   mFrameCount;

@@ -356,6 +356,9 @@ bool gstCamera::discover()
 	if( mOptions.height == 0 )
 		mOptions.height = DefaultHeight;
 	
+	if( mOptions.frameRate <= 0 )
+		mOptions.frameRate = 30;
+
 	// MIPI CSI cameras aren't enumerated
 	if( mOptions.resource.protocol != "v4l2" )
 	{

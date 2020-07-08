@@ -151,22 +151,9 @@ bool gstEncoder::init()
 		mOptions.codec = videoOptions::CODEC_H264;
 	}
 
-#if 0
-	// build caps string
-	if( !buildCapsStr() )
-	{
-		printf(LOG_GSTREAMER "gstEncoder -- failed to build caps string\n");
-		return false;
-	}
-	
-	mBufferCaps = gst_caps_from_string(mCapsStr.c_str());
-
-	if( !mBufferCaps )
-	{
-		printf(LOG_GSTREAMER "gstEncoder -- failed to parse caps from string\n");
-		return false;
-	}
-#endif
+	// check if default framerate is needed
+	if( mOptions.frameRate <= 0 )
+		mOptions.frameRate = 30;
 
 	// build pipeline string
 	if( !buildLaunchStr() )

@@ -31,7 +31,7 @@ videoOptions::videoOptions()
 {
 	width 	  = 0;
 	height 	  = 0;
-	frameRate   = 30;
+	frameRate   = 0;
 	bitRate     = 0;
 	numBuffers  = 4;
 	loop        = 0;
@@ -98,7 +98,6 @@ bool videoOptions::Parse( const char* URI, const commandLine& cmdLine, videoOpti
 	}
 
 	// parse stream settings
-	frameRate  = cmdLine.GetUnsignedInt("framerate", frameRate);
 	numBuffers = cmdLine.GetUnsignedInt("num-buffers", numBuffers);
 	zeroCopy 	 = cmdLine.GetFlag("zero-copy");
 
@@ -115,6 +114,13 @@ bool videoOptions::Parse( const char* URI, const commandLine& cmdLine, videoOpti
 
 	if( height == 0 )
 		height = cmdLine.GetUnsignedInt("height");
+
+	// framerate
+	frameRate = (type == INPUT) ? cmdLine.GetFloat("input-rate", frameRate)
+						   : cmdLine.GetFloat("output-rate", frameRate);
+
+	if( frameRate == 0 )
+		frameRate = cmdLine.GetFloat("framerate");
 
 	// flip-method
 	const char* flipStr = (type == INPUT) ? cmdLine.GetString("input-flip")

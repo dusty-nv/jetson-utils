@@ -64,7 +64,8 @@ public:
 
 	/**
 	 * The framerate of the stream (the default is 30Hz).
-	 * This option can be set from the command line using `--framerate=N`.
+	 * This option can be set from the command line using `--input-rate=N` or `--output-rate=N`
+	 * for input and output streams, respectively. The `--framerate=N` option sets it for both.
 	 */
 	float frameRate;
 	

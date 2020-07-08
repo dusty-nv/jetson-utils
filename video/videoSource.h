@@ -33,34 +33,35 @@
  * Standard command-line options able to be passed to videoSource::Create()
  * @ingroup video
  */
-#define VIDEO_SOURCE_USAGE_STRING  "videoSource arguments: \n" 							\
-		  "    input_URI            resource URI of the input stream, for example:\n"		\
-		  "                             * /dev/video0              (V4L2 camera #0)\n"		\
-		  "                             * csi://0                  (MIPI CSI camera #0)\n"	\
-		  "                             * rtp://@:1234             (RTP stream)\n"			\
+#define VIDEO_SOURCE_USAGE_STRING  "videoSource arguments: \n" 								\
+		  "    input_URI            resource URI of the input stream, for example:\n"			\
+		  "                             * /dev/video0              (V4L2 camera #0)\n"			\
+		  "                             * csi://0                  (MIPI CSI camera #0)\n"		\
+		  "                             * rtp://@:1234             (RTP stream)\n"				\
 		  "                             * rtsp://user:pass@ip:1234 (RTSP stream)\n"			\
-		  "                             * file://my_image.jpg      (image file)\n"			\
-		  "                             * file://my_video.mp4      (video file)\n"			\
-		  "                             * file://my_directory/     (directory of images)\n"	\
-		  "  --input-width=WIDTH    explicitly request a resolution of the input stream\n"   \
-		  "  --input-height=HEIGHT  (resolution is optional, except required for RTP)\n"     \
-		  "  --input-codec=CODEC    RTP requires the codec to be set, one of these:\n"		\
-		  "                             * h264, h265\n"								\
-		  "                             * vp8, vp9\n"								\
-		  "                             * mpeg2, mpeg4\n"								\
-		  "                             * mjpeg\n"        							\
-		  "  --input-flip=FLIP      flip method to apply to input (excludes V4L2):\n" 		\
-		  "                             * none (default)\n" 							\
-		  "                             * counterclockwise\n" 							\
-		  "                             * rotate-180\n" 								\
-		  "                             * clockwise\n" 								\
-		  "                             * horizontal\n" 								\
-		  "                             * vertical\n" 								\
-		  "                             * upper-right-diagonal\n" 						\
-		  "                             * upper-left-diagonal\n" 						\
-		  "  --input-loop=LOOP      for file-based inputs, the number of loops to run:\n"	\
-		  "                             * -1 = loop forever\n"							\
-		  "                             *  0 = don't loop (default)\n"					\
+		  "                             * file://my_image.jpg      (image file)\n"				\
+		  "                             * file://my_video.mp4      (video file)\n"				\
+		  "                             * file://my_directory/     (directory of images)\n"		\
+		  "  --input-width=WIDTH    explicitly request a width of the stream (optional)\n"   	\
+		  "  --input-height=HEIGHT  explicitly request a height of the stream (optional)\n"  	\
+		  "  --input-rate=RATE      explicitly request a framerate of the stream (optional)\n"	\
+		  "  --input-codec=CODEC    RTP requires the codec to be set, one of these:\n"			\
+		  "                             * h264, h265\n"									\
+		  "                             * vp8, vp9\n"									\
+		  "                             * mpeg2, mpeg4\n"									\
+		  "                             * mjpeg\n"        								\
+		  "  --input-flip=FLIP      flip method to apply to input (excludes V4L2):\n" 			\
+		  "                             * none (default)\n" 								\
+		  "                             * counterclockwise\n" 								\
+		  "                             * rotate-180\n" 									\
+		  "                             * clockwise\n" 									\
+		  "                             * horizontal\n" 									\
+		  "                             * vertical\n" 									\
+		  "                             * upper-right-diagonal\n" 							\
+		  "                             * upper-left-diagonal\n" 							\
+		  "  --input-loop=LOOP      for file-based inputs, the number of loops to run:\n"		\
+		  "                             * -1 = loop forever\n"								\
+		  "                             *  0 = don't loop (default)\n"						\
 		  "                             * >0 = set number of loops\n"
 
 
@@ -85,9 +86,9 @@
  *
  *     - `rtp://@:1234` to recieve an RTP network stream, where `1234` is the port and `@` is shorthand
  *        for localhost.  `@` can also be substituted for the IP address of a multicast group.
- *        Note that it is important to manually specify the codec and width/height when using RTP,
- *        as these values cannot be discovered from the RTP stream itself and need to be provided.
- *        @see videoOptions for more info about `--input-codec`, `--input-width`, and `--input-height`.
+ *        Note that it is important to manually specify the codec of the stream when using RTP,
+ *        as the codec cannot be discovered from the RTP stream itself and need to be provided.
+ *        @see videoOptions for more info about the `--input-codec` option.
  *
  *     - `rtsp://username:password@<remote-host>:1234` to subscribe to an RTSP network stream, where
  *        `<remote-host>` should be substituted for the remote host's IP address or hostname, and 

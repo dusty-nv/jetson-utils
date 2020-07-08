@@ -98,6 +98,7 @@ gstDecoder::gstDecoder( const videoOptions& options ) : videoSource(options)
 	mBus        = NULL;
 	mPipeline   = NULL;
 	mCustomSize = false;
+	mCustomRate = false;
 	mEOS        = false;
 	mLoopCount  = 1;
 	mFrameCount = 0;
@@ -186,9 +187,12 @@ bool gstDecoder::init()
 	
 	LogInfo(LOG_GSTREAMER "gstDecoder -- creating decoder for %s\n", mOptions.resource.location.c_str());
 
-	// flag if the user wants a specific resolution
+	// flag if the user wants a specific resolution and framerate
 	if( mOptions.width != 0 || mOptions.height != 0 )
 		mCustomSize = true;
+
+	if( mOptions.frameRate != 0 )
+		mCustomRate = true;
 
 	// discover resource stats
 	if( !discover() )
@@ -310,9 +314,11 @@ static GstDiscovererVideoInfo* findVideoStreamInfo( GstDiscovererStreamInfo* inf
 // discover
 bool gstDecoder::discover()
 {
+	// RTP streams can't be discovered
 	if( mOptions.resource.protocol == "rtp" )
 		return false;
 
+	// create a new discovery interface
 	GError* err = NULL;
 	GstDiscoverer* discoverer = gst_discoverer_new(GST_SECOND, &err);
 	
@@ -352,25 +358,34 @@ bool gstDecoder::discover()
 	const guint width  = gst_discoverer_video_info_get_width(videoInfo);
 	const guint height = gst_discoverer_video_info_get_height(videoInfo);
 	
-	const float framerate_num = gst_discoverer_video_info_get_framerate_num(videoInfo);
+	const float framerate_num   = gst_discoverer_video_info_get_framerate_num(videoInfo);
 	const float framerate_denom = gst_discoverer_video_info_get_framerate_denom(videoInfo);
-	
-	mOptions.frameRate = framerate_num / framerate_denom;
+	const float framerate       = framerate_num / framerate_denom;
 
-	LogVerbose(LOG_GSTREAMER "gstDecoder -- discovered video resolution: %ux%u  (framerate %f Hz)\n", width, height, mOptions.frameRate);
+	LogVerbose(LOG_GSTREAMER "gstDecoder -- discovered video resolution: %ux%u  (framerate %f Hz)\n", width, height, framerate);
 	
-	if( mCustomSize )
-	{
-		// disable re-scaling if the user's custom size matches the feed's
-		if( mOptions.width == width && mOptions.height == height )
-			mCustomSize = false;
-	}
+	// disable re-scaling if the user's custom size matches the feed's
+	if( mCustomSize && mOptions.width == width && mOptions.height == height )
+		mCustomSize = false;
 
 	if( mOptions.width == 0 )
 		mOptions.width = width;
 
 	if( mOptions.height == 0 )
 		mOptions.height = height;
+	
+	// confirm the desired framerate against what the stream provides
+	if( mCustomRate )
+	{
+		// disable rate-limiting if the user's custom rate matches the feed's
+		if( mOptions.frameRate == framerate )
+			mCustomRate = false;
+	}
+	else
+	{
+		// otherwise adopt the feed's framerate
+		mOptions.frameRate = framerate;
+	}
 
 	// retrieve video caps
 	GstCaps* caps = gst_discoverer_stream_info_get_caps(streamInfo);
@@ -598,6 +613,11 @@ bool gstDecoder::buildLaunchStr()
 		ss << "video/x-raw ! ";
 	}
 
+	// rate-limit if requested
+	if( mCustomRate )
+		ss << "videorate drop-only=true max-rate=" << (int)mOptions.frameRate << " ! ";
+
+	// add the app sink
 	ss << "appsink name=mysink"; // wait-on-eos=false;
 
 	mLaunchStr = ss.str();
