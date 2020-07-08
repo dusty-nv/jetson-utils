@@ -175,8 +175,16 @@ bool URI::Parse( const char* uri )
 		{
 			if( sscanf(port_str.c_str(), "%i", &port) != 1 )
 			{
-				LogError("URI -- failed to parse IP port from %s\n", string.c_str());
-				return false;
+				if( protocol == "rtsp" )
+				{
+					LogWarning("URI -- missing/invalid IP port from %s, default to port 554\n", string.c_str());
+					port = 554;
+				}
+				else
+				{
+					LogError("URI -- failed to parse IP port from %s\n", string.c_str());
+					return false;
+				}
 			}
 		}
 
