@@ -21,6 +21,7 @@
  */
  
 #include "filesystem.h"
+#include "alphanum.h"
 #include "Process.h"
 
 #include <sys/stat.h>
@@ -142,7 +143,7 @@ bool listDir( const std::string& path_in, std::vector<std::string>& output, uint
 	globfree(&globList);
 
 	// sort list alphanumerically (glob actually already does this)
-	// std::sort(output.begin(), output.end());
+	std::sort(output.begin(), output.end(), doj::alphanum_less<std::string>());
 
 	if( output.size() == 0 )
 	{
