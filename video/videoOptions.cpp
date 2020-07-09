@@ -99,7 +99,7 @@ bool videoOptions::Parse( const char* URI, const commandLine& cmdLine, videoOpti
 
 	// parse stream settings
 	numBuffers = cmdLine.GetUnsignedInt("num-buffers", numBuffers);
-	zeroCopy 	 = cmdLine.GetFlag("zero-copy");
+	//zeroCopy = cmdLine.GetFlag("zero-copy");	// no default returned, so disable this for now
 
 	// width
 	width = (type == INPUT) ? cmdLine.GetUnsignedInt("input-width")
