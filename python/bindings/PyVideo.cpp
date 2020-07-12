@@ -192,7 +192,7 @@ static PyObject* PyVideoSource_Capture( PyVideoSource_Object* self, PyObject* ar
 	int pyTimeout = -1;
 	static char* kwlist[] = {"format", "timeout", NULL};
 
-	if( !PyArg_ParseTupleAndKeywords(args, kwds, "|ssi", kwlist, &pyFormat, &pyTimeout))
+	if( !PyArg_ParseTupleAndKeywords(args, kwds, "|si", kwlist, &pyFormat, &pyTimeout))
 	{
 		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "videoSource.Capture() failed to parse args tuple");
 		return NULL;
