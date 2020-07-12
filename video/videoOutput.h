@@ -49,7 +49,7 @@
 		  "                            * mjpeg\n"        								\
 		  "  --bitrate=BITRATE      desired target VBR bitrate for compressed streams,\n"    \
 		  "                         in bits per second. The default is 4000000 (4 Mbps)\n"	\
-		  "  --headless             don't create a default OpenGL GUI window\n"
+		  "  --headless             don't create a default OpenGL GUI window\n\n"
 
 
 /**

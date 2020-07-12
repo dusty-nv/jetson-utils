@@ -1590,6 +1590,12 @@ bool PyFont_RegisterType( PyObject* module )
 	return true;
 }
 
+// PyLog_Usage
+PyObject* PyLog_Usage( PyObject* self )
+{
+	return Py_BuildValue("s", Log::Usage());
+}
+
 //-------------------------------------------------------------------------------
 static PyMethodDef pyCUDA_Functions[] = 
 {
@@ -1602,6 +1608,7 @@ static PyMethodDef pyCUDA_Functions[] =
 	{ "cudaNormalize", (PyCFunction)PyCUDA_Normalize, METH_VARARGS|METH_KEYWORDS, "Normalize the pixel intensities of an image between two ranges" },
 	{ "cudaOverlay", (PyCFunction)PyCUDA_Overlay, METH_VARARGS|METH_KEYWORDS, "Overlay the input image onto the composite output image at position (x,y)" },
 	{ "adaptFontSize", (PyCFunction)PyCUDA_AdaptFontSize, METH_VARARGS, "Determine an appropriate font size for the given image dimension" },
+	{ "logUsage", (PyCFunction)PyLog_Usage, METH_NOARGS, "Return help text describing the command line arguments of the logging interface" },
 	{NULL}  /* Sentinel */
 };
 

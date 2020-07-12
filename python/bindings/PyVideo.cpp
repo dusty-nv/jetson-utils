@@ -268,6 +268,12 @@ static PyObject* PyVideoSource_IsStreaming( PyVideoSource_Object* self )
 	PY_RETURN_BOOL(self->source->IsStreaming());
 }
 
+// Usage
+static PyObject* PyVideoSource_Usage( PyVideoSource_Object* self )
+{
+	return Py_BuildValue("s", videoSource::Usage());
+}
+
 static PyTypeObject pyVideoSource_Type = 
 {
     PyVarObject_HEAD_INIT(NULL, 0)
@@ -281,7 +287,8 @@ static PyMethodDef pyVideoSource_Methods[] =
 	{ "GetWidth", (PyCFunction)PyVideoSource_GetWidth, METH_NOARGS, "Return the width of the video source (in pixels)"},
 	{ "GetHeight", (PyCFunction)PyVideoSource_GetHeight, METH_NOARGS, "Return the height of the video source (in pixels)"},
 	{ "GetFrameRate", (PyCFunction)PyVideoSource_GetFrameRate, METH_NOARGS, "Return the frames per second of the video source"},	
-	{ "IsStreaming", (PyCFunction)PyVideoSource_IsStreaming, METH_NOARGS, "Return true if the stream is open, return false if closed"},	
+	{ "IsStreaming", (PyCFunction)PyVideoSource_IsStreaming, METH_NOARGS, "Return true if the stream is open, return false if closed"},
+	{ "Usage", (PyCFunction)PyVideoSource_Usage, METH_NOARGS|METH_STATIC, "Return help text describing the command line options"},		
 	{NULL}  /* Sentinel */
 };
 
@@ -575,6 +582,12 @@ static PyObject* PyVideoOutput_SetStatus( PyVideoOutput_Object* self, PyObject* 
 	Py_RETURN_NONE;
 }
 
+// Usage
+static PyObject* PyVideoOutput_Usage( PyVideoOutput_Object* self )
+{
+	return Py_BuildValue("s", videoOutput::Usage());
+}
+
 static PyTypeObject pyVideoOutput_Type = 
 {
     PyVarObject_HEAD_INIT(NULL, 0)
@@ -589,7 +602,8 @@ static PyMethodDef pyVideoOutput_Methods[] =
 	{ "GetHeight", (PyCFunction)PyVideoOutput_GetHeight, METH_NOARGS, "Return the height of the video output (in pixels)"},
 	{ "GetFrameRate", (PyCFunction)PyVideoOutput_GetFrameRate, METH_NOARGS, "Return the frames per second of the video output"},		
 	{ "IsStreaming", (PyCFunction)PyVideoOutput_IsStreaming, METH_NOARGS, "Return true if the stream is open, return false if closed"},		
-	{ "SetStatus", (PyCFunction)PyVideoOutput_SetStatus, METH_VARARGS, "Set the status string (i.e. window title bar text)"},	
+	{ "SetStatus", (PyCFunction)PyVideoOutput_SetStatus, METH_VARARGS, "Set the status string (i.e. window title bar text)"},
+     { "Usage", (PyCFunction)PyVideoOutput_Usage, METH_NOARGS|METH_STATIC, "Return help text describing the command line options"},	
 	{NULL}  /* Sentinel */
 };
 

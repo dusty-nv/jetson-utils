@@ -44,7 +44,7 @@
 		  "                             * verbose (default)\n"							\
 		  "                             * debug\n"									\
 		  "  --verbose              enable verbose logging (same as --log-level=verbose)\n"  \
-		  "  --debug                enable debug logging   (same as --log-level=debug)\n"
+		  "  --debug                enable debug logging   (same as --log-level=debug)\n\n"
 
 
 /**

@@ -28,11 +28,9 @@ import sys
 
 
 # parse command line
-def usage():
-	return "TODO additional help text"
-
 parser = argparse.ArgumentParser(description="View various types of video streams", 
-						   formatter_class=argparse.RawTextHelpFormatter, epilog=usage())
+                                 formatter_class=argparse.RawTextHelpFormatter, 
+                                 epilog=jetson.utils.videoSource.Usage() + jetson.utils.videoOutput.Usage() + jetson.utils.logUsage())
 
 parser.add_argument("input_URI", type=str, help="URI of the input stream")
 parser.add_argument("output_URI", type=str, default="", nargs='?', help="URI of the output stream")

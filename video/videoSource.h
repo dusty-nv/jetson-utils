@@ -62,7 +62,7 @@
 		  "  --input-loop=LOOP      for file-based inputs, the number of loops to run:\n"		\
 		  "                             * -1 = loop forever\n"								\
 		  "                             *  0 = don't loop (default)\n"						\
-		  "                             * >0 = set number of loops\n"
+		  "                             * >0 = set number of loops\n\n"
 
 
 /**
