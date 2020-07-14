@@ -117,9 +117,16 @@ static int PyVideoSource_Init( PyVideoSource_Object* self, PyObject *args, PyObj
 	videoSource* source = NULL;
 
 	if( URI != NULL && strlen(URI) > 0 )
-		source = videoSource::Create(URI, argc, argv);
+	{
+		if( argc > 0 )
+			source = videoSource::Create(URI, argc, argv);
+		else
+			source = videoSource::Create(URI);
+	}
 	else
+	{
 		source = videoSource::Create(argc, argv, positionArg);
+	}
 
 	if( !source )
 	{
