@@ -167,7 +167,8 @@ void glWidget::Render()
 		{
 			glDrawOutline(mX, mY, mWidth, mHeight,
 					    mLineColor[0], mLineColor[1],
-					    mLineColor[2], mLineColor[3]);
+					    mLineColor[2], mLineColor[3],
+					    mLineWidth);
 		}
 	}
 

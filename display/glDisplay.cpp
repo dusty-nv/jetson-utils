@@ -965,7 +965,7 @@ void glDisplay::RemoveAllWidgets( bool deleteWidgets )
 	const size_t numWidgets = mWidgets.size();
 
 	for( size_t n=0; n < numWidgets; n++ )
-		RemoveWidget(n, deleteWidgets);
+		RemoveWidget((uint32_t)0, deleteWidgets);
 
 	mWidgets.clear();
 }
