@@ -173,21 +173,24 @@ bool videoOptions::Parse( const commandLine& cmdLine, videoOptions::IoType type,
 	// parse input/output URI
 	const char* resourceStr = NULL;
 
-	if( ioPositionArg >= 0 && cmdLine.GetPositionArgs() >= ioPositionArg )
+	if( ioPositionArg >= 0 && ioPositionArg < cmdLine.GetPositionArgs() )
 		resourceStr = cmdLine.GetPosition(ioPositionArg);
 
 	if( !resourceStr )
 	{
 		if( type == INPUT )
 		{
-			resourceStr = cmdLine.GetString("camera");
+			resourceStr = cmdLine.GetString("camera", "csi://0");
 
-			if( !resourceStr )
-				resourceStr = cmdLine.GetString("input", "csi://0");
+			//if( !resourceStr )
+			//	resourceStr = cmdLine.GetString("input", "csi://0");
 		}
 		else
 		{
-			resourceStr = cmdLine.GetString("output", headless ? NULL : "display://0");
+			//resourceStr = cmdLine.GetString("output", headless ? NULL : "display://0");	// BUG:  "output" will return flags with longer names, i.e. "output-blob"
+
+			if( !headless )
+				resourceStr = "display://0";
 		}
 	}
 

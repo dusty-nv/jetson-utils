@@ -117,7 +117,7 @@ commandLine::commandLine( const int pArgc, char** pArgv, const char** extraArgs 
 int commandLine::GetInt( const char* string_ref, int default_value, bool allowOtherDelimiters ) const
 {
 	if( argc < 1 )
-		return 0;
+		return default_value;
 
 	bool bFound = false;
 	int value = -1;
@@ -184,7 +184,7 @@ uint32_t commandLine::GetUnsignedInt( const char* argName, uint32_t defaultValue
 float commandLine::GetFloat( const char* string_ref, float default_value, bool allowOtherDelimiters ) const
 {
 	if( argc < 1 )
-		return 0;
+		return default_value;
 
 	bool bFound = false;
 	float value = -1;
@@ -276,7 +276,7 @@ bool commandLine::GetFlag( const char* string_ref, bool allowOtherDelimiters ) c
 const char* commandLine::GetString( const char* string_ref, const char* default_value, bool allowOtherDelimiters ) const
 {
 	if( argc < 1 )
-		return 0;
+		return default_value;
 
 	for (int i=ARGC_START; i < argc; i++)
 	{
@@ -311,8 +311,8 @@ const char* commandLine::GetString( const char* string_ref, const char* default_
 // GetPosition
 const char* commandLine::GetPosition( unsigned int position, const char* default_value ) const
 {
-	if( argc < 1 )
-		return 0;
+	if( argc < 1 || position >= GetPositionArgs() )
+		return default_value;
 
 	unsigned int position_count = 0;
 	
