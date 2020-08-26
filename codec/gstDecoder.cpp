@@ -953,7 +953,7 @@ bool gstDecoder::Open()
 		}
 		else
 		{
-			LogError(LOG_GSTREAMER "gstDecoder -- end of stream (EOS) has been reached, stream has been closed\n");
+			LogWarning(LOG_GSTREAMER "gstDecoder -- end of stream (EOS) has been reached, stream has been closed\n");
 			return false;
 		}	
 	}

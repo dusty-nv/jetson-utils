@@ -198,7 +198,7 @@ bool imageLoader::Open()
 {
 	if( mEOS )
 	{
-		LogError(LOG_IMAGE "imageLoader -- End of Stream (EOS) has been reached, stream has been closed\n");
+		LogWarning(LOG_IMAGE "imageLoader -- End of Stream (EOS) has been reached, stream has been closed\n");
 		return false;
 	}
 
