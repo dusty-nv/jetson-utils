@@ -209,7 +209,6 @@ glDisplay* glDisplay::Create( const videoOptions& options )
 		return NULL;
 	}
 	
-	vp->mStreaming = true;
 	vp->mID = gDisplays.size();
 	gDisplays.push_back(vp);
 
@@ -323,9 +322,6 @@ bool glDisplay::initWindow()
 	// set default window title
 	XStoreName(mDisplayX, win, DEFAULT_TITLE);
 
-	// show the window
-	XMapWindow(mDisplayX, win);
-
 	// store variables
 	mWindowX = win;
 	mScreenX = screen;
@@ -357,6 +353,20 @@ bool glDisplay::initGL()
 	GL(glEnable(GL_LINE_SMOOTH));
 	GL(glHint(GL_LINE_SMOOTH_HINT, GL_NICEST));
 
+	return true;
+}
+
+
+// Open
+bool glDisplay::Open()
+{
+	if( mStreaming )
+		return true;
+
+	// show the window
+	XMapWindow(mDisplayX, mWindowX);
+
+	mStreaming = true;
 	return true;
 }
 
@@ -417,6 +427,9 @@ void glDisplay::activateViewport()
 // MakeCurrent
 void glDisplay::BeginRender( bool processEvents )
 {
+	if( !mStreaming )
+		Open();
+
 	if( processEvents )
 		ProcessEvents();
 
