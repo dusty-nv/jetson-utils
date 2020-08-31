@@ -582,7 +582,7 @@ bool gstEncoder::Open()
 		return true;
 
 	// transition pipline to STATE_PLAYING
-	LogInfo(LOG_GSTREAMER "gstEncoder-- stopping pipeline, transitioning to GST_STATE_NULL\n");
+	LogInfo(LOG_GSTREAMER "gstEncoder-- starting pipeline, transitioning to GST_STATE_PLAYING\n");
 
 	const GstStateChangeReturn result = gst_element_set_state(mPipeline, GST_STATE_PLAYING);
 
