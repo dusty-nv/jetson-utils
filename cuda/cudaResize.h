@@ -25,7 +25,18 @@
 
 
 #include "cudaUtility.h"
+#include "cudaVector.h"
 #include "imageFormat.h"
+
+enum class InterpolationFlags : int {
+    INTER_NEAREST        = 0,
+    INTER_LINEAR         = 1,
+    // INTER_CUBIC          = 2,
+    INTER_AREA           = 3,
+    // INTER_LANCZOS4       = 4,
+    // INTER_LINEAR_EXACT = 5,
+    INTER_MAX            = 7,
+};
 
 
 /**
@@ -33,42 +44,42 @@
  * @ingroup resize
  */
 cudaError_t cudaResize( uint8_t* input,  size_t inputWidth,  size_t inputHeight,
-				    uint8_t* output, size_t outputWidth, size_t outputHeight );
+				    uint8_t* output, size_t outputWidth, size_t outputHeight, int mode );
 
 /**
  * Rescale a floating-point grayscale image on the GPU.
  * @ingroup resize
  */
 cudaError_t cudaResize( float* input,  size_t inputWidth,  size_t inputHeight,
-				    float* output, size_t outputWidth, size_t outputHeight );
+				    float* output, size_t outputWidth, size_t outputHeight, int mode );
 
 /**
  * Rescale a uchar3 RGB/BGR image on the GPU.
  * @ingroup resize
  */
 cudaError_t cudaResize( uchar3* input,  size_t inputWidth,  size_t inputHeight,
-				    uchar3* output, size_t outputWidth, size_t outputHeight );
+				    uchar3* output, size_t outputWidth, size_t outputHeight, int mode );
 
 /**
  * Rescale a float3 RGB/BGR image on the GPU.
  * @ingroup resize
  */
 cudaError_t cudaResize( float3* input,  size_t inputWidth,  size_t inputHeight,
-				    float3* output, size_t outputWidth, size_t outputHeight );
+				    float3* output, size_t outputWidth, size_t outputHeight, int mode );
 
 /**
  * Rescale a uchar4 RGBA/BGRA image on the GPU.
  * @ingroup resize
  */
 cudaError_t cudaResize( uchar4* input,  size_t inputWidth,  size_t inputHeight,
-				    uchar4* output, size_t outputWidth, size_t outputHeight );
+				    uchar4* output, size_t outputWidth, size_t outputHeight, int mode );
 
 /**
  * Rescale a float4 RGBA/BGRA image on the GPU.
  * @ingroup resize
  */
 cudaError_t cudaResize( float4* input,  size_t inputWidth,  size_t inputHeight,
-				    float4* output, size_t outputWidth, size_t outputHeight );
+				    float4* output, size_t outputWidth, size_t outputHeight, int mode );
 
 /**
  * Rescale an image on the GPU (supports grayscale, RGB/BGR, RGBA/BGRA)
@@ -76,7 +87,7 @@ cudaError_t cudaResize( float4* input,  size_t inputWidth,  size_t inputHeight,
  */
 cudaError_t cudaResize( void* input,  size_t inputWidth,  size_t inputHeight,
 				    void* output, size_t outputWidth, size_t outputHeight, 
-				    imageFormat format );
+				    imageFormat format, int mode );
 
 #endif
 
