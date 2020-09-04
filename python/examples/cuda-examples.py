@@ -62,7 +62,9 @@ def resize(img, resize_factor):
 									   height=img.height * resize_factor[1],
 									   format=img.format)
 
-	jetson.utils.cudaResize(img, resized_img)
+	# interpolation filter types are:
+	#  INTER_NEAREST(default), INTER_LINEAR, INTER_AREA
+	jetson.utils.cudaResize(img, resized_img, jetson.utils.INTER_AREA)
 	return resized_img
 
 
