@@ -78,7 +78,7 @@ __global__ void gpuResize_linear( float2 scale, T* input, int iWidth, int iHeigh
 
 		float4 out = pix_in[0] * weight[0] + pix_in[1] * weight[1] + pix_in[2] * weight[2] + pix_in[3] * weight[3];
 
-		from_float4(out, output[dst_y * oWidth + dst_x]);
+		output[dst_y * oWidth + dst_x] = cast_vec<T>(out);
 	}
 }
 
@@ -152,7 +152,7 @@ __global__ void gpuResize_area( float2 scale, T* input, int iWidth, int iHeight,
 		if ((sy2 < fsy2) &&  (sx1 > fsx1))
 			out += make_float4(input[sy2 * iWidth + (sx1 - 1)]) * ((fsy2 -sy2) * (sx1 -fsx1) * scale);
 
-		from_float4(out, output[y * oWidth + x]);
+		output[y * oWidth + x] = cast_vec<T>(out);
 	}
 }
 

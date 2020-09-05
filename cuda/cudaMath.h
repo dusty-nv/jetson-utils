@@ -362,31 +362,6 @@ inline __host__ __device__ uchar4 make_uchar4(float4 a)
     return make_uchar4(a.x, a.y, a.z, a.w);
 }
 
-inline __host__ __device__ void from_float4(const float4 a, uchar &dst)
-{
-	dst = uchar(a.x);
-}
-inline __host__ __device__ void from_float4(const float4 a, uchar3 &dst)
-{
-	dst = make_uchar3(a);
-}
-inline __host__ __device__ void from_float4(const float4 a, uchar4 &dst)
-{
-	dst = make_uchar4(a);
-}
-inline __host__ __device__ void from_float4(const float4 a, float &dst)
-{
-	dst = a.x;
-}
-inline __host__ __device__ void from_float4(const float4 a, float3 &dst)
-{
-	dst = make_float3(a);
-}
-inline __host__ __device__ void from_float4(const float4 a, float4 &dst)
-{
-	dst = a;
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 // negate
 ////////////////////////////////////////////////////////////////////////////////
