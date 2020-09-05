@@ -181,12 +181,12 @@ static cudaError_t launchResize( T* input, size_t inputWidth, size_t inputHeight
 			gpuResize_linear<T><<<gridDim, blockDim>>>(scale, input, inputWidth, inputHeight, output, outputWidth, outputHeight);
 		}
 	} else if (mode == static_cast<int>(InterpolationFlags::INTER_AREA)) {
-		if (inputWidth > outputWidth && inputHeight > outputHeight) {
-			gpuResize_area<T><<<gridDim, blockDim>>>(scale, input, inputWidth, inputHeight, output, outputWidth, outputHeight);
-		} else if (inputWidth == outputWidth && inputHeight == outputHeight) {
+		if (inputWidth == outputWidth && inputHeight == outputHeight) {
 			gpuResize_nearest<T><<<gridDim, blockDim>>>(scale, input, inputWidth, output, outputWidth, outputHeight);
-		} else {
+		} else if (inputWidth < outputWidth || inputHeight < outputHeight) {
 			gpuResize_linear<T><<<gridDim, blockDim>>>(scale, input, inputWidth, inputHeight, output, outputWidth, outputHeight);
+		} else {
+			gpuResize_area<T><<<gridDim, blockDim>>>(scale, input, inputWidth, inputHeight, output, outputWidth, outputHeight);
 		}
 	} else {
 		gpuResize_nearest<T><<<gridDim, blockDim>>>(scale, input, inputWidth, output, outputWidth, outputHeight);
