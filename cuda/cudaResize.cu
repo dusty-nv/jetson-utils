@@ -115,44 +115,44 @@ __global__ void gpuResize_area( float2 scale, T* input, int iWidth, int iHeight,
 		{
 			// inner rectangle.
 			for (int dx = sx1; dx < sx2; ++dx)
-				out += make_float4(input[dy * iWidth + dx]) * scale;
+				out += make_float4(input[dy * iWidth + dx]);
 
 			// v-edge line(left).
 			if (sx1 > fsx1)
-				out += make_float4(input[dy * iWidth + (sx1 -1)]) * ((sx1 - fsx1) * scale);
+				out += make_float4(input[dy * iWidth + (sx1 -1)]) * (sx1 - fsx1);
 
 			// v-edge line(right).
 			if (sx2 < fsx2)
-				out += make_float4(input[dy * iWidth + sx2]) * ((fsx2 -sx2) * scale);
+				out += make_float4(input[dy * iWidth + sx2]) * (fsx2 - sx2);
 		}
 
 		// h-edge line(top).
 		if (sy1 > fsy1)
 			for (int dx = sx1; dx < sx2; ++dx)
-				out += make_float4(input[(sy1 - 1) * iWidth + dx]) * ((sy1 -fsy1) * scale);
+				out += make_float4(input[(sy1 - 1) * iWidth + dx]) * (sy1 - fsy1);
 
 		// h-edge line(bottom).
 		if (sy2 < fsy2)
 			for (int dx = sx1; dx < sx2; ++dx)
-				out += make_float4(input[sy2 * iWidth + dx]) * ((fsy2 -sy2) * scale);
+				out += make_float4(input[sy2 * iWidth + dx]) * (fsy2 - sy2);
 
 		// corner(top, left).
 		if ((sy1 > fsy1) &&  (sx1 > fsx1))
-			out += make_float4(input[(sy1 - 1) * iWidth + (sx1 - 1)]) * ((sy1 -fsy1) * (sx1 -fsx1) * scale);
+			out += make_float4(input[(sy1 - 1) * iWidth + (sx1 - 1)]) * (sy1 - fsy1) * (sx1 - fsx1);
 
 		// corner(top, right).
 		if ((sy1 > fsy1) &&  (sx2 < fsx2))
-			out += make_float4(input[(sy1 - 1) * iWidth + sx2]) * ((sy1 -fsy1) * (fsx2 -sx2) * scale);
+			out += make_float4(input[(sy1 - 1) * iWidth + sx2]) * (sy1 - fsy1) * (fsx2 - sx2);
 
 		// corner(bottom, left).
 		if ((sy2 < fsy2) &&  (sx2 < fsx2))
-			out += make_float4(input[sy2 * iWidth + sx2]) * ((fsy2 -sy2) * (fsx2 -sx2) * scale);
+			out += make_float4(input[sy2 * iWidth + sx2]) * (fsy2 - sy2) * (fsx2 - sx2);
 
 		// corner(bottom, right).
 		if ((sy2 < fsy2) &&  (sx1 > fsx1))
-			out += make_float4(input[sy2 * iWidth + (sx1 - 1)]) * ((fsy2 -sy2) * (sx1 -fsx1) * scale);
+			out += make_float4(input[sy2 * iWidth + (sx1 - 1)]) * (fsy2 - sy2) * (sx1 - fsx1);
 
-		output[y * oWidth + x] = cast_vec<T>(out);
+		output[y * oWidth + x] = cast_vec<T>(out * scale);
 	}
 }
 
@@ -171,7 +171,7 @@ static cudaError_t launchResize( T* input, size_t inputWidth, size_t inputHeight
 							     float(inputHeight) / float(outputHeight) );
 
 	// launch kernel
-	const dim3 blockDim(8, 8);
+	const dim3 blockDim(32, 8);
 	const dim3 gridDim(iDivUp(outputWidth,blockDim.x), iDivUp(outputHeight,blockDim.y));
 
 	if (mode == static_cast<int>(InterpolationFlags::INTER_LINEAR)) {
