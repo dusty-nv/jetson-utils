@@ -27,6 +27,8 @@
 #include "cudaNormalize.h"
 #include "cudaOverlay.h"
 #include "cudaResize.h"
+#include "cudaSplit.h"
+#include "cudaMerge.h"
 #include "cudaCrop.h"
 #include "cudaFont.h"
 
@@ -1106,6 +1108,110 @@ PyObject* PyCUDA_Resize( PyObject* self, PyObject* args, PyObject* kwds )
 }
 
 
+// PyCUDA_Split
+PyObject* PyCUDA_Split( PyObject* self, PyObject* args, PyObject* kwds )
+{
+	// parse arguments
+	PyObject* pyInput  = NULL;
+	PyObject* pyOutput = NULL;
+
+	static char* kwlist[] = {"input", "output", NULL};
+
+	if( !PyArg_ParseTupleAndKeywords(args, kwds, "OO", kwlist, &pyInput, &pyOutput))
+	{
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaSplit() failed to parse args");
+		return NULL;
+	}
+
+	int n;
+	if PyList_Check(pyOutput) {
+        n = PyList_Size(pyOutput);
+		if (n != 3 && n != 4) return NULL;
+    } else {
+        return NULL;
+    }
+
+	// get pointers to image data
+	PyCudaImage* input = PyCUDA_GetImage(pyInput);
+	std::vector<PyCudaImage*> output_list;
+	for (int i = 0; i < n; i++) {
+		auto item = PyList_GetItem(pyOutput, i);
+		PyCudaImage* img = PyCUDA_GetImage(item);
+		if (img != NULL) output_list.push_back(img);
+    }
+
+	if( !input || ( output_list.size() != 3 && output_list.size() != 4 ))
+	{
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaSplit() failed to get input/output image pointers (should be cudaImage)");
+		return NULL;
+	}
+
+	// run the CUDA function
+	std::vector<void *> output;
+	for (auto &e : output_list) output.push_back(e->base.ptr);
+	if( CUDA_FAILED(cudaSplit(input->base.ptr, output.data(), input->width, input->height, input->format)) )
+	{
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaSplit() failed");
+		return NULL;
+	}
+
+	// return void
+	Py_RETURN_NONE;
+}
+
+
+// PyCUDA_Merge
+PyObject* PyCUDA_Merge( PyObject* self, PyObject* args, PyObject* kwds )
+{
+	// parse arguments
+	PyObject* pyInput  = NULL;
+	PyObject* pyOutput = NULL;
+
+	static char* kwlist[] = {"input", "output", NULL};
+
+	if( !PyArg_ParseTupleAndKeywords(args, kwds, "OO", kwlist, &pyInput, &pyOutput))
+	{
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaMerge() failed to parse args");
+		return NULL;
+	}
+
+	int n;
+	if PyList_Check(pyInput) {
+        n = PyList_Size(pyInput);
+		if (n != 3 && n != 4) return NULL;
+    } else {
+        return NULL;
+    }
+
+	// get pointers to image data
+	std::vector<PyCudaImage*> input_list;
+	for (int i = 0; i < n; i++) {
+		auto item = PyList_GetItem(pyInput, i);
+		PyCudaImage* img = PyCUDA_GetImage(item);
+		if (img != NULL) input_list.push_back(img);
+    }
+	PyCudaImage* output = PyCUDA_GetImage(pyOutput);
+
+	if(( input_list.size() != 3 && input_list.size() != 4 ) || !output )
+	{
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaMerge() failed to get input/output image pointers (should be cudaImage)");
+		return NULL;
+	}
+
+	// run the CUDA function
+	std::vector<void *> input;
+	for (auto &e : input_list) input.push_back(e->base.ptr);
+	if( CUDA_FAILED(cudaMerge(input.data(), output->base.ptr, output->width, output->height, output->format)) )
+	{
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaMerge() failed");
+		return NULL;
+	}
+
+	// return void
+	Py_RETURN_NONE;
+}
+
+
 // PyCUDA_Crop
 PyObject* PyCUDA_Crop( PyObject* self, PyObject* args, PyObject* kwds )
 {
@@ -1605,6 +1711,8 @@ static PyMethodDef pyCUDA_Functions[] =
 	{ "cudaConvertColor", (PyCFunction)PyCUDA_ConvertColor, METH_VARARGS|METH_KEYWORDS, "Perform colorspace conversion on the GPU" },
 	{ "cudaCrop", (PyCFunction)PyCUDA_Crop, METH_VARARGS|METH_KEYWORDS, "Crop an image on the GPU" },		
 	{ "cudaResize", (PyCFunction)PyCUDA_Resize, METH_VARARGS|METH_KEYWORDS, "Resize an image on the GPU" },
+	{ "cudaSplit", (PyCFunction)PyCUDA_Split, METH_VARARGS|METH_KEYWORDS, "Split an image on the GPU" },
+	{ "cudaMerge", (PyCFunction)PyCUDA_Merge, METH_VARARGS|METH_KEYWORDS, "Merge an image on the GPU" },
 	{ "cudaNormalize", (PyCFunction)PyCUDA_Normalize, METH_VARARGS|METH_KEYWORDS, "Normalize the pixel intensities of an image between two ranges" },
 	{ "cudaOverlay", (PyCFunction)PyCUDA_Overlay, METH_VARARGS|METH_KEYWORDS, "Overlay the input image onto the composite output image at position (x,y)" },
 	{ "adaptFontSize", (PyCFunction)PyCUDA_AdaptFontSize, METH_VARARGS, "Determine an appropriate font size for the given image dimension" },
