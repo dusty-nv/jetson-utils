@@ -1114,45 +1114,70 @@ PyObject* PyCUDA_Split( PyObject* self, PyObject* args, PyObject* kwds )
 	// parse arguments
 	PyObject* pyInput  = NULL;
 	PyObject* pyOutput = NULL;
+	PyObject* pyOutput_Alpha = NULL;
 
-	static char* kwlist[] = {"input", "output", NULL};
+	static char* kwlist[] = {"input", "output", "output_alpha", NULL};
 
-	if( !PyArg_ParseTupleAndKeywords(args, kwds, "OO", kwlist, &pyInput, &pyOutput))
+	if( !PyArg_ParseTupleAndKeywords(args, kwds, "OO|O", kwlist, &pyInput, &pyOutput, &pyOutput_Alpha))
 	{
 		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaSplit() failed to parse args");
 		return NULL;
 	}
 
 	int n;
+	bool all_split;
 	if PyList_Check(pyOutput) {
         n = PyList_Size(pyOutput);
 		if (n != 3 && n != 4) return NULL;
+		all_split = true;
+	} else if (pyOutput_Alpha != NULL) {
+		all_split = false;
     } else {
         return NULL;
     }
 
-	// get pointers to image data
-	PyCudaImage* input = PyCUDA_GetImage(pyInput);
-	std::vector<PyCudaImage*> output_list;
-	for (int i = 0; i < n; i++) {
-		auto item = PyList_GetItem(pyOutput, i);
-		PyCudaImage* img = PyCUDA_GetImage(item);
-		if (img != NULL) output_list.push_back(img);
-    }
+	if (all_split) {
+		// get pointers to image data
+		PyCudaImage* input = PyCUDA_GetImage(pyInput);
+		std::vector<PyCudaImage*> output_list;
+		for (int i = 0; i < n; i++) {
+			auto item = PyList_GetItem(pyOutput, i);
+			PyCudaImage* img = PyCUDA_GetImage(item);
+			if (img != NULL) output_list.push_back(img);
+		}
 
-	if( !input || ( output_list.size() != 3 && output_list.size() != 4 ))
-	{
-		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaSplit() failed to get input/output image pointers (should be cudaImage)");
-		return NULL;
-	}
+		if( !input || ( output_list.size() != 3 && output_list.size() != 4 ))
+		{
+			PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaSplit() failed to get input/output image pointers (should be cudaImage)");
+			return NULL;
+		}
 
-	// run the CUDA function
-	std::vector<void *> output;
-	for (auto &e : output_list) output.push_back(e->base.ptr);
-	if( CUDA_FAILED(cudaSplit(input->base.ptr, output.data(), input->width, input->height, input->format)) )
-	{
-		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaSplit() failed");
-		return NULL;
+		// run the CUDA function
+		std::vector<void *> output;
+		for (auto &e : output_list) output.push_back(e->base.ptr);
+		if( CUDA_FAILED(cudaSplit(input->base.ptr, output.data(), input->width, input->height, input->format)) )
+		{
+			PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaSplit() failed");
+			return NULL;
+		}
+	} else {
+		// get pointers to image data
+		PyCudaImage* input = PyCUDA_GetImage(pyInput);
+		PyCudaImage* output_color = PyCUDA_GetImage(pyOutput);
+		PyCudaImage* output_alpha = PyCUDA_GetImage(pyOutput_Alpha);
+
+		if( !input || !output_color || !output_alpha )
+		{
+			PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaSplit() failed to get input/output image pointers (should be cudaImage)");
+			return NULL;
+		}
+
+		// run the CUDA function
+		if( CUDA_FAILED(cudaSplit(input->base.ptr, output_color->base.ptr, output_alpha->base.ptr, input->width, input->height, input->format)) )
+		{
+			PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaSplit() failed");
+			return NULL;
+		}
 	}
 
 	// return void
@@ -1166,45 +1191,70 @@ PyObject* PyCUDA_Merge( PyObject* self, PyObject* args, PyObject* kwds )
 	// parse arguments
 	PyObject* pyInput  = NULL;
 	PyObject* pyOutput = NULL;
+	PyObject* pyInput_Alpha  = NULL;
 
-	static char* kwlist[] = {"input", "output", NULL};
+	static char* kwlist[] = {"input", "output", "input_alpha", NULL};
 
-	if( !PyArg_ParseTupleAndKeywords(args, kwds, "OO", kwlist, &pyInput, &pyOutput))
+	if( !PyArg_ParseTupleAndKeywords(args, kwds, "OO|O", kwlist, &pyInput, &pyOutput, &pyInput_Alpha))
 	{
 		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaMerge() failed to parse args");
 		return NULL;
 	}
 
 	int n;
+	bool all_merge;
 	if PyList_Check(pyInput) {
         n = PyList_Size(pyInput);
 		if (n != 3 && n != 4) return NULL;
+		all_merge = true;
+	} else if (pyInput_Alpha != NULL) {
+		all_merge = false;
     } else {
         return NULL;
     }
 
-	// get pointers to image data
-	std::vector<PyCudaImage*> input_list;
-	for (int i = 0; i < n; i++) {
-		auto item = PyList_GetItem(pyInput, i);
-		PyCudaImage* img = PyCUDA_GetImage(item);
-		if (img != NULL) input_list.push_back(img);
-    }
-	PyCudaImage* output = PyCUDA_GetImage(pyOutput);
+	if (all_merge) {
+		// get pointers to image data
+		std::vector<PyCudaImage*> input_list;
+		for (int i = 0; i < n; i++) {
+			auto item = PyList_GetItem(pyInput, i);
+			PyCudaImage* img = PyCUDA_GetImage(item);
+			if (img != NULL) input_list.push_back(img);
+		}
+		PyCudaImage* output = PyCUDA_GetImage(pyOutput);
 
-	if(( input_list.size() != 3 && input_list.size() != 4 ) || !output )
-	{
-		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaMerge() failed to get input/output image pointers (should be cudaImage)");
-		return NULL;
-	}
+		if(( input_list.size() != 3 && input_list.size() != 4 ) || !output )
+		{
+			PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaMerge() failed to get input/output image pointers (should be cudaImage)");
+			return NULL;
+		}
 
-	// run the CUDA function
-	std::vector<void *> input;
-	for (auto &e : input_list) input.push_back(e->base.ptr);
-	if( CUDA_FAILED(cudaMerge(input.data(), output->base.ptr, output->width, output->height, output->format)) )
-	{
-		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaMerge() failed");
-		return NULL;
+		// run the CUDA function
+		std::vector<void *> input;
+		for (auto &e : input_list) input.push_back(e->base.ptr);
+		if( CUDA_FAILED(cudaMerge(input.data(), output->base.ptr, output->width, output->height, output->format)) )
+		{
+			PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaMerge() failed");
+			return NULL;
+		}
+	} else {
+		// get pointers to image data
+		PyCudaImage* input_color = PyCUDA_GetImage(pyInput);
+		PyCudaImage* output = PyCUDA_GetImage(pyOutput);
+		PyCudaImage* input_alpha = PyCUDA_GetImage(pyInput_Alpha);
+
+		if( !input_color || !output || !input_alpha )
+		{
+			PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaMerge() failed to get input/output image pointers (should be cudaImage)");
+			return NULL;
+		}
+
+		// run the CUDA function
+		if( CUDA_FAILED(cudaMerge(input_color->base.ptr, input_alpha->base.ptr, output->base.ptr, output->width, output->height, output->format)) )
+		{
+			PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaMerge() failed");
+			return NULL;
+		}
 	}
 
 	// return void
