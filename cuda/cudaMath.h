@@ -24,6 +24,9 @@
 #define __CUDA_HELPER_MATH_H_
 
 #include "cuda_runtime.h"
+#include <limits>
+#include <cfloat>
+#include <cmath>
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @name Vector Math
