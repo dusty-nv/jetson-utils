@@ -80,6 +80,7 @@ static int PyDisplay_Init( PyDisplay_Object* self, PyObject *args, PyObject *kwd
 		return -1;
 	}
 
+	display->Open();
 	self->display = display;
 	return 0;
 }
