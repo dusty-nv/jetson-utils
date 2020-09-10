@@ -60,6 +60,7 @@ glDisplay::glDisplay( const videoOptions& options ) : videoOutput(options)
 	mVisualX       = NULL;
 	mContextGL     = NULL;
 	mDisplayX      = NULL;
+	mInitialShow   = false;
 	mRendering     = false;
 	mResizedToFeed = false;
 	mActiveCursor  = OriginalCursor;
@@ -335,6 +336,8 @@ bool glDisplay::initWindow()
 	mViewport[2] = mOptions.width; 
 	mViewport[3] = mOptions.height;
 
+	mStreaming = true;
+	
 	XFree(fbConfig);
 	return true;
 }
@@ -360,13 +363,15 @@ bool glDisplay::initGL()
 // Open
 bool glDisplay::Open()
 {
-	if( mStreaming )
+	if( mStreaming && mInitialShow )
 		return true;
 
 	// show the window
 	XMapWindow(mDisplayX, mWindowX);
 
 	mStreaming = true;
+	mInitialShow = true;
+
 	return true;
 }
 
@@ -427,9 +432,10 @@ void glDisplay::activateViewport()
 // MakeCurrent
 void glDisplay::BeginRender( bool processEvents )
 {
-	if( !mStreaming )
-		Open();
+	// make sure the window is shown (if not already)
+	Open();
 
+	// process UI events (if requested)
 	if( processEvents )
 		ProcessEvents();
 

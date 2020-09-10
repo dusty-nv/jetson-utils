@@ -604,6 +604,7 @@ protected:
 	Cursor	   mCursors[256];
 	int	        mActiveCursor;
 	int          mDefaultCursor;
+	bool		   mInitialShow;
 	bool		   mRendering;
 	bool		   mResizedToFeed;
 	Atom		   mWindowClosedMsg;
