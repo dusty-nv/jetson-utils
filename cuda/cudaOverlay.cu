@@ -25,7 +25,7 @@
 
 // cudaOverlay
 template<typename T>
-__global__ void gpuOverlay( T* input, int inputWidth, T* output, int outputWidth, int outputHeight, int x0, int y0 ) 
+__global__ void gpuOverlay( T* input, int inputWidth, int inputHeight, T* output, int outputWidth, int outputHeight, int x0, int y0 ) 
 {
 	const int input_x = blockIdx.x * blockDim.x + threadIdx.x;
 	const int input_y = blockIdx.y * blockDim.y + threadIdx.y;
@@ -33,7 +33,7 @@ __global__ void gpuOverlay( T* input, int inputWidth, T* output, int outputWidth
 	const int x = input_x + x0;
 	const int y = input_y + y0;
 	
-	if( x >= outputWidth || y >= outputHeight )
+	if( input_x >= inputWidth || input_y >= inputHeight || x >= outputWidth || y >= outputHeight )
 		return;
 
 	output[y * outputWidth + x] = input[input_y * inputWidth + input_x];
@@ -65,7 +65,7 @@ cudaError_t cudaOverlay( void* input, size_t inputWidth, size_t inputHeight,
 	const dim3 gridDim(iDivUp(overlayWidth,blockDim.x), iDivUp(overlayHeight,blockDim.y));
 
 	#define launch_overlay(type)	\
-		gpuOverlay<type><<<gridDim, blockDim>>>((type*)input, inputWidth, (type*)output, outputWidth, outputHeight, x, y)
+		gpuOverlay<type><<<gridDim, blockDim>>>((type*)input, inputWidth, inputHeight, (type*)output, outputWidth, outputHeight, x, y)
 	
 	if( format == IMAGE_RGB8 || format == IMAGE_BGR8 )
 		launch_overlay(uchar3);
