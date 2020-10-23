@@ -178,7 +178,7 @@ bool gstCamera::buildLaunchStr()
 		else if( mOptions.codec == videoOptions::CODEC_MPEG4 )
 			ss << "mpeg4videoparse ! omxmpeg4videodec ! video/x-raw ! ";
 		else if( mOptions.codec == videoOptions::CODEC_MJPEG )
-			ss << "nvjpegdec ! video/x-raw ! ";
+			ss << "jpegdec ! video/x-raw ! "; //ss << "nvjpegdec ! video/x-raw ! "; //ss << "jpegparse ! nvv4l2decoder mjpeg=1 ! video/x-raw(memory:NVMM) ! nvvidconv ! video/x-raw ! "; //
 
 		ss << "appsink name=mysink";
 	}
