@@ -380,6 +380,28 @@ bool gstEncoder::buildLaunchStr()
 
 		mOptions.deviceType = videoOptions::DEVICE_IP;
 	}
+	else if( uri.protocol == "rtmp" )
+	{
+		if( mOptions.codec == videoOptions::CODEC_H264 )
+			ss << "rtph264pay";
+		else if( mOptions.codec == videoOptions::CODEC_H265 )
+			ss << "rtph265pay";
+		else if( mOptions.codec == videoOptions::CODEC_VP8 )
+			ss << "rtpvp8pay";
+		else if( mOptions.codec == videoOptions::CODEC_VP9 )
+			ss << "rtpvp9pay";
+		else if( mOptions.codec == videoOptions::CODEC_MJPEG )
+			ss << "rtpjpegpay";
+
+		if (mOptions.codec == videoOptions::CODEC_H264 || mOptions.codec == videoOptions::CODEC_H265) {
+				ss << " config-interval=1 ! rtmpsink location=rtmp://";
+		} else {
+				ss << " ! rtmpsink location=rtmp://";
+		}
+		ss << uri.location << " ";
+
+		mOptions.deviceType = videoOptions::DEVICE_IP;
+	}
 
 	mLaunchStr = ss.str();
 
