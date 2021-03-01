@@ -37,10 +37,18 @@
 #define STB_IMAGE_RESIZE_IMPLEMENTATION
 #include "stb/stb_image_resize.h"
 
+#include <memory>
 
+
+namespace {
+    struct Deleter {
+        void operator()(unsigned char* data) const noexcept(noexcept(stbi_image_free)) { stbi_image_free(data); }
+    };
+    using StbBuffer = std::unique_ptr<unsigned char[], Deleter>;
+}
 
 // loadImageIO (internal)
-static unsigned char* loadImageIO( const char* filename, int* width, int* height, int* channels )
+static StbBuffer loadImageIO( const char* filename, int* width, int* height, int* channels )
 {
 	// validate parameters
 	if( !filename || !width || !height || !channels )
@@ -63,7 +71,7 @@ static unsigned char* loadImageIO( const char* filename, int* width, int* height
 	int imgHeight = 0;
 	int imgChannels = 0;
 
-	unsigned char* img = stbi_load(path.c_str(), &imgWidth, &imgHeight, &imgChannels, *channels);
+	auto img = StbBuffer(stbi_load(path.c_str(), &imgWidth, &imgHeight, &imgChannels, *channels));
 
 	if( !img )
 	{
@@ -90,26 +98,24 @@ static unsigned char* loadImageIO( const char* filename, int* width, int* height
 
 	if( resizeWidth > 0 && resizeHeight > 0 && resizeWidth != imgWidth && resizeHeight != imgHeight )
 	{
-		unsigned char* img_org = img;
+		const auto img_org = std::move(img);
 
 		LogVerbose(LOG_IMAGE "resizing '%s' to %ix%i\n", filename, resizeWidth, resizeHeight);
 
 		// allocate memory for the resized image
-		img = (unsigned char*)malloc(resizeWidth * resizeHeight * imgChannels * sizeof(unsigned char));
+		img.reset(new unsigned char[resizeWidth * resizeHeight * imgChannels * sizeof(unsigned char)]);
 
 		if( !img )
 		{
 			LogError(LOG_IMAGE "failed to allocated memory to resize '%s' to %ix%i\n", filename, resizeWidth, resizeHeight);
-			free(img_org);		
 			return NULL;
 		}
 
 		// resize the original image
-		if( !stbir_resize_uint8(img_org, imgWidth, imgHeight, 0,
-						    img, resizeWidth, resizeHeight, 0, imgChannels) )
+		if( !stbir_resize_uint8(img_org.get(), imgWidth, imgHeight, 0,
+						    img.get(), resizeWidth, resizeHeight, 0, imgChannels) )
 		{
 			LogError(LOG_IMAGE "failed to resize '%s' to %ix%i\n", filename, resizeWidth, resizeHeight);
-			free(img_org);
 			return NULL;
 		}
 
@@ -117,7 +123,6 @@ static unsigned char* loadImageIO( const char* filename, int* width, int* height
 		imgWidth  = resizeWidth;
 		imgHeight = resizeHeight;
 
-		free(img_org);
 	}	
 
 	*width = imgWidth;
@@ -156,7 +161,7 @@ bool loadImage( const char* filename, void** output, int* width, int* height, im
 	int imgHeight = *height;
 	int imgChannels = imageFormatChannels(format);
 
-	unsigned char* img = loadImageIO(filename, &imgWidth, &imgHeight, &imgChannels);
+	auto img = loadImageIO(filename, &imgWidth, &imgHeight, &imgChannels);
 	
 	if( !img )
 		return false;	
@@ -184,7 +189,7 @@ bool loadImage( const char* filename, void** output, int* width, int* height, im
 			return false;
 		}
 
-		memcpy(inputImgGPU, img, imageFormatSize(inputFormat, imgWidth, imgHeight));
+		memcpy(inputImgGPU, img.get(), imageFormatSize(inputFormat, imgWidth, imgHeight));
 
 		if( CUDA_FAILED(cudaConvertColor(inputImgGPU, inputFormat, *output, format, imgWidth, imgHeight)) )
 		{
@@ -197,13 +202,12 @@ bool loadImage( const char* filename, void** output, int* width, int* height, im
 	else
 	{
 		// uint8 output can be straight copied to GPU memory
-		memcpy(*output, img, imgSize);
+		memcpy(*output, img.get(), imgSize);
 	}
 
 	*width  = imgWidth;
 	*height = imgHeight;
 	
-	free(img);
 	return true;
 }
 
