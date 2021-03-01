@@ -244,7 +244,7 @@ public:
 	/**
 	 * Return the number of sub-streams.
 	 */
-	inline uint32_t GetNumOutputs( videoOutput* output ) const	{ mOutputs.size(); }
+	inline uint32_t GetNumOutputs() const	{ return mOutputs.size(); }
 
 	/**
 	 * Return a sub-stream.

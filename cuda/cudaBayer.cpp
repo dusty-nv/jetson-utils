@@ -61,6 +61,7 @@ cudaError_t cudaBayerToRGB( uint8_t* input, uchar3* output, size_t width, size_t
 		LogError(LOG_CUDA "cudaBayerToRGB() NPP error %i\n", result);
 		return cudaErrorUnknown;
 	}
+	return cudaSuccess;
 }
 
 

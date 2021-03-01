@@ -126,6 +126,7 @@ videoOptions::Codec gst_parse_codec( GstStructure* caps )
 	}
 	
 	LogError(LOG_GSTREAMER "unrecognized codec - %s\n", codec);
+	return videoOptions::CODEC_UNKNOWN;
 }
 
 const char* gst_codec_to_string( videoOptions::Codec codec )

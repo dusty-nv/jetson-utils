@@ -29,14 +29,14 @@
 // GetID
 pid_t Process::GetID()
 {
-	getpid();
+	return getpid();
 }
 	
 
 // GetParentID
 pid_t Process::GetParentID()
 {
-	getppid();
+	return getppid();
 }
 
 

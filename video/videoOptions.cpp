@@ -215,6 +215,7 @@ const char* videoOptions::IoTypeToStr( videoOptions::IoType type )
 		case INPUT:  return "input";
 		case OUTPUT: return "output";
 	}
+	return nullptr;
 }
 
 
@@ -248,6 +249,7 @@ const char* videoOptions::DeviceTypeToStr( videoOptions::DeviceType type )
 		case DEVICE_FILE:		return "file";
 		case DEVICE_DISPLAY:	return "display";
 	}
+	return nullptr;
 }
 
 
@@ -283,6 +285,7 @@ const char* videoOptions::FlipMethodToStr( videoOptions::FlipMethod flip )
 		case FLIP_VERTICAL:				return "vertical";
 		case FLIP_UPPER_LEFT_DIAGONAL:	return "upper-left-diagonal";
 	}
+	return nullptr;
 }
 
 
@@ -319,6 +322,7 @@ const char* videoOptions::CodecToStr( videoOptions::Codec codec )
 		case CODEC_MPEG4:	return "mpeg4";
 		case CODEC_MJPEG:	return "mjpeg";
 	}
+	return nullptr;
 }
 
 
