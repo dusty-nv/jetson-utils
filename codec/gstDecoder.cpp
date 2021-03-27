@@ -355,8 +355,15 @@ bool gstDecoder::discover()
 	}
 	
 	// retrieve video resolution
-	const guint width  = gst_discoverer_video_info_get_width(videoInfo);
-	const guint height = gst_discoverer_video_info_get_height(videoInfo);
+	guint width  = gst_discoverer_video_info_get_width(videoInfo);
+	guint height = gst_discoverer_video_info_get_height(videoInfo);
+	if( mOptions.flipMethod == videoOptions::FLIP_CLOCKWISE || mOptions.flipMethod == videoOptions::FLIP_COUNTERCLOCKWISE
+		|| mOptions.flipMethod == videoOptions::FLIP_UPPER_LEFT_DIAGONAL || mOptions.flipMethod == videoOptions::FLIP_UPPER_RIGHT_DIAGONAL )
+	{
+		const guint prevWidth = width;
+		width = height;
+		height = prevWidth;
+	}
 	
 	const float framerate_num   = gst_discoverer_video_info_get_framerate_num(videoInfo);
 	const float framerate_denom = gst_discoverer_video_info_get_framerate_denom(videoInfo);
