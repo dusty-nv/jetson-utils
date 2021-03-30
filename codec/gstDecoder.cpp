@@ -320,7 +320,7 @@ bool gstDecoder::discover()
 
 	// create a new discovery interface
 	GError* err = NULL;
-	GstDiscoverer* discoverer = gst_discoverer_new(GST_SECOND, &err);
+	GstDiscoverer* discoverer = gst_discoverer_new(5 * GST_SECOND, &err);
 	
 	if( !discoverer )
 	{
