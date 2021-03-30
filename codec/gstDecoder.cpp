@@ -525,7 +525,7 @@ bool gstDecoder::buildLaunchStr()
 	else if( uri.protocol == "rtsp" )
 	{
 		ss << "rtspsrc location=" << uri.string;
-		//ss << " latency=200 drop-on-latency=true";
+		ss << " latency=" << mOptions.rtspLatency;
 		ss << " ! queue ! ";
 		
 		if( mOptions.codec == videoOptions::CODEC_H264 )

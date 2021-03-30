@@ -106,6 +106,12 @@ public:
 	int loop;
 
 	/**
+	 * Number of milliseconds of video to buffer for incoming RTSP streams (the default is 2000 ms).
+	 * This option can be set from the command line using `--input-rtsp-latency=N`
+	 */
+	int rtspLatency;
+
+	/**
 	 * Device interface types.
 	 */
 	enum DeviceType
