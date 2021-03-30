@@ -133,6 +133,8 @@ bool gstCamera::buildLaunchStr()
 
 	if( mOptions.resource.protocol == "csi" )
 	{
+		if( mOptions.flipMethod == videoOptions::FLIP_AUTOMATIC || mOptions.flipMethod == videoOptions::FLIP_UNDEFINED )
+			mOptions.flipMethod = videoOptions::FLIP_NONE;
 	#if NV_TENSORRT_MAJOR > 4
 		// on newer JetPack's, it's common for CSI camera to need flipped
 		// so here we reverse FLIP_NONE with FLIP_ROTATE_180
