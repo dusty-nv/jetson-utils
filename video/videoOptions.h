@@ -150,7 +150,10 @@ public:
 		FLIP_UPPER_RIGHT_DIAGONAL,	/**< Flip across upper right/lower left diagonal */
 		FLIP_VERTICAL,				/**< Flip vertically */
 		FLIP_UPPER_LEFT_DIAGONAL,	/**< Flip across upper left/lower right diagonal */
-		FLIP_DEFAULT = FLIP_NONE		/**< Default setting (none) */
+		FLIP_AUTOMATIC,             /**< Choose rotation based on video tag */
+		FLIP_UNDEFINED,
+		FLIP_INPUT_DEFAULT = FLIP_AUTOMATIC,	/**< Default for video input */
+		FLIP_OUTPUT_DEFUALT = FLIP_NONE			/**< Default for video output */
 	};
 
 	/**
@@ -168,6 +171,7 @@ public:
 	 *   - `vertical-flip`        (Flip vertically)
 	 *   - `upper-right-diagonal` (Flip across upper right/lower left diagonal)
 	 *   - `upper-left-diagonal`  (Flip across upper left/lower right diagonal)
+	 *   - `automatic`			  (Choose rotation based on video tag)
 	 */
 	FlipMethod flipMethod;
 
