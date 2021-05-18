@@ -141,43 +141,43 @@ protected:
  * @ingroup log
  * @internal
  */
-#define LogMessage(level, format, args...) if( level <= Log::GetLevel() ) fprintf(Log::GetFile(), format, ## args)
+#define GenericLogMessage(level, format, args...) if( level <= Log::GetLevel() ) fprintf(Log::GetFile(), format, ## args)
 
 /**
  * Log a printf-style error message (Log::ERROR)
  * @ingroup log
  */
-#define LogError(format, args...)		LogMessage(Log::ERROR, LOG_COLOR_RED LOG_LEVEL_PREFIX_ERROR format LOG_COLOR_RESET, ## args)
+#define LogError(format, args...)		GenericLogMessage(Log::ERROR, LOG_COLOR_RED LOG_LEVEL_PREFIX_ERROR format LOG_COLOR_RESET, ## args)
 
 /**
  * Log a printf-style warning message (Log::WARNING)
  * @ingroup log
  */
-#define LogWarning(format, args...)	LogMessage(Log::WARNING, LOG_COLOR_YELLOW LOG_LEVEL_PREFIX_WARNING format LOG_COLOR_RESET, ## args)
+#define LogWarning(format, args...)	GenericLogMessage(Log::WARNING, LOG_COLOR_YELLOW LOG_LEVEL_PREFIX_WARNING format LOG_COLOR_RESET, ## args)
 
 /**
  * Log a printf-style success message (Log::SUCCESS)
  * @ingroup log
  */
-#define LogSuccess(format, args...)	LogMessage(Log::SUCCESS, LOG_COLOR_GREEN LOG_LEVEL_PREFIX_SUCCESS format LOG_COLOR_RESET, ## args)
+#define LogSuccess(format, args...)	GenericLogMessage(Log::SUCCESS, LOG_COLOR_GREEN LOG_LEVEL_PREFIX_SUCCESS format LOG_COLOR_RESET, ## args)
 
 /**
  * Log a printf-style info message (Log::INFO)
  * @ingroup log
  */
-#define LogInfo(format, args...)		LogMessage(Log::INFO, LOG_LEVEL_PREFIX_INFO format, ## args)
+#define LogInfo(format, args...)		GenericLogMessage(Log::INFO, LOG_LEVEL_PREFIX_INFO format, ## args)
 
 /**
  * Log a printf-style verbose message (Log::VERBOSE)
  * @ingroup log
  */
-#define LogVerbose(format, args...)	LogMessage(Log::VERBOSE, LOG_LEVEL_PREFIX_VERBOSE format, ## args)
+#define LogVerbose(format, args...)	GenericLogMessage(Log::VERBOSE, LOG_LEVEL_PREFIX_VERBOSE format, ## args)
 
 /**
  * Log a printf-style debug message (Log::DEBUG)
  * @ingroup log
  */
-#define LogDebug(format, args...)		LogMessage(Log::DEBUG, LOG_LEVEL_PREFIX_DEBUG format, ## args)
+#define LogDebug(format, args...)		GenericLogMessage(Log::DEBUG, LOG_LEVEL_PREFIX_DEBUG format, ## args)
 
 
 ///////////////////////////////////////////////////////////////////
