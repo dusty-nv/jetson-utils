@@ -1069,10 +1069,11 @@ PyObject* PyCUDA_Resize( PyObject* self, PyObject* args, PyObject* kwds )
 	// parse arguments
 	PyObject* pyInput  = NULL;
 	PyObject* pyOutput = NULL;
+	long mode = 0L;
 	
-	static char* kwlist[] = {"input", "output", NULL};
+	static char* kwlist[] = {"input", "output", "mode", NULL};
 
-	if( !PyArg_ParseTupleAndKeywords(args, kwds, "OO", kwlist, &pyInput, &pyOutput))
+	if( !PyArg_ParseTupleAndKeywords(args, kwds, "OO|l", kwlist, &pyInput, &pyOutput, &mode))
 	{
 		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaResize() failed to parse args");
 		return NULL;
@@ -1095,7 +1096,7 @@ PyObject* PyCUDA_Resize( PyObject* self, PyObject* args, PyObject* kwds )
 	}
 
 	// run the CUDA function
-	if( CUDA_FAILED(cudaResize(input->base.ptr, input->width, input->height, output->base.ptr, output->width, output->height, output->format)) )
+	if( CUDA_FAILED(cudaResize(input->base.ptr, input->width, input->height, output->base.ptr, output->width, output->height, output->format, mode)) )
 	{
 		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaResize() failed");
 		return NULL;
