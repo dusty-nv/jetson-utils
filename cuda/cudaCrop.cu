@@ -66,7 +66,7 @@ static cudaError_t launchCrop( T* input, T* output, const int4& roi, size_t inpu
 	if( roi.x < 0 || roi.y < 0 || roi.z < 0 || roi.w < 0 )
 		return cudaErrorInvalidValue;
 
-	if( roi.z >= inputWidth || roi.w >= inputHeight )
+	if( roi.z > inputWidth || roi.w > inputHeight )
 		return cudaErrorInvalidValue;
 
 	// launch kernel

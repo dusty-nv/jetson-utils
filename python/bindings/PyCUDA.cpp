@@ -1143,7 +1143,7 @@ PyObject* PyCUDA_Crop( PyObject* self, PyObject* args, PyObject* kwds )
 	const float roi_height = bottom - top;
 
 	if( left < 0 || top < 0 || right < 0 || bottom < 0 ||
-	    right >= input->width || bottom >= input->height ||
+	    right > input->width || bottom > input->height ||
 	    roi_width <= 0 || roi_height <= 0 || 
 	    roi_width > output->width || roi_height > output->height )
 	{
