@@ -23,7 +23,12 @@
 #ifndef __IMAGE_FORMAT_INLINE_H_
 #define __IMAGE_FORMAT_INLINE_H_
 
+#ifdef _WIN32
+#define strcasecmp _stricmp
+#else
 #include <strings.h>
+#endif
+
 #include <type_traits>
 
 
