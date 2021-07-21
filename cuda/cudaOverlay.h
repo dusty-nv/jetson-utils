@@ -66,6 +66,7 @@ cudaError_t cudaOverlay( T* input, const int2& inputDims,
 	
 /**
  * cudaRectFill
+ * @deprecated please use the functions from cudaDraw.h instead
  * @ingroup overlay
  */
 cudaError_t cudaRectFill( void* input, void* output, size_t width, size_t height, imageFormat format, 
@@ -73,6 +74,7 @@ cudaError_t cudaRectFill( void* input, void* output, size_t width, size_t height
 
 /**
  * cudaRectFill
+ * @deprecated please use the functions from cudaDraw.h instead
  * @ingroup overlay
  */
 template<typename T> 
@@ -81,12 +83,6 @@ cudaError_t cudaRectFill( T* input, T* output, size_t width, size_t height,
 { 
 	return cudaRectFill(input, output, width, height, imageFormatFromType<T>(), rects, numRects, color); 
 }
-
-/**
- * cudaRectOutline
- * @ingroup overlay
- */
-//cudaError_t cudaRectOutline( float4* input, float4* output, size_t width, size_t height, float4* boundingBoxes, int numBoxes, const float4& color );
 
 
 #endif

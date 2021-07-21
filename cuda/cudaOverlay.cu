@@ -148,9 +148,6 @@ __global__ void gpuRectFillBox( T* input, T* output, int imgWidth, int imgHeight
 template<typename T>
 cudaError_t launchRectFill( T* input, T* output, size_t width, size_t height, float4* rects, int numRects, const float4& color )
 {
-	if( !input || !output || width == 0 || height == 0 || !rects || numRects == 0 )
-		return cudaErrorInvalidValue;
-
 	// if input and output are the same image, then we can use the faster method
 	// which draws 1 box per kernel, but doesn't copy pixels that aren't inside boxes
 	if( input == output )
@@ -184,10 +181,6 @@ cudaError_t cudaRectFill( void* input, void* output, size_t width, size_t height
 {
 	if( !input || !output || width == 0 || height == 0 || !rects || numRects == 0 )
 		return cudaErrorInvalidValue;
-
-	// launch kernel
-	const dim3 blockDim(8, 8);
-	const dim3 gridDim(iDivUp(width,blockDim.x), iDivUp(height,blockDim.y));
 
 	if( format == IMAGE_RGB8 )
 		return launchRectFill<uchar3>((uchar3*)input, (uchar3*)output, width, height, rects, numRects, color); 
