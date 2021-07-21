@@ -199,6 +199,15 @@ inline bool imageFormatIsGray( imageFormat format );
  */
 inline bool imageFormatIsBayer( imageFormat format );
 
+/**
+ * Print out an error message that the image format isn't supported.
+ * It assumes the supported formats are rgb8, rgba8, rgb32f, rgba32f.
+ * The module string is normally LOG_CUDA, LOG_TRT, LOG_GSTREAMER, ect.
+ * The function string is normally the function name this was called from.
+ * The provided imageFormat is the format of the unsupported image.
+ */
+inline void imageFormatErrorMsg( const char* module, const char* function, imageFormat format );
+
 
 //////////////////////////////////////////////////////////////////////////////////
 /// @name Internal Type Templates
