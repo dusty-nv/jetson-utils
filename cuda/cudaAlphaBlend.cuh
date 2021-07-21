@@ -25,6 +25,7 @@
 
 
 #include "cudaUtility.h"
+#include "cudaVector.h"
 
 
 /**
@@ -35,15 +36,16 @@
  * @note cudaAlphaBlend() is for use inside of other CUDA kernels.
  * @ingroup cuda
  */
-__device__ inline float4 cudaAlphaBlend( const float4& src, const float4& dst )
+template<typename T1, typename T2>
+__device__ inline T1 cudaAlphaBlend( const T1& src, const T2& dst )
 {
 	const float alph = dst.w / 255.0f;
 	const float inva = 1.0f - alph;
 
-	return make_float4(alph * dst.x + inva * src.x,
-				    alph * dst.y + inva * src.y,
-				    alph * dst.z + inva * src.z,
-				    255.0f);
+	return make_vec<T1>(alph * dst.x + inva * src.x,
+				     alph * dst.y + inva * src.y,
+				     alph * dst.z + inva * src.z,
+				     255);
 }
 
 
