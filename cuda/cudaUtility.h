@@ -121,6 +121,12 @@ inline cudaError_t cudaCheckError(cudaError_t retval, const char* txt, const cha
  */
 #define SAFE_DELETE(x) 		if(x != NULL) { delete x; x = NULL; }
 
+/**
+ * Check for non-NULL pointer before freeing it, and then set the pointer to NULL.
+ * @ingroup util
+ */
+#define SAFE_FREE(x) 		if(x != NULL) { free(x); x = NULL; }
+
 
 /**
  * If a / b has a remainder, round up.  This function is commonly using when launching 
