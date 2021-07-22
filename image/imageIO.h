@@ -178,7 +178,7 @@ bool saveImageRGBA( const char* filename, float4* ptr, int width, int height, fl
  * @internal
  * @ingroup image
  */
-#define LOG_IMAGE "[image] "
+#define LOG_IMAGE "[image]  "
 
 
 #endif
