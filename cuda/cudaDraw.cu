@@ -24,10 +24,25 @@
 #include "cudaAlphaBlend.cuh"
 
 
+// TODO for rect/fill/line
+//    - make versions that only accept image (as both input/output)
+//    - add line width/line color
+//    - add overloads for single shape/multiple shapes
+//    - benchmarking of copy vs alternate kernel when input != output
+//    - overloads using int2 for coordinates
+//    - add a template parameter for alpha blending
+
 #define MIN(a,b)  (a < b ? a : b)
 #define MAX(a,b)  (a > b ? a : b)
 
+template<typename T> inline __device__ __host__ T sqr(T x) 				    { return x*x; }
 
+inline __device__ __host__ float dist2(float x1, float y1, float x2, float y2) { return sqr(x1-x2) + sqr(y1-y2); }
+inline __device__ __host__ float dist(float x1, float y1, float x2, float y2)  { return sqrtf(dist2(x1,y1,x2,y2)); }
+
+
+//----------------------------------------------------------------------------
+// Circle drawing (find if the distance to the circle <= radius)
 //----------------------------------------------------------------------------						 
 template<typename T>
 __global__ void gpuDrawCircle( T* img, int imgWidth, int imgHeight, int offset_x, int offset_y, int cx, int cy, float radius2, const float4 color ) 
@@ -90,68 +105,18 @@ cudaError_t cudaDrawCircle( void* input, void* output, size_t width, size_t heig
 }
 
 
-//----------------------------------------------------------------------------	
+//----------------------------------------------------------------------------
 // Line drawing (find if the distance to the line <= line_width)
 // Distance from point to line segment - https://stackoverflow.com/a/1501725
-// 
-
-#if 0
-function sqr(x) { return x * x }
-function dist2(v, w) { return sqr(v.x - w.x) + sqr(v.y - w.y) }
-
-template<typename T>
-inline __device__ float lineDistanceSquared(T x, T y, T x1, T y1, T x2, T y2) 
+//----------------------------------------------------------------------------
+inline __device__ float lineDistanceSquared(float x, float y, float x1, float y1, float x2, float y2) 
 {
-	const float dist2 = (x2 - x1) * (x2 - x1) + (y2 - y1) + (y2 - y1);
+	const float d = dist2(x1, y1, x2, y2);
+	const float t = ((x-x1) * (x2-x1) + (y-y1) * (y2-y1)) / d;
+	const float u = MAX(0, MIN(1, t));
 	
-function distToSegmentSquared(p, v, w) {
-  var l2 = dist2(v, w);
-  if (l2 == 0) return dist2(p, v);
-  var t = ((p.x - v.x) * (w.x - v.x) + (p.y - v.y) * (w.y - v.y)) / l2;
-  t = Math.max(0, Math.min(1, t));
-  return dist2(p, { x: v.x + t * (w.x - v.x),
-                    y: v.y + t * (w.y - v.y) });
+	return dist2(x, y, x1 + u * (x2 - x1), y1 + u * (y2 - y1));
 }
-#else
-
-template<typename T>
-inline __device__ float lineDistanceSquared(T x, T y, T x1, T y1, T x2, T y2) 
-{
-	const T A = x - x1;
-	const T B = y - y1;
-	const T C = x2 - x1;
-	const T D = y2 - y1;
-
-	const float dot = A * C + B * D;
-	const float len_sq = C * C + D * D;
-	
-	float param = -1;
-	
-	if (len_sq != 0) //in case of 0 length line
-		param = dot / len_sq;
-
-	T xx, yy;
-
-	if (param < 0) {
-		xx = x1;
-		yy = y1;
-	}
-	else if (param > 1) {
-		xx = x2;
-		yy = y2;
-	}
-	else {
-		xx = x1 + param * C;
-		yy = y1 + param * D;
-	}
-
-	T dx = x - xx;
-	T dy = y - yy;
-	
-	return dx * dx + dy * dy;
-}
-
-#endif
 				 
 template<typename T>
 __global__ void gpuDrawLine( T* img, int imgWidth, int imgHeight, int offset_x, int offset_y, int x1, int y1, int x2, int y2, const float4 color, float line_width2 ) 
@@ -174,17 +139,24 @@ cudaError_t cudaDrawLine( void* input, void* output, size_t width, size_t height
 {
 	if( !input || !output || width == 0 || height == 0 || line_width <= 0 )
 		return cudaErrorInvalidValue;
-
+	
+	// check for lines < 2 pixels in length
+	if( dist(x1,y1,x2,y2) < 2.0 )
+	{
+		LogWarning(LOG_CUDA "cudaDrawLine() - line has length < 2, skipping (%i,%i) (%i,%i)\n", x1, y1, x2, y2);
+		return cudaSuccess;
+	}
+	
 	// if the input and output images are different, copy the input to the output
 	// this is because we only launch the kernel in the approximate area of the circle
 	if( input != output )
 		CUDA(cudaMemcpy(output, input, imageFormatSize(format, width, height), cudaMemcpyDeviceToDevice));
 		
 	// find a box around the line
-	const int left = MIN(x1,x2);
-	const int right = MAX(x1,x2);
-	const int top = MIN(y1,y2);
-	const int bottom = MAX(y1,y2);
+	const int left = MIN(x1,x2) - line_width;
+	const int right = MAX(x1,x2) + line_width;
+	const int top = MIN(y1,y2) - line_width;
+	const int bottom = MAX(y1,y2) + line_width;
 
 	// launch kernel
 	const dim3 blockDim(8, 8);

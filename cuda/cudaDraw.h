@@ -28,15 +28,6 @@
 #include "imageFormat.h"
 
 
-// TODO for rect/fill/line
-//    - make versions that only accept image (as both input/output)
-//    - add line width/line color
-//    - add overloads for single shape/multiple shapes
-//    - benchmarking of copy vs alternate kernel when input != output
-//    - overloads using int2 for coordinates
-//    - add a template parameter for alpha blending
-
-
 /**
  * cudaDrawCircle
  * @ingroup drawing
@@ -55,6 +46,26 @@ cudaError_t cudaDrawCircle( T* input, T* output, size_t width, size_t height,
 	return cudaDrawCircle(input, output, width, height, imageFormatFromType<T>(), cx, cy, radius, color); 
 }	
 
+/**
+ * cudaDrawCircle (in-place)
+ * @ingroup drawing
+ */
+cudaError_t cudaDrawCircle( void* image, size_t width, size_t height, imageFormat format, 
+					   int cx, int cy, float radius, const float4& color )
+{
+	return cudaDrawCircle(image, image, width, height, format, cx, cy, radius, color);
+}
+
+/**
+ * cudaDrawCircle (in-place)
+ * @ingroup drawing
+ */
+template<typename T> 
+cudaError_t cudaDrawCircle( T* image, size_t width, size_t height, 
+				 	   int cx, int cy, float radius, const float4& color )	
+{ 
+	return cudaDrawCircle(image, width, height, imageFormatFromType<T>(), cx, cy, radius, color); 
+}
 
 /**
  * cudaDrawLine
@@ -72,6 +83,27 @@ cudaError_t cudaDrawLine( T* input, T* output, size_t width, size_t height,
 				 	 int x1, int y1, int x2, int y2, const float4& color, float line_width=1.0 )	
 { 
 	return cudaDrawLine(input, output, width, height, imageFormatFromType<T>(), x1, y1, x2, y2, color, line_width); 
+}
+
+/**
+ * cudaDrawLine (in-place)
+ * @ingroup drawing
+ */
+cudaError_t cudaDrawLine( void* image, size_t width, size_t height, imageFormat format, 
+					 int x1, int y1, int x2, int y2, const float4& color, float line_width=1.0 )
+{
+	return cudaDrawLine(image, image, width, height, format, x1, y1, x2, y2, color, line_width);
+}					
+	
+/**
+ * cudaDrawLine (in-place)
+ * @ingroup drawing
+ */
+template<typename T> 
+cudaError_t cudaDrawLine( T* image, size_t width, size_t height, 
+				 	 int x1, int y1, int x2, int y2, const float4& color, float line_width=1.0 )	
+{ 
+	return cudaDrawLine(image, width, height, imageFormatFromType<T>(), x1, y1, x2, y2, color, line_width); 
 }	
 
 #endif
