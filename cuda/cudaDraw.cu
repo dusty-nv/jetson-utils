@@ -181,3 +181,87 @@ cudaError_t cudaDrawLine( void* input, void* output, size_t width, size_t height
 		
 	return cudaGetLastError();
 }
+
+
+
+//----------------------------------------------------------------------------
+// Rect drawing (a grid of threads is launched over the rect)
+//----------------------------------------------------------------------------
+template<typename T>
+__global__ void gpuDrawRect( T* img, int imgWidth, int imgHeight, int x0, int y0, int boxWidth, int boxHeight, const float4 color ) 
+{
+	const int box_x = blockIdx.x * blockDim.x + threadIdx.x;
+	const int box_y = blockIdx.y * blockDim.y + threadIdx.y;
+
+	if( box_x >= boxWidth || box_y >= boxHeight )
+		return;
+
+	const int x = box_x + x0;
+	const int y = box_y + y0;
+
+	if( x >= imgWidth || y >= imgHeight || x < 0 || y < 0 )
+		return;
+
+	const int idx = y * imgWidth + x;
+	img[idx] = cudaAlphaBlend(img[idx], color);
+}
+
+
+// cudaDrawRect
+cudaError_t cudaDrawRect( void* input, void* output, size_t width, size_t height, imageFormat format, int left, int top, int right, int bottom, const float4& color )
+{
+	if( !input || !output || width == 0 || height == 0 )
+		return cudaErrorInvalidValue;
+
+	// if the input and output images are different, copy the input to the output
+	// this is because we only launch the kernel in the approximate area of the circle
+	if( input != output )
+		CUDA(cudaMemcpy(output, input, imageFormatSize(format, width, height), cudaMemcpyDeviceToDevice));
+		
+	// make sure the coordinates are ordered
+	if( left > right )
+	{
+		const int swap = left;
+		left = right;
+		right = swap;
+	}
+	
+	if( top > bottom )
+	{
+		const int swap = top;
+		top = bottom;
+		bottom = swap;
+	}
+	
+	const int boxWidth = right - left;
+	const int boxHeight = bottom - top;
+	
+	if( boxWidth <= 0 || boxHeight <= 0 )
+	{
+		LogError("cudaDrawRect() -- rect had width/height <= 0  left=%i top=%i right=%i bottom=%i\n", left, top, right, bottom);
+		return cudaErrorInvalidValue;
+	}
+
+	// launch kernel
+	const dim3 blockDim(8, 8);
+	const dim3 gridDim(iDivUp(boxWidth,blockDim.x), iDivUp(boxHeight,blockDim.y));
+			
+	#define LAUNCH_DRAW_RECT(type) \
+		gpuDrawRect<type><<<gridDim, blockDim>>>((type*)output, width, height, left, top, boxWidth, boxHeight, color)
+	
+	if( format == IMAGE_RGB8 )
+		LAUNCH_DRAW_RECT(uchar3);
+	else if( format == IMAGE_RGBA8 )
+		LAUNCH_DRAW_RECT(uchar4);
+	else if( format == IMAGE_RGB32F )
+		LAUNCH_DRAW_RECT(float3); 
+	else if( format == IMAGE_RGBA32F )
+		LAUNCH_DRAW_RECT(float4);
+	else
+	{
+		imageFormatErrorMsg(LOG_CUDA, "cudaDrawRect()", format);
+		return cudaErrorInvalidValue;
+	}
+	
+	return cudaGetLastError();
+}
