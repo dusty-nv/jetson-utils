@@ -29,6 +29,7 @@
 #include "cudaResize.h"
 #include "cudaCrop.h"
 #include "cudaFont.h"
+#include "cudaDraw.h"
 
 #include "logging.h"
 
@@ -991,6 +992,89 @@ PyObject* PyCUDA_AllocMapped( PyObject* self, PyObject* args, PyObject* kwds )
 }
 
 
+// PyCUDA_Memcpy
+PyObject* PyCUDA_Memcpy( PyObject* self, PyObject* args, PyObject* kwds )
+{
+	PyObject* dst_capsule = NULL;
+	PyObject* src_capsule = NULL;
+	
+	static char* kwlist[]  = {"dst", "src", NULL};
+
+	if( !PyArg_ParseTupleAndKeywords(args, kwds, "O|O", kwlist, &dst_capsule, &src_capsule))
+	{
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaMemcpy() failed to parse arguments");
+		return NULL;
+	}
+	
+	// check if the args were reversed in the single-arg version
+	if( !src_capsule && dst_capsule != NULL )
+	{
+		src_capsule = dst_capsule;
+		dst_capsule = NULL;
+	}
+	
+	// get the src image
+	int src_width = 0;
+	int src_height = 0;
+	imageFormat src_format = IMAGE_UNKNOWN;
+	
+	void* src_ptr = PyCUDA_GetImage(src_capsule, &src_width, &src_height, &src_format);
+	
+	if( !src_ptr ) 
+	{
+		PyErr_SetString(PyExc_TypeError, LOG_PY_UTILS "failed to get CUDA image from src argument");
+		return NULL;
+	}
+	
+	// allocate the dst image (if needed)
+	void* dst_ptr = NULL;
+	bool dst_allocated = false;
+	
+	if( !dst_capsule )
+	{
+		if( !cudaAllocMapped(&dst_ptr, src_width, src_height, src_format) )
+		{
+			PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaMemcpy() failed to allocate memory");
+			return NULL;
+		}
+		
+		dst_capsule = PyCUDA_RegisterImage(dst_ptr, src_width, src_height, src_format, true);
+		dst_allocated = true;
+	}
+	else
+	{
+		int dst_width = 0;
+		int dst_height = 0;
+		imageFormat dst_format = IMAGE_UNKNOWN;
+		
+		dst_ptr = PyCUDA_GetImage(dst_capsule, &dst_width, &dst_height, &dst_format);
+		
+		if( !dst_ptr ) 
+		{
+			PyErr_SetString(PyExc_TypeError, LOG_PY_UTILS "failed to get CUDA image from dst argument");
+			return NULL;
+		}
+		
+		if( src_width != dst_width || src_height != dst_height || src_format != dst_format )
+		{
+			PyErr_SetString(PyExc_TypeError, LOG_PY_UTILS "src/dst images need to have matching dimensions and formats");
+			return NULL;
+		}
+	}
+	
+	if( CUDA_FAILED(cudaMemcpy(dst_ptr, src_ptr, imageFormatSize(src_format, src_width, src_height), cudaMemcpyDeviceToDevice)) )
+	{
+		PyErr_SetString(PyExc_TypeError, LOG_PY_UTILS "cudaMemcpy() failed to copy memory");
+		return NULL;
+	}
+			
+	if( dst_allocated )
+		return dst_capsule;
+	
+	Py_RETURN_NONE;
+}
+
+	
 // PyCUDA_DeviceSynchronize
 PyObject* PyCUDA_DeviceSynchronize( PyObject* self )
 {
@@ -1259,6 +1343,209 @@ PyObject* PyCUDA_Overlay( PyObject* self, PyObject* args, PyObject* kwds )
 	// return void
 	Py_RETURN_NONE;
 }
+
+//-------------------------------------------------------------------------------
+// PyCUDA_DrawCircle
+PyObject* PyCUDA_DrawCircle( PyObject* self, PyObject* args, PyObject* kwds )
+{
+	// parse arguments
+	PyObject* pyInput  = NULL;
+	PyObject* pyOutput = NULL;
+	PyObject* pyColor  = NULL;
+	
+	float x = 0.0f;
+	float y = 0.0f;
+	float radius = 0.0f;
+	
+	static char* kwlist[] = {"input", "center", "radius", "color", "output", NULL};
+
+	if( !PyArg_ParseTupleAndKeywords(args, kwds, "O(ff)fO|O", kwlist, &pyInput, &x, &y, &radius, &pyColor, &pyOutput))
+	{
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaDrawCircle() failed to parse arguments");
+		return NULL;
+	}
+	
+	if( !pyOutput )
+		pyOutput = pyInput;
+	
+	// get pointers to image data
+	PyCudaImage* input = PyCUDA_GetImage(pyInput);
+	PyCudaImage* output = PyCUDA_GetImage(pyOutput);
+
+	if( !input || !output )
+	{
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "failed to get input/output CUDA image pointers (should be cudaImage)");
+		return NULL;
+	}
+
+	if( input->width != output->width || input->height != output->height || input->format != output->format )
+	{
+		PyErr_SetString(PyExc_TypeError, LOG_PY_UTILS "input/output images need to have matching dimensions and formats");
+		return NULL;
+	}	
+	
+	// parse the color
+	float4 color = make_float4(0, 0, 0, 255);
+	
+	if( !PyTuple_Check(pyColor) )
+	{
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "color argument isn't a valid tuple");
+		return NULL;
+	}
+
+	if( !PyArg_ParseTuple(pyColor, "fff|f", &color.x, &color.y, &color.z, &color.w) )
+	{
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "failed to parse color tuple");
+		return NULL;
+	}
+
+	// run the CUDA function
+	if( CUDA_FAILED(cudaDrawCircle(input->base.ptr, output->base.ptr, input->width, input->height, input->format, 
+							 x, y, radius, color)) )
+	{
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaDrawCircle() failed to render");
+		return NULL;
+	}
+
+	Py_RETURN_NONE;
+}
+
+
+// PyCUDA_DrawLine
+PyObject* PyCUDA_DrawLine( PyObject* self, PyObject* args, PyObject* kwds )
+{
+	// parse arguments
+	PyObject* pyInput  = NULL;
+	PyObject* pyOutput = NULL;
+	PyObject* pyColor  = NULL;
+	
+	float x1 = 0.0f;
+	float y1 = 0.0f;
+	float x2 = 0.0f;
+	float y2 = 0.0f;
+	
+	float line_width = 1.0f;
+
+	static char* kwlist[] = {"input", "a", "b", "color", "line_width", "output", NULL};
+
+	if( !PyArg_ParseTupleAndKeywords(args, kwds, "O(ff)(ff)O|fO", kwlist, &pyInput, &x1, &y1, &x2, &y2, &pyColor, &line_width, &pyOutput))
+	{
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaDrawLine() failed to parse arguments");
+		return NULL;
+	}
+	
+	if( !pyOutput )
+		pyOutput = pyInput;
+	
+	// get pointers to image data
+	PyCudaImage* input = PyCUDA_GetImage(pyInput);
+	PyCudaImage* output = PyCUDA_GetImage(pyOutput);
+
+	if( !input || !output )
+	{
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "failed to get input/output CUDA image pointers (should be cudaImage)");
+		return NULL;
+	}
+
+	if( input->width != output->width || input->height != output->height || input->format != output->format )
+	{
+		PyErr_SetString(PyExc_TypeError, LOG_PY_UTILS "input/output images need to have matching dimensions and formats");
+		return NULL;
+	}	
+	
+	// parse the color
+	float4 color = make_float4(0, 0, 0, 255);
+	
+	if( !PyTuple_Check(pyColor) )
+	{
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "color argument isn't a valid tuple");
+		return NULL;
+	}
+
+	if( !PyArg_ParseTuple(pyColor, "fff|f", &color.x, &color.y, &color.z, &color.w) )
+	{
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "failed to parse color tuple");
+		return NULL;
+	}
+
+	// run the CUDA function
+	if( CUDA_FAILED(cudaDrawLine(input->base.ptr, output->base.ptr, input->width, input->height, input->format,
+						    x1, y1, x2, y2, color, line_width)) )
+	{
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaDrawLine() failed to render");
+		return NULL;
+	}
+
+	Py_RETURN_NONE;
+}
+
+
+// PyCUDA_DrawRect
+PyObject* PyCUDA_DrawRect( PyObject* self, PyObject* args, PyObject* kwds )
+{
+	// parse arguments
+	PyObject* pyInput  = NULL;
+	PyObject* pyOutput = NULL;
+	PyObject* pyColor  = NULL;
+	
+	float left = 0.0f;
+	float top = 0.0f;
+	float right = 0.0f;
+	float bottom = 0.0f;
+
+	static char* kwlist[] = {"input", "rect", "color", "output", NULL};
+
+	if( !PyArg_ParseTupleAndKeywords(args, kwds, "O(ffff)O|O", kwlist, &pyInput, &left, &top, &right, &bottom, &pyColor, &pyOutput))
+	{
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaDrawRect() failed to parse arguments");
+		return NULL;
+	}
+	
+	if( !pyOutput )
+		pyOutput = pyInput;
+	
+	// get pointers to image data
+	PyCudaImage* input = PyCUDA_GetImage(pyInput);
+	PyCudaImage* output = PyCUDA_GetImage(pyOutput);
+
+	if( !input || !output )
+	{
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "failed to get input/output CUDA image pointers (should be cudaImage)");
+		return NULL;
+	}
+
+	if( input->width != output->width || input->height != output->height || input->format != output->format )
+	{
+		PyErr_SetString(PyExc_TypeError, LOG_PY_UTILS "input/output images need to have matching dimensions and formats");
+		return NULL;
+	}	
+	
+	// parse the color
+	float4 color = make_float4(0, 0, 0, 255);
+	
+	if( !PyTuple_Check(pyColor) )
+	{
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "color argument isn't a valid tuple");
+		return NULL;
+	}
+
+	if( !PyArg_ParseTuple(pyColor, "fff|f", &color.x, &color.y, &color.z, &color.w) )
+	{
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "failed to parse color tuple");
+		return NULL;
+	}
+
+	// run the CUDA function
+	if( CUDA_FAILED(cudaDrawRect(input->base.ptr, output->base.ptr, input->width, input->height, input->format,
+						    left, top, right, bottom, color)) )
+	{
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaDrawRect() failed to render");
+		return NULL;
+	}
+
+	Py_RETURN_NONE;
+}
+
 
 //-------------------------------------------------------------------------------
 // PyFont container
@@ -1601,12 +1888,16 @@ static PyMethodDef pyCUDA_Functions[] =
 {
 	{ "cudaMalloc", (PyCFunction)PyCUDA_Malloc, METH_VARARGS|METH_KEYWORDS, "Allocated CUDA memory on the GPU with cudaMalloc()" },
 	{ "cudaAllocMapped", (PyCFunction)PyCUDA_AllocMapped, METH_VARARGS|METH_KEYWORDS, "Allocate CUDA ZeroCopy mapped memory" },
+	{ "cudaMemcpy", (PyCFunction)PyCUDA_Memcpy, METH_VARARGS|METH_KEYWORDS, "Copy src image to dst image (or if dst provided, return a new image with the contents of src)" },
 	{ "cudaDeviceSynchronize", (PyCFunction)PyCUDA_DeviceSynchronize, METH_NOARGS, "Wait for the GPU to complete all work" },
 	{ "cudaConvertColor", (PyCFunction)PyCUDA_ConvertColor, METH_VARARGS|METH_KEYWORDS, "Perform colorspace conversion on the GPU" },
 	{ "cudaCrop", (PyCFunction)PyCUDA_Crop, METH_VARARGS|METH_KEYWORDS, "Crop an image on the GPU" },		
 	{ "cudaResize", (PyCFunction)PyCUDA_Resize, METH_VARARGS|METH_KEYWORDS, "Resize an image on the GPU" },
 	{ "cudaNormalize", (PyCFunction)PyCUDA_Normalize, METH_VARARGS|METH_KEYWORDS, "Normalize the pixel intensities of an image between two ranges" },
 	{ "cudaOverlay", (PyCFunction)PyCUDA_Overlay, METH_VARARGS|METH_KEYWORDS, "Overlay the input image onto the composite output image at position (x,y)" },
+	{ "cudaDrawCircle", (PyCFunction)PyCUDA_DrawCircle, METH_VARARGS|METH_KEYWORDS, "Draw a circle with the specified radius and color centered at position (x,y)" },
+	{ "cudaDrawLine", (PyCFunction)PyCUDA_DrawLine, METH_VARARGS|METH_KEYWORDS, "Draw a line with the specified color and line width from (x1,y1) to (x2,y2)" },
+	{ "cudaDrawRect", (PyCFunction)PyCUDA_DrawRect, METH_VARARGS|METH_KEYWORDS, "Draw a rect with the specified color at (left, top, right, bottom)" },
 	{ "adaptFontSize", (PyCFunction)PyCUDA_AdaptFontSize, METH_VARARGS, "Determine an appropriate font size for the given image dimension" },
 	{ "logUsage", (PyCFunction)PyLog_Usage, METH_NOARGS, "Return help text describing the command line arguments of the logging interface" },
 	{NULL}  /* Sentinel */
