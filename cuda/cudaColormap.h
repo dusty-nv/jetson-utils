@@ -25,6 +25,7 @@
 
 
 #include "cudaFilterMode.h"
+#include "imageFormat.h"
 
 
 /**
@@ -65,7 +66,7 @@ cudaColormapType cudaColormapFromStr( const char* colormap );
 const char* cudaColormapToStr( cudaColormapType colormap );
 
 /**
- * Apply a colormap from an input image or vector field to RGBA (float4).
+ * Apply a colormap from an input image or vector field to RGB/RGBA.
  * If the input and output dimensions differ, this function will rescale the image
  * using bilinear or nearest-point interpolation as set by the `filter` mode.
  * @param input_range the minimum and maximum values of the input image.
@@ -73,15 +74,52 @@ const char* cudaColormapToStr( cudaColormapType colormap );
  * @param format layout of multi-channel input data (HWC or CHW). 
  * @ingroup colormap
  */
-cudaError_t cudaColormap( float* input, float* output, 
+template<typename T>
+cudaError_t cudaColormap( float* input, T* output,
 					 size_t width, size_t height,
 					 const float2& input_range=make_float2(0,255),
+					 cudaDataFormat input_format=FORMAT_DEFAULT,
+					 cudaColormapType colormap=COLORMAP_DEFAULT,
+					 cudaStream_t stream=NULL)					{ return cudaColormap(input, (void*)output, width, height, input_range, input_format, imageFormatFromType<T>(), colormap, stream); }
+					 
+/**
+ * Apply a colormap from an input image or vector field to RGB/RGBA.
+ * If the input and output dimensions differ, this function will rescale the image
+ * using bilinear or nearest-point interpolation as set by the `filter` mode.
+ * @param input_range the minimum and maximum values of the input image.
+ * @param colormap the colormap to apply (@see cudaColormapType)
+ * @param format layout of multi-channel input data (HWC or CHW). 
+ * @ingroup colormap
+ */
+cudaError_t cudaColormap( float* input, void* output,
+					 size_t width, size_t height,
+					 const float2& input_range=make_float2(0,255),
+					 cudaDataFormat input_format=FORMAT_DEFAULT,
+					 imageFormat output_format=IMAGE_UNKNOWN,
                           cudaColormapType colormap=COLORMAP_DEFAULT,
-					 cudaDataFormat format=FORMAT_DEFAULT,
 					 cudaStream_t stream=NULL);
 
 /**
- * Apply a colormap from an input image or vector field to RGBA (float4).
+ * Apply a colormap from an input image or vector field to RGB/RGBA.
+ * If the input and output dimensions differ, this function will rescale the image
+ * using bilinear or nearest-point interpolation as set by the `filter` mode.
+ * @param input_range the minimum and maximum values of the input image.
+ * @param colormap the colormap to apply (@see cudaColormapType)
+ * @param filter the interpolation mode used for rescaling.
+ * @param format layout of multi-channel input data (HWC or CHW).
+ * @ingroup colormap
+ */
+template<typename T>
+cudaError_t cudaColormap( float* input, size_t input_width, size_t input_height,
+					 T* output, size_t output_width, size_t output_height,
+					 const float2& input_range=make_float2(0,255),
+					 cudaDataFormat input_format=FORMAT_DEFAULT,
+                          cudaColormapType colormap=COLORMAP_DEFAULT,
+					 cudaFilterMode filter=FILTER_LINEAR,
+					 cudaStream_t stream=NULL )					{ return cudaColormap(input, input_width, input_height, output, output_width, output_height, input_range, input_format, imageFormatFromType<T>(), colormap, filter, stream); }
+					 
+/**
+ * Apply a colormap from an input image or vector field to RGB/RGBA.
  * If the input and output dimensions differ, this function will rescale the image
  * using bilinear or nearest-point interpolation as set by the `filter` mode.
  * @param input_range the minimum and maximum values of the input image.
@@ -91,11 +129,12 @@ cudaError_t cudaColormap( float* input, float* output,
  * @ingroup colormap
  */
 cudaError_t cudaColormap( float* input, size_t input_width, size_t input_height,
-					 float* output, size_t output_width, size_t output_height,
+					 void* output, size_t output_width, size_t output_height,
 					 const float2& input_range=make_float2(0,255),
+					 cudaDataFormat input_format=FORMAT_DEFAULT,
+					 imageFormat output_format=IMAGE_UNKNOWN,
                           cudaColormapType colormap=COLORMAP_DEFAULT,
 					 cudaFilterMode filter=FILTER_LINEAR,
-					 cudaDataFormat format=FORMAT_DEFAULT,
 					 cudaStream_t stream=NULL );
 
 /**

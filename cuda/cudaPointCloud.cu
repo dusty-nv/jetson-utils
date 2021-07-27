@@ -103,7 +103,8 @@ bool cudaPointCloud::Extract( float* depth, uint32_t depth_width, uint32_t depth
 
 		if( CUDA_FAILED(cudaColormap(depth, depth_width, depth_height,
 							    mDepthResize, color_width, color_height,
-							    make_float2(0.0f,0.0f), COLORMAP_NONE, FILTER_LINEAR)) ) 
+							    make_float2(0.0f,0.0f), FORMAT_DEFAULT,
+							    IMAGE_GRAY32F, COLORMAP_NONE, FILTER_LINEAR)) ) 
 		{
 			LogError(LOG_CUDA "cudaPointCloud::Extract() -- failed to resize depth image\n");
 			return false; 
