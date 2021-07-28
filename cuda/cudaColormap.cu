@@ -1701,9 +1701,9 @@ __global__ void gpuColormapPalette( float4* palette, float* input, int input_wid
 
 
 // gpuColormapFlow
-template<cudaFilterMode filter, cudaDataFormat format>
+template<typename T, cudaFilterMode filter, cudaDataFormat format>
 __global__ void gpuColormapFlow( float2* input, int input_width, int input_height,
-						   float4* output, int output_width, int output_height, 
+						   T* output, int output_width, int output_height, 
 						   float max_value )
 {
 	const int x = blockIdx.x * blockDim.x + threadIdx.x;
@@ -1724,12 +1724,15 @@ __global__ void gpuColormapFlow( float2* input, int input_width, int input_heigh
 							   __saturatef(1.0f + value.x), 1.0f); 
 
 	output[y * output_width + x] = color * 255.0f;*/
-	output[y * output_width + x] = make_float4(clamp(color, 0.0f, 255.0f), 255.0f);
+	
+	const float3 clamped = clamp(color, 0.0f, 255.0f);
+	
+	output[y * output_width + x] = make_vec<T>(clamped.x, clamped.y, clamped.z, 255.0f);
 }
 
 
 // gpuColormapNone
-template<cudaFilterMode filter, cudaDataFormat format, typename T>
+template<typename T, cudaFilterMode filter, cudaDataFormat format>
 __global__ void gpuColormapNone( T* input, int input_width, int input_height,
 						   T* output, int output_width, int output_height )
 {
@@ -1757,17 +1760,11 @@ cudaError_t cudaColormap( float* input, size_t input_width, size_t input_height,
 	if( input_width == 0 || output_width == 0 || input_height == 0 || output_height == 0 )
 		return cudaErrorInvalidValue;
 
-	if( colormap >= COLORMAP_FLOW /*> COLORMAP_NONE*/ )
+	if( colormap > COLORMAP_NONE )
 		return cudaErrorNotYetImplemented;
 
 	if( input_width == output_width && input_height == output_height )
 		filter = FILTER_POINT;
-	
-	if( !imageFormatIsRGB(output_format) )
-	{
-		imageFormatErrorMsg(LOG_CUDA, "cudaColormap()", output_format);
-		return cudaErrorInvalidValue;
-	}
 
 	// palettized colormaps
 	if( colormap <= COLORMAP_VIRIDIS )
@@ -1792,12 +1789,12 @@ cudaError_t cudaColormap( float* input, size_t input_width, size_t input_height,
 								multiplier, input_range.x);
 
 		#define colormapKernel(type) \
-			{	\
-				if( filter == FILTER_POINT )	\
-					colormapKernelFilter(type, FILTER_POINT) \
-				else if( filter == FILTER_LINEAR ) \
-					colormapKernelFilter(type, FILTER_LINEAR) \
-			}
+		{ \
+			if( filter == FILTER_POINT ) \
+				colormapKernelFilter(type, FILTER_POINT) \
+			else if( filter == FILTER_LINEAR ) \
+				colormapKernelFilter(type, FILTER_LINEAR) \
+		}
 
 		if( output_format == IMAGE_RGB8 )
 			colormapKernel(uchar3)
@@ -1807,8 +1804,12 @@ cudaError_t cudaColormap( float* input, size_t input_width, size_t input_height,
 			colormapKernel(float3)
 		else if( output_format == IMAGE_RGBA32F )
 			colormapKernel(float4)
+		else
+		{
+			imageFormatErrorMsg(LOG_CUDA, "cudaColormap()", output_format);
+			return cudaErrorInvalidValue;
+		}
 	}
-#if 0
 	else if( colormap == COLORMAP_FLOW ) // parametric flow field
 	{
 		// get the maximum absolute value
@@ -1818,24 +1819,42 @@ cudaError_t cudaColormap( float* input, size_t input_width, size_t input_height,
 		const dim3 blockDim(8, 8);
 		const dim3 gridDim(iDivUp(output_width,blockDim.x), iDivUp(output_height,blockDim.y));
 
-		#define flowKernel(filterMode, layout) gpuColormapFlow<filterMode, layout><<<gridDim, blockDim, 0, stream>>>( \
+		#define flowKernelFilter(type, filterMode, layout) \
+			gpuColormapFlow<type, filterMode, layout><<<gridDim, blockDim, 0, stream>>>( \
 										 (float2*)input, input_width, input_height, \
-										 (float4*)output, output_width, output_height, \
+										 (type*)output, output_width, output_height, \
 										 max_value);
 
-		if( filter == FILTER_POINT )
-		{
-			if( format == FORMAT_CHW )
-				flowKernel(FILTER_POINT, FORMAT_CHW)
-			else if( format == FORMAT_HWC )
-				flowKernel(FILTER_POINT, FORMAT_HWC)
+		#define flowKernel(type) \
+		{ \
+			if( filter == FILTER_POINT ) \
+			{ \
+				if( input_format == FORMAT_CHW ) \
+					flowKernelFilter(type, FILTER_POINT, FORMAT_CHW) \
+				else if( input_format == FORMAT_HWC ) \
+					flowKernelFilter(type, FILTER_POINT, FORMAT_HWC) \
+			} \
+			else if( filter == FILTER_LINEAR ) \
+			{ \
+				if( input_format == FORMAT_CHW ) \
+					flowKernelFilter(type, FILTER_LINEAR, FORMAT_CHW) \
+				else if( input_format == FORMAT_HWC ) \
+					flowKernelFilter(type, FILTER_LINEAR, FORMAT_HWC) \
+			} \
 		}
-		else if( filter == FILTER_LINEAR )
+			
+		if( output_format == IMAGE_RGB8 )
+			flowKernel(uchar3)
+		else if( output_format == IMAGE_RGBA8 )
+			flowKernel(uchar4)
+		else if( output_format == IMAGE_RGB32F )
+			flowKernel(float3)
+		else if( output_format == IMAGE_RGBA32F )
+			flowKernel(float4)
+		else
 		{
-			if( format == FORMAT_CHW )
-				flowKernel(FILTER_LINEAR, FORMAT_CHW)
-			else if( format == FORMAT_HWC )
-				flowKernel(FILTER_LINEAR, FORMAT_HWC)
+			imageFormatErrorMsg(LOG_CUDA, "cudaColormap(COLORMAP_FLOW)", output_format);
+			return cudaErrorInvalidValue;
 		}
 	}
 	else if( colormap == COLORMAP_NONE )
@@ -1844,26 +1863,55 @@ cudaError_t cudaColormap( float* input, size_t input_width, size_t input_height,
 		const dim3 blockDim(8, 8);
 		const dim3 gridDim(iDivUp(output_width,blockDim.x), iDivUp(output_height,blockDim.y));
 
-		#define noneKernel(filterMode, layout) gpuColormapNone<filterMode, layout><<<gridDim, blockDim, 0, stream>>>( \
-										 input, input_width, input_height, \
-										 output, output_width, output_height);
+		#define noneKernelFilter(type, filterMode, layout) \
+			gpuColormapNone<type, filterMode, layout><<<gridDim, blockDim, 0, stream>>>( \
+										 (type*)input, input_width, input_height, \
+										 (type*)output, output_width, output_height);
 
-		if( filter == FILTER_POINT )
-		{
-			if( format == FORMAT_CHW )
-				noneKernel(FILTER_POINT, FORMAT_CHW)
-			else if( format == FORMAT_HWC )
-				noneKernel(FILTER_POINT, FORMAT_HWC)
+		#define noneKernel(type) \
+		{ \
+			if( filter == FILTER_POINT ) \
+			{ \
+				if( input_format == FORMAT_CHW ) \
+					noneKernelFilter(type, FILTER_POINT, FORMAT_CHW) \
+				else if( input_format == FORMAT_HWC ) \
+					noneKernelFilter(type, FILTER_POINT, FORMAT_HWC) \
+			} \
+			else if( filter == FILTER_LINEAR ) \
+			{ \
+				if( input_format == FORMAT_CHW ) \
+					noneKernelFilter(type, FILTER_LINEAR, FORMAT_CHW) \
+				else if( input_format == FORMAT_HWC ) \
+					noneKernelFilter(type, FILTER_LINEAR, FORMAT_HWC) \
+			} \
 		}
-		else if( filter == FILTER_LINEAR )
+		
+		if( output_format == IMAGE_GRAY8 )
+			noneKernel(uchar)
+		else if( output_format == IMAGE_GRAY32F )
+			noneKernel(float)
+		/*else if( output_format == IMAGE_RGB8 )
+			noneKernel(uchar3)
+		else if( output_format == IMAGE_RGBA8 )
+			noneKernel(uchar4)*/
+		else if( output_format == IMAGE_RGB32F )
+			noneKernel(float3)
+		else if( output_format == IMAGE_RGBA32F )
+			noneKernel(float4)
+		else
 		{
-			if( format == FORMAT_CHW )
-				noneKernel(FILTER_LINEAR, FORMAT_CHW)
-			else if( format == FORMAT_HWC )
-				noneKernel(FILTER_LINEAR, FORMAT_HWC)
+			LogError(LOG_CUDA "cudaColormap(COLORMAP_NONE) -- unsupported image format (%s)\n", imageFormatToStr(output_format));
+			LogError(LOG_CUDA "      supported formats are:\n");
+			LogError(LOG_CUDA "          * gray8\n");
+			LogError(LOG_CUDA "          * gray32f\n");
+			//LogError(LOG_CUDA "          * rgb8\n");		
+			//LogError(LOG_CUDA "          * rgba8\n");		
+			LogError(LOG_CUDA "          * rgb32f\n");		
+			LogError(LOG_CUDA "          * rgba32f\n");
+			
+			return cudaErrorInvalidValue;
 		}
 	}
-#endif
 
 	return CUDA(cudaGetLastError());
 }
