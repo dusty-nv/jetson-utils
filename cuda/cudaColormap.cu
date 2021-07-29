@@ -43,6 +43,18 @@ cudaColormapType cudaColormapFromStr( const char* str )
 		return COLORMAP_TURBO;
 	else if( strcasecmp(str, "viridis") == 0 )
 		return COLORMAP_VIRIDIS;
+	else if( strcasecmp(str, "inferno-inverted") == 0 || strcasecmp(str, "inferno_inverted") == 0 )
+		return COLORMAP_INFERNO_INVERTED;
+	else if( strcasecmp(str, "magma-inverted") == 0 || strcasecmp(str, "magma_inverted") == 0 )
+		return COLORMAP_MAGMA_INVERTED;
+	else if( strcasecmp(str, "parula-inverted") == 0 || strcasecmp(str, "parula_inverted") == 0 )
+		return COLORMAP_PARULA_INVERTED;
+	else if( strcasecmp(str, "plasma-inverted") == 0 || strcasecmp(str, "plasma_inverted") == 0 )
+		return COLORMAP_PLASMA_INVERTED;
+	else if( strcasecmp(str, "turbo-inverted") == 0 || strcasecmp(str, "turbo_inverted") == 0 )
+		return COLORMAP_TURBO_INVERTED;
+	else if( strcasecmp(str, "viridis-inverted") == 0 || strcasecmp(str, "viridis_inverted") == 0 )
+		return COLORMAP_VIRIDIS_INVERTED;
 	else if( strcasecmp(str, "flow") == 0 )
 		return COLORMAP_FLOW;
 	else if( strcasecmp(str, "none") == 0 )
@@ -61,15 +73,21 @@ const char* cudaColormapToStr( cudaColormapType colormap )
 {
 	switch(colormap)
 	{
-		case COLORMAP_INFERNO:	return "inferno";
-		case COLORMAP_MAGMA:	return "magma";
-		case COLORMAP_PARULA:	return "parula";
-		case COLORMAP_PLASMA:	return "plasma";
-		case COLORMAP_TURBO:	return "turbo";
-		case COLORMAP_VIRIDIS:	return "viridis";
-		case COLORMAP_FLOW:		return "flow";
-		case COLORMAP_NONE:		return "none";
-		case COLORMAP_LINEAR:	return "linear";
+		case COLORMAP_INFERNO:          return "inferno";
+		case COLORMAP_MAGMA:            return "magma";
+		case COLORMAP_PARULA:           return "parula";
+		case COLORMAP_PLASMA:           return "plasma";
+		case COLORMAP_TURBO:            return "turbo";
+		case COLORMAP_VIRIDIS:          return "viridis";
+		case COLORMAP_INFERNO_INVERTED: return "inferno-inverted";
+		case COLORMAP_MAGMA_INVERTED:	  return "magma-inverted";
+		case COLORMAP_PARULA_INVERTED:  return "parula-inverted";
+		case COLORMAP_PLASMA_INVERTED:  return "plasma-inverted";
+		case COLORMAP_TURBO_INVERTED:	  return "turbo-inverted";
+		case COLORMAP_VIRIDIS_INVERTED: return "viridis-inverted";
+		case COLORMAP_FLOW:		       return "flow";
+		case COLORMAP_NONE:		       return "none";
+		case COLORMAP_LINEAR:	       return "linear";
 	}
 
 	return "default";
@@ -1628,7 +1646,7 @@ cudaError_t cudaColormapInit()
 		return cudaSuccess;	 // already initialized
 
 	// allocate memory
-	const size_t numMaps = COLORMAP_VIRIDIS + 1;
+	const size_t numMaps = COLORMAP_VIRIDIS_INVERTED + 1;
 	const size_t mapSize = sizeof(float4) * 256;
 	const size_t memSize = mapSize * numMaps;
 
@@ -1639,8 +1657,13 @@ cudaError_t cudaColormapInit()
 		return cudaErrorMemoryAllocation;
 
 	// copy palettes to pinned memory
-	memcpy(colormapPalettesCPU, colormapPalettes, memSize);
+	memcpy(colormapPalettesCPU, colormapPalettes, memSize/2);
 
+	// create inverted palettes
+	for( uint32_t c=0; c < numMaps/2; c++ )
+		for( uint32_t n=0; n < 256; n++ )
+			colormapPalettesCPU[((numMaps/2+c)*256)+n] = colormapPalettes[c*256+255-n];
+			
 	// copy palettes to GPU
 	if( CUDA_FAILED(cudaMemcpy(colormapPalettesGPU, colormapPalettesCPU, memSize, cudaMemcpyHostToDevice)) )
 		return cudaErrorInvalidMemcpyDirection;
@@ -1671,7 +1694,7 @@ cudaError_t cudaColormapFree()
 // cudaColormapPalette
 float4* cudaColormapPalette( cudaColormapType colormap )
 {
-	if( colormap > COLORMAP_VIRIDIS )
+	if( colormap > COLORMAP_VIRIDIS_INVERTED )
 		return NULL;
 
 	if( CUDA_FAILED(cudaColormapInit()) )
@@ -1767,7 +1790,7 @@ cudaError_t cudaColormap( float* input, size_t input_width, size_t input_height,
 		filter = FILTER_POINT;
 
 	// palettized colormaps
-	if( colormap <= COLORMAP_VIRIDIS )
+	if( colormap <= COLORMAP_VIRIDIS_INVERTED )
 	{
 		// get the pointer to the colormap
 		float4* palette = cudaColormapPalette(colormap);

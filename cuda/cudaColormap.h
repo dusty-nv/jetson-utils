@@ -43,6 +43,14 @@ enum cudaColormapType
 	COLORMAP_TURBO,     /**< Turbo colormap,   see https://ai.googleblog.com/2019/08/turbo-improved-rainbow-colormap-for.html */
 	COLORMAP_VIRIDIS,   /**< Viridis colormap, see http://bids.github.io/colormap/ */
 
+	// Palettized (inverted)
+	COLORMAP_INFERNO_INVERTED,   /**< Inferno colormap (inverted), see http://bids.github.io/colormap/ */
+	COLORMAP_MAGMA_INVERTED,     /**< Magma colormap (inverted),   see http://bids.github.io/colormap/ */
+	COLORMAP_PARULA_INVERTED,    /**< Parula colormap (inverted),  see https://www.mathworks.com/help/matlab/ref/parula.html */
+	COLORMAP_PLASMA_INVERTED,    /**< Plasma colormap (inverted),  see http://bids.github.io/colormap/ */
+	COLORMAP_TURBO_INVERTED,     /**< Turbo colormap (inverted),   see https://ai.googleblog.com/2019/08/turbo-improved-rainbow-colormap-for.html */
+	COLORMAP_VIRIDIS_INVERTED,   /**< Viridis colormap (inverted), see http://bids.github.io/colormap/ */
+
 	// Parametric
 	COLORMAP_FLOW,		/**< Optical flow x/y velocity (2D) */
 	COLORMAP_NONE,		/**< Pass-through (no remapping applied) */
