@@ -214,7 +214,7 @@ public:
 	/**
 	 * @internal Parse the video resource URI and options.
 	 */
-	bool Parse( const char* URI, const int argc, char** argv, IoType ioType);
+	bool Parse( const char* URI, const int argc, char** argv, IoType ioType, const char* extraFlag=NULL);
 
 	/**
 	 * @internal Parse the video resource URI and options.

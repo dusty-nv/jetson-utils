@@ -75,9 +75,11 @@ void videoOptions::Print( const char* prefix ) const
 
 
 // Parse
-bool videoOptions::Parse( const char* URI, const int argc, char** argv, videoOptions::IoType type )
+bool videoOptions::Parse( const char* URI, const int argc, char** argv, videoOptions::IoType type, const char* extraFlag )
 {
-	return Parse(URI, argc, argv, type);
+	commandLine cmdLine(argc, argv, extraFlag);
+
+	return Parse(URI, cmdLine, type);
 }
 
 
