@@ -67,7 +67,7 @@
 // supported image file extensions
 const char* gstDecoder::SupportedExtensions[] = { "mkv", "mp4", "qt", 
 										"flv", "avi", "h264", 
-										"h265", NULL };
+										"h265", "mov", "webm", NULL };
 
 bool gstDecoder::IsSupportedExtension( const char* ext )
 {
@@ -458,9 +458,9 @@ bool gstDecoder::buildLaunchStr()
 	{
 		ss << "filesrc location=" << mOptions.resource.location << " ! ";
 
-		if( uri.extension == "mkv" )
+		if( uri.extension == "mkv" || uri.extension == "webm" )
 			ss << "matroskademux ! ";
-		else if( uri.extension == "mp4" || uri.extension == "qt" )
+		else if( uri.extension == "mp4" || uri.extension == "qt" || uri.extension == "mov" )
 			ss << "qtdemux ! ";
 		else if( uri.extension == "flv" )
 			ss << "flvdemux ! ";
@@ -470,8 +470,8 @@ bool gstDecoder::buildLaunchStr()
 		{
 			LogError(LOG_GSTREAMER "gstDecoder -- unsupported video file extension (%s)\n", uri.extension.c_str());
 			LogError(LOG_GSTREAMER "              supported video extensions are:\n");
-			LogError(LOG_GSTREAMER "                 * mkv\n");
-			LogError(LOG_GSTREAMER "                 * mp4, qt\n");
+			LogError(LOG_GSTREAMER "                 * mkv, webm\n");
+			LogError(LOG_GSTREAMER "                 * mp4, qt, mov\n");
 			LogError(LOG_GSTREAMER "                 * flv\n");
 			LogError(LOG_GSTREAMER "                 * avi\n");
 			LogError(LOG_GSTREAMER "                 * h264, h265\n");
