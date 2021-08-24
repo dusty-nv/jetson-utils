@@ -99,6 +99,8 @@ private:
 	bool initUserPtr();
 	bool initMMap();
 
+	bool uninitDevice();
+
 	int 	    mFD;
 	int	    mRequestFormat;
 	uint32_t mRequestWidth;
