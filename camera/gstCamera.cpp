@@ -141,7 +141,7 @@ bool gstCamera::buildLaunchStr()
 		else if( mOptions.flipMethod == videoOptions::FLIP_ROTATE_180 )
 			mOptions.flipMethod = videoOptions::FLIP_NONE;
 	
-		ss << "nvarguscamerasrc sensor-id=" << mOptions.resource.port << " ! video/x-raw(memory:NVMM), width=(int)" << GetWidth() << ", height=(int)" << GetHeight() << ", framerate=" << (int)mOptions.frameRate << "/1, format=(string)NV12 ! nvvidconv flip-method=" << mOptions.flipMethod << " ! ";
+		ss << "nvarguscamerasrc sensor-id=" << mOptions.resource.port << " ! video/x-raw(memory:NVMM), width=(int)" << GetWidth() << ", height=(int)" << GetHeight() << ", framerate=" << mOptions.frameRateNum << "/" << mOptions.frameRateDenom << ", format=(string)NV12 ! nvvidconv flip-method=" << mOptions.flipMethod << " ! ";
 	#else
 		// older JetPack versions use nvcamerasrc element instead of nvarguscamerasrc
 		ss << "nvcamerasrc fpsRange=\"" << (int)mOptions.frameRate << " " << (int)mOptions.frameRate << "\" ! video/x-raw(memory:NVMM), width=(int)" << GetWidth() << ", height=(int)" << GetHeight() << ", format=(string)NV12 ! nvvidconv flip-method=" << mOptions.flipMethod << " ! "; //'video/x-raw(memory:NVMM), width=(int)1920, height=(int)1080, format=(string)I420, framerate=(fraction)30/1' ! ";
@@ -160,7 +160,7 @@ bool gstCamera::buildLaunchStr()
 			if( mOptions.codec == videoOptions::CODEC_RAW )
 				ss << "format=(string)" << gst_format_to_string(mFormatYUV) << ", ";
 			
-			ss << "width=(int)" << GetWidth() << ", height=(int)" << GetHeight() << " ! "; 
+			ss << "width=(int)" << GetWidth() << ", height=(int)" << GetHeight() << ", framerate=" << mOptions.frameRateNum << "/" << mOptions.frameRateDenom  << " ! ";
 		}
 		
 		//ss << "queue max-size-buffers=16 ! ";
@@ -216,7 +216,7 @@ bool gstCamera::printCaps( GstCaps* device_caps )
 
 
 // parseCaps
-bool gstCamera::parseCaps( GstStructure* caps, videoOptions::Codec* _codec, imageFormat* _format, uint32_t* _width, uint32_t* _height, float* _frameRate )
+bool gstCamera::parseCaps( GstStructure* caps, videoOptions::Codec* _codec, imageFormat* _format, uint32_t* _width, uint32_t* _height, float* _frameRate, int* _frameRateNum, int* _frameRateDenom )
 {
 	// parse codec/format
 	const videoOptions::Codec codec = gst_parse_codec(caps);
@@ -242,7 +242,8 @@ bool gstCamera::parseCaps( GstStructure* caps, videoOptions::Codec* _codec, imag
 		return false;
 	}
 	
-	// get highest framerate
+	// get nearest framerate
+	const float rate_target = mOptions.frameRate;
 	float frameRate = 0;
 	int frameRateNum = 0;
 	int frameRateDenom = 0;
@@ -264,15 +265,20 @@ bool gstCamera::parseCaps( GstStructure* caps, videoOptions::Codec* _codec, imag
 
 				if( GST_VALUE_HOLDS_FRACTION(value) )
 				{
-					frameRateNum = gst_value_get_fraction_numerator(value);
-					frameRateDenom = gst_value_get_fraction_denominator(value);
+					auto rate_num = gst_value_get_fraction_numerator(value);
+					auto rate_denom = gst_value_get_fraction_denominator(value);
 
-					if( frameRateNum > 0 && frameRateDenom > 0 )
+					if( rate_num > 0 && rate_denom > 0 )
 					{
-						const float rate = float(frameRateNum) / float(frameRateDenom);
-		
-						if( rate > frameRate )
+						const float rate = float(rate_num) / float(rate_denom);
+						const float diff_now = abs(rate - rate_target);
+						const float diff_pre = abs(frameRate - rate_target);
+
+						if (frameRate == 0.0f || diff_now < diff_pre) {
 							frameRate = rate;
+							frameRateNum = rate_num;
+							frameRateDenom = rate_denom;
+						}
 					}
 				}
 			}
@@ -287,6 +293,8 @@ bool gstCamera::parseCaps( GstStructure* caps, videoOptions::Codec* _codec, imag
 	*_width     = width;
 	*_height    = height;
 	*_frameRate = frameRate;
+	*_frameRateNum = frameRateNum;
+	*_frameRateDenom = frameRateDenom;
 
 	return true;
 }
@@ -300,6 +308,7 @@ bool gstCamera::matchCaps( GstCaps* device_caps )
 
 	int   bestResolution = 1000000;
 	float bestFrameRate = 0.0f;
+	float rate_target = mOptions.frameRate;
 	videoOptions::Codec bestCodec = videoOptions::CODEC_UNKNOWN;
 
 	for( uint32_t n=0; n < numCaps; n++ )
@@ -313,15 +322,21 @@ bool gstCamera::matchCaps( GstCaps* device_caps )
 		imageFormat format;
 		uint32_t width, height;
 		float frameRate;
+		int frameRateNum;
+		int frameRateDenom;
 
-		if( !parseCaps(caps, &codec, &format, &width, &height, &frameRate) )
+		if( !parseCaps(caps, &codec, &format, &width, &height, &frameRate, &frameRateNum, &frameRateDenom) )
 			continue;
 	
 		const int resolutionDiff = abs(int(mOptions.width) - int(width)) + abs(int(mOptions.height) - int(height));
+		const float rate_diff_now = abs(frameRate - rate_target);
+		const float rate_diff_pre = abs(bestFrameRate - rate_target);
+		const bool is_best_rate = (bestFrameRate == 0.0f || rate_diff_now < rate_diff_pre);
 	
 		// pick this one if the resolution is closer, or if the resolution is the same but the framerate is better
 		// (or if the framerate is the same and previous codec was MJPEG, pick the new one because MJPEG isn't preferred)
-		if( resolutionDiff < bestResolution || (resolutionDiff == bestResolution && (frameRate > bestFrameRate || bestCodec == videoOptions::CODEC_MJPEG)) )
+		// In the case of I420, if you get an error image, uncomment the Boolean expression of I420.
+		if( /* format != imageFormat::IMAGE_I420 && */ (resolutionDiff < bestResolution || (resolutionDiff == bestResolution && (is_best_rate || bestCodec == videoOptions::CODEC_MJPEG))) )
 		{
 			bestResolution = resolutionDiff;
 			bestFrameRate = frameRate;
@@ -339,7 +354,7 @@ bool gstCamera::matchCaps( GstCaps* device_caps )
 		return false;
 	}
 	
-	if( !parseCaps(bestCaps, &mOptions.codec, &mFormatYUV, &mOptions.width, &mOptions.height, &mOptions.frameRate) )
+	if( !parseCaps(bestCaps, &mOptions.codec, &mFormatYUV, &mOptions.width, &mOptions.height, &mOptions.frameRate, &mOptions.frameRateNum, &mOptions.frameRateDenom) )
 		return false;
 	
 	return true;
@@ -356,8 +371,11 @@ bool gstCamera::discover()
 	if( mOptions.height == 0 )
 		mOptions.height = DefaultHeight;
 	
-	if( mOptions.frameRate <= 0 )
+	if( mOptions.frameRate <= 0 ) {
 		mOptions.frameRate = 30;
+		mOptions.frameRateDenom = 100;
+		mOptions.frameRateNum = int(mOptions.frameRate * mOptions.frameRateDenom);
+	}
 
 	// MIPI CSI cameras aren't enumerated
 	if( mOptions.resource.protocol != "v4l2" )
