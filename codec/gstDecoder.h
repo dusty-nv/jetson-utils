@@ -152,7 +152,7 @@ protected:
 	Event	   mWaitEvent;
 	RingBuffer   mBufferYUV;
 	RingBuffer   mBufferRGB;
-
+	
 	std::string  mLaunchStr;
 	bool         mCustomSize;
 	bool		   mCustomRate;
@@ -160,6 +160,13 @@ protected:
 	size_t	   mLoopCount;
 	size_t	   mFrameCount;
 	imageFormat  mFormatYUV;
+		
+	Mutex        mNvmmMutex;
+	int          mNvmmFD;
+	void*        mNvmmEGL;
+	void*        mNvmmCUDA;
+	size_t       mNvmmSize;
+	bool         mNvmmReleaseFD;
 };
   
 #endif
