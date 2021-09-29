@@ -24,10 +24,9 @@
 #define __GSTREAMER_DECODER_H__
 
 #include "gstUtility.h"
-#include "videoSource.h"
+#include "gstBufferManager.h"
 
-#include "Event.h"
-#include "RingBuffer.h"
+#include "videoSource.h"
 
 
 struct _GstAppSink;
@@ -147,26 +146,15 @@ protected:
 	_GstBus*     mBus;
 	_GstAppSink* mAppSink;
 	_GstElement* mPipeline;
-	//gstCodec     mCodec;
-	
+
 	Event	   mWaitEvent;
-	RingBuffer   mBufferYUV;
-	RingBuffer   mBufferRGB;
-	
 	std::string  mLaunchStr;
 	bool         mCustomSize;
 	bool		   mCustomRate;
 	bool         mEOS;
 	size_t	   mLoopCount;
-	size_t	   mFrameCount;
-	imageFormat  mFormatYUV;
 		
-	Mutex        mNvmmMutex;
-	int          mNvmmFD;
-	void*        mNvmmEGL;
-	void*        mNvmmCUDA;
-	size_t       mNvmmSize;
-	bool         mNvmmReleaseFD;
+	gstBufferManager* mBufferManager;
 };
   
 #endif

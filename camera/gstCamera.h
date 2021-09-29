@@ -26,10 +26,8 @@
 #include <gst/gst.h>
 #include <string>
 
-#include "Event.h"
-#include "RingBuffer.h"
-
 #include "videoSource.h"
+#include "gstBufferManager.h"
 
 
 // Forward declarations
@@ -223,14 +221,9 @@ private:
 	_GstElement* mPipeline;
 
 	std::string  mLaunchStr;
-
-	imageFormat mFormatYUV;
-	size_t      mFrameCount;
+	imageFormat  mFormatYUV;
 	
-	RingBuffer mBufferYUV;
-	RingBuffer mBufferRGB;
-
-	Event mWaitEvent;
+	gstBufferManager* mBufferManager;
 };
 
 #endif

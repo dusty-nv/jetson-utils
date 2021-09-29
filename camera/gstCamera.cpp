@@ -40,13 +40,12 @@
 // constructor
 gstCamera::gstCamera( const videoOptions& options ) : videoSource(options)
 {	
-	mAppSink    = NULL;
-	mBus        = NULL;
-	mPipeline   = NULL;	
-	mFrameCount = 0;
-	mFormatYUV  = IMAGE_UNKNOWN;
+	mAppSink   = NULL;
+	mBus       = NULL;
+	mPipeline  = NULL;	
+	mFormatYUV = IMAGE_UNKNOWN;
 	
-	mBufferRGB.SetThreaded(false);
+	mBufferManager = new gstBufferManager(&mOptions);
 }
 
 
@@ -72,6 +71,8 @@ gstCamera::~gstCamera()
 		gst_object_unref(mPipeline);
 		mPipeline = NULL;
 	}
+	
+	SAFE_DELETE(mBufferManager);
 }
 
 
@@ -147,7 +148,13 @@ bool gstCamera::buildLaunchStr()
 		ss << "nvcamerasrc fpsRange=\"" << (int)mOptions.frameRate << " " << (int)mOptions.frameRate << "\" ! video/x-raw(memory:NVMM), width=(int)" << GetWidth() << ", height=(int)" << GetHeight() << ", format=(string)NV12 ! nvvidconv flip-method=" << mOptions.flipMethod << " ! "; //'video/x-raw(memory:NVMM), width=(int)1920, height=(int)1080, format=(string)I420, framerate=(fraction)30/1' ! ";
 	#endif
 		
-		ss << "video/x-raw ! appsink name=mysink";
+	#ifndef DISABLE_NVMM
+		ss << "video/x-raw(memory:NVMM) ! ";
+	#else
+		ss << "video/x-raw ! ";
+	#endif
+	
+		ss << "appsink name=mysink";
 	}
 	else
 	{
@@ -165,18 +172,24 @@ bool gstCamera::buildLaunchStr()
 		
 		//ss << "queue max-size-buffers=16 ! ";
 
+	#ifndef DISABLE_NVMM
+		const char* format = "video/x-raw(memory:NVMM) ! ";
+	#else
+		const char* format = "video/x-raw ! ";
+	#endif
+	
 		if( mOptions.codec == videoOptions::CODEC_H264 )
-			ss << "h264parse ! omxh264dec ! video/x-raw ! ";
+			ss << "h264parse ! omxh264dec ! " << format;
 		else if( mOptions.codec == videoOptions::CODEC_H265 )
-			ss << "h265parse ! omxh265dec ! video/x-raw ! ";
+			ss << "h265parse ! omxh265dec ! " << format;
 		else if( mOptions.codec == videoOptions::CODEC_VP8 )
-			ss << "omxvp8dec ! video/x-raw ! ";
+			ss << "omxvp8dec ! video/x-raw ! " << format;
 		else if( mOptions.codec == videoOptions::CODEC_VP9 )
-			ss << "omxvp9dec ! video/x-raw ! ";
+			ss << "omxvp9dec ! video/x-raw ! " << format;
 		else if( mOptions.codec == videoOptions::CODEC_MPEG2 )
-			ss << "mpegvideoparse ! omxmpeg2videodec ! video/x-raw ! ";
+			ss << "mpegvideoparse ! omxmpeg2videodec ! " << format;
 		else if( mOptions.codec == videoOptions::CODEC_MPEG4 )
-			ss << "mpeg4videoparse ! omxmpeg4videodec ! video/x-raw ! ";
+			ss << "mpeg4videoparse ! omxmpeg4videodec ! " << format;
 		else if( mOptions.codec == videoOptions::CODEC_MJPEG )
 			ss << "jpegdec ! video/x-raw ! "; //ss << "nvjpegdec ! video/x-raw ! "; //ss << "jpegparse ! nvv4l2decoder mjpeg=1 ! video/x-raw(memory:NVMM) ! nvvidconv ! video/x-raw ! "; //
 
@@ -571,120 +584,31 @@ void gstCamera::checkBuffer()
 	
 	if( !gstSample )
 	{
-		LogError(LOG_GSTREAMER "gstCamera -- gst_app_sink_pull_sample() returned NULL...\n");
+		LogError(LOG_GSTREAMER "gstCamera -- app_sink_pull_sample() returned NULL...\n");
 		return;
 	}
 	
-	GstBuffer* gstBuffer = gst_sample_get_buffer(gstSample);
-	
-	if( !gstBuffer )
-	{
-		LogError(LOG_GSTREAMER "gstCamera -- gst_sample_get_buffer() returned NULL...\n");
-		return;
-	}
-	
-	// retrieve data
-	GstMapInfo map; 
-
-	if( !gst_buffer_map(gstBuffer, &map, GST_MAP_READ) ) 
-	{
-		LogError(LOG_GSTREAMER "gstCamera -- gst_buffer_map() failed...\n");
-		return;
-	}
-	
-	const void* gstData = map.data;
-	const gsize gstSize = map.maxsize; //map.size;
-	
-	if( !gstData )
-	{
-		LogError(LOG_GSTREAMER "gstCamera -- gst_buffer_map had NULL data pointer...\n");
-		release_return;
-	}
-	
-	if( map.maxsize > map.size && mFrameCount == 0 ) 
-	{
-		LogWarning(LOG_GSTREAMER "gstCamera -- map buffer size was less than max size (%zu vs %zu)\n", map.size, map.maxsize);
-	}
-
-	// retrieve caps
+	// retrieve sample caps
 	GstCaps* gstCaps = gst_sample_get_caps(gstSample);
 	
 	if( !gstCaps )
 	{
-		LogError(LOG_GSTREAMER "gstCamera -- gst_buffer had NULL caps...\n");
+		LogError(LOG_GSTREAMER "gstCamera -- gst_sample had NULL caps...\n");
 		release_return;
 	}
 	
-	GstStructure* gstCapsStruct = gst_caps_get_structure(gstCaps, 0);
+	// retrieve the buffer from the sample
+	GstBuffer* gstBuffer = gst_sample_get_buffer(gstSample);
 	
-	if( !gstCapsStruct )
+	if( !gstBuffer )
 	{
-		LogError(LOG_GSTREAMER "gstCamera -- caps had NULL structure...\n");
-		release_return;
-	}
-	
-	// on the first frame, print out the recieve caps
-	if( mFrameCount == 0 )
-		LogVerbose(LOG_GSTREAMER "gstCamera recieve caps:  %s\n", gst_caps_to_string(gstCaps));
-
-	// get width & height of the buffer
-	int width  = 0;
-	int height = 0;
-	
-	if( !gst_structure_get_int(gstCapsStruct, "width", &width) ||
-		!gst_structure_get_int(gstCapsStruct, "height", &height) )
-	{
-		LogError(LOG_GSTREAMER "gstCamera -- recieve caps missing width/height...\n");
-		release_return;
-	}
-	
-	if( width < 1 || height < 1 )
-		release_return;
-	
-	mOptions.width  = width;
-	mOptions.height = height;
-
-	// verify format 
-	if( mFrameCount == 0 )
-	{
-		mFormatYUV = gst_parse_format(gstCapsStruct);
-		
-		if( mFormatYUV == IMAGE_UNKNOWN )
-		{
-			LogError(LOG_GSTREAMER "gstCamera -- device %s does not have a compatible decoded format\n", mOptions.resource.location.c_str());
-			release_return;
-		}
-		
-		LogVerbose(LOG_GSTREAMER "gstCamera -- recieved first frame, codec=%s format=%s width=%u height=%u size=%zu\n", videoOptions::CodecToStr(mOptions.codec), imageFormatToStr(mFormatYUV), GetWidth(), GetHeight(), gstSize);
-	}
-	
-	LogDebug(LOG_GSTREAMER "gstCamera recieved %ix%i %s frame (%zu bytes)\n", width, height, imageFormatToStr(mFormatYUV), gstSize);
-	
-	// make sure ringbuffer is allocated
-	if( !mBufferYUV.Alloc(mOptions.numBuffers, gstSize, RingBuffer::ZeroCopy) )
-	{
-		LogError(LOG_GSTREAMER "gstCamera -- failed to allocate %u buffers (%zu bytes each)\n", mOptions.numBuffers, gstSize);
+		LogError(LOG_GSTREAMER "gstCamera -- app_sink_pull_sample() returned NULL...\n");
 		release_return;
 	}
 
-	// copy to next ringbuffer
-	void* nextBuffer = mBufferYUV.Peek(RingBuffer::Write);
-
-	if( !nextBuffer )
-	{
-		LogError(LOG_GSTREAMER "gstCamera -- failed to retrieve next ringbuffer for writing\n");
-		release_return;
-	}
-
-	memcpy(nextBuffer, gstData, gstSize);
-	mBufferYUV.Next(RingBuffer::Write);
-	mWaitEvent.Wake();
-	mFrameCount++;
+	if( !mBufferManager->Enqueue(gstBuffer, gstCaps) )
+		LogError(LOG_GSTREAMER "gstCamera -- failed to handle incoming buffer\n");
 	
-#if GST_CHECK_VERSION(1,0,0)
-	gst_buffer_unmap(gstBuffer, &map);
-#endif	
-
 	release_return;
 }
 
@@ -704,40 +628,12 @@ bool gstCamera::Capture( void** output, imageFormat format, uint64_t timeout )
 	}
 
 	// wait until a new frame is recieved
-	if( !mWaitEvent.Wait(timeout) )
+	if( !mBufferManager->Dequeue(output, format, timeout) )
+	{
+		LogError(LOG_GSTREAMER "gstDecoder -- failed to retrieve next image buffer\n");
 		return false;
+	}
 	
-	// get the latest ringbuffer
-	void* latestYUV = mBufferYUV.Next(RingBuffer::ReadLatestOnce);
-
-	if( !latestYUV )
-		return false;
-
-	// allocate ringbuffer for colorspace conversion
-	const size_t rgbBufferSize = imageFormatSize(format, GetWidth(), GetHeight());
-
-	if( !mBufferRGB.Alloc(mOptions.numBuffers, rgbBufferSize, mOptions.zeroCopy ? RingBuffer::ZeroCopy : 0) )
-	{
-		LogError(LOG_GSTREAMER "gstCamera -- failed to allocate %u buffers (%zu bytes each)\n", mOptions.numBuffers, rgbBufferSize);
-		return false;
-	}
-
-	// perform colorspace conversion
-	void* nextRGB = mBufferRGB.Next(RingBuffer::Write);
-
-	if( CUDA_FAILED(cudaConvertColor(latestYUV, mFormatYUV, nextRGB, format, GetWidth(), GetHeight())) )
-	{
-		LogError(LOG_GSTREAMER "gstCamera::Capture() -- unsupported image format (%s)\n", imageFormatToStr(format));
-		LogError(LOG_GSTREAMER "                        supported formats are:\n");
-		LogError(LOG_GSTREAMER "                            * rgb8\n");		
-		LogError(LOG_GSTREAMER "                            * rgba8\n");		
-		LogError(LOG_GSTREAMER "                            * rgb32f\n");		
-		LogError(LOG_GSTREAMER "                            * rgba32f\n");
-
-		return false;
-	}
-
-	*output = nextRGB;
 	return true;
 }
 
