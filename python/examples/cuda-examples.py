@@ -73,7 +73,7 @@ print('input image:')
 print(input_img)
 
 # copy the image (this isn't necessary, just for demonstration)
-copied_img = jetson.utils.cudaAllocMapped(width=input_img.width, height=input_img.width, format=input_img.format)
+copied_img = jetson.utils.cudaAllocMapped(width=input_img.width, height=input_img.height, format=input_img.format)
 jetson.utils.cudaMemcpy(copied_img, input_img)   # dst, src
 
 jetson.utils.cudaDeviceSynchronize()
