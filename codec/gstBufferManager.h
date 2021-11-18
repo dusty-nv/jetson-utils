@@ -32,11 +32,11 @@
 #include "RingBuffer.h"
 
 
-#if !GST_CHECK_VERSION(1,0,0)
-#define DISABLE_NVMM	// NVMM is only enabled for GStreamer 1.0 and newer
+#if !GST_CHECK_VERSION(1,0,0) && defined(ENABLE_NVMM)
+#undef ENABLE_NVMM	// NVMM is only enabled for GStreamer 1.0 and newer
 #endif
 
-#ifndef DISABLE_NVMM
+#ifdef ENABLE_NVMM
 #define GST_CAPS_FEATURE_MEMORY_NVMM "memory:NVMM"
 #endif
 
@@ -48,9 +48,9 @@
  * It can handle both normal CPU-based GStreamer buffers and NVMM memory which can
  * be mapped directly to the GPU without requiring memory copies using the CPU.
  *
- * To disable the use of NVMM memory, define DISABLE_NVMM when building with CMake:
+ * To disable the use of NVMM memory, set -DENABLE_NVMM=OFF when building with CMake:
  *
- *     cmake -DDISABLE_NVMM ../
+ *     cmake -DENABLE_NVMM=OFF ../
  *
  * @ingroup codec
  */
@@ -91,14 +91,14 @@ protected:
 	
 	videoOptions* mOptions;    /**< Options of the gstDecoder / gstCamera object */			
 	uint64_t	    mFrameCount; /**< Total number of frames that have been recieved */
+	bool 	    mNvmmUsed;	  /**< Is NVMM memory actually used by the stream? */
 	
-#ifndef DISABLE_NVMM
+#ifdef ENABLE_NVMM
 	Mutex  mNvmmMutex;
 	int    mNvmmFD;
 	void*  mNvmmEGL;
 	void*  mNvmmCUDA;
 	size_t mNvmmSize;
-	bool   mNvmmEnabled;
 	bool   mNvmmReleaseFD;
 #endif
 };

@@ -609,7 +609,7 @@ bool gstDecoder::buildLaunchStr()
 
 		ss << " ! video/x-raw";
 
-	#ifndef DISABLE_NVMM
+	#ifdef ENABLE_NVMM
 		ss << "(" << GST_CAPS_FEATURE_MEMORY_NVMM << ")";
 	#endif
 	
@@ -622,7 +622,7 @@ bool gstDecoder::buildLaunchStr()
 	{
 		ss << "video/x-raw";
 		
-	#ifndef DISABLE_NVMM
+	#ifdef ENABLE_NVMM
 		ss << "(" << GST_CAPS_FEATURE_MEMORY_NVMM << ")";
 	#endif
 	

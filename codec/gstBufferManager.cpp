@@ -25,7 +25,7 @@
 #include "logging.h"
 
 
-#ifndef DISABLE_NVMM
+#ifdef ENABLE_NVMM
 #include <nvbuf_utils.h>
 #include <cuda_egl_interop.h>
 #endif
@@ -37,13 +37,13 @@ gstBufferManager::gstBufferManager( videoOptions* options )
 	mOptions    = options;
 	mFormatYUV  = IMAGE_UNKNOWN;
 	mFrameCount = 0;
+	mNvmmUsed   = false;
 	
-#ifndef DISABLE_NVMM
+#ifdef ENABLE_NVMM
 	mNvmmFD        = -1;
 	mNvmmEGL       = NULL;
 	mNvmmCUDA      = NULL;
 	mNvmmSize      = 0;
-	mNvmmEnabled   = false;
 	mNvmmReleaseFD = false;
 #endif
 	
@@ -144,13 +144,13 @@ bool gstBufferManager::Enqueue( GstBuffer* gstBuffer, GstCaps* gstCaps )
 
 	LogDebug(LOG_GSTREAMER "gstBufferManager -- recieved %ix%i frame (%zu bytes)\n", width, height, gstSize);
 		
-#ifndef DISABLE_NVMM
+#ifdef ENABLE_NVMM
 	// check for NVMM buffer	
 	GstCapsFeatures* gstCapsFeatures = gst_caps_get_features(gstCaps, 0);
 	
 	if( gst_caps_features_contains(gstCapsFeatures, GST_CAPS_FEATURE_MEMORY_NVMM))
 	{
-		mNvmmEnabled = true;
+		mNvmmUsed = true;
 		int nvmmFD = -1;
 		
 		if( mFrameCount == 0 )
@@ -216,12 +216,12 @@ bool gstBufferManager::Enqueue( GstBuffer* gstBuffer, GstCaps* gstCaps )
 	}
 	else
 	{
-		mNvmmEnabled = false;
+		mNvmmUsed = false;
 	}
 #endif
 
 	// handle CPU path (non-NVMM)
-	if( !mNvmmEnabled )
+	if( !mNvmmUsed )
 	{
 		// allocate ringbuffer
 		if( !mBufferYUV.Alloc(mOptions->numBuffers, gstSize, RingBuffer::ZeroCopy) )
@@ -263,8 +263,8 @@ bool gstBufferManager::Dequeue( void** output, imageFormat format, uint64_t time
 
 	void* latestYUV = NULL;
 	
-#ifndef DISABLE_NVMM
-	if( mNvmmEnabled )
+#ifdef ENABLE_NVMM
+	if( mNvmmUsed )
 	{
 		mNvmmMutex.Lock();
 		
@@ -362,7 +362,7 @@ bool gstBufferManager::Dequeue( void** output, imageFormat format, uint64_t time
 #endif
 
 	// handle the CPU path (non-NVMM)
-	if( !mNvmmEnabled )
+	if( !mNvmmUsed )
 		latestYUV = mBufferYUV.Next(RingBuffer::ReadLatestOnce);
 
 	if( !latestYUV )

@@ -148,7 +148,7 @@ bool gstCamera::buildLaunchStr()
 		ss << "nvcamerasrc fpsRange=\"" << (int)mOptions.frameRate << " " << (int)mOptions.frameRate << "\" ! video/x-raw(memory:NVMM), width=(int)" << GetWidth() << ", height=(int)" << GetHeight() << ", format=(string)NV12 ! nvvidconv flip-method=" << mOptions.flipMethod << " ! "; //'video/x-raw(memory:NVMM), width=(int)1920, height=(int)1080, format=(string)I420, framerate=(fraction)30/1' ! ";
 	#endif
 		
-	#ifndef DISABLE_NVMM
+	#ifdef ENABLE_NVMM
 		ss << "video/x-raw(memory:NVMM) ! ";
 	#else
 		ss << "video/x-raw ! ";
@@ -172,7 +172,7 @@ bool gstCamera::buildLaunchStr()
 		
 		//ss << "queue max-size-buffers=16 ! ";
 
-	#ifndef DISABLE_NVMM
+	#ifdef ENABLE_NVMM
 		const char* format = "video/x-raw(memory:NVMM) ! ";
 	#else
 		const char* format = "video/x-raw ! ";
