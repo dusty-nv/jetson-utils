@@ -476,7 +476,7 @@ bool cudaFont::OverlayText( void* image, imageFormat format, uint32_t width, uin
 
 		// reset the background rect if needed
 		if( has_bg )
-			mRectsCPU[mRectIndex] = make_float4(width, height, 0, 0);
+			mRectsCPU[mRectIndex+numRects] = make_float4(width, height, 0, 0);
 
 		// make a glyph command for each character
 		for( uint32_t n=0; n < numChars; n++ )
