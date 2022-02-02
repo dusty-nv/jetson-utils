@@ -50,7 +50,7 @@
 		  "                             * vp8, vp9\n"									\
 		  "                             * mpeg2, mpeg4\n"									\
 		  "                             * mjpeg\n"        								\
-		  "  --input-flip=FLIP      flip method to apply to input (excludes V4L2):\n" 			\
+		  "  --input-flip=FLIP      flip method to apply to input:\n" 						\
 		  "                             * none (default)\n" 								\
 		  "                             * counterclockwise\n" 								\
 		  "                             * rotate-180\n" 									\

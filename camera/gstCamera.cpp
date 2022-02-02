@@ -178,14 +178,15 @@ bool gstCamera::buildLaunchStr()
 		const char* format = "video/x-raw ! ";
 	#endif
 	
+		// use hardware decoding when the device is compressed
 		if( mOptions.codec == videoOptions::CODEC_H264 )
 			ss << "h264parse ! omxh264dec ! " << format;
 		else if( mOptions.codec == videoOptions::CODEC_H265 )
 			ss << "h265parse ! omxh265dec ! " << format;
 		else if( mOptions.codec == videoOptions::CODEC_VP8 )
-			ss << "omxvp8dec ! video/x-raw ! " << format;
+			ss << "omxvp8dec ! " << format;
 		else if( mOptions.codec == videoOptions::CODEC_VP9 )
-			ss << "omxvp9dec ! video/x-raw ! " << format;
+			ss << "omxvp9dec ! " << format;
 		else if( mOptions.codec == videoOptions::CODEC_MPEG2 )
 			ss << "mpegvideoparse ! omxmpeg2videodec ! " << format;
 		else if( mOptions.codec == videoOptions::CODEC_MPEG4 )
@@ -193,6 +194,21 @@ bool gstCamera::buildLaunchStr()
 		else if( mOptions.codec == videoOptions::CODEC_MJPEG )
 			ss << "jpegdec ! video/x-raw ! "; //ss << "nvjpegdec ! video/x-raw ! "; //ss << "jpegparse ! nvv4l2decoder mjpeg=1 ! video/x-raw(memory:NVMM) ! nvvidconv ! video/x-raw ! "; //
 
+		// video flipping/rotating for V4L2 devices (use nvvidconv if a hw codec is used for decode)
+		if( mOptions.flipMethod != videoOptions::FLIP_NONE )
+		{
+			#ifdef ENABLE_NVMM
+				const bool use_nvvidconv = (mOptions.codec != videoOptions::CODEC_RAW) && (mOptions.codec != videoOptions::CODEC_MJPEG);
+			#else
+				const bool use_nvvidconv = false;
+			#endif
+			
+			if( use_nvvidconv )
+				ss << "nvvidconv flip-method=" << mOptions.flipMethod << " ! " << format;
+			else
+				ss << "videoflip method=" << videoOptions::FlipMethodToStr(mOptions.flipMethod) << " ! ";  // the videoflip enum varies slightly, but the strings are the same
+		}
+		
 		ss << "appsink name=mysink";
 	}
 	
