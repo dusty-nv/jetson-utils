@@ -796,6 +796,70 @@ void glDisplay::SetMaximized( bool maximized )
 }
 	
 
+// IsFullscreen
+bool glDisplay::IsFullscreen()
+{
+	Atom _NET_WM_STATE = XInternAtom(mDisplayX, "_NET_WM_STATE", False);
+	Atom _NET_WM_STATE_FULLSCREEN = XInternAtom(mDisplayX, "_NET_WM_STATE_FULLSCREEN", False);
+
+	Atom actualType;
+	int actualFormat;
+	unsigned long numItems, bytesAfter;
+	unsigned char* propertyValue = NULL;
+	long maxLength = 1024;
+	bool fullscreen = false;
+
+	const int error = XGetWindowProperty(mDisplayX, mWindowX, _NET_WM_STATE,
+                        				  0, maxLength, False, XA_ATOM, &actualType,
+                        				  &actualFormat, &numItems, &bytesAfter,
+                        				  &propertyValue);
+
+	if( error != Success )
+	{
+		LogError(LOG_GL "glDisplay -- failed to get window properties (error=%i)\n", error);
+		return false;
+	}
+
+	Atom* atoms = (Atom*)propertyValue;
+
+	for( unsigned long i = 0; i < numItems; i++ ) 
+	{
+		if( atoms[i] == _NET_WM_STATE_FULLSCREEN )
+			fullscreen = true;
+ 	}
+
+	XFree(propertyValue);
+	return fullscreen;
+}
+
+
+// SetFullscreen
+void glDisplay::SetFullscreen( bool fullscreen )
+{
+	Atom _NET_WM_STATE = XInternAtom(mDisplayX, "_NET_WM_STATE", False);
+	Atom _NET_WM_STATE_FULLSCREEN = XInternAtom(mDisplayX, "_NET_WM_STATE_FULLSCREEN", False);
+
+	XEvent e;
+	memset(&e, 0, sizeof(XEvent));
+
+	e.xany.type            = ClientMessage;
+	e.xclient.message_type = _NET_WM_STATE;
+	e.xclient.format       = 32;
+	e.xclient.window       = mWindowX;
+	e.xclient.data.l[0]    = fullscreen ? 1 : 0;
+	e.xclient.data.l[1]    = _NET_WM_STATE_FULLSCREEN;
+	e.xclient.data.l[2]    = 0;
+	e.xclient.data.l[3]    = 0;
+
+	const int error = XSendEvent(mDisplayX, RootWindow(mDisplayX, 0), 0,
+                   			    SubstructureNotifyMask | SubstructureRedirectMask, 
+						    &e);
+
+	if( error == 0 )
+		LogError(LOG_GL "glDisplay -- failed to set window to %s mode\n", fullscreen ? "fullscreen" : "non-fullscreen");
+}
+
+
 // SetSize
 void glDisplay::SetSize( uint32_t width, uint32_t height )
 {

@@ -253,6 +253,16 @@ public:
 	 * Determine if the window is maximized or not.
 	 */
 	bool IsMaximized();
+	
+	/**
+	 * Set the window to fullscreen mode or not.
+	 */
+	void SetFullscreen( bool fullscreen );
+	
+	/**
+	 * Determine if the window is fullscreen or not.
+	 */
+	bool IsFullscreen();
 
 	///@}
 
