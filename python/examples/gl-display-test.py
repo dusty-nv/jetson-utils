@@ -28,6 +28,12 @@ import argparse
 parser = argparse.ArgumentParser()
 
 parser.add_argument("--title", type=str, default="Test OpenGL Display Window", help="desired title string of window")
+
+parser.add_argument("--width", type=int, default=640, help="default width of window")
+parser.add_argument("--height", type=int, default=480, help="default height of window")
+parser.add_argument("--maximized", action='store_true', help="sets the window to maximized")
+parser.add_argument("--fullscreen", action='store_true', help="sets the window to fullscreen")
+
 parser.add_argument("--r", type=float, default=0.00, help="window background color (Red component, 0.0-1.0)")
 parser.add_argument("--g", type=float, default=0.75, help="window background color (Green component, 0.0-1.0)")
 parser.add_argument("--b", type=float, default=0.25, help="window background color (Blue component, 0.0-1.0)")
@@ -37,12 +43,18 @@ opt = parser.parse_args()
 print(opt)
 
 # create display device
-display = jetson.utils.glDisplay(opt.title, opt.r, opt.g, opt.b, opt.a)
+display = jetson.utils.glDisplay(opt.title, opt.width, opt.height, opt.r, opt.g, opt.b, opt.a)
 
+if opt.maximized:
+    display.SetMaximized(True)
+    
+if opt.fullscreen:
+    display.SetFullscreen(True)
+    
 # render until user exits
 while display.IsOpen():
-	display.BeginRender()
-	display.EndRender()
-	display.SetTitle("{:s} | {:.0f} FPS".format(opt.title, display.GetFPS()))
+    display.BeginRender()
+    display.EndRender()
+    display.SetTitle("{:s} | {:.0f} FPS".format(opt.title, display.GetFPS()))
 
 

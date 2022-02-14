@@ -344,6 +344,78 @@ static PyObject* PyDisplay_IsClosed( PyDisplay_Object* self )
 }
 
 
+// IsMaximized
+static PyObject* PyDisplay_IsMaximized( PyDisplay_Object* self )
+{
+	if( !self || !self->display )
+	{
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "glDisplay invalid object instance");
+		return NULL;
+	}
+
+	PY_RETURN_BOOL(self->display->IsMaximized());
+}
+
+
+// SetMaximized
+static PyObject* PyDisplay_SetMaximized( PyDisplay_Object* self, PyObject* args )
+{
+	if( !self || !self->display )
+	{
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "glDisplay invalid object instance");
+		return NULL;
+	}
+
+	// parse arguments
+	int value = 0;
+
+	if( !PyArg_ParseTuple(args, "p", &value) )
+	{
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "glDisplay.SetMaximized() failed to parse args tuple");
+		return NULL;
+	}
+
+	self->display->SetMaximized(value > 0);
+	Py_RETURN_NONE;
+}
+
+
+// IsFullscreen
+static PyObject* PyDisplay_IsFullscreen( PyDisplay_Object* self )
+{
+	if( !self || !self->display )
+	{
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "glDisplay invalid object instance");
+		return NULL;
+	}
+
+	PY_RETURN_BOOL(self->display->IsFullscreen());
+}
+
+
+// SetFullscreen
+static PyObject* PyDisplay_SetFullscreen( PyDisplay_Object* self, PyObject* args )
+{
+	if( !self || !self->display )
+	{
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "glDisplay invalid object instance");
+		return NULL;
+	}
+
+	// parse arguments
+	int value = 0;
+
+	if( !PyArg_ParseTuple(args, "p", &value) )
+	{
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "glDisplay.SetFullscreen() failed to parse args tuple");
+		return NULL;
+	}
+
+	self->display->SetFullscreen(value > 0);
+	Py_RETURN_NONE;
+}
+
+
 // ProcessEvents
 static PyObject* PyDisplay_ProcessEvents( PyDisplay_Object* self )
 {
@@ -376,6 +448,10 @@ static PyMethodDef PyDisplay_Methods[] =
 	{ "GetHeight", (PyCFunction)PyDisplay_GetHeight, METH_NOARGS, "Return the height of the window (in pixels)"},
 	{ "IsOpen", (PyCFunction)PyDisplay_IsOpen, METH_NOARGS, "Returns true if the window is open"},
 	{ "IsClosed", (PyCFunction)PyDisplay_IsClosed, METH_NOARGS, "Returns true if the window has been closed"},
+	{ "IsMaximized", (PyCFunction)PyDisplay_IsMaximized, METH_NOARGS, "Returns true if the window is maximized"},
+	{ "SetMaximized", (PyCFunction)PyDisplay_SetMaximized, METH_VARARGS, "Sets the window to maximized/unmaximized based on bool argument"},
+	{ "IsFullscreen", (PyCFunction)PyDisplay_IsFullscreen, METH_NOARGS, "Returns true if the window is fullscreen"},
+	{ "SetFullscreen", (PyCFunction)PyDisplay_SetFullscreen, METH_VARARGS, "Sets the window to fullscreen mode based on bool argument"},
 	{ "SetBackgroundColor", (PyCFunction)PyDisplay_SetBackgroundColor, METH_VARARGS|METH_KEYWORDS, "Set the window background color"},
 	{ "SetTitle", (PyCFunction)PyDisplay_SetTitle, METH_VARARGS, "Set the window title string"},
 	{ "ProcessEvents", (PyCFunction)PyDisplay_ProcessEvents, METH_NOARGS, "Process UI events"},
