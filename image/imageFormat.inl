@@ -232,6 +232,7 @@ template<typename T> struct __image_format_assert_false : std::false_type { };
 template<typename T> inline imageFormat imageFormatFromType()	
 { 
 	static_assert(__image_format_assert_false<T>::value, "invalid image format type - supported types are uchar3, uchar4, float3, float4"); 
+	return IMAGE_UNKNOWN;
 }
 
 template<> inline imageFormat imageFormatFromType<uchar3>()	{ return IMAGE_RGB8; }

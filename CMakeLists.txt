@@ -34,12 +34,12 @@ else()
 
 	if(CUDA_VERSION_MAJOR GREATER 9)
 		message("-- CUDA ${CUDA_VERSION_MAJOR} detected, enabling SM_72")
+		set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS}; -gencode arch=compute_72,code=sm_72)
+	endif()
 
-		set(
-			CUDA_NVCC_FLAGS
-			${CUDA_NVCC_FLAGS}; 
-			-gencode arch=compute_72,code=sm_72
-		)
+	if(CUDA_VERSION_MAJOR GREATER 10)
+		message("-- CUDA ${CUDA_VERSION_MAJOR} detected, enabling SM_87")
+		set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS}; -gencode arch=compute_87,code=sm_87)
 	endif()
 	
 	# setup project output paths
