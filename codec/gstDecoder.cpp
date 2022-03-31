@@ -555,35 +555,22 @@ bool gstDecoder::buildLaunchStr()
 		return false;
 	}
 
-#if GST_CHECK_VERSION(1,0,0)
+	// select the decoder
 	if( mOptions.codec == videoOptions::CODEC_H264 )
-		ss << "omxh264dec ! ";
+		ss << GST_DECODER_H264 << " ! ";
 	else if( mOptions.codec == videoOptions::CODEC_H265 )
-		ss << "omxh265dec ! ";
+		ss << GST_DECODER_H265 << " ! ";
 	else if( mOptions.codec == videoOptions::CODEC_VP8 )
-		ss << "omxvp8dec ! ";
+		ss << GST_DECODER_VP8 << " ! ";
 	else if( mOptions.codec == videoOptions::CODEC_VP9 )
-		ss << "omxvp9dec ! ";
+		ss << GST_DECODER_VP9 << " ! ";
 	else if( mOptions.codec == videoOptions::CODEC_MPEG2 )
-		ss << "omxmpeg2videodec ! ";
+		ss << GST_DECODER_MPEG2 << " ! ";
 	else if( mOptions.codec == videoOptions::CODEC_MPEG4 )
-		ss << "omxmpeg4videodec ! ";
+		ss << GST_DECODER_MPEG4 << " ! ";
 	else if( mOptions.codec == videoOptions::CODEC_MJPEG )
-		ss << "nvjpegdec ! ";
-#else
-	if( mOptions.codec == videoOptions::CODEC_H264 )
-		ss << "nv_omx_h264dec ! ";
-	else if( mOptions.codec == videoOptions::CODEC_H265 )
-		ss << "nv_omx_h265dec ! ";
-	else if( mOptions.codec == videoOptions::CODEC_VP8 )
-		ss << "nv_omx_vp8dec ! ";
-	else if( mOptions.codec == videoOptions::CODEC_VP9 )
-		ss << "nv_omx_vp9dec ! ";
-	else if( mOptions.codec == videoOptions::CODEC_MPEG2 )
-		ss << "nx_omx_mpeg2videodec ! ";
-	else if( mOptions.codec == videoOptions::CODEC_MPEG4 )
-		ss << "nx_omx_mpeg4videodec ! ";
-#endif
+		ss << GST_DECODER_MJPEG << " ! ";
+
 	else
 	{
 		LogError(LOG_GSTREAMER "gstDecoder -- unsupported codec requested (%s)\n", videoOptions::CodecToStr(mOptions.codec));
@@ -622,8 +609,14 @@ bool gstDecoder::buildLaunchStr()
 	{
 		ss << "video/x-raw";
 		
-	#ifdef ENABLE_NVMM
+	#if defined(ENABLE_NVMM) || defined(GST_CODECS_V4L2)
+		// add NVMM caps when requested, or if using V4L2 codecs
 		ss << "(" << GST_CAPS_FEATURE_MEMORY_NVMM << ")";
+	#ifndef ENABLE_NVMM
+		// V4L2 codecs only output NVMM memory
+		// so if NVMM is disabled, put it through nvvidconv first
+		ss << " ! nvvidconv ! video/x-raw";
+	#endif
 	#endif
 	
 		ss << " ! ";

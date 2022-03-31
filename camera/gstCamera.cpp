@@ -158,7 +158,7 @@ bool gstCamera::buildLaunchStr()
 	}
 	else
 	{
-		ss << "v4l2src device=" << mOptions.resource.location << " ! ";
+		ss << "v4l2src device=" << mOptions.resource.location << " do-timestamp=true ! ";
 		
 		if( mOptions.codec != videoOptions::CODEC_UNKNOWN )
 		{
@@ -172,39 +172,56 @@ bool gstCamera::buildLaunchStr()
 		
 		//ss << "queue max-size-buffers=16 ! ";
 
-	#ifdef ENABLE_NVMM
-		const char* format = "video/x-raw(memory:NVMM) ! ";
+	#if defined(ENABLE_NVMM)
+		const char* output_format = "video/x-raw(memory:NVMM) ! ";
+		const bool  enable_nvmm = true;
 	#else
-		const char* format = "video/x-raw ! ";
+		const char* output_format = "video/x-raw ! ";
+		const bool  enable_nvmm = false;
+	#endif
+	
+	#if defined(ENABLE_NVMM) || defined(GST_CODECS_V4L2)
+		const char* codec_format = "video/x-raw(memory:NVMM) ! ";
+	#else
+		const char* codec_format = "video/x-raw ! ";
 	#endif
 	
 		// use hardware decoding when the device is compressed
+		const bool use_hw_decoder = (mOptions.codec != videoOptions::CODEC_RAW) && (mOptions.codec != videoOptions::CODEC_MJPEG);
+		
+	#ifdef GST_CODECS_V4L2
+		const bool use_v4l2_decoder = use_hw_decoder;
+	#else
+		const bool use_v4l2_decoder = false;
+	#endif
+	
 		if( mOptions.codec == videoOptions::CODEC_H264 )
-			ss << "h264parse ! omxh264dec ! " << format;
+			ss << "h264parse ! " << GST_DECODER_H264 << " ! " << codec_format;
 		else if( mOptions.codec == videoOptions::CODEC_H265 )
-			ss << "h265parse ! omxh265dec ! " << format;
+			ss << "h265parse ! " << GST_DECODER_H265 << " ! " << codec_format;
 		else if( mOptions.codec == videoOptions::CODEC_VP8 )
-			ss << "omxvp8dec ! " << format;
+			ss << GST_DECODER_VP8 " ! " << codec_format;
 		else if( mOptions.codec == videoOptions::CODEC_VP9 )
-			ss << "omxvp9dec ! " << format;
+			ss << GST_DECODER_VP9 " ! " << codec_format;
 		else if( mOptions.codec == videoOptions::CODEC_MPEG2 )
-			ss << "mpegvideoparse ! omxmpeg2videodec ! " << format;
+			ss << "mpegvideoparse ! " << GST_DECODER_MPEG2 << " ! " << codec_format;
 		else if( mOptions.codec == videoOptions::CODEC_MPEG4 )
-			ss << "mpeg4videoparse ! omxmpeg4videodec ! " << format;
+			ss << "mpeg4videoparse ! " << GST_DECODER_MPEG4 << " ! " << codec_format;
 		else if( mOptions.codec == videoOptions::CODEC_MJPEG )
 			ss << "jpegdec ! video/x-raw ! "; //ss << "nvjpegdec ! video/x-raw ! "; //ss << "jpegparse ! nvv4l2decoder mjpeg=1 ! video/x-raw(memory:NVMM) ! nvvidconv ! video/x-raw ! "; //
 
 		// video flipping/rotating for V4L2 devices (use nvvidconv if a hw codec is used for decode)
-		if( mOptions.flipMethod != videoOptions::FLIP_NONE )
+		// V4L2 decoders can only output NVMM memory, so use 
+		if( mOptions.flipMethod != videoOptions::FLIP_NONE || (use_v4l2_decoder && !enable_nvmm) )
 		{
-			#ifdef ENABLE_NVMM
-				const bool use_nvvidconv = (mOptions.codec != videoOptions::CODEC_RAW) && (mOptions.codec != videoOptions::CODEC_MJPEG);
+			#if defined(ENABLE_NVMM) || defined(GST_CODECS_V4L2)
+				const bool use_nvvidconv = use_hw_decoder;
 			#else
 				const bool use_nvvidconv = false;
 			#endif
 			
 			if( use_nvvidconv )
-				ss << "nvvidconv flip-method=" << mOptions.flipMethod << " ! " << format;
+				ss << "nvvidconv flip-method=" << mOptions.flipMethod << " ! " << output_format;
 			else
 				ss << "videoflip method=" << videoOptions::FlipMethodToStr(mOptions.flipMethod) << " ! ";  // the videoflip enum varies slightly, but the strings are the same
 		}
