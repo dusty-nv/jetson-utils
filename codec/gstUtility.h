@@ -97,6 +97,13 @@ const char* gst_format_to_string( imageFormat format );
 #define GST_DECODER_MPEG4 "nvv4l2decoder"
 #define GST_DECODER_MJPEG "nvjpegdec"
 
+// Encoders for JetPack >= 5 and GStreamer >= 1.0
+#define GST_ENCODER_H264  "nvv4l2h264enc"
+#define GST_ENCODER_H265  "nvv4l2h265enc"
+#define GST_ENCODER_VP8   "nvv4l2vp8enc"
+#define GST_ENCODER_VP9   "nvv4l2vp9enc"
+#define GST_ENCODER_MJPEG "nvjpegenc"
+
 #else
 	
 /**
@@ -117,6 +124,13 @@ const char* gst_format_to_string( imageFormat format );
 #define GST_DECODER_MPEG4 "omxmpeg4videodec"
 #define GST_DECODER_MJPEG "nvjpegdec"
 
+// Encoders for JetPack <= 4 and GStreamer >= 1.0
+#define GST_ENCODER_H264  "omxh264enc"
+#define GST_ENCODER_H265  "omxh265enc"
+#define GST_ENCODER_VP8   "omxvp8enc"
+#define GST_ENCODER_VP9   "omxvp9enc"
+#define GST_ENCODER_MJPEG "nvjpegenc"
+
 #else
 	
 // Decoders for JetPack <= 4 and GStreamer < 1.0
@@ -127,6 +141,13 @@ const char* gst_format_to_string( imageFormat format );
 #define GST_DECODER_MPEG2 "nx_omx_mpeg2videodec"
 #define GST_DECODER_MPEG4 "nx_omx_mpeg4videodec"
 #define GST_DECODER_MJPEG "nvjpegdec"
+
+// Encoders for JetPack <= 4 and GStreamer < 1.0
+#define GST_ENCODER_H264  "nv_omx_h264enc"
+#define GST_ENCODER_H265  "nv_omx_h265enc"
+#define GST_ENCODER_VP8   "nv_omx_vp8enc"
+#define GST_ENCODER_VP9   "nv_omx_vp9enc"
+#define GST_ENCODER_MJPEG "nvjpegenc"
 
 #endif
 #endif

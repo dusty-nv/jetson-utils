@@ -264,30 +264,26 @@ bool gstEncoder::buildLaunchStr()
 	
 	// determine the requested protocol to use
 	const URI& uri = GetResource();
-
-#if GST_CHECK_VERSION(1,0,0)
+	
 	//ss << mCapsStr << " ! ";
 
-	if( mOptions.codec == videoOptions::CODEC_H264 )
-		ss << "omxh264enc bitrate=" << mOptions.bitRate << " ! video/x-h264 !  ";	// TODO:  investigate quality-level setting
-	else if( mOptions.codec == videoOptions::CODEC_H265 )
-		ss << "omxh265enc bitrate=" << mOptions.bitRate << " ! video/x-h265 ! ";
-	else if( mOptions.codec == videoOptions::CODEC_VP8 )
-		ss << "omxvp8enc bitrate=" << mOptions.bitRate << " ! video/x-vp8 ! ";
-	else if( mOptions.codec == videoOptions::CODEC_VP9 )
-		ss << "omxvp9enc bitrate=" << mOptions.bitRate << " ! video/x-vp9 ! ";
-	else if( mOptions.codec == videoOptions::CODEC_MJPEG )
-		ss << "nvjpegenc ! image/jpeg ! ";
-#else
-	if( mOptions.codec == videoOptions::CODEC_H264 )
-		ss << "nv_omx_h264enc quality-level=2 ! video/x-h264 ! ";
-	else if( mOptions.codec == videoOptions::CODEC_H265 )
-		ss << "nv_omx_h265enc quality-level=2 ! video/x-h265 ! ";
-	else if( mOptions.codec == videoOptions::CODEC_VP8 )
-		ss << "nv_omx_vp8enc quality-level=2 ! video/x-vp8 ! ";
-	else if( mOptions.codec == videoOptions::CODEC_VP9 )
-		ss << "nv_omx_vp9enc quality-level=2 ! video/x-vp9 ! ";
+#ifdef GST_CODECS_V4L2
+	// the V4L2 encoders expect NVMM memory, so use nvvidconv to convert it
+	if( mOptions.codec != videoOptions::CODEC_MJPEG )
+		ss << "nvvidconv ! video/x-raw(memory:NVMM) ! ";
 #endif
+	
+	// select hardware codec to use
+	if( mOptions.codec == videoOptions::CODEC_H264 )
+		ss << GST_ENCODER_H264 << " bitrate=" << mOptions.bitRate << " ! video/x-h264 !  ";	// TODO:  investigate quality-level setting
+	else if( mOptions.codec == videoOptions::CODEC_H265 )
+		ss << GST_ENCODER_H265 << " bitrate=" << mOptions.bitRate << " ! video/x-h265 ! ";
+	else if( mOptions.codec == videoOptions::CODEC_VP8 )
+		ss << GST_ENCODER_VP8 << " bitrate=" << mOptions.bitRate << " ! video/x-vp8 ! ";
+	else if( mOptions.codec == videoOptions::CODEC_VP9 )
+		ss << GST_ENCODER_VP9 << " bitrate=" << mOptions.bitRate << " ! video/x-vp9 ! ";
+	else if( mOptions.codec == videoOptions::CODEC_MJPEG )
+		ss << GST_ENCODER_MJPEG << " ! image/jpeg ! ";
 	else
 	{
 		LogError(LOG_GSTREAMER "gstEncoder -- unsupported codec requested (%s)\n", videoOptions::CodecToStr(mOptions.codec));
