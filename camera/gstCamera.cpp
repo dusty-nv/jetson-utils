@@ -193,20 +193,29 @@ bool gstCamera::buildLaunchStr()
 		const bool use_v4l2_decoder = use_hw_decoder;
 	#else
 		const bool use_v4l2_decoder = false;
+	
+		if( mOptions.codec == videoOptions::CODEC_H264 )
+			ss << "h264parse ! ";  // these cause problems with the V4L2 decoders
+		else if( mOptions.codec == videoOptions::CODEC_H265 )
+			ss << "h265parse ! ";
+		else if( mOptions.codec == videoOptions::CODEC_MPEG2 )
+			ss << "mpegvideoparse ! ";
+		else if( mOptions.codec == videoOptions::CODEC_MPEG4 )
+			ss << "mpeg4videoparse ! ";
 	#endif
 	
 		if( mOptions.codec == videoOptions::CODEC_H264 )
-			ss << "h264parse ! " << GST_DECODER_H264 << " ! " << codec_format;
+			ss << GST_DECODER_H264 << " ! " << codec_format;
 		else if( mOptions.codec == videoOptions::CODEC_H265 )
-			ss << "h265parse ! " << GST_DECODER_H265 << " ! " << codec_format;
+			ss << GST_DECODER_H265 << " ! " << codec_format;
 		else if( mOptions.codec == videoOptions::CODEC_VP8 )
 			ss << GST_DECODER_VP8 " ! " << codec_format;
 		else if( mOptions.codec == videoOptions::CODEC_VP9 )
 			ss << GST_DECODER_VP9 " ! " << codec_format;
 		else if( mOptions.codec == videoOptions::CODEC_MPEG2 )
-			ss << "mpegvideoparse ! " << GST_DECODER_MPEG2 << " ! " << codec_format;
+			ss << GST_DECODER_MPEG2 << " ! " << codec_format;
 		else if( mOptions.codec == videoOptions::CODEC_MPEG4 )
-			ss << "mpeg4videoparse ! " << GST_DECODER_MPEG4 << " ! " << codec_format;
+			ss << GST_DECODER_MPEG4 << " ! " << codec_format;
 		else if( mOptions.codec == videoOptions::CODEC_MJPEG )
 			ss << "jpegdec ! video/x-raw ! "; //ss << "nvjpegdec ! video/x-raw ! "; //ss << "jpegparse ! nvv4l2decoder mjpeg=1 ! video/x-raw(memory:NVMM) ! nvvidconv ! video/x-raw ! "; //
 
