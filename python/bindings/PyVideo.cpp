@@ -223,8 +223,15 @@ static PyObject* PyVideoSource_Capture( PyVideoSource_Object* self, PyObject* ar
 		return NULL;
 	}
 
+	// expect raw image if conversion format is unknown
+	if (format == IMAGE_UNKNOWN)
+	{
+		// register memory capsule (videoSource will free the underlying memory when source is deleted)
+		return PyCUDA_RegisterImage(ptr, self->source->GetWidth(), self->source->GetHeight(), self->source->GetRawFormat(), self->source->GetLastTimestamp(), self->source->GetOptions().zeroCopy, false);
+	}
+
 	// register memory capsule (videoSource will free the underlying memory when source is deleted)
-	return PyCUDA_RegisterImage(ptr, self->source->GetWidth(), self->source->GetHeight(), format, self->source->GetOptions().zeroCopy, false);
+	return PyCUDA_RegisterImage(ptr, self->source->GetWidth(), self->source->GetHeight(), format, self->source->GetLastTimestamp(), self->source->GetOptions().zeroCopy, false);
 }
 
 // PyVideoSource_GetWidth

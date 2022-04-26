@@ -39,6 +39,7 @@ typedef struct {
 typedef struct {
 	PyCudaMemory base;
 	imageFormat format;
+	uint64_t    timestamp;
 	uint32_t    width;
 	uint32_t    height;
 	Py_ssize_t  shape[3];
@@ -50,7 +51,7 @@ PyObject* PyCUDA_RegisterMemory( void* ptr, size_t size, bool mapped=false, bool
 //PyObject* PyCUDA_RegisterMappedMemory( void* ptr, size_t size, bool freeOnDelete=true );
 
 // Create image objects
-PyObject* PyCUDA_RegisterImage( void* ptr, uint32_t width, uint32_t height, imageFormat format, bool mapped=false, bool freeOnDelete=true );
+PyObject* PyCUDA_RegisterImage( void* ptr, uint32_t width, uint32_t height, imageFormat format, uint64_t timestamp=0, bool mapped=false, bool freeOnDelete=true );
 //PyObject* PyCUDA_RegisterMappedImage( void* ptr, uint32_t width, uint32_t height, imageFormat format, bool freeOnDelete=true );
 
 // type checks

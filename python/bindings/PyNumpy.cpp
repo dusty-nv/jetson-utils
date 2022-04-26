@@ -96,12 +96,24 @@ PyObject* PyNumpy_FromCUDA( PyObject* self, PyObject* args, PyObject* kwds )
 	}
 	else
 	{
-		src    = img->base.ptr;
-		mapped = img->base.mapped;
-		width  = img->width;
-		height = img->height;
-		depth  = imageFormatChannels(img->format);
-		type   = PyNumpy_ConvertFormat(img->format);
+		if ( imageFormatIsYUV(img->format) )
+		{
+			src    = img->base.ptr;
+			mapped = img->base.mapped;
+			width  = 1;
+			height = 1;
+			depth  = img->base.size;
+			type   = PyNumpy_ConvertFormat(img->format);
+		}
+		else
+		{
+			src    = img->base.ptr;
+			mapped = img->base.mapped;
+			width  = img->width;
+			height = img->height;
+			depth  = imageFormatChannels(img->format);
+			type   = PyNumpy_ConvertFormat(img->format);
+		}
 	}
 	
 	if( !mapped )   // TODO  support GPU-only memory
@@ -257,7 +269,7 @@ PyObject* PyNumpy_ToCUDA( PyObject* self, PyObject* args, PyObject* kwds )
 	PyObject* capsule = NULL;
 
 	if( format != IMAGE_UNKNOWN )	
-		capsule = PyCUDA_RegisterImage(gpuPtr, dims[1], dims[0], format, true);
+		capsule = PyCUDA_RegisterImage(gpuPtr, dims[1], dims[0], format, 0, true);
 	else
 		capsule = PyCUDA_RegisterMemory(gpuPtr, size, true);
 

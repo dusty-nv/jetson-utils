@@ -189,7 +189,7 @@ static PyObject* PyCamera_CaptureRGBA( PyCamera_Object* self, PyObject* args, Py
 	}
 
 	// register memory capsule (gstCamera will free the underlying memory when camera is deleted)
-	PyObject* capsule = PyCUDA_RegisterImage(ptr, self->camera->GetWidth(), self->camera->GetHeight(), IMAGE_RGBA32F, zeroCopy, false);
+	PyObject* capsule = PyCUDA_RegisterImage(ptr, self->camera->GetWidth(), self->camera->GetHeight(), IMAGE_RGBA32F, self->camera->GetLastTimestamp(), zeroCopy, false);
 
 	if( !capsule )
 		return NULL;

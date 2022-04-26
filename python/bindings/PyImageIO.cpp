@@ -58,7 +58,7 @@ PyObject* PyImageIO_Load( PyObject* self, PyObject* args, PyObject* kwds )
 		return NULL;
 	}
 		
-	return PyCUDA_RegisterImage(imgPtr, width, height, format, true);
+	return PyCUDA_RegisterImage(imgPtr, width, height, format, 0, true);
 }
 
 
@@ -95,7 +95,7 @@ PyObject* PyImageIO_LoadRGBA( PyObject* self, PyObject* args, PyObject* kwds )
 	}
 		
 	// register memory container
-	PyObject* capsule = PyCUDA_RegisterImage(imgPtr, width, height, format, true);
+	PyObject* capsule = PyCUDA_RegisterImage(imgPtr, width, height, format, 0, true);
 
 	if( !capsule )
 		return NULL;
