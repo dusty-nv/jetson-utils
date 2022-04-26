@@ -268,6 +268,12 @@ bool gstBufferManager::Enqueue( GstBuffer* gstBuffer, GstCaps* gstCaps )
 			return false;
 		}
 
+		if (GST_BUFFER_DTS_IS_VALID(gstBuffer) || GST_BUFFER_PTS_IS_VALID(gstBuffer))
+		{
+			timestamp = GST_BUFFER_DTS_OR_PTS(gstBuffer);
+		}
+		// LogInfo("Timestams: %lu, %lu, %lu, %d, %d, %d, %lu\n", GST_BUFFER_DTS(gstBuffer), GST_BUFFER_PTS(gstBuffer), GST_BUFFER_DURATION(gstBuffer), GST_BUFFER_DTS_IS_VALID(gstBuffer), GST_BUFFER_PTS_IS_VALID(gstBuffer), GST_BUFFER_DURATION_IS_VALID(gstBuffer), timestamp);
+
 		memcpy(nextTimestamp, (void*)&timestamp, timestamp_size);
 		mTimestamps.Next(RingBuffer::Write);
 
