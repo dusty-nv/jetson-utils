@@ -33,6 +33,8 @@
 videoSource::videoSource( const videoOptions& options ) : mOptions(options)
 {
 	mStreaming = false;
+	mLastTimestamp = 0;
+	mRawFormat = IMAGE_UNKNOWN;
 }
 
 

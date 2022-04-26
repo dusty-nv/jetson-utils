@@ -46,7 +46,6 @@ gstCamera::gstCamera( const videoOptions& options ) : videoSource(options)
 	mFormatYUV = IMAGE_UNKNOWN;
 	
 	mBufferManager = new gstBufferManager(&mOptions);
-	mLastTimestamp = 0;
 }
 
 
@@ -678,8 +677,8 @@ bool gstCamera::Capture( void** output, imageFormat format, uint64_t timeout )
 	}
 
 	mLastTimestamp = mBufferManager->GetLastTimestamp();
-	// LogInfo(LOG_GSTREAMER "GetLastTimestamp -- %f sec\n", mLastTimestamp / 1.e+9);
-	
+	mRawFormat = mBufferManager->GetRawFormat();
+
 	return true;
 }
 

@@ -258,6 +258,16 @@ public:
 	inline uint32_t GetFrameRate() const			{ return mOptions.frameRate; }
 
 	/**
+	 * Get timestamp of the last captured frame, in nanoseconds.
+ 	 */
+	uint64_t GetLastTimestamp() const { return mLastTimestamp; }
+
+	/**
+	 * Get raw image format.
+ 	 */
+	inline imageFormat GetRawFormat() const { return mRawFormat; }
+
+	/**
 	 * Return the resource URI of the stream.
 	 */
 	inline const URI& GetResource() const			{ return mOptions.resource; }
@@ -308,6 +318,9 @@ protected:
 
 	bool         mStreaming;
 	videoOptions mOptions;
+
+	uint64_t     mLastTimestamp;
+	imageFormat  mRawFormat;
 };
 
 #endif

@@ -179,11 +179,6 @@ public:
 	bool CaptureRGBA( float** image, uint64_t timeout=UINT64_MAX, bool zeroCopy=false );
 
 	/**
-	 * Get timestamp of the latest captured frame.
-	 */
-	uint64_t GetLastTimestamp() const { return mLastTimestamp; }
-
-	/**
 	 * Return the interface type (gstCamera::Type)
 	 */
 	virtual inline uint32_t GetType() const		{ return Type; }
@@ -229,7 +224,6 @@ private:
 	imageFormat  mFormatYUV;
 	
 	gstBufferManager* mBufferManager;
-	uint64_t          mLastTimestamp;  /**< Timestamp of the latest captured (i.e. dequeued) frame */
 };
 
 #endif

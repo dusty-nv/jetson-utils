@@ -66,9 +66,7 @@ bool gstBufferManager::Enqueue( GstBuffer* gstBuffer, GstCaps* gstCaps )
 	if( !gstBuffer || !gstCaps )
 		return false;
 
-	timespec t;
-	apptime(&t);
-	uint64_t timestamp = 1000000000 * (uint64_t)t.tv_sec + (uint64_t)t.tv_nsec;
+	uint64_t timestamp = apptime_nano();
 
 #if GST_CHECK_VERSION(1,0,0)	
 	// map the buffer memory for read access
@@ -272,7 +270,6 @@ bool gstBufferManager::Enqueue( GstBuffer* gstBuffer, GstCaps* gstCaps )
 		{
 			timestamp = GST_BUFFER_DTS_OR_PTS(gstBuffer);
 		}
-		// LogInfo("Timestams: %lu, %lu, %lu, %d, %d, %d, %lu\n", GST_BUFFER_DTS(gstBuffer), GST_BUFFER_PTS(gstBuffer), GST_BUFFER_DURATION(gstBuffer), GST_BUFFER_DTS_IS_VALID(gstBuffer), GST_BUFFER_PTS_IS_VALID(gstBuffer), GST_BUFFER_DURATION_IS_VALID(gstBuffer), timestamp);
 
 		memcpy(nextTimestamp, (void*)&timestamp, timestamp_size);
 		mTimestamps.Next(RingBuffer::Write);
@@ -414,6 +411,13 @@ bool gstBufferManager::Dequeue( void** output, imageFormat format, uint64_t time
 	else
 	{
 		mLastTimestamp = *((uint64_t*)pLastTimestamp);
+	}
+
+	// output raw image if conversion format is unknown
+	if ( format == IMAGE_UNKNOWN )
+	{
+		*output = latestYUV;
+		return true;
 	}
 
 	// allocate ringbuffer for colorspace conversion
