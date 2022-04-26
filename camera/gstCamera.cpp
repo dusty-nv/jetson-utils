@@ -46,6 +46,7 @@ gstCamera::gstCamera( const videoOptions& options ) : videoSource(options)
 	mFormatYUV = IMAGE_UNKNOWN;
 	
 	mBufferManager = new gstBufferManager(&mOptions);
+	mLastTimestamp = 0;
 }
 
 
@@ -675,6 +676,9 @@ bool gstCamera::Capture( void** output, imageFormat format, uint64_t timeout )
 		LogError(LOG_GSTREAMER "gstDecoder -- failed to retrieve next image buffer\n");
 		return false;
 	}
+
+	mLastTimestamp = mBufferManager->GetLastTimestamp();
+	// LogInfo(LOG_GSTREAMER "GetLastTimestamp -- %f sec\n", mLastTimestamp / 1.e+9);
 	
 	return true;
 }

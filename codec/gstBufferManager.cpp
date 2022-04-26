@@ -22,6 +22,7 @@
 
 #include "gstBufferManager.h"
 #include "cudaColorspace.h"
+#include "timespec.h"
 #include "logging.h"
 
 
@@ -37,6 +38,7 @@ gstBufferManager::gstBufferManager( videoOptions* options )
 	mOptions    = options;
 	mFormatYUV  = IMAGE_UNKNOWN;
 	mFrameCount = 0;
+	mLastTimestamp = 0;
 	mNvmmUsed   = false;
 	
 #ifdef ENABLE_NVMM
@@ -63,6 +65,10 @@ bool gstBufferManager::Enqueue( GstBuffer* gstBuffer, GstCaps* gstCaps )
 {
 	if( !gstBuffer || !gstCaps )
 		return false;
+
+	timespec t;
+	apptime(&t);
+	uint64_t timestamp = 1000000000 * (uint64_t)t.tv_sec + (uint64_t)t.tv_nsec;
 
 #if GST_CHECK_VERSION(1,0,0)	
 	// map the buffer memory for read access
@@ -223,25 +229,47 @@ bool gstBufferManager::Enqueue( GstBuffer* gstBuffer, GstCaps* gstCaps )
 	// handle CPU path (non-NVMM)
 	if( !mNvmmUsed )
 	{
-		// allocate ringbuffer
+		// allocate image ringbuffer
 		if( !mBufferYUV.Alloc(mOptions->numBuffers, gstSize, RingBuffer::ZeroCopy) )
 		{
-			LogError(LOG_GSTREAMER "gstBufferManager -- failed to allocate %u buffers (%zu bytes each)\n", mOptions->numBuffers, gstSize);
+			LogError(LOG_GSTREAMER "gstBufferManager -- failed to allocate %u image buffers (%zu bytes each)\n", mOptions->numBuffers, gstSize);
 			return false;
 		}
 
-		// copy to next ringbuffer
+		// copy to next image ringbuffer
 		void* nextBuffer = mBufferYUV.Peek(RingBuffer::Write);
 
 		if( !nextBuffer )
 		{
-			LogError(LOG_GSTREAMER "gstBufferManager -- failed to retrieve next ringbuffer for writing\n");
+			LogError(LOG_GSTREAMER "gstBufferManager -- failed to retrieve next image ringbuffer for writing\n");
 			return false;
 		}
 
 		memcpy(nextBuffer, gstData, gstSize);
 		mBufferYUV.Next(RingBuffer::Write);
 	}
+
+		// handle timestamps in either case (CPU or NVMM path)
+		size_t timestamp_size = sizeof(uint64_t);
+
+		// allocate timestamp ringbuffer (GPU only if not ZeroCopy)
+		if( !mTimestamps.Alloc(mOptions->numBuffers, timestamp_size, RingBuffer::ZeroCopy) )
+		{
+			LogError(LOG_GSTREAMER "gstBufferManager -- failed to allocate %u timestamp buffers (%zu bytes each)\n", mOptions->numBuffers, timestamp_size);
+			return false;
+		}
+
+		// copy to next timestamp ringbuffer
+		void* nextTimestamp = mTimestamps.Peek(RingBuffer::Write);
+
+		if( !nextTimestamp )
+		{
+			LogError(LOG_GSTREAMER "gstBufferManager -- failed to retrieve next timestamp ringbuffer for writing\n");
+			return false;
+		}
+
+		memcpy(nextTimestamp, (void*)&timestamp, timestamp_size);
+		mTimestamps.Next(RingBuffer::Write);
 
 	mWaitEvent.Wake();
 	mFrameCount++;
@@ -367,6 +395,20 @@ bool gstBufferManager::Dequeue( void** output, imageFormat format, uint64_t time
 
 	if( !latestYUV )
 		return false;
+
+	// handle timestamp (both paths)
+	void* pLastTimestamp = NULL;
+	pLastTimestamp = mTimestamps.Next(RingBuffer::ReadLatestOnce);
+
+	if( !pLastTimestamp )
+	{
+		LogWarning(LOG_GSTREAMER "gstBufferManager -- failed to retrieve timestamp buffer (default to 0)\n");
+		mLastTimestamp = 0;
+	}
+	else
+	{
+		mLastTimestamp = *((uint64_t*)pLastTimestamp);
+	}
 
 	// allocate ringbuffer for colorspace conversion
 	const size_t rgbBufferSize = imageFormatSize(format, mOptions->width, mOptions->height);
