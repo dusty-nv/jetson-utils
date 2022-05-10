@@ -407,10 +407,13 @@ static int PyVideoOutput_Init( PyVideoOutput_Object* self, PyObject *args, PyObj
 	// create the video source
 	videoOutput* source = NULL;
 
+	// Release GIL during slow constructor call
+	Py_BEGIN_ALLOW_THREADS
 	if( URI != NULL && strlen(URI) > 0 )
 		source = videoOutput::Create(URI, argc, argv);
 	else
 		source = videoOutput::Create(argc, argv, positionArg);
+	Py_END_ALLOW_THREADS
 
 	if( !source )
 	{
@@ -456,7 +459,12 @@ static PyObject* PyVideoOutput_Open( PyVideoOutput_Object* self )
 		return NULL;
 	}
 
-	if( !self->output->Open() )
+	bool result;
+	Py_BEGIN_ALLOW_THREADS
+	result = self->output->Open();
+	Py_END_ALLOW_THREADS
+
+	if( !result )
 	{
 		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "failed to open videoOutput device for streaming");
 		return NULL;
@@ -474,7 +482,11 @@ static PyObject* PyVideoOutput_Close( PyVideoOutput_Object* self )
 		return NULL;
 	}
 
+	// Release GIL during slow Close call
+	Py_BEGIN_ALLOW_THREADS
 	self->output->Close();
+	Py_END_ALLOW_THREADS
+
 	Py_RETURN_NONE; 
 }
 
@@ -507,8 +519,13 @@ static PyObject* PyVideoOutput_Render( PyVideoOutput_Object* self, PyObject* arg
 		return NULL;
 	}
 
-	// render the image
-	if( !self->output->Render(img->base.ptr, img->width, img->height, img->format) )
+	// Release GIL while rendering the image
+	bool result;
+	Py_BEGIN_ALLOW_THREADS
+	result = self->output->Render(img->base.ptr, img->width, img->height, img->format);
+	Py_END_ALLOW_THREADS
+
+	if (!result)
 	{
 		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "videoOutput failed to render image");
 		return NULL;
