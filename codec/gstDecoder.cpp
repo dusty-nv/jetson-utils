@@ -786,6 +786,9 @@ bool gstDecoder::Capture( void** output, imageFormat format, uint64_t timeout )
 		return false;
 	}
 	
+	mLastTimestamp = mBufferManager->GetLastTimestamp();
+	mRawFormat = mBufferManager->GetRawFormat();
+	
 	return true;
 }
 
