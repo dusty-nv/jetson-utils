@@ -21,25 +21,21 @@ else()
 	find_package(CUDA)
 	message("-- CUDA version: ${CUDA_VERSION}")
 
-	set(
-		CUDA_NVCC_FLAGS
-		${CUDA_NVCC_FLAGS}; 
-		-O3 
-		-gencode arch=compute_37,code=sm_37
-		-gencode arch=compute_53,code=sm_53
-		-gencode arch=compute_60,code=sm_60
-		-gencode arch=compute_61,code=sm_61
-		-gencode arch=compute_62,code=sm_62
-	)
+	set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS}; -O3)
 
-	if(CUDA_VERSION_MAJOR GREATER 9)
-		message("-- CUDA ${CUDA_VERSION_MAJOR} detected, enabling SM_72")
-		set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS}; -gencode arch=compute_72,code=sm_72)
-	endif()
+	if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64")
+		message("-- CUDA ${CUDA_VERSION} detected (${CMAKE_SYSTEM_PROCESSOR}), enabling SM_53 SM_62")
+		set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS}; -gencode arch=compute_53,code=sm_53 -gencode arch=compute_62,code=sm_62)
 
-	if(CUDA_VERSION_MAJOR GREATER 10)
-		message("-- CUDA ${CUDA_VERSION_MAJOR} detected, enabling SM_87")
-		set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS}; -gencode arch=compute_87,code=sm_87)
+		if(CUDA_VERSION_MAJOR GREATER 9)
+			message("-- CUDA ${CUDA_VERSION} detected (${CMAKE_SYSTEM_PROCESSOR}), enabling SM_72")
+			set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS}; -gencode arch=compute_72,code=sm_72)
+		endif()
+
+		if(CUDA_VERSION_MAJOR GREATER 10)
+			message("-- CUDA ${CUDA_VERSION} detected (${CMAKE_SYSTEM_PROCESSOR}), enabling SM_87")
+			set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS}; -gencode arch=compute_87,code=sm_87)
+		endif()
 	endif()
 	
 	# setup project output paths
@@ -63,7 +59,13 @@ else()
 endif()
 
 # option for enabling/disabling NVMM memory in multimedia stack
-option(ENABLE_NVMM "Enable use of NVMM zero-copy memory in video and camera streaming" ON)
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64")
+	set(ENABLE_NVMM_DEFAULT ON)
+else()
+	set(ENABLE_NVMM_DEFAULT OFF)
+endif()
+
+option(ENABLE_NVMM "Enable use of NVMM zero-copy memory in video and camera streaming" ${ENABLE_NVMM_DEFAULT})
 message("-- NVMM zero-copy memory:  ENABLE_NVMM=${ENABLE_NVMM}")
 
 if(ENABLE_NVMM)
@@ -72,16 +74,22 @@ endif()
 
 # additional paths for includes and libraries
 include_directories(${PROJECT_INCLUDE_DIR}/jetson-utils)
-include_directories(/usr/include/gstreamer-1.0 /usr/include/glib-2.0 /usr/include/libxml2 /usr/lib/aarch64-linux-gnu/gstreamer-1.0/include /usr/lib/x86_64-linux-gnu/gstreamer-1.0/include/ /usr/lib/aarch64-linux-gnu/glib-2.0/include/ /usr/lib/x86_64-linux-gnu/glib-2.0/include/)
+include_directories(/usr/include/gstreamer-1.0 /usr/include/glib-2.0 /usr/include/libxml2 /usr/lib/${CMAKE_SYSTEM_PROCESSOR}-linux-gnu/gstreamer-1.0/include /usr/lib/${CMAKE_SYSTEM_PROCESSOR}-linux-gnu/glib-2.0/include/)
 
-link_directories(/usr/lib/aarch64-linux-gnu/tegra)
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64")
+	link_directories(/usr/lib/aarch64-linux-gnu/tegra)
+endif()
 
 # build library
 file(GLOB jetsonUtilitySources *.cpp camera/*.cpp codec/*.cpp cuda/*.cu cuda/*.cpp display/*.cpp image/*.cpp input/*.cpp network/*.cpp threads/*.cpp video/*.cpp)
 file(GLOB jetsonUtilityIncludes *.h *.hpp camera/*.h codec/*.h cuda/*.h cuda/*.cuh display/*.h image/*.h image/*.inl input/*.h network/*.h threads/*.h threads/*.inl video/*.h)
 
 cuda_add_library(jetson-utils SHARED ${jetsonUtilitySources})
-target_link_libraries(jetson-utils GL GLU GLEW gstreamer-1.0 gstapp-1.0 gstpbutils-1.0 nvbuf_utils ${CUDA_nppicc_LIBRARY})	
+target_link_libraries(jetson-utils GL GLU GLEW gstreamer-1.0 gstapp-1.0 gstpbutils-1.0 ${CUDA_nppicc_LIBRARY})	
+
+if(ENABLE_NVMM)
+	target_link_libraries(jetson-utils nvbuf_utils)
+endif()
 
 # transfer all headers to the include directory 
 file(MAKE_DIRECTORY ${PROJECT_INCLUDE_DIR}/jetson-utils)
@@ -91,16 +99,6 @@ foreach(include ${jetsonUtilityIncludes})
 	configure_file(${include} ${PROJECT_INCLUDE_DIR}/jetson-utils COPYONLY)
 endforeach()
 	
-# copy image data
-#file(GLOB imageData data/*.png data/*.jpg)
-
-#foreach(image ${imageData})
-#	message("-- Copying ${image}")
-#	file(COPY ${image} DESTINATION ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
-#	install(CODE "file(COPY ${image} DESTINATION ${CMAKE_INSTALL_PREFIX}/bin )" )
-#endforeach()
-	
-
 # install headers
 foreach(include ${jetsonUtilityIncludes})
 	install(FILES "${include}" DESTINATION include/jetson-utils)
@@ -116,7 +114,5 @@ install(EXPORT jetson-utilsConfig DESTINATION share/jetson-utils/cmake)
 # build tests/sample executables
 add_subdirectory(camera/camera-viewer)
 add_subdirectory(video/video-viewer)
-#add_subdirectory(camera/v4l2-console)
-#add_subdirectory(camera/v4l2-display)
 add_subdirectory(display/gl-display-test)
 add_subdirectory(python)
