@@ -52,6 +52,10 @@
 	#define PYLONG_FROM_UNSIGNED_LONG(x)	PyLong_FromUnsignedLong(x)
 	#endif
 
+	#ifndef PYLONG_FROM_UNSIGNED_LONG_LONG
+	#define PYLONG_FROM_UNSIGNED_LONG_LONG(x)	PyLong_FromUnsignedLongLong(x)
+	#endif
+
 	#ifndef PYSTRING_FROM_STRING
 	#define PYSTRING_FROM_STRING			PyUnicode_FromString
 	#endif
@@ -77,6 +81,10 @@
 
 	#ifndef PYLONG_FROM_UNSIGNED_LONG
 	#define PYLONG_FROM_UNSIGNED_LONG(x)	PyInt_FromLong(x)
+	#endif
+
+	#ifndef PYLONG_FROM_UNSIGNED_LONG_LONG
+	#define PYLONG_FROM_UNSIGNED_LONG_LONG(x)	PyInt_FromLong((long)x)
 	#endif
 
 	#ifndef PYSTRING_FROM_STRING

@@ -46,9 +46,11 @@ camera.Open()
 
 # capture frames until user exits
 while display.IsOpen():
-	image, width, height = camera.CaptureRGBA()
+	# image, width, height = camera.CaptureRGBA(zeroCopy=False)
+	image, width, height = camera.Capture(format="rgb8")
+	print(image, image.timestamp)
 	display.RenderOnce(image, width, height)
-	display.SetTitle("{:s} | {:d}x{:d} | {:.1f} FPS".format("Camera Viewer", width, height, display.GetFPS()))
+	display.SetTitle("{:s} | {:d}x{:d} | {:.3f} sec | {:.1f} FPS".format("Camera Viewer", width, height, image.timestamp / 1.0e+9, display.GetFPS()))
 	
 # close the camera
 camera.Close()

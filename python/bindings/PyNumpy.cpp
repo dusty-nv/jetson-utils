@@ -96,12 +96,24 @@ PyObject* PyNumpy_FromCUDA( PyObject* self, PyObject* args, PyObject* kwds )
 	}
 	else
 	{
-		src    = img->base.ptr;
-		mapped = img->base.mapped;
-		width  = img->width;
-		height = img->height;
-		depth  = imageFormatChannels(img->format);
-		type   = PyNumpy_ConvertFormat(img->format);
+		if ( imageFormatIsYUV(img->format) )
+		{
+			src    = img->base.ptr;
+			mapped = img->base.mapped;
+			width  = 1;
+			height = 1;
+			depth  = img->base.size;
+			type   = PyNumpy_ConvertFormat(img->format);
+		}
+		else
+		{
+			src    = img->base.ptr;
+			mapped = img->base.mapped;
+			width  = img->width;
+			height = img->height;
+			depth  = imageFormatChannels(img->format);
+			type   = PyNumpy_ConvertFormat(img->format);
+		}
 	}
 	
 	if( !mapped )   // TODO  support GPU-only memory
@@ -138,9 +150,10 @@ PyObject* PyNumpy_ToCUDA( PyObject* self, PyObject* args, PyObject* kwds )
 	PyObject* object = NULL;
 
 	int pyBGR=0;
-	static char* kwlist[] = {"array", "isBGR", NULL};
+	static char* kwlist[] = {"array", "isBGR", "timestamp", NULL};
+	long long timestamp = 0;
 
-	if( !PyArg_ParseTupleAndKeywords(args, kwds, "O|i", kwlist, &object, &pyBGR) )
+	if( !PyArg_ParseTupleAndKeywords(args, kwds, "O|iL", kwlist, &object, &pyBGR, &timestamp) )
 	{
 		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaFromNumpy() failed to parse array argument");
 		return NULL;
@@ -149,6 +162,12 @@ PyObject* PyNumpy_ToCUDA( PyObject* self, PyObject* args, PyObject* kwds )
 	if( !PyArray_Check(object) )
 	{
 		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "Object passed to cudaFromNumpy() wasn't a numpy ndarray");
+		return NULL;
+	}
+
+	if( timestamp < 0 )
+	{
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaFromNumpy() timestamp cannot be negative");
 		return NULL;
 	}
 
@@ -257,7 +276,7 @@ PyObject* PyNumpy_ToCUDA( PyObject* self, PyObject* args, PyObject* kwds )
 	PyObject* capsule = NULL;
 
 	if( format != IMAGE_UNKNOWN )	
-		capsule = PyCUDA_RegisterImage(gpuPtr, dims[1], dims[0], format, true);
+		capsule = PyCUDA_RegisterImage(gpuPtr, dims[1], dims[0], format, timestamp, true);
 	else
 		capsule = PyCUDA_RegisterMemory(gpuPtr, size, true);
 

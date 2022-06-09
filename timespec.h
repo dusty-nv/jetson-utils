@@ -131,6 +131,12 @@ extern const timespec __apptime_begin__;
 inline void apptime( timespec* a )										{ timespec t; timestamp(&t); timeDiff(__apptime_begin__, t, a); }
 
 /**
+ * Retrieve the elapsed time since the process started (in nanoseconds).
+ * @ingroup time
+ */
+inline uint64_t apptime_nano()										{ timespec t; apptime(&t); return (uint64_t)t.tv_sec * uint64_t(1000000000) + (uint64_t)t.tv_nsec; }
+
+/**
  * Retrieve the elapsed time since the process started (in seconds).
  * @ingroup time
  */

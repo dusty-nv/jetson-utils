@@ -31,9 +31,10 @@ PyObject* PyImageIO_Load( PyObject* self, PyObject* args, PyObject* kwds )
 {
 	const char* filename  = NULL;
 	const char* formatStr = "rgb8";
-	static char* kwlist[] = {"filename", "format", NULL};
+	static char* kwlist[] = {"filename", "format", "timestamp", NULL};
+	long long timestamp = 0;
 
-	if( !PyArg_ParseTupleAndKeywords(args, kwds, "s|s", kwlist, &filename, &formatStr))
+	if( !PyArg_ParseTupleAndKeywords(args, kwds, "s|sL", kwlist, &filename, &formatStr, &timestamp))
 	{
 		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "loadImage() failed to parse filename argument");
 		return NULL;
@@ -44,6 +45,12 @@ PyObject* PyImageIO_Load( PyObject* self, PyObject* args, PyObject* kwds )
 	if( format == IMAGE_UNKNOWN )
 	{
 		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "loadImage() invalid format string");
+		return NULL;
+	}
+
+	if( timestamp < 0 )
+	{
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "loadImage() timestamp cannot be negative");
 		return NULL;
 	}
 
@@ -58,7 +65,7 @@ PyObject* PyImageIO_Load( PyObject* self, PyObject* args, PyObject* kwds )
 		return NULL;
 	}
 		
-	return PyCUDA_RegisterImage(imgPtr, width, height, format, true);
+	return PyCUDA_RegisterImage(imgPtr, width, height, format, timestamp, true);
 }
 
 
@@ -67,9 +74,10 @@ PyObject* PyImageIO_LoadRGBA( PyObject* self, PyObject* args, PyObject* kwds )
 {
 	const char* filename  = NULL;
 	const char* formatStr = "rgba32f";
-	static char* kwlist[] = {"filename", "format", NULL};
+	static char* kwlist[] = {"filename", "format", "timestamp", NULL};
+	long long timestamp = 0;
 
-	if( !PyArg_ParseTupleAndKeywords(args, kwds, "s|s", kwlist, &filename, &formatStr))
+	if( !PyArg_ParseTupleAndKeywords(args, kwds, "s|sL", kwlist, &filename, &formatStr, &timestamp))
 	{
 		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "loadImageRGBA() failed to parse filename argument");
 		return NULL;
@@ -80,6 +88,12 @@ PyObject* PyImageIO_LoadRGBA( PyObject* self, PyObject* args, PyObject* kwds )
 	if( format == IMAGE_UNKNOWN )
 	{
 		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "loadImageRGBA() invalid format string");
+		return NULL;
+	}
+
+	if( timestamp < 0 )
+	{
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "loadImageRGBA() timestamp cannot be negative");
 		return NULL;
 	}
 
@@ -95,7 +109,7 @@ PyObject* PyImageIO_LoadRGBA( PyObject* self, PyObject* args, PyObject* kwds )
 	}
 		
 	// register memory container
-	PyObject* capsule = PyCUDA_RegisterImage(imgPtr, width, height, format, true);
+	PyObject* capsule = PyCUDA_RegisterImage(imgPtr, width, height, format, timestamp, true);
 
 	if( !capsule )
 		return NULL;

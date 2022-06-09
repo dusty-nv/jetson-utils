@@ -149,8 +149,8 @@ static PyObject* PyCamera_Close( PyCamera_Object* self )
 }
 
 
-// CaptureRGBA
-static PyObject* PyCamera_CaptureRGBA( PyCamera_Object* self, PyObject* args, PyObject* kwds )
+// Capture
+static PyObject* PyCamera_Capture( PyCamera_Object* self, PyObject* args, PyObject* kwds, const char* default_format="raw" )
 {
 	if( !self || !self->camera )
 	{
@@ -159,14 +159,15 @@ static PyObject* PyCamera_CaptureRGBA( PyCamera_Object* self, PyObject* args, Py
 	}
 
 	// parse arguments
+	const char* pyFormat = default_format;
 	int pyTimeout  = -1;
-	int pyZeroCopy = 0;
+	int pyZeroCopy = 1;
 
-	static char* kwlist[] = {"timeout", "zeroCopy", NULL};
+	static char* kwlist[] = {"format", "timeout", "zeroCopy", NULL};
 
-	if( !PyArg_ParseTupleAndKeywords(args, kwds, "|ii", kwlist, &pyTimeout, &pyZeroCopy))
+	if( !PyArg_ParseTupleAndKeywords(args, kwds, "|sii", kwlist, &pyFormat, &pyTimeout, &pyZeroCopy))
 	{
-		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "gstCamera.CaptureRGBA() failed to parse args tuple");
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "gstCamera.Capture() failed to parse args tuple");
 		return NULL;
 	}
 
@@ -176,20 +177,25 @@ static PyObject* PyCamera_CaptureRGBA( PyCamera_Object* self, PyObject* args, Py
 	if( pyTimeout >= 0 )
 		timeout = pyTimeout;
 
+	// convert format string to enum
+	const imageFormat format = imageFormatFromStr(pyFormat);
+
 	// convert int zeroCopy to boolean
 	const bool zeroCopy = pyZeroCopy <= 0 ? false : true;
 
-	// capture RGBA
-	float* ptr = NULL;
+	// capture image
+	void* ptr = NULL;
 
-	if( !self->camera->CaptureRGBA(&ptr, timeout, zeroCopy) )
+	self->camera->SetZeroCopy(zeroCopy);  // takes effect on the first call only
+
+	if( !self->camera->Capture(&ptr, format, timeout) )
 	{
-		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "gstCamera failed to CaptureRGBA()");
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "gstCamera failed to Capture()");
 		return NULL;
 	}
 
 	// register memory capsule (gstCamera will free the underlying memory when camera is deleted)
-	PyObject* capsule = PyCUDA_RegisterImage(ptr, self->camera->GetWidth(), self->camera->GetHeight(), IMAGE_RGBA32F, zeroCopy, false);
+	PyObject* capsule = PyCUDA_RegisterImage(ptr, self->camera->GetWidth(), self->camera->GetHeight(), format == IMAGE_UNKNOWN ? self->camera->GetRawFormat() : format, self->camera->GetLastTimestamp(), self->camera->GetOptions().zeroCopy, false);
 
 	if( !capsule )
 		return NULL;
@@ -207,6 +213,72 @@ static PyObject* PyCamera_CaptureRGBA( PyCamera_Object* self, PyObject* args, Py
 
 	return tuple;
 }
+
+
+static PyObject* PyCamera_CaptureRGBA( PyCamera_Object* self, PyObject* args, PyObject* kwds )
+{
+	return PyCamera_Capture(self, args, kwds, "rgba32f");
+}
+
+
+//// CaptureRGBA
+//static PyObject* PyCamera_CaptureRGBA( PyCamera_Object* self, PyObject* args, PyObject* kwds )
+//{
+//	if( !self || !self->camera )
+//	{
+//		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "gstCamera invalid object instance");
+//		return NULL;
+//	}
+//
+//	// parse arguments
+//	int pyTimeout  = -1;
+//	int pyZeroCopy = 1;
+//
+//	static char* kwlist[] = {"timeout", "zeroCopy", NULL};
+//
+//	if( !PyArg_ParseTupleAndKeywords(args, kwds, "|ii", kwlist, &pyTimeout, &pyZeroCopy))
+//	{
+//		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "gstCamera.CaptureRGBA() failed to parse args tuple");
+//		return NULL;
+//	}
+//
+//	// convert signed timeout to unsigned long
+//	uint64_t timeout = UINT64_MAX;
+//
+//	if( pyTimeout >= 0 )
+//		timeout = pyTimeout;
+//
+//	// convert int zeroCopy to boolean
+//	const bool zeroCopy = pyZeroCopy <= 0 ? false : true;
+//
+//	// capture RGBA
+//	float* ptr = NULL;
+//
+//	if( !self->camera->CaptureRGBA(&ptr, timeout, zeroCopy) )
+//	{
+//		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "gstCamera failed to CaptureRGBA()");
+//		return NULL;
+//	}
+//
+//	// register memory capsule (gstCamera will free the underlying memory when camera is deleted)
+//	PyObject* capsule = PyCUDA_RegisterImage(ptr, self->camera->GetWidth(), self->camera->GetHeight(), IMAGE_RGBA32F, self->camera->GetLastTimestamp(), zeroCopy, false);
+//
+//	if( !capsule )
+//		return NULL;
+//
+//	// create dimension objects
+//	PyObject* pyWidth  = PYLONG_FROM_LONG(self->camera->GetWidth());
+//	PyObject* pyHeight = PYLONG_FROM_LONG(self->camera->GetHeight());
+//
+//	// return tuple
+//	PyObject* tuple = PyTuple_Pack(3, capsule, pyWidth, pyHeight);
+//
+//	Py_DECREF(capsule);
+//	Py_DECREF(pyWidth);
+//	Py_DECREF(pyHeight);
+//
+//	return tuple;
+//}
 
 
 // GetWidth()
@@ -246,6 +318,7 @@ static PyMethodDef pyCamera_Methods[] =
 {
 	{ "Open", (PyCFunction)PyCamera_Open, METH_NOARGS, "Open the camera for streaming frames"},
 	{ "Close", (PyCFunction)PyCamera_Close, METH_NOARGS, "Stop streaming camera frames"},
+	{ "Capture", (PyCFunction)PyCamera_Capture, METH_VARARGS|METH_KEYWORDS, "Capture a camera frame (in raw format by default)"},
 	{ "CaptureRGBA", (PyCFunction)PyCamera_CaptureRGBA, METH_VARARGS|METH_KEYWORDS, "Capture a camera frame and convert it to float4 RGBA"},
 	{ "GetWidth", (PyCFunction)PyCamera_GetWidth, METH_NOARGS, "Return the width of the camera (in pixels)"},
 	{ "GetHeight", (PyCFunction)PyCamera_GetHeight, METH_NOARGS, "Return the height of the camera (in pixels)"},

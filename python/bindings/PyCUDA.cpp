@@ -245,12 +245,13 @@ static PyObject* PyCudaImage_New( PyTypeObject *type, PyObject *args, PyObject *
 	self->strides[0] = 0; self->strides[1] = 0; self->strides[2] = 0;
 	
 	self->format = IMAGE_UNKNOWN;
+	self->timestamp = 0;
 	
 	return (PyObject*)self;
 }
 
 // PyCudaImage_Config
-static void PyCudaImage_Config( PyCudaImage* self, void* ptr, uint32_t width, uint32_t height, imageFormat format, bool mapped, bool freeOnDelete )
+static void PyCudaImage_Config( PyCudaImage* self, void* ptr, uint32_t width, uint32_t height, imageFormat format, uint64_t timestamp, bool mapped, bool freeOnDelete )
 {
 	self->base.ptr = ptr;
 	self->base.size = imageFormatSize(format, width, height);
@@ -271,6 +272,7 @@ static void PyCudaImage_Config( PyCudaImage* self, void* ptr, uint32_t width, ui
 	self->strides[2] = self->strides[1] / self->shape[2];
 
 	self->format = format;
+	self->timestamp = timestamp;
 }
 
 // PyCudaImage_Init
@@ -283,11 +285,12 @@ static int PyCudaImage_Init( PyCudaImage* self, PyObject *args, PyObject *kwds )
 	int height = 0;
 	int mapped = 1;
 	int freeOnDelete = 1;
+	long long timestamp = 0;
 
 	const char* formatStr = "rgb8";
-	static char* kwlist[] = {"width", "height", "format", "mapped", "freeOnDelete", NULL};
+	static char* kwlist[] = {"width", "height", "format", "timestamp", "mapped", "freeOnDelete", NULL};
 
-	if( !PyArg_ParseTupleAndKeywords(args, kwds, "ii|sii", kwlist, &width, &height, &formatStr, &mapped, &freeOnDelete))
+	if( !PyArg_ParseTupleAndKeywords(args, kwds, "ii|sLii", kwlist, &width, &height, &formatStr, &timestamp, &mapped, &freeOnDelete))
 	{
 		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaImage.__init()__ failed to parse args tuple");
 		LogDebug(LOG_PY_UTILS "cudaImage.__init()__ failed to parse args tuple\n");
@@ -305,6 +308,12 @@ static int PyCudaImage_Init( PyCudaImage* self, PyObject *args, PyObject *kwds )
 	if( format == IMAGE_UNKNOWN )
 	{
 		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaImage.__init()__ had invalid image format");
+		return -1;
+	}
+
+	if( timestamp < 0)
+	{
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaImage.__init()__ had invalid timestamp");
 		return -1;
 	}
 
@@ -328,7 +337,7 @@ static int PyCudaImage_Init( PyCudaImage* self, PyObject *args, PyObject *kwds )
 		}
 	}
 	
-	PyCudaImage_Config(self, self->base.ptr, width, height, format, (mapped > 0) ? true : false, (freeOnDelete > 0) ? true : false);
+	PyCudaImage_Config(self, self->base.ptr, width, height, format, timestamp, (mapped > 0) ? true : false, (freeOnDelete > 0) ? true : false);
 	return 0;
 }
 
@@ -345,10 +354,11 @@ static PyObject* PyCudaImage_ToString( PyCudaImage* self )
 		   "   -- height:   %u\n"
 		   "   -- channels: %u\n"
 		   "   -- format:   %s\n"
+		   "   -- timestamp: %f\n"
 		   "   -- mapped:   %s\n"
 		   "   -- freeOnDelete: %s\n",
 		   self->base.ptr, self->base.size, (uint32_t)self->width, (uint32_t)self->height, (uint32_t)self->shape[2],  
-		   imageFormatToStr(self->format), self->base.mapped ? "true" : "false", self->base.freeOnDelete ? "true" : "false");
+		   imageFormatToStr(self->format), self->timestamp / 1.0e+9, self->base.mapped ? "true" : "false", self->base.freeOnDelete ? "true" : "false");
 
 	return PYSTRING_FROM_STRING(str);
 }
@@ -391,6 +401,12 @@ static PyObject* PyCudaImage_GetShape( PyCudaImage* self, void* closure )
 static PyObject* PyCudaImage_GetFormat( PyCudaImage* self, void* closure )
 {
 	return PYSTRING_FROM_STRING(imageFormatToStr(self->format));
+}
+
+// PyCudaImage_GetTimestamp
+static PyObject* PyCudaImage_GetTimestamp( PyCudaImage* self, void* closure )
+{
+	return PYLONG_FROM_UNSIGNED_LONG_LONG(self->timestamp);
 }
 
 // PyCudaImage_ParseSubscriptTuple
@@ -701,6 +717,7 @@ static PyGetSetDef pyCudaImage_GetSet[] =
 	{ "channels", (getter)PyCudaImage_GetChannels, NULL, "Number of color channels in the image", NULL},
 	{ "shape", (getter)PyCudaImage_GetShape, NULL, "Image dimensions in (height, width, channels) tuple", NULL},
 	{ "format", (getter)PyCudaImage_GetFormat, NULL, "Pixel format of the image", NULL},
+	{ "timestamp", (getter)PyCudaImage_GetTimestamp, NULL, "Timestamp of the image (in nanoseconds)", NULL},
 	{ NULL } /* Sentinel */
 };
 
@@ -776,7 +793,7 @@ PyObject* PyCUDA_RegisterMemory( void* gpuPtr, size_t size, bool mapped, bool fr
 }
 
 // PyCUDA_RegisterImage
-PyObject* PyCUDA_RegisterImage( void* gpuPtr, uint32_t width, uint32_t height, imageFormat format, bool mapped, bool freeOnDelete )
+PyObject* PyCUDA_RegisterImage( void* gpuPtr, uint32_t width, uint32_t height, imageFormat format, uint64_t timestamp, bool mapped, bool freeOnDelete )
 {
 	if( !gpuPtr )
 	{
@@ -792,7 +809,7 @@ PyObject* PyCUDA_RegisterImage( void* gpuPtr, uint32_t width, uint32_t height, i
 		return NULL;
 	}
 
-	PyCudaImage_Config(mem, gpuPtr, width, height, format, mapped, freeOnDelete);
+	PyCudaImage_Config(mem, gpuPtr, width, height, format, timestamp, mapped, freeOnDelete);
 	return (PyObject*)mem;
 }
 
@@ -848,7 +865,7 @@ PyCudaImage* PyCUDA_GetImage( PyObject* object )
 }
 
 // PyCUDA_GetImage
-void* PyCUDA_GetImage( PyObject* capsule, int* width, int* height, imageFormat* format )
+void* PyCUDA_GetImage( PyObject* capsule, int* width, int* height, imageFormat* format, uint64_t* timestamp )
 {
 	PyCudaImage* img = PyCUDA_GetImage(capsule);
 	void* ptr = NULL;
@@ -859,6 +876,8 @@ void* PyCUDA_GetImage( PyObject* capsule, int* width, int* height, imageFormat* 
 		*width = img->width;
 		*height = img->height;
 		*format = img->format;
+		if ( timestamp )
+			*timestamp = img->timestamp;
 	}
 	else
 	{
@@ -902,11 +921,12 @@ PyObject* PyCUDA_Malloc( PyObject* self, PyObject* args, PyObject* kwds )
 	int size = 0;
 	int width = 0;
 	int height = 0;
+	long long timestamp = 0;
 
 	const char* formatStr = NULL;
-	static char* kwlist[] = {"size", "width", "height", "format", NULL};
+	static char* kwlist[] = {"size", "width", "height", "format", "timestamp", NULL};
 
-	if( !PyArg_ParseTupleAndKeywords(args, kwds, "|iiis", kwlist, &size, &width, &height, &formatStr))
+	if( !PyArg_ParseTupleAndKeywords(args, kwds, "|iiisL", kwlist, &size, &width, &height, &formatStr, &timestamp))
 	{
 		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaMalloc() failed to parse arguments");
 		return NULL;
@@ -915,6 +935,12 @@ PyObject* PyCUDA_Malloc( PyObject* self, PyObject* args, PyObject* kwds )
 	if( size <= 0 && (width <= 0 || height <= 0) )
 	{
 		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaMalloc() requested size/dimensions are negative or zero");
+		return NULL;
+	}
+
+	if( timestamp < 0 )
+	{
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaMalloc() timestamp cannot be negative");
 		return NULL;
 	}
 
@@ -939,7 +965,7 @@ PyObject* PyCUDA_Malloc( PyObject* self, PyObject* args, PyObject* kwds )
 		return NULL;
 	}
 
-	return isImage ? PyCUDA_RegisterImage(ptr, width, height, format)
+	return isImage ? PyCUDA_RegisterImage(ptr, width, height, format, timestamp)
 				: PyCUDA_RegisterMemory(ptr, size);
 }
 
@@ -950,11 +976,12 @@ PyObject* PyCUDA_AllocMapped( PyObject* self, PyObject* args, PyObject* kwds )
 	int size = 0;
 	float width = 0;
 	float height = 0;
+	long long timestamp = 0;
 
 	const char* formatStr = NULL;
-	static char* kwlist[] = {"size", "width", "height", "format", NULL};
+	static char* kwlist[] = {"size", "width", "height", "format", "timestamp", NULL};
 
-	if( !PyArg_ParseTupleAndKeywords(args, kwds, "|iffs", kwlist, &size, &width, &height, &formatStr))
+	if( !PyArg_ParseTupleAndKeywords(args, kwds, "|iffsL", kwlist, &size, &width, &height, &formatStr, &timestamp))
 	{
 		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaAllocMapped() failed to parse arguments");
 		return NULL;
@@ -963,6 +990,12 @@ PyObject* PyCUDA_AllocMapped( PyObject* self, PyObject* args, PyObject* kwds )
 	if( size <= 0 && (width <= 0 || height <= 0) )
 	{
 		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaAllocMapped() requested size/dimensions are negative or zero");
+		return NULL;
+	}
+
+	if( timestamp < 0 )
+	{
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaAllocMapped() timestamp cannot be negative");
 		return NULL;
 	}
 
@@ -987,7 +1020,7 @@ PyObject* PyCUDA_AllocMapped( PyObject* self, PyObject* args, PyObject* kwds )
 		return NULL;
 	}
 
-	return isImage ? PyCUDA_RegisterImage(ptr, width, height, format, true)
+	return isImage ? PyCUDA_RegisterImage(ptr, width, height, format, timestamp, true)
 				: PyCUDA_RegisterMemory(ptr, size, true);
 }
 
@@ -1017,8 +1050,9 @@ PyObject* PyCUDA_Memcpy( PyObject* self, PyObject* args, PyObject* kwds )
 	int src_width = 0;
 	int src_height = 0;
 	imageFormat src_format = IMAGE_UNKNOWN;
+	uint64_t src_timestamp = 0;
 	
-	void* src_ptr = PyCUDA_GetImage(src_capsule, &src_width, &src_height, &src_format);
+	void* src_ptr = PyCUDA_GetImage(src_capsule, &src_width, &src_height, &src_format, &src_timestamp);
 	
 	if( !src_ptr ) 
 	{
@@ -1029,7 +1063,7 @@ PyObject* PyCUDA_Memcpy( PyObject* self, PyObject* args, PyObject* kwds )
 	// allocate the dst image (if needed)
 	void* dst_ptr = NULL;
 	bool dst_allocated = false;
-	
+
 	if( !dst_capsule )
 	{
 		if( !cudaAllocMapped(&dst_ptr, src_width, src_height, src_format) )
@@ -1038,7 +1072,7 @@ PyObject* PyCUDA_Memcpy( PyObject* self, PyObject* args, PyObject* kwds )
 			return NULL;
 		}
 		
-		dst_capsule = PyCUDA_RegisterImage(dst_ptr, src_width, src_height, src_format, true);
+		dst_capsule = PyCUDA_RegisterImage(dst_ptr, src_width, src_height, src_format, src_timestamp, true);
 		dst_allocated = true;
 	}
 	else
@@ -1046,7 +1080,7 @@ PyObject* PyCUDA_Memcpy( PyObject* self, PyObject* args, PyObject* kwds )
 		int dst_width = 0;
 		int dst_height = 0;
 		imageFormat dst_format = IMAGE_UNKNOWN;
-		
+
 		dst_ptr = PyCUDA_GetImage(dst_capsule, &dst_width, &dst_height, &dst_format);
 		
 		if( !dst_ptr ) 
@@ -1060,6 +1094,9 @@ PyObject* PyCUDA_Memcpy( PyObject* self, PyObject* args, PyObject* kwds )
 			PyErr_SetString(PyExc_TypeError, LOG_PY_UTILS "src/dst images need to have matching dimensions and formats");
 			return NULL;
 		}
+
+		PyCudaImage* dst_img = PyCUDA_GetImage(dst_capsule);
+		dst_img->timestamp = src_timestamp;
 	}
 	
 	if( CUDA_FAILED(cudaMemcpy(dst_ptr, src_ptr, imageFormatSize(src_format, src_width, src_height), cudaMemcpyDeviceToDevice)) )
@@ -1067,7 +1104,7 @@ PyObject* PyCUDA_Memcpy( PyObject* self, PyObject* args, PyObject* kwds )
 		PyErr_SetString(PyExc_TypeError, LOG_PY_UTILS "cudaMemcpy() failed to copy memory");
 		return NULL;
 	}
-			
+
 	if( dst_allocated )
 		return dst_capsule;
 	
@@ -1142,6 +1179,8 @@ PyObject* PyCUDA_ConvertColor( PyObject* self, PyObject* args, PyObject* kwds )
 		return NULL;
 	}
 
+	output->timestamp = input->timestamp;
+
 	// return void
 	Py_RETURN_NONE;
 }
@@ -1184,6 +1223,8 @@ PyObject* PyCUDA_Resize( PyObject* self, PyObject* args, PyObject* kwds )
 		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaResize() failed");
 		return NULL;
 	}
+
+	output->timestamp = input->timestamp;
 
 	// return void
 	Py_RETURN_NONE;
@@ -1242,6 +1283,8 @@ PyObject* PyCUDA_Crop( PyObject* self, PyObject* args, PyObject* kwds )
 		return NULL;
 	}
 
+	output->timestamp = input->timestamp;
+
 	// return void
 	Py_RETURN_NONE;
 }
@@ -1294,6 +1337,8 @@ PyObject* PyCUDA_Normalize( PyObject* self, PyObject* args, PyObject* kwds )
 		return NULL;
 	}
 
+	output->timestamp = input->timestamp;
+
 	// return void
 	Py_RETURN_NONE;
 }
@@ -1339,6 +1384,8 @@ PyObject* PyCUDA_Overlay( PyObject* self, PyObject* args, PyObject* kwds )
 		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaOverlay() failed");
 		return NULL;
 	}
+
+	output->timestamp = input->timestamp;
 
 	// return void
 	Py_RETURN_NONE;
@@ -1406,6 +1453,8 @@ PyObject* PyCUDA_DrawCircle( PyObject* self, PyObject* args, PyObject* kwds )
 		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaDrawCircle() failed to render");
 		return NULL;
 	}
+
+	output->timestamp = input->timestamp;
 
 	Py_RETURN_NONE;
 }
@@ -1476,6 +1525,8 @@ PyObject* PyCUDA_DrawLine( PyObject* self, PyObject* args, PyObject* kwds )
 		return NULL;
 	}
 
+	output->timestamp = input->timestamp;
+
 	Py_RETURN_NONE;
 }
 
@@ -1542,6 +1593,8 @@ PyObject* PyCUDA_DrawRect( PyObject* self, PyObject* args, PyObject* kwds )
 		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaDrawRect() failed to render");
 		return NULL;
 	}
+
+	output->timestamp = input->timestamp;
 
 	Py_RETURN_NONE;
 }
@@ -1888,7 +1941,7 @@ static PyMethodDef pyCUDA_Functions[] =
 {
 	{ "cudaMalloc", (PyCFunction)PyCUDA_Malloc, METH_VARARGS|METH_KEYWORDS, "Allocated CUDA memory on the GPU with cudaMalloc()" },
 	{ "cudaAllocMapped", (PyCFunction)PyCUDA_AllocMapped, METH_VARARGS|METH_KEYWORDS, "Allocate CUDA ZeroCopy mapped memory" },
-	{ "cudaMemcpy", (PyCFunction)PyCUDA_Memcpy, METH_VARARGS|METH_KEYWORDS, "Copy src image to dst image (or if dst provided, return a new image with the contents of src)" },
+	{ "cudaMemcpy", (PyCFunction)PyCUDA_Memcpy, METH_VARARGS|METH_KEYWORDS, "Copy src image to dst image (or if dst is not provided, return a new image with the contents of src)" },
 	{ "cudaDeviceSynchronize", (PyCFunction)PyCUDA_DeviceSynchronize, METH_NOARGS, "Wait for the GPU to complete all work" },
 	{ "cudaConvertColor", (PyCFunction)PyCUDA_ConvertColor, METH_VARARGS|METH_KEYWORDS, "Perform colorspace conversion on the GPU" },
 	{ "cudaCrop", (PyCFunction)PyCUDA_Crop, METH_VARARGS|METH_KEYWORDS, "Crop an image on the GPU" },		

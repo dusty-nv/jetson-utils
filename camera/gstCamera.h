@@ -179,6 +179,12 @@ public:
 	bool CaptureRGBA( float** image, uint64_t timeout=UINT64_MAX, bool zeroCopy=false );
 
 	/**
+	 * Set whether converted RGB(A) images should use ZeroCopy buffer allocation.
+	 * Has no effect after the first image (in RGB(A) format) was captured.
+	 */
+	void SetZeroCopy(bool zeroCopy)     { mOptions.zeroCopy = zeroCopy; }
+
+	/**
 	 * Return the interface type (gstCamera::Type)
 	 */
 	virtual inline uint32_t GetType() const		{ return Type; }
