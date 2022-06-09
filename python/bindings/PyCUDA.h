@@ -63,7 +63,7 @@ PyCudaMemory* PyCUDA_GetMemory( PyObject* object );
 PyCudaImage* PyCUDA_GetImage( PyObject* object );
 
 // retrieve from capsule
-void* PyCUDA_GetImage( PyObject* object, int* width, int* height, imageFormat* format );
+void* PyCUDA_GetImage( PyObject* object, int* width, int* height, imageFormat* format, uint64_t* timestamp=NULL );
 
 // Register functions
 PyMethodDef* PyCUDA_RegisterFunctions();

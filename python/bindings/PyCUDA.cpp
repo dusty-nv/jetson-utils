@@ -865,7 +865,7 @@ PyCudaImage* PyCUDA_GetImage( PyObject* object )
 }
 
 // PyCUDA_GetImage
-void* PyCUDA_GetImage( PyObject* capsule, int* width, int* height, imageFormat* format )
+void* PyCUDA_GetImage( PyObject* capsule, int* width, int* height, imageFormat* format, uint64_t* timestamp )
 {
 	PyCudaImage* img = PyCUDA_GetImage(capsule);
 	void* ptr = NULL;
@@ -876,6 +876,8 @@ void* PyCUDA_GetImage( PyObject* capsule, int* width, int* height, imageFormat* 
 		*width = img->width;
 		*height = img->height;
 		*format = img->format;
+		if ( timestamp )
+			*timestamp = img->timestamp;
 	}
 	else
 	{
@@ -1048,8 +1050,9 @@ PyObject* PyCUDA_Memcpy( PyObject* self, PyObject* args, PyObject* kwds )
 	int src_width = 0;
 	int src_height = 0;
 	imageFormat src_format = IMAGE_UNKNOWN;
+	uint64_t src_timestamp = 0;
 	
-	void* src_ptr = PyCUDA_GetImage(src_capsule, &src_width, &src_height, &src_format);
+	void* src_ptr = PyCUDA_GetImage(src_capsule, &src_width, &src_height, &src_format, &src_timestamp);
 	
 	if( !src_ptr ) 
 	{
@@ -1060,7 +1063,7 @@ PyObject* PyCUDA_Memcpy( PyObject* self, PyObject* args, PyObject* kwds )
 	// allocate the dst image (if needed)
 	void* dst_ptr = NULL;
 	bool dst_allocated = false;
-	
+
 	if( !dst_capsule )
 	{
 		if( !cudaAllocMapped(&dst_ptr, src_width, src_height, src_format) )
@@ -1069,7 +1072,7 @@ PyObject* PyCUDA_Memcpy( PyObject* self, PyObject* args, PyObject* kwds )
 			return NULL;
 		}
 		
-		dst_capsule = PyCUDA_RegisterImage(dst_ptr, src_width, src_height, src_format, 0, true);
+		dst_capsule = PyCUDA_RegisterImage(dst_ptr, src_width, src_height, src_format, src_timestamp, true);
 		dst_allocated = true;
 	}
 	else
@@ -1077,7 +1080,7 @@ PyObject* PyCUDA_Memcpy( PyObject* self, PyObject* args, PyObject* kwds )
 		int dst_width = 0;
 		int dst_height = 0;
 		imageFormat dst_format = IMAGE_UNKNOWN;
-		
+
 		dst_ptr = PyCUDA_GetImage(dst_capsule, &dst_width, &dst_height, &dst_format);
 		
 		if( !dst_ptr ) 
@@ -1091,6 +1094,9 @@ PyObject* PyCUDA_Memcpy( PyObject* self, PyObject* args, PyObject* kwds )
 			PyErr_SetString(PyExc_TypeError, LOG_PY_UTILS "src/dst images need to have matching dimensions and formats");
 			return NULL;
 		}
+
+		PyCudaImage* dst_img = PyCUDA_GetImage(dst_capsule);
+		dst_img->timestamp = src_timestamp;
 	}
 	
 	if( CUDA_FAILED(cudaMemcpy(dst_ptr, src_ptr, imageFormatSize(src_format, src_width, src_height), cudaMemcpyDeviceToDevice)) )
@@ -1098,7 +1104,7 @@ PyObject* PyCUDA_Memcpy( PyObject* self, PyObject* args, PyObject* kwds )
 		PyErr_SetString(PyExc_TypeError, LOG_PY_UTILS "cudaMemcpy() failed to copy memory");
 		return NULL;
 	}
-			
+
 	if( dst_allocated )
 		return dst_capsule;
 	
@@ -1173,6 +1179,8 @@ PyObject* PyCUDA_ConvertColor( PyObject* self, PyObject* args, PyObject* kwds )
 		return NULL;
 	}
 
+	output->timestamp = input->timestamp;
+
 	// return void
 	Py_RETURN_NONE;
 }
@@ -1215,6 +1223,8 @@ PyObject* PyCUDA_Resize( PyObject* self, PyObject* args, PyObject* kwds )
 		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaResize() failed");
 		return NULL;
 	}
+
+	output->timestamp = input->timestamp;
 
 	// return void
 	Py_RETURN_NONE;
@@ -1273,6 +1283,8 @@ PyObject* PyCUDA_Crop( PyObject* self, PyObject* args, PyObject* kwds )
 		return NULL;
 	}
 
+	output->timestamp = input->timestamp;
+
 	// return void
 	Py_RETURN_NONE;
 }
@@ -1325,6 +1337,8 @@ PyObject* PyCUDA_Normalize( PyObject* self, PyObject* args, PyObject* kwds )
 		return NULL;
 	}
 
+	output->timestamp = input->timestamp;
+
 	// return void
 	Py_RETURN_NONE;
 }
@@ -1370,6 +1384,8 @@ PyObject* PyCUDA_Overlay( PyObject* self, PyObject* args, PyObject* kwds )
 		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaOverlay() failed");
 		return NULL;
 	}
+
+	output->timestamp = input->timestamp;
 
 	// return void
 	Py_RETURN_NONE;
@@ -1437,6 +1453,8 @@ PyObject* PyCUDA_DrawCircle( PyObject* self, PyObject* args, PyObject* kwds )
 		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaDrawCircle() failed to render");
 		return NULL;
 	}
+
+	output->timestamp = input->timestamp;
 
 	Py_RETURN_NONE;
 }
@@ -1507,6 +1525,8 @@ PyObject* PyCUDA_DrawLine( PyObject* self, PyObject* args, PyObject* kwds )
 		return NULL;
 	}
 
+	output->timestamp = input->timestamp;
+
 	Py_RETURN_NONE;
 }
 
@@ -1573,6 +1593,8 @@ PyObject* PyCUDA_DrawRect( PyObject* self, PyObject* args, PyObject* kwds )
 		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaDrawRect() failed to render");
 		return NULL;
 	}
+
+	output->timestamp = input->timestamp;
 
 	Py_RETURN_NONE;
 }
@@ -1919,7 +1941,7 @@ static PyMethodDef pyCUDA_Functions[] =
 {
 	{ "cudaMalloc", (PyCFunction)PyCUDA_Malloc, METH_VARARGS|METH_KEYWORDS, "Allocated CUDA memory on the GPU with cudaMalloc()" },
 	{ "cudaAllocMapped", (PyCFunction)PyCUDA_AllocMapped, METH_VARARGS|METH_KEYWORDS, "Allocate CUDA ZeroCopy mapped memory" },
-	{ "cudaMemcpy", (PyCFunction)PyCUDA_Memcpy, METH_VARARGS|METH_KEYWORDS, "Copy src image to dst image (or if dst provided, return a new image with the contents of src)" },
+	{ "cudaMemcpy", (PyCFunction)PyCUDA_Memcpy, METH_VARARGS|METH_KEYWORDS, "Copy src image to dst image (or if dst is not provided, return a new image with the contents of src)" },
 	{ "cudaDeviceSynchronize", (PyCFunction)PyCUDA_DeviceSynchronize, METH_NOARGS, "Wait for the GPU to complete all work" },
 	{ "cudaConvertColor", (PyCFunction)PyCUDA_ConvertColor, METH_VARARGS|METH_KEYWORDS, "Perform colorspace conversion on the GPU" },
 	{ "cudaCrop", (PyCFunction)PyCUDA_Crop, METH_VARARGS|METH_KEYWORDS, "Crop an image on the GPU" },		
