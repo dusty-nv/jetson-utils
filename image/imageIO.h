@@ -132,10 +132,12 @@ bool loadImageRGBA( const char* filename, float4** cpu, float4** gpu, int* width
  *                A level of 100 corresponds to maximum quality and reduced compression.
  *                By default a level of 95 is used for high quality and moderate compression. 
  *                Note that this quality parameter only applies to JPEG and PNG, other formats will ignore it.
+ * @param sync If true (default), the GPU will be sychronized with cudaDeviceSynchronize() to assure that
+ *             any processing on the image has been completed before saving it to disk.
  * @ingroup image
  */
-template<typename T> bool saveImage( const char* filename, T* ptr, int width, int height,
-							  int quality=95, const float2& pixel_range=make_float2(0,255) )		{ return saveImage(filename, (void*)ptr, width, height, imageFormatFromType<T>(), quality, pixel_range); }
+template<typename T> bool saveImage( const char* filename, T* ptr, int width, int height, int quality=95, 
+							  const float2& pixel_range=make_float2(0,255), bool sync=true )		{ return saveImage(filename, (void*)ptr, width, height, imageFormatFromType<T>(), quality, pixel_range, sync); }
 	
 /**
  * Save an image in CPU/GPU shared memory to disk.
@@ -159,10 +161,12 @@ template<typename T> bool saveImage( const char* filename, T* ptr, int width, in
  *                A level of 100 corresponds to maximum quality and reduced compression.
  *                By default a level of 95 is used for high quality and moderate compression. 
  *                Note that this quality parameter only applies to JPEG and PNG, other formats will ignore it.
+ * @param sync If true (default), the GPU will be sychronized with cudaDeviceSynchronize() to assure that
+ *             any processing on the image has been completed before saving it to disk.
  * @ingroup image
  */
 bool saveImage( const char* filename, void* ptr, int width, int height, imageFormat format,
-			 int quality=95, const float2& pixel_range=make_float2(0,255) );
+			 int quality=95, const float2& pixel_range=make_float2(0,255), bool sync=true );
 
 /**
  * Save a float4 image in CPU/GPU shared memory to disk.

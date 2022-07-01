@@ -247,7 +247,7 @@ bool loadImageRGBA( const char* filename, float4** cpu, float4** gpu, int* width
 
 
 // saveImage
-bool saveImage( const char* filename, void* ptr, int width, int height, imageFormat format, int quality, const float2& pixel_range )
+bool saveImage( const char* filename, void* ptr, int width, int height, imageFormat format, int quality, const float2& pixel_range, bool sync )
 {
 	// validate parameters
 	if( !filename || !ptr || width <= 0 || height <= 0 )
@@ -309,8 +309,11 @@ bool saveImage( const char* filename, void* ptr, int width, int height, imageFor
 			return false;
 		}
 		
-		CUDA(cudaDeviceSynchronize());
+		sync = true;
 	}
+	
+	if( sync )
+		CUDA(cudaDeviceSynchronize());
 	
 	#define release_return(x) 	\
 		if( baseType == IMAGE_FLOAT ) \
