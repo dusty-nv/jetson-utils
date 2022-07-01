@@ -148,9 +148,13 @@ inline void mat33_print( const T src[3][3], const char* name=NULL )
 			LogInfo("%f ", src[i][j]);
 
 		if( i < 2 )
+		{
 			LogInfo("\n   ");
+		}
 		else
+		{
 			LogInfo("]\n");
+		}
 	}
 }
 
