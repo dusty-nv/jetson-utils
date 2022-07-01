@@ -25,6 +25,7 @@
 
 
 #include "cudaUtility.h"
+#include "imageFormat.h"
 
 
 /**
@@ -47,6 +48,32 @@ cudaError_t cudaWarpAffine( float4* input, float4* output, uint32_t width, uint3
 					   const float transform[2][3], bool transform_inverted=false );
 
 
+/**
+ * Apply a 3x3 perspective warp to an image.
+ * The 3x3 matrix transform is in row-major order (transform[row][column])
+ * If the transform has already been inverted, set transform_inverted to true.
+ * @ingroup warping
+ */
+cudaError_t cudaWarpPerspective( void* input, uint32_t inputWidth, uint32_t inputHeight, imageFormat inputFormat,
+						   void* output, uint32_t outputWidth, uint32_t outputHeight, imageFormat outputFormat,
+					        const float transform[3][3], bool transform_inverted=false );
+		
+		
+/**
+ * Apply a 3x3 perspective warp to an image.
+ * The 3x3 matrix transform is in row-major order (transform[row][column])
+ * If the transform has already been inverted, set transform_inverted to true.
+ * @ingroup warping
+ */
+template<typename T> 
+cudaError_t cudaWarpPerspective( T* input, uint32_t inputWidth, uint32_t inputHeight,
+						   T* output, uint32_t outputWidth, uint32_t outputHeight,
+					        const float transform[3][3], bool transform_inverted=false )
+{ 
+	return cudaWarpPerspective(input, inputWidth, inputHeight, imageFormatFromType<T>(), output, outputWidth, outputHeight, imageFormatFromType<T>(), transform, transform_inverted);
+}	
+
+						   
 /**
  * Apply 3x3 perspective warp to an 8-bit fixed-point RGBA image.
  * The 3x3 matrix transform is in row-major order (transform[row][column])
