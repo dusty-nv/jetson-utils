@@ -353,6 +353,39 @@ bool gstDecoder::discover()
 		return false;
 	}
 	
+	// Look at video tags and extract rotation
+	const GstTagList* tags = gst_discoverer_stream_info_get_tags(streamInfo);
+	if( tags ) {
+		// Extract tags
+		gchar* tagsStr = gst_tag_list_to_string(tags);
+		LogVerbose(LOG_GSTREAMER "gstDecoder -- tags: %s\n", tagsStr);
+		g_free(tagsStr);
+
+		// If flip method is not finalized, check for rotation tags in the video.
+		if( mOptions.flipMethod == videoOptions::FLIP_AUTOMATIC || mOptions.flipMethod == videoOptions::FLIP_UNDEFINED ) {
+			gchar* rotationTag;
+			const bool foundRotationTag = gst_tag_list_get_string(tags, "image-orientation", &rotationTag);
+			if (foundRotationTag) {
+				if( strcasecmp(rotationTag, "rotate-90") == 0 )
+					mOptions.flipMethod = videoOptions::FLIP_CLOCKWISE;
+				else if( strcasecmp(rotationTag, "rotate-180") == 0 )
+					mOptions.flipMethod = videoOptions::FLIP_ROTATE_180;
+				else if( strcasecmp(rotationTag, "rotate-270") == 0 )
+					mOptions.flipMethod = videoOptions::FLIP_COUNTERCLOCKWISE;
+				LogVerbose(LOG_GSTREAMER "gstDecoder -- rotation tag: %s\n", rotationTag);
+			} else {
+				LogVerbose(LOG_GSTREAMER "gstDecoder -- found no rotation tag\n");
+			}
+		}
+	} else {
+		LogVerbose(LOG_GSTREAMER "gstDecoder -- found no tags\n");
+	}
+
+	// If flip is still not set after looking at tags, default to FLIP_NONE
+	if( mOptions.flipMethod == videoOptions::FLIP_AUTOMATIC || mOptions.flipMethod == videoOptions::FLIP_UNDEFINED ) {
+		mOptions.flipMethod = videoOptions::FLIP_NONE;
+	}
+
 	// retrieve video resolution
 	guint width  = gst_discoverer_video_info_get_width(videoInfo);
 	guint height = gst_discoverer_video_info_get_height(videoInfo);
@@ -369,7 +402,7 @@ bool gstDecoder::discover()
 	const float framerate       = framerate_num / framerate_denom;
 
 	LogVerbose(LOG_GSTREAMER "gstDecoder -- discovered video resolution: %ux%u  (framerate %f Hz)\n", width, height, framerate);
-	
+
 	// disable re-scaling if the user's custom size matches the feed's
 	if( mCustomSize && mOptions.width == width && mOptions.height == height )
 		mCustomSize = false;

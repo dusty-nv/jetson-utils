@@ -39,7 +39,7 @@ videoOptions::videoOptions()
 	zeroCopy    = true;
 	ioType      = INPUT;
 	deviceType  = DEVICE_DEFAULT;
-	flipMethod  = FLIP_DEFAULT;
+	flipMethod  = FLIP_UNDEFINED;
 	codec       = CODEC_UNKNOWN;
 }
 
@@ -140,6 +140,9 @@ bool videoOptions::Parse( const char* URI, const commandLine& cmdLine, videoOpti
 	}
 	
 	flipMethod = videoOptions::FlipMethodFromStr(flipStr);
+
+	if( flipMethod == videoOptions::FLIP_UNDEFINED )
+		flipMethod = (type == INPUT) ? videoOptions::FLIP_INPUT_DEFAULT : videoOptions::FLIP_OUTPUT_DEFUALT;
 
 	// codec
 	const char* codecStr = (type == INPUT) ? cmdLine.GetString("input-codec")
@@ -291,6 +294,8 @@ const char* videoOptions::FlipMethodToStr( videoOptions::FlipMethod flip )
 		case FLIP_UPPER_RIGHT_DIAGONAL:	return "upper-right-diagonal";
 		case FLIP_VERTICAL:				return "vertical";
 		case FLIP_UPPER_LEFT_DIAGONAL:	return "upper-left-diagonal";
+		case FLIP_AUTOMATIC:            return "automatic";
+		case FLIP_UNDEFINED:            return "undefined";
 	}
 	return nullptr;
 }
@@ -300,9 +305,9 @@ const char* videoOptions::FlipMethodToStr( videoOptions::FlipMethod flip )
 videoOptions::FlipMethod videoOptions::FlipMethodFromStr( const char* str )
 {
 	if( !str )
-		return FLIP_DEFAULT;
+		return FLIP_UNDEFINED;
 
-	for( int n=0; n <= FLIP_UPPER_LEFT_DIAGONAL; n++ )
+	for( int n=0; n <= FLIP_UNDEFINED; n++ )
 	{
 		const FlipMethod value = (FlipMethod)n;
 
@@ -310,7 +315,7 @@ videoOptions::FlipMethod videoOptions::FlipMethodFromStr( const char* str )
 			return value;
 	}
 
-	return FLIP_DEFAULT;
+	return FLIP_UNDEFINED;
 }
 
 
