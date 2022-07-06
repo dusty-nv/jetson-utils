@@ -117,16 +117,20 @@ inline void mat33_inverse( T dst[3][3], const T src[3][3] )
 template<typename T>
 inline void mat33_multiply( T dst[3][3], const T a[3][3], const T b[3][3] )
 {
+	T tmp[3][3];
+	
 	for( int i=0; i < 3; i++ )
 	{
 		for( int j=0; j < 3; j++ )
 		{
-			dst[i][j] = 0;
+			tmp[i][j] = 0;
 
 			for( int k=0; k < 3; k++ )
-				dst[i][j] = dst[i][j] + a[i][k] * b[k][j];
+				tmp[i][j] = tmp[i][j] + a[i][k] * b[k][j];
 		}
 	}
+	
+	mat33_copy(dst, tmp);
 }
 
 
@@ -226,6 +230,34 @@ inline int mat33_rank( const T src[3][3] )
 
 
 /**
+ * Initialize a 3x3 translation matrix.
+ * @ingroup matrix
+ */
+template<typename T>
+inline void mat33_translate( T dst[3][3], T x, T y )
+{
+	mat33_identity(dst);
+
+	dst[0][2] = x;
+	dst[1][2] = y;
+}
+
+
+/**
+ * Translate a 3x3 matrix by `(x,y)`
+ * @ingroup matrix
+ */
+template<typename T>
+inline void mat33_translate( T dst[3][3], T src[3][3], T x, T y )
+{
+	T m[3][3];
+
+	mat33_translate(m, x, y);
+	mat33_multiply(dst, src, m);
+}
+
+
+/**
  * Initialize a 3x3 rotation matrix.
  * @ingroup matrix
  */
@@ -257,6 +289,32 @@ inline void mat33_rotation( T dst[3][3], T src[3][3], T degrees )
 
 	mat33_rotation(m, degrees);
 	mat33_multiply(dst, src, m);
+}
+
+
+/**
+ * Initialize a 3x3 rotation matrix around an origin point.
+ * @ingroup matrix
+ */
+template<typename T>
+inline void mat33_rotation( T dst[3][3], T degrees, float origin_x, float origin_y )
+{
+	mat33_translate(dst, origin_x, origin_y);
+	mat33_rotation(dst, dst, degrees);
+	mat33_translate(dst, dst, -origin_x, -origin_y);
+}
+
+
+/**
+ * Rotation a 3x3 matrix around an origin point.
+ * @ingroup matrix
+ */
+template<typename T>
+inline void mat33_rotation( T dst[3][3], T src[3][3], T degrees, float origin_x, float origin_y )
+{
+	mat33_translate(dst, src, origin_x, origin_y);
+	mat33_rotation(dst, dst, degrees);
+	mat33_translate(dst, dst, -origin_x, -origin_y);
 }
 
 
@@ -343,34 +401,6 @@ inline T mat33_trace( const T src[3][3] )
 
 
 /**
- * Initialize a 3x3 translation matrix.
- * @ingroup matrix
- */
-template<typename T>
-inline void mat33_translate( T dst[3][3], T x, T y )
-{
-	mat33_identity(dst);
-
-	dst[0][2] = x;
-	dst[1][2] = y;
-}
-
-
-/**
- * Translate a 3x3 matrix by `(x,y)`
- * @ingroup matrix
- */
-template<typename T>
-inline void mat33_translate( T dst[3][3], T src[3][3], T x, T y )
-{
-	T m[3][3];
-
-	mat33_translate(m, x, y);
-	mat33_multiply(dst, src, m);
-}
-
-
-/**
  * Transform a 2D vector by a 3x3 matrix.
  * @ingroup matrix
  */
@@ -430,6 +460,7 @@ inline void mat33_zero( T dst[3][3] )
 {
 	memset(dst, 0, sizeof(T) * 9);
 }
+
 
 #endif
 
