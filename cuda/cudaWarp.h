@@ -78,6 +78,8 @@ cudaError_t cudaWarpPerspective( T* input, uint32_t inputWidth, uint32_t inputHe
  * Apply 3x3 perspective warp to an 8-bit fixed-point RGBA image.
  * The 3x3 matrix transform is in row-major order (transform[row][column])
  * If the transform has already been inverted, set transform_inverted to true.
+ * @deprecated this function has been deprecated in lieu of the overload that
+ *             accepts different dimensions for the input and output images.
  * @ingroup warping
  */
 cudaError_t cudaWarpPerspective( uchar4* input, uchar4* output, uint32_t width, uint32_t height,
@@ -88,6 +90,8 @@ cudaError_t cudaWarpPerspective( uchar4* input, uchar4* output, uint32_t width, 
  * Apply 3x3 perspective warp to an 32-bit floating-point RGBA image.
  * The 3x3 matrix transform is in row-major order (transform[row][column])
  * If the transform has already been inverted, set transform_inverted to true.
+ * @deprecated this function has been deprecated in lieu of the overload that
+ *             accepts different dimensions for the input and output images.
  * @ingroup warping
  */
 cudaError_t cudaWarpPerspective( float4* input, float4* output, uint32_t width, uint32_t height,
