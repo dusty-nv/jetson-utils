@@ -175,6 +175,7 @@ static PyGetSetDef pyCudaMemory_GetSet[] =
 	{ "size", (getter)PyCudaMemory_GetSize, NULL, "Size (in bytes)", NULL},
 	{ "mapped", (getter)PyCudaMemory_GetMapped, NULL, "Is the memory mapped to CPU also? (zeroCopy)", NULL},
 	{ "freeOnDelete", (getter)PyCudaMemory_GetFreeOnDelete, NULL, "Will the CUDA memory be released when the Python object is deleted?", NULL},	
+	{ "gpudata", (getter)PyCudaMemory_GetPtr, NULL, "Address of CUDA memory (PyCUDA interface)", NULL},
 	{ NULL } /* Sentinel */
 };
 
@@ -246,6 +247,7 @@ static PyObject* PyCudaImage_New( PyTypeObject *type, PyObject *args, PyObject *
 	
 	self->format = IMAGE_UNKNOWN;
 	self->timestamp = 0;
+	self->cudaArrayInterfaceDict = NULL;
 	
 	return (PyObject*)self;
 }
@@ -407,6 +409,75 @@ static PyObject* PyCudaImage_GetFormat( PyCudaImage* self, void* closure )
 static PyObject* PyCudaImage_GetTimestamp( PyCudaImage* self, void* closure )
 {
 	return PYLONG_FROM_UNSIGNED_LONG_LONG(self->timestamp);
+}
+
+// imageFormatToNumpyTypeStr
+static const char* imageFormatToNumpyTypeStr( imageFormat format )
+{
+	// https://docs.scipy.org/doc/numpy-1.13.0/reference/arrays.interface.html#__array_interface__
+	const imageBaseType baseType = imageFormatBaseType(format);
+
+	if( baseType == IMAGE_FLOAT )
+		return "<f4";
+	else if( baseType == IMAGE_UINT8 )
+		return "<u1";
+
+	return "V";
+}
+
+// DICT_SET macro
+#define DICT_SET(dict, key, value) 													\
+	if( PyDict_SetItemString(dict, key, value) != 0 ) 									\
+		return PyErr_Format(PyExc_Exception, LOG_PY_UTILS "failed to set key '%s' in dict", key); \
+	Py_DECREF(value)
+	
+// PyCudaImage_GetCudaArrayInterface
+static PyObject* PyCudaImage_GetCudaArrayInterface( PyCudaImage* self, void* closure )
+{
+	if( self->cudaArrayInterfaceDict != NULL )
+	{
+		Py_INCREF(self->cudaArrayInterfaceDict);
+		return self->cudaArrayInterfaceDict;
+	}
+	
+	LogDebug(LOG_PY_UTILS "PyCudaImage creating __cuda_array_interface__ dict\n");
+	
+	// https://numba.readthedocs.io/en/stable/cuda/cuda_array_interface.html
+	PyObject* dict = PyDict_New();
+	
+	PyObject* shape = PyCudaImage_GetShape(self, closure);
+	PyObject* typestr = PYSTRING_FROM_STRING(imageFormatToNumpyTypeStr(self->format));
+	PyObject* version = PYLONG_FROM_LONG(3);
+	
+	PyObject* data_ptr = PYLONG_FROM_UNSIGNED_LONG_LONG((uint64_t)self->base.ptr);
+	PyObject* data_tuple = PyTuple_Pack(2, data_ptr, Py_False);
+	
+	Py_DECREF(data_ptr);
+
+	// set dictionary keys
+	DICT_SET(dict, "shape", shape);
+	DICT_SET(dict, "typestr", typestr);
+	DICT_SET(dict, "data", data_tuple);
+	DICT_SET(dict, "version", version);
+	
+	Py_INCREF(dict);
+	
+	self->cudaArrayInterfaceDict = dict;
+	return self->cudaArrayInterfaceDict;
+}
+
+// PyCudaImage_GetArrayInterface
+static PyObject* PyCudaImage_GetArrayInterface( PyCudaImage* self, void* closure )
+{
+	if( !self->base.mapped )
+	{
+		LogDebug(LOG_PY_UTILS "PyCudaImage => returning None for __array_interface__ attribute for unmapped buffer");
+		Py_RETURN_NONE;
+	}
+	
+	// https://numpy.org/doc/stable/reference/arrays.interface.html
+	// numpy interface is nearly identical to numba interface
+	return PyCudaImage_GetCudaArrayInterface(self, closure);
 }
 
 // PyCudaImage_ParseSubscriptTuple
@@ -718,6 +789,8 @@ static PyGetSetDef pyCudaImage_GetSet[] =
 	{ "shape", (getter)PyCudaImage_GetShape, NULL, "Image dimensions in (height, width, channels) tuple", NULL},
 	{ "format", (getter)PyCudaImage_GetFormat, NULL, "Pixel format of the image", NULL},
 	{ "timestamp", (getter)PyCudaImage_GetTimestamp, NULL, "Timestamp of the image (in nanoseconds)", NULL},
+	{ "__array_interface__", (getter)PyCudaImage_GetArrayInterface, NULL, "Numpy __array_interface__ dict", NULL},
+	{ "__cuda_array_interface__", (getter)PyCudaImage_GetCudaArrayInterface, NULL, "Numba __cuda_array_interface__ dict", NULL},
 	{ NULL } /* Sentinel */
 };
 

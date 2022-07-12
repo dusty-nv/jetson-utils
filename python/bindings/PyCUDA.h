@@ -44,6 +44,7 @@ typedef struct {
 	uint32_t    height;
 	Py_ssize_t  shape[3];
 	Py_ssize_t  strides[3];
+	PyObject*   cudaArrayInterfaceDict;  // https://numba.readthedocs.io/en/stable/cuda/cuda_array_interface.html
 } PyCudaImage;
 
 // Create memory objects
