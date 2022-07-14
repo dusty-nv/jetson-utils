@@ -606,24 +606,34 @@ static PyObject* PyCudaImage_GetItem(PyCudaImage *self, PyObject *key)
 	
 	// apply offset to the data pointer
 	uint8_t* ptr = ((uint8_t*)self->base.ptr) + offset;
-
-	// return the pixel as a tuple
-	PyObject* tuple = PyTuple_New(numComponents);
 	const imageBaseType baseType = imageFormatBaseType(self->format);
-
-	for( int n=0; n < numComponents; n++ )
+	
+	if( numComponents > 1 )
 	{
-		PyObject* component = NULL;
-
-		if( baseType == IMAGE_FLOAT )
-			component = PyFloat_FromDouble(((float*)ptr)[n]);
-		else if( baseType == IMAGE_UINT8 )
-			component = PYLONG_FROM_UNSIGNED_LONG(ptr[n]);
+		// return the pixel as a tuple
+		PyObject* tuple = PyTuple_New(numComponents);
 		
-		PyTuple_SetItem(tuple, n, component);
-	}
+		for( int n=0; n < numComponents; n++ )
+		{
+			PyObject* component = NULL;
 
-	return tuple;
+			if( baseType == IMAGE_FLOAT )
+				component = PyFloat_FromDouble(((float*)ptr)[n]);
+			else if( baseType == IMAGE_UINT8 )
+				component = PYLONG_FROM_UNSIGNED_LONG(ptr[n]);
+			
+			PyTuple_SetItem(tuple, n, component);
+		}
+		
+		return tuple;
+	}
+	else
+	{
+		if( baseType == IMAGE_FLOAT )
+			return PyFloat_FromDouble(((float*)ptr)[0]);
+		else if( baseType == IMAGE_UINT8 )
+			return PYLONG_FROM_UNSIGNED_LONG(ptr[0]);
+	}
 }
 
 // PyCudaImage_SetItem
