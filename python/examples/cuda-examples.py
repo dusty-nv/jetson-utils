@@ -21,9 +21,12 @@
 # DEALINGS IN THE SOFTWARE.
 #
 
-import jetson.utils
 import argparse
 
+from jetson_utils import (cudaAllocMapped, cudaConvertColor, cudaCrop,
+                          cudaResize, cudaMemcpy, cudaDeviceSynchronize,
+                          cudaDrawCircle, cudaDrawLine, cudaDrawRect,
+                          loadImage, saveImage)
 
 # parse the command line
 parser = argparse.ArgumentParser(description='Perform some example CUDA processing on an image')
@@ -36,8 +39,8 @@ opt = parser.parse_args()
 
 # convert colorspace
 def convert_color(img, output_format):
-	converted_img = jetson.utils.cudaAllocMapped(width=img.width, height=img.height, format=output_format)
-	jetson.utils.cudaConvertColor(img, converted_img)
+	converted_img = cudaAllocMapped(width=img.width, height=img.height, format=output_format)
+	cudaConvertColor(img, converted_img)
 	return converted_img
 
 
@@ -48,42 +51,42 @@ def crop(img, crop_factor):
 
 	crop_roi = (crop_border[0], crop_border[1], img.width - crop_border[0], img.height - crop_border[1])
 
-	crop_img = jetson.utils.cudaAllocMapped(width=img.width * crop_factor[0],
-									height=img.height * crop_factor[1],
-									format=img.format)
+	crop_img = cudaAllocMapped(width=img.width * crop_factor[0],
+							   height=img.height * crop_factor[1],
+							   format=img.format)
 
-	jetson.utils.cudaCrop(img, crop_img, crop_roi)
+	cudaCrop(img, crop_img, crop_roi)
 	return crop_img
 
 
 # resize an image
 def resize(img, resize_factor):
-	resized_img = jetson.utils.cudaAllocMapped(width=img.width * resize_factor[0],
-									   height=img.height * resize_factor[1],
-									   format=img.format)
+	resized_img = cudaAllocMapped(width=img.width * resize_factor[0],
+								  height=img.height * resize_factor[1],
+                                  format=img.format)
 
-	jetson.utils.cudaResize(img, resized_img)
+	cudaResize(img, resized_img)
 	return resized_img
 
 
 # load the image
-input_img = jetson.utils.loadImage(opt.file_in)
+input_img = loadImage(opt.file_in)
 
 print('input image:')
 print(input_img)
 
 # copy the image (this isn't necessary, just for demonstration)
-copied_img = jetson.utils.cudaAllocMapped(width=input_img.width, height=input_img.height, format=input_img.format)
-jetson.utils.cudaMemcpy(copied_img, input_img)   # dst, src
+copied_img = cudaAllocMapped(width=input_img.width, height=input_img.height, format=input_img.format)
+cudaMemcpy(copied_img, input_img)   # dst, src
 
-jetson.utils.cudaDeviceSynchronize()
-jetson.utils.saveImage("images/test/memcpy_0.jpg", copied_img)
+cudaDeviceSynchronize()
+saveImage("images/test/memcpy_0.jpg", copied_img)
     
 # or you can use this shortcut, which will allocate the image first
-copied_img = jetson.utils.cudaMemcpy(input_img)
+copied_img = cudaMemcpy(input_img)
 
-jetson.utils.cudaDeviceSynchronize()
-jetson.utils.saveImage("images/test/memcpy_1.jpg", copied_img)
+cudaDeviceSynchronize()
+saveImage("images/test/memcpy_1.jpg", copied_img)
 
 # convert to grayscale - other formats are:
 #  rgb8, rgba8, rgb32f, rgba32f, gray32f
@@ -111,13 +114,13 @@ print('color image')
 print(color_img)
 
 # draw some shapes
-jetson.utils.cudaDrawCircle(color_img, (50,50), 50, (0,255,127,200)) # (cx,cy), radius, color
-jetson.utils.cudaDrawRect(color_img, (200,25,350,250), (255,127,0,200)) # (left, top, right, bottom), color
-jetson.utils.cudaDrawLine(color_img, (25,150), (325,15), (255,0,200,200), 10) # (x1,y1), (x2,y2), color, thickness
+cudaDrawCircle(color_img, (50,50), 50, (0,255,127,200)) # (cx,cy), radius, color
+cudaDrawRect(color_img, (200,25,350,250), (255,127,0,200)) # (left, top, right, bottom), color
+cudaDrawLine(color_img, (25,150), (325,15), (255,0,200,200), 10) # (x1,y1), (x2,y2), color, thickness
 
 # save the image
 if opt.file_out is not None:
-	jetson.utils.cudaDeviceSynchronize()
-	jetson.utils.saveImage(opt.file_out, color_img)
+	cudaDeviceSynchronize()
+	saveImage(opt.file_out, color_img)
 	print("saved {:d}x{:d} test image to '{:s}'".format(crop_img.width, crop_img.height, opt.file_out))
 

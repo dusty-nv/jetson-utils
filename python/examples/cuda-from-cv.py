@@ -22,8 +22,10 @@
 #
 
 import cv2
-import jetson.utils
 import argparse
+
+from jetson_utils import (cudaFromNumpy, cudaAllocMapped, cudaConvertColor, 
+                          cudaDeviceSynchronize, saveImage)
 
 
 # parse the command line
@@ -42,24 +44,24 @@ print('OpenCV image size: ' + str(cv_img.shape))
 print('OpenCV image type: ' + str(cv_img.dtype))
 
 # convert to CUDA (cv2 images are numpy arrays, in BGR format)
-bgr_img = jetson.utils.cudaFromNumpy(cv_img, isBGR=True)
+bgr_img = cudaFromNumpy(cv_img, isBGR=True)
 
 print('BGR image: ')
 print(bgr_img)
 
 # convert from BGR -> RGB
-rgb_img = jetson.utils.cudaAllocMapped(width=bgr_img.width,
-							    height=bgr_img.height,
-							    format='rgb8')
+rgb_img = cudaAllocMapped(width=bgr_img.width,
+                          height=bgr_img.height,
+						  format='rgb8')
 
-jetson.utils.cudaConvertColor(bgr_img, rgb_img)
+cudaConvertColor(bgr_img, rgb_img)
 
 print('RGB image: ')
 print(rgb_img)
 
 # save the image
 if opt.file_out is not None:
-	jetson.utils.cudaDeviceSynchronize()
-	jetson.utils.saveImage(opt.file_out, rgb_img)
+	cudaDeviceSynchronize()
+	saveImage(opt.file_out, rgb_img)
 	print("saved {:d}x{:d} test image to '{:s}'".format(rgb_img.width, rgb_img.height, opt.file_out))
 

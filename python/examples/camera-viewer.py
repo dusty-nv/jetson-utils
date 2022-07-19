@@ -21,8 +21,9 @@
 # DEALINGS IN THE SOFTWARE.
 #
 
-import jetson.utils
 import argparse
+
+from jetson_utils import glDisplay, gstCamera
 
 
 # parse the command line
@@ -36,10 +37,10 @@ opt = parser.parse_args()
 print(opt)
 
 # create display window
-display = jetson.utils.glDisplay()
+display = glDisplay()
 
 # create camera device
-camera = jetson.utils.gstCamera(opt.width, opt.height, opt.camera)
+camera = gstCamera(opt.width, opt.height, opt.camera)
 
 # open the camera for streaming
 camera.Open()
