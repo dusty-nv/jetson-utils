@@ -115,7 +115,9 @@ static int PyVideoSource_Init( PyVideoSource_Object* self, PyObject *args, PyObj
 
 	// create the video source
 	videoSource* source = NULL;
-
+	
+	Py_BEGIN_ALLOW_THREADS
+	
 	if( URI != NULL && strlen(URI) > 0 )
 	{
 		if( argc > 0 )
@@ -127,6 +129,8 @@ static int PyVideoSource_Init( PyVideoSource_Object* self, PyObject *args, PyObj
 	{
 		source = videoSource::Create(argc, argv, positionArg);
 	}
+	
+	Py_END_ALLOW_THREADS
 
 	if( !source )
 	{
@@ -144,11 +148,15 @@ static void PyVideoSource_Dealloc( PyVideoSource_Object* self )
 	LogDebug(LOG_PY_UTILS "PyVideoSource_Dealloc()\n");
 
 	// free the network
+	Py_BEGIN_ALLOW_THREADS
+	
 	if( self->source != NULL )
 	{
 		delete self->source;
 		self->source = NULL;
 	}
+	
+	Py_END_ALLOW_THREADS
 	
 	// free the container
 	Py_TYPE(self)->tp_free((PyObject*)self);
@@ -163,12 +171,15 @@ static PyObject* PyVideoSource_Open( PyVideoSource_Object* self )
 		return NULL;
 	}
 
+	Py_BEGIN_ALLOW_THREADS
+	
 	if( !self->source->Open() )
 	{
 		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "failed to open videoSource device for streaming");
 		return NULL;
 	}
 
+	Py_END_ALLOW_THREADS
 	Py_RETURN_NONE; 
 }
 
@@ -181,7 +192,10 @@ static PyObject* PyVideoSource_Close( PyVideoSource_Object* self )
 		return NULL;
 	}
 
+	Py_BEGIN_ALLOW_THREADS
 	self->source->Close();
+	Py_END_ALLOW_THREADS
+	
 	Py_RETURN_NONE; 
 }
 
@@ -216,8 +230,13 @@ static PyObject* PyVideoSource_Capture( PyVideoSource_Object* self, PyObject* ar
 	
 	// capture image
 	void* ptr = NULL;
-
-	if( !self->source->Capture(&ptr, format, timeout) )
+	bool result = false;
+	
+	Py_BEGIN_ALLOW_THREADS
+	result = self->source->Capture(&ptr, format, timeout);
+	Py_END_ALLOW_THREADS
+	
+	if( !result )
 	{
 		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "videoSource failed to capture image");
 		return NULL;
@@ -414,11 +433,15 @@ static int PyVideoOutput_Init( PyVideoOutput_Object* self, PyObject *args, PyObj
 	// create the video source
 	videoOutput* source = NULL;
 
+	Py_BEGIN_ALLOW_THREADS
+	
 	if( URI != NULL && strlen(URI) > 0 )
 		source = videoOutput::Create(URI, argc, argv);
 	else
 		source = videoOutput::Create(argc, argv, positionArg);
 
+	Py_END_ALLOW_THREADS
+	
 	if( !source )
 	{
 		//if( headless )
@@ -444,11 +467,15 @@ static void PyVideoOutput_Dealloc( PyVideoOutput_Object* self )
 	LogDebug(LOG_PY_UTILS "PyVideoOutput_Dealloc()\n");
 
 	// free the network
+	Py_BEGIN_ALLOW_THREADS
+	
 	if( self->output != NULL )
 	{
 		delete self->output;
 		self->output = NULL;
 	}
+	
+	Py_END_ALLOW_THREADS
 	
 	// free the container
 	Py_TYPE(self)->tp_free((PyObject*)self);
@@ -463,7 +490,12 @@ static PyObject* PyVideoOutput_Open( PyVideoOutput_Object* self )
 		return NULL;
 	}
 
-	if( !self->output->Open() )
+	bool result = false;
+	Py_BEGIN_ALLOW_THREADS
+	result = self->output->Open();
+	Py_END_ALLOW_THREADS
+	
+	if( !result )
 	{
 		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "failed to open videoOutput device for streaming");
 		return NULL;
@@ -481,7 +513,10 @@ static PyObject* PyVideoOutput_Close( PyVideoOutput_Object* self )
 		return NULL;
 	}
 
+	Py_BEGIN_ALLOW_THREADS
 	self->output->Close();
+	Py_END_ALLOW_THREADS
+	
 	Py_RETURN_NONE; 
 }
 
@@ -515,7 +550,12 @@ static PyObject* PyVideoOutput_Render( PyVideoOutput_Object* self, PyObject* arg
 	}
 
 	// render the image
-	if( !self->output->Render(img->base.ptr, img->width, img->height, img->format) )
+	bool result = false;
+	Py_BEGIN_ALLOW_THREADS
+	result = self->output->Render(img->base.ptr, img->width, img->height, img->format);
+	Py_END_ALLOW_THREADS
+	
+	if( !result )
 	{
 		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "videoOutput failed to render image");
 		return NULL;
