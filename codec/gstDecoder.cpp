@@ -589,12 +589,23 @@ bool gstDecoder::buildLaunchStr()
 	// resize if requested
 	if( mCustomSize || mOptions.flipMethod != videoOptions::FLIP_NONE )
 	{
+	#if defined(__aarch64__)
 		ss << "nvvidconv";
 
 		if( mOptions.flipMethod != videoOptions::FLIP_NONE )
 			ss << " flip-method=" << (int)mOptions.flipMethod;
-
+		
 		ss << " ! video/x-raw";
+		
+	#elif defined(__x86_64)
+		if( mOptions.flipMethod != videoOptions::FLIP_NONE )
+			ss << "videoflip method=" << videoOptions::FlipMethodToStr(mOptions.flipMethod) << " ! ";
+		
+		if( mOptions.width != 0 && mOptions.height != 0 )
+			ss << "videoscale ! ";
+		
+		ss << "video/x-raw";
+	#endif
 
 	#ifdef ENABLE_NVMM
 		ss << "(" << GST_CAPS_FEATURE_MEMORY_NVMM << ")";

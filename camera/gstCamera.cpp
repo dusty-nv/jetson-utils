@@ -134,6 +134,11 @@ bool gstCamera::buildLaunchStr()
 
 	if( mOptions.resource.protocol == "csi" )
 	{
+	#if defined(__x86_64)
+		LogError(LOG_GSTREAMER "MIPI CSI camera isn't available on x86 - please use /dev/video (V4L2) instead");
+		return false;
+	#endif
+	
 	#if NV_TENSORRT_MAJOR > 4
 		// on newer JetPack's, it's common for CSI camera to need flipped
 		// so here we reverse FLIP_NONE with FLIP_ROTATE_180
@@ -219,8 +224,9 @@ bool gstCamera::buildLaunchStr()
 		else if( mOptions.codec == videoOptions::CODEC_MJPEG )
 			ss << "jpegdec ! video/x-raw ! "; //ss << "nvjpegdec ! video/x-raw ! "; //ss << "jpegparse ! nvv4l2decoder mjpeg=1 ! video/x-raw(memory:NVMM) ! nvvidconv ! video/x-raw ! "; //
 
+	#if defined(__aarch64__)
 		// video flipping/rotating for V4L2 devices (use nvvidconv if a hw codec is used for decode)
-		// V4L2 decoders can only output NVMM memory, so use 
+		// V4L2 decoders can only output NVMM memory, if we aren't using NVMM have nvvidconv convert it 
 		if( mOptions.flipMethod != videoOptions::FLIP_NONE || (use_v4l2_decoder && !enable_nvmm) )
 		{
 			#if defined(ENABLE_NVMM) || defined(GST_CODECS_V4L2)
@@ -235,6 +241,10 @@ bool gstCamera::buildLaunchStr()
 				ss << "videoflip method=" << videoOptions::FlipMethodToStr(mOptions.flipMethod) << " ! ";  // the videoflip enum varies slightly, but the strings are the same
 		}
 		
+	#elif defined(__x86_64)
+		if( mOptions.flipMethod != videoOptions::FLIP_NONE )
+			ss << "videoflip method=" << videoOptions::FlipMethodToStr(mOptions.flipMethod) << " ! ";
+	#endif
 		ss << "appsink name=mysink";
 	}
 	
