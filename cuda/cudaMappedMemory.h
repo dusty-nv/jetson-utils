@@ -173,4 +173,22 @@ template<typename T> inline bool cudaAllocMapped( T** ptr, const int2& dims )
 }
 
 
+/**
+ * Allocate ZeroCopy mapped memory, shared between CUDA and CPU.
+ *
+ * This is a templated version for allocating images from vector types
+ * like uchar3, uchar4, float3, float4, ect.  The overall size of the
+ * allocation is specified by the size parameter.
+ *
+ * @param[out] ptr Returned pointer to the shared CPU/GPU memory.
+ * @param[in] size size of the allocation, in bytes.
+ *
+ * @returns `true` if the allocation succeeded, `false` otherwise.
+ * @ingroup cudaMemory
+ */
+template<typename T> inline bool cudaAllocMapped( T** ptr, size_t size )
+{
+	return cudaAllocMapped((void**)ptr, size);
+}
+
 #endif
