@@ -25,58 +25,87 @@
 
 
 #include "cudaUtility.h"
+#include "cudaFilterMode.h"
+
 #include "imageFormat.h"
 
 
 /**
  * Rescale a uint8 grayscale image on the GPU.
+ * To use bilinear filtering for upscaling, set filter to FILTER_LINEAR.
+ * If the image is being downscaled, or if FILTER_POINT is set (default),
+ * then nearest-neighbor sampling will be used instead.
  * @ingroup resize
  */
 cudaError_t cudaResize( uint8_t* input,  size_t inputWidth,  size_t inputHeight,
-				    uint8_t* output, size_t outputWidth, size_t outputHeight );
+				    uint8_t* output, size_t outputWidth, size_t outputHeight,
+				    cudaFilterMode filter=FILTER_POINT );
 
 /**
  * Rescale a floating-point grayscale image on the GPU.
+ * To use bilinear filtering for upscaling, set filter to FILTER_LINEAR.
+ * If the image is being downscaled, or if FILTER_POINT is set (default),
+ * then nearest-neighbor sampling will be used instead.
  * @ingroup resize
  */
 cudaError_t cudaResize( float* input,  size_t inputWidth,  size_t inputHeight,
-				    float* output, size_t outputWidth, size_t outputHeight );
+				    float* output, size_t outputWidth, size_t outputHeight,
+				    cudaFilterMode filter=FILTER_POINT );
 
 /**
  * Rescale a uchar3 RGB/BGR image on the GPU.
+ * To use bilinear filtering for upscaling, set filter to FILTER_LINEAR.
+ * If the image is being downscaled, or if FILTER_POINT is set (default),
+ * then nearest-neighbor sampling will be used instead.
  * @ingroup resize
  */
 cudaError_t cudaResize( uchar3* input,  size_t inputWidth,  size_t inputHeight,
-				    uchar3* output, size_t outputWidth, size_t outputHeight );
+				    uchar3* output, size_t outputWidth, size_t outputHeight,
+				    cudaFilterMode filter=FILTER_POINT );
 
 /**
  * Rescale a float3 RGB/BGR image on the GPU.
+ * To use bilinear filtering for upscaling, set filter to FILTER_LINEAR.
+ * If the image is being downscaled, or if FILTER_POINT is set (default),
+ * then nearest-neighbor sampling will be used instead.
  * @ingroup resize
  */
 cudaError_t cudaResize( float3* input,  size_t inputWidth,  size_t inputHeight,
-				    float3* output, size_t outputWidth, size_t outputHeight );
+				    float3* output, size_t outputWidth, size_t outputHeight,
+				    cudaFilterMode filter=FILTER_POINT );
 
 /**
  * Rescale a uchar4 RGBA/BGRA image on the GPU.
+ * To use bilinear filtering for upscaling, set filter to FILTER_LINEAR.
+ * If the image is being downscaled, or if FILTER_POINT is set (default),
+ * then nearest-neighbor sampling will be used instead.
  * @ingroup resize
  */
 cudaError_t cudaResize( uchar4* input,  size_t inputWidth,  size_t inputHeight,
-				    uchar4* output, size_t outputWidth, size_t outputHeight );
+				    uchar4* output, size_t outputWidth, size_t outputHeight,
+				    cudaFilterMode filter=FILTER_POINT );
 
 /**
  * Rescale a float4 RGBA/BGRA image on the GPU.
+ * To use bilinear filtering for upscaling, set filter to FILTER_LINEAR.
+ * If the image is being downscaled, or if FILTER_POINT is set (default),
+ * then nearest-neighbor sampling will be used instead.
  * @ingroup resize
  */
 cudaError_t cudaResize( float4* input,  size_t inputWidth,  size_t inputHeight,
-				    float4* output, size_t outputWidth, size_t outputHeight );
+				    float4* output, size_t outputWidth, size_t outputHeight,
+				    cudaFilterMode filter=FILTER_POINT );
 
 /**
  * Rescale an image on the GPU (supports grayscale, RGB/BGR, RGBA/BGRA)
+ * To use bilinear filtering for upscaling, set filter to FILTER_LINEAR.
+ * If the image is being downscaled, or if FILTER_POINT is set (default),
+ * then nearest-neighbor sampling will be used instead.
  * @ingroup resize
  */
 cudaError_t cudaResize( void* input,  size_t inputWidth,  size_t inputHeight,
 				    void* output, size_t outputWidth, size_t outputHeight, 
-				    imageFormat format );
+				    imageFormat format, cudaFilterMode filter=FILTER_POINT );
 
 #endif
 
