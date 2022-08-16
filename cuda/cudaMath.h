@@ -520,6 +520,27 @@ inline __host__ __device__ void operator+=(uint3 &a, uint b)
     a.z += b;
 }
 
+inline __host__ __device__ uchar3 operator+(uchar3 a, uchar3 b)
+{
+    return make_uchar3(a.x + b.x, a.y + b.y, a.z + b.z);
+}
+inline __host__ __device__ void operator+=(uchar3 &a, uchar3 b)
+{
+    a.x += b.x;
+    a.y += b.y;
+    a.z += b.z;
+}
+inline __host__ __device__ uchar3 operator+(uchar3 a, uchar b)
+{
+    return make_uchar3(a.x + b, a.y + b, a.z + b);
+}
+inline __host__ __device__ void operator+=(uchar3 &a, uchar b)
+{
+    a.x += b;
+    a.y += b;
+    a.z += b;
+}
+
 inline __host__ __device__ int3 operator+(int b, int3 a)
 {
     return make_int3(a.x + b, a.y + b, a.z + b);
@@ -607,6 +628,33 @@ inline __host__ __device__ uint4 operator+(uint b, uint4 a)
     return make_uint4(a.x + b, a.y + b, a.z + b,  a.w + b);
 }
 inline __host__ __device__ void operator+=(uint4 &a, uint b)
+{
+    a.x += b;
+    a.y += b;
+    a.z += b;
+    a.w += b;
+}
+
+inline __host__ __device__ uchar4 operator+(uchar4 a, uchar4 b)
+{
+    return make_uchar4(a.x + b.x, a.y + b.y, a.z + b.z,  a.w + b.w);
+}
+inline __host__ __device__ void operator+=(uchar4 &a, uchar4 b)
+{
+    a.x += b.x;
+    a.y += b.y;
+    a.z += b.z;
+    a.w += b.w;
+}
+inline __host__ __device__ uchar4 operator+(uchar4 a, uchar b)
+{
+    return make_uchar4(a.x + b, a.y + b, a.z + b,  a.w + b);
+}
+inline __host__ __device__ uchar4 operator+(uchar b, uchar4 a)
+{
+    return make_uchar4(a.x + b, a.y + b, a.z + b,  a.w + b);
+}
+inline __host__ __device__ void operator+=(uchar4 &a, uchar b)
 {
     a.x += b;
     a.y += b;
