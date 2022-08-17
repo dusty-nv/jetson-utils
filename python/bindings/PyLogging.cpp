@@ -172,6 +172,13 @@ static PyObject* PyLogging_SetFilename( PyObject* cls, PyObject* args )
 }
 
 
+// Usage
+static PyObject* PyLogging_Usage( PyObject* cls )
+{
+	return PYSTRING_FROM_STRING(Log::Usage());
+}
+
+
 
 //-------------------------------------------------------------------------------
 static PyTypeObject pyLogging_Type = 
@@ -190,6 +197,7 @@ static PyMethodDef pyLogging_Methods[] =
 	{ "SetLevel", (PyCFunction)PyLogging_SetLevel, METH_VARARGS | METH_CLASS, "Set the current logging level (as a string)"},
 	{ "GetFilename", (PyCFunction)PyLogging_GetFilename, METH_NOARGS | METH_CLASS, "Get the current logging level (as a string)"},
 	{ "SetFilename", (PyCFunction)PyLogging_SetFilename, METH_VARARGS | METH_CLASS, "Set the current logging level (as a string)"},
+	{ "Usage", (PyCFunction)PyLogging_Usage, METH_NOARGS | METH_CLASS, "Get the command-line usage string"},
 	{NULL}  /* Sentinel */
 };
 
