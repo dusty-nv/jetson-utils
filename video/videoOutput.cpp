@@ -67,6 +67,28 @@ static videoOutput* createDisplaySubstream( videoOutput* output, videoOptions& o
 }
 
 
+// apply additional display command line flags
+static void applyDisplayFlags( videoOutput* output, const commandLine& cmdLine )
+{
+	if( !output )
+		return;
+	
+	if( output->IsType(glDisplay::Type) )
+	{
+		glDisplay* display = (glDisplay*)output;
+		
+		if( cmdLine.GetFlag("maximized") )
+			display->SetMaximized(true);
+		
+		if( cmdLine.GetFlag("fullscreen") )
+			display->SetFullscreen(true);
+	}
+	
+	for( uint32_t n=0; n < output->GetNumOutputs(); n++ )
+		applyDisplayFlags(output->GetOutput(n), cmdLine);
+}
+
+		
 // Create
 videoOutput* videoOutput::Create( const videoOptions& options )
 {
@@ -120,7 +142,15 @@ videoOutput* videoOutput::Create( const char* resource, const commandLine& cmdLi
 		return NULL;
 	}
 
-	return createDisplaySubstream(Create(opt), opt, cmdLine);
+	videoOutput* output = Create(opt);
+	
+	if( !output )
+		return NULL;
+	
+	output = createDisplaySubstream(output, opt, cmdLine);
+	applyDisplayFlags(output, cmdLine);
+	
+	return output;
 }
 
 // Create
@@ -141,7 +171,15 @@ videoOutput* videoOutput::Create( const commandLine& cmdLine, int positionArg )
 		return NULL;
 	}
 
-	return createDisplaySubstream(Create(opt), opt, cmdLine);
+	videoOutput* output = Create(opt);
+	
+	if( !output )
+		return NULL;
+	
+	output = createDisplaySubstream(output, opt, cmdLine);
+	applyDisplayFlags(output, cmdLine);
+	
+	return output;
 }
 
 // Create
