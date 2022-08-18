@@ -1060,16 +1060,28 @@ PyObject* PyCUDA_AllocMapped( PyObject* self, PyObject* args, PyObject* kwds )
 	float width = 0;
 	float height = 0;
 	long long timestamp = 0;
-
+	PyObject* pyImageLike = NULL;
+	
 	const char* formatStr = NULL;
-	static char* kwlist[] = {"size", "width", "height", "format", "timestamp", NULL};
+	static char* kwlist[] = {"size", "width", "height", "format", "timestamp", "like", NULL};
 
-	if( !PyArg_ParseTupleAndKeywords(args, kwds, "|iffsL", kwlist, &size, &width, &height, &formatStr, &timestamp))
+	if( !PyArg_ParseTupleAndKeywords(args, kwds, "|iffsLO", kwlist, &size, &width, &height, &formatStr, &timestamp, &pyImageLike))
 	{
 		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaAllocMapped() failed to parse arguments");
 		return NULL;
 	}
 
+	imageFormat format = imageFormatFromStr(formatStr);
+	
+	if( pyImageLike != NULL )
+	{
+		PyCudaImage* image_like = PyCUDA_GetImage(pyImageLike);
+		
+		width = image_like->width;
+		height = image_like->height;
+		format = image_like->format;
+	}
+	
 	if( size <= 0 && (width <= 0 || height <= 0) )
 	{
 		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaAllocMapped() requested size/dimensions are negative or zero");
@@ -1083,7 +1095,6 @@ PyObject* PyCUDA_AllocMapped( PyObject* self, PyObject* args, PyObject* kwds )
 	}
 
 	const bool isImage = (width > 0) && (height > 0);
-	const imageFormat format = imageFormatFromStr(formatStr);
 
 	if( isImage && format == IMAGE_UNKNOWN )
 	{
@@ -1276,13 +1287,16 @@ PyObject* PyCUDA_Resize( PyObject* self, PyObject* args, PyObject* kwds )
 	PyObject* pyInput  = NULL;
 	PyObject* pyOutput = NULL;
 	
-	static char* kwlist[] = {"input", "output", NULL};
+	const char* filter_str = "point";
+	static char* kwlist[] = {"input", "output", "filter", NULL};
 
-	if( !PyArg_ParseTupleAndKeywords(args, kwds, "OO", kwlist, &pyInput, &pyOutput))
+	if( !PyArg_ParseTupleAndKeywords(args, kwds, "OO|s", kwlist, &pyInput, &pyOutput, &filter_str))
 	{
 		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaResize() failed to parse args");
 		return NULL;
 	}
+	
+	const cudaFilterMode filter_mode = cudaFilterModeFromStr(filter_str);
 	
 	// get pointers to image data
 	PyCudaImage* input = PyCUDA_GetImage(pyInput);
@@ -1301,7 +1315,7 @@ PyObject* PyCUDA_Resize( PyObject* self, PyObject* args, PyObject* kwds )
 	}
 
 	// run the CUDA function
-	if( CUDA_FAILED(cudaResize(input->base.ptr, input->width, input->height, output->base.ptr, output->width, output->height, output->format)) )
+	if( CUDA_FAILED(cudaResize(input->base.ptr, input->width, input->height, output->base.ptr, output->width, output->height, output->format, filter_mode)) )
 	{
 		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaResize() failed");
 		return NULL;
