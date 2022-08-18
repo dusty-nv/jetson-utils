@@ -376,12 +376,39 @@ bool gstEncoder::buildLaunchStr()
 
 		mOptions.deviceType = videoOptions::DEVICE_IP;
 	}
+	else if( uri.protocol == "rtpmp2ts" )
+	{
+		// https://forums.developer.nvidia.com/t/gstreamer-udp-to-vlc/215349/5
+		if( mOptions.codec == videoOptions::CODEC_H264 ) 
+			ss << "h264parse config-interval=1 ! mpegtsmux ! rtpmp2tpay ! udpsink host=";
+		else if (mOptions.codec == videoOptions::CODEC_H265 )
+			ss << "h265parse config-interval=1 ! mpegtsmux ! rtpmp2tpay ! udpsink host=";
+		else
+		{
+			LogError(LOG_GSTREAMER "gstEncoder -- rtpmp2ts output only supports h264 and h265. Unsupported codec (%s)\n", uri.extension.c_str());
+			return false;
+		}
+ 		
+		ss << uri.location << " ";
+
+		if( uri.port != 0 )
+			ss << "port=" << uri.port;
+
+		ss << " auto-multicast=true";
+
+		mOptions.deviceType = videoOptions::DEVICE_IP;
+	}
 	else if( uri.protocol == "rtmp" )
 	{
 		ss << "flvmux streamable=true ! queue ! rtmpsink location=";
 		ss << uri.string << " ";
 
 		mOptions.deviceType = videoOptions::DEVICE_IP;
+	}
+	else
+	{
+		LogError(LOG_GSTREAMER "gstEncoder -- invalid protocol (%s)\n", uri.protocol.c_str());
+		return false;
 	}
 
 	mLaunchStr = ss.str();

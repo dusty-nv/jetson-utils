@@ -80,7 +80,7 @@ videoOutput* videoOutput::Create( const videoOptions& options )
 		else
 			output = imageWriter::Create(options);
 	}
-	else if( uri.protocol == "rtp" || uri.protocol == "rtmp" )
+	else if( uri.protocol == "rtp" || uri.protocol == "rtmp" || uri.protocol == "rtpmp2ts" )
 	{
 		output = gstEncoder::Create(options);
 	}
