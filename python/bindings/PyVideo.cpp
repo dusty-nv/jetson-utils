@@ -210,7 +210,7 @@ static PyObject* PyVideoSource_Capture( PyVideoSource_Object* self, PyObject* ar
 
 	// parse arguments
 	const char* pyFormat = "rgb8";
-	int pyTimeout = -1;
+	int pyTimeout = videoSource::DEFAULT_TIMEOUT;
 	static char* kwlist[] = {"format", "timeout", NULL};
 
 	if( !PyArg_ParseTupleAndKeywords(args, kwds, "|si", kwlist, &pyFormat, &pyTimeout))
@@ -220,11 +220,13 @@ static PyObject* PyVideoSource_Capture( PyVideoSource_Object* self, PyObject* ar
 	}
 
 	// convert signed timeout to unsigned long
-	uint64_t timeout = UINT64_MAX;
+	uint64_t timeout = videoSource::DEFAULT_TIMEOUT;
 
 	if( pyTimeout >= 0 )
 		timeout = pyTimeout;
-
+	else
+		timeout = UINT64_MAX;
+	
 	// convert format string to enum
 	const imageFormat format = imageFormatFromStr(pyFormat);
 	

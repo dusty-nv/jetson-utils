@@ -71,13 +71,13 @@ public:
 	 * Load the next frame.
 	 * @see videoSource::Capture()
 	 */
-	template<typename T> bool Capture( T** image, uint64_t timeout=UINT64_MAX )		{ return Capture((void**)image, imageFormatFromType<T>(), timeout); }
+	template<typename T> bool Capture( T** image, uint64_t timeout=DEFAULT_TIMEOUT )		{ return Capture((void**)image, imageFormatFromType<T>(), timeout); }
 	
 	/**
 	 * Load the next frame.
 	 * @see videoSource::Capture()
 	 */
-	virtual bool Capture( void** image, imageFormat format, uint64_t timeout=UINT64_MAX );
+	virtual bool Capture( void** image, imageFormat format, uint64_t timeout=DEFAULT_TIMEOUT );
 
 	/**
 	 * Open the stream.

@@ -135,13 +135,13 @@ public:
 	 * Capture the next image frame from the camera.
 	 * @see videoSource::Capture
 	 */
-	template<typename T> bool Capture( T** image, uint64_t timeout=UINT64_MAX )		{ return Capture((void**)image, imageFormatFromType<T>(), timeout); }
+	template<typename T> bool Capture( T** image, uint64_t timeout=DEFAULT_TIMEOUT )		{ return Capture((void**)image, imageFormatFromType<T>(), timeout); }
 	
 	/**
 	 * Capture the next image frame from the camera.
 	 * @see videoSource::Capture
 	 */
-	virtual bool Capture( void** image, imageFormat format, uint64_t timeout=UINT64_MAX );
+	virtual bool Capture( void** image, imageFormat format, uint64_t timeout=DEFAULT_TIMEOUT );
 
 	/**
 	 * Capture the next image frame from the camera and convert it to float4 RGBA format,
@@ -165,7 +165,7 @@ public:
 	 *                    If timeout is 0, the calling thread will return immediately
 	 *                    if a new frame isn't already available.
 	 *                    If timeout is UINT64_MAX, the calling thread will wait
-	 *                    indefinetly for a new frame to arrive (this is the default behavior).
+	 *                    indefinetly for a new frame to arrive.
 	 *
 	 * @param[in] zeroCopy If `true`, the image will reside in shared CPU/GPU memory.
 	 *                     If `false`, the image will only be accessible from the GPU.
@@ -176,7 +176,7 @@ public:
 	 * @returns `true` if a frame was successfully captured, otherwise `false` if a timeout
 	 *               or error occurred, or if timeout was 0 and a frame wasn't ready.
 	 */
-	bool CaptureRGBA( float** image, uint64_t timeout=UINT64_MAX, bool zeroCopy=false );
+	bool CaptureRGBA( float** image, uint64_t timeout=DEFAULT_TIMEOUT, bool zeroCopy=false );
 
 	/**
 	 * Set whether converted RGB(A) images should use ZeroCopy buffer allocation.

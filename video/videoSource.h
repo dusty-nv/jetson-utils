@@ -187,12 +187,12 @@ public:
 	 *                   from both CPU and CUDA.  Otherwise, it's accessible only from CUDA.
 	 *
 	 * @param[in] timeout timeout in milliseconds to wait to capture the image before returning.
-	 *                    A timeout value of `UINT64_MAX` (the default) will wait forever, and
-	 *                    a timeout of 0 will return instantly if a frame wasn't immediately ready.
+	 *                    The default is 1000.  A timeout value of `UINT64_MAX` will wait forever.
+	 *                    A timeout of 0 will return instantly if a frame wasn't immediately ready.
 	 *
 	 * @returns `true` if a frame was captured, `false` if there was an error or a timeout occurred.
 	 */
-	template<typename T> bool Capture( T** image, uint64_t timeout=UINT64_MAX )		{ return Capture((void**)image, imageFormatFromType<T>(), timeout); }
+	template<typename T> bool Capture( T** image, uint64_t timeout=DEFAULT_TIMEOUT )		{ return Capture((void**)image, imageFormatFromType<T>(), timeout); }
 	
 	/**
 	 * Capture the next image from the video stream.
@@ -206,13 +206,13 @@ public:
 	 *                   from both CPU and CUDA.  Otherwise, it's accessible only from CUDA.
 	 *
 	 * @param[in] timeout timeout in milliseconds to wait to capture the image before returning.
-	 *                    A timeout value of `UINT64_MAX` (the default) will wait forever, and
-	 *                    a timeout of 0 will return instantly if a frame wasn't immediately ready.
+	 *                    The default is 1000.  A timeout value of `UINT64_MAX` will wait forever.
+	 *                    A timeout of 0 will return instantly if a frame wasn't immediately ready.
 	 *
 	 * @returns `true` if a frame was captured, `false` if there was an error or a timeout occurred.
 	 */
-	virtual bool Capture( void** image, imageFormat format, uint64_t timeout=UINT64_MAX ) = 0;
-
+	virtual bool Capture( void** image, imageFormat format, uint64_t timeout=DEFAULT_TIMEOUT ) = 0;
+	
 	/**
 	 * Begin streaming the device.
 	 * After Open() is called, frames from the device will begin to be captured.
@@ -311,6 +311,11 @@ public:
 	 * Convert a class type to a string.
 	 */
 	static const char* TypeToStr( uint32_t type );
+	
+	/**
+	 * The default Capture timeout (1000ms)
+	 */
+	static const uint64_t DEFAULT_TIMEOUT=1000;
 
 protected:
 	//videoSource();
