@@ -96,7 +96,7 @@ static StbBuffer loadImageIO( const char* filename, int* width, int* height, int
 	const int resizeWidth  = *width;
 	const int resizeHeight = *height;
 
-	if( resizeWidth > 0 && resizeHeight > 0 && resizeWidth != imgWidth && resizeHeight != imgHeight )
+	if( resizeWidth > 0 && resizeHeight > 0 && (resizeWidth != imgWidth || resizeHeight != imgHeight) )
 	{
 		const auto img_org = std::move(img);
 
