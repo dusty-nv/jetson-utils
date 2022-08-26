@@ -411,8 +411,8 @@ inline void mat33_transform( T& x_out, T& y_out, const T x_in, const T y_in, con
 	const T y = mat[1][0] * x_in + mat[1][1] * y_in + mat[1][2];
 	const T z = mat[2][0] * x_in + mat[2][1] * y_in + mat[2][2];
 
-	x_out = x; // / z;
-	y_out = y; // / z;
+	x_out = x / z;
+	y_out = y / z;
 }
 
 
