@@ -504,11 +504,11 @@ bool cudaFont::OverlayText( void* image, imageFormat format, uint32_t width, uin
 			pos.x += mGlyphInfo[c].xAdvance;
 
 			// track the maximum glyph size
-			if( maxGlyphSize.x < mGlyphInfo[n].width )
-				maxGlyphSize.x = mGlyphInfo[n].width;
+			if( maxGlyphSize.x < mGlyphInfo[c].width )
+				maxGlyphSize.x = mGlyphInfo[c].width;
 
-			if( maxGlyphSize.y < mGlyphInfo[n].height )
-				maxGlyphSize.y = mGlyphInfo[n].height;
+			if( maxGlyphSize.y < mGlyphInfo[c].height )
+				maxGlyphSize.y = mGlyphInfo[c].height;
 
 			// expand the background rect
 			if( has_bg )
