@@ -139,12 +139,17 @@ void glBuffer::Unbind()
 // cudaGraphicsRegisterFlagsFromGL
 cudaGraphicsRegisterFlags cudaGraphicsRegisterFlagsFromGL( uint32_t flags )
 {
+#if defined(__x86_64__) || defined(__amd64__)
+	// there's a memory access issue on x86 when the flags below are used, so disable them
+	return cudaGraphicsRegisterFlagsNone;
+#else
 	if( flags == GL_WRITE_DISCARD )
 		return cudaGraphicsRegisterFlagsWriteDiscard;
 	else if( flags == GL_READ_ONLY )
 		return cudaGraphicsRegisterFlagsReadOnly;
 	else
 		return cudaGraphicsRegisterFlagsNone;
+#endif
 }
 
 
