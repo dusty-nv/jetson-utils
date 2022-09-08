@@ -134,7 +134,7 @@ bool gstCamera::buildLaunchStr()
 
 	if( mOptions.resource.protocol == "csi" )
 	{
-	#if defined(__x86_64)
+	#if defined(__x86_64__) || defined(__amd64__)
 		LogError(LOG_GSTREAMER "MIPI CSI camera isn't available on x86 - please use /dev/video (V4L2) instead");
 		return false;
 	#endif
@@ -241,7 +241,7 @@ bool gstCamera::buildLaunchStr()
 				ss << "videoflip method=" << videoOptions::FlipMethodToStr(mOptions.flipMethod) << " ! ";  // the videoflip enum varies slightly, but the strings are the same
 		}
 		
-	#elif defined(__x86_64)
+	#elif defined(__x86_64__) || defined(__amd64__)
 		if( mOptions.flipMethod != videoOptions::FLIP_NONE )
 			ss << "videoflip method=" << videoOptions::FlipMethodToStr(mOptions.flipMethod) << " ! ";
 	#endif

@@ -153,7 +153,7 @@ const char* gst_format_to_string( imageFormat format );
 #endif
 #endif
 
-#elif defined(__x86_64)
+#elif defined(__x86_64__) || defined(__amd64__)
 
 #if GST_CHECK_VERSION(1,0,0)
 

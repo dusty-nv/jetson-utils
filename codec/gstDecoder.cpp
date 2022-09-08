@@ -597,7 +597,7 @@ bool gstDecoder::buildLaunchStr()
 		
 		ss << " ! video/x-raw";
 		
-	#elif defined(__x86_64)
+	#elif defined(__x86_64__) || defined(__amd64__)
 		if( mOptions.flipMethod != videoOptions::FLIP_NONE )
 			ss << "videoflip method=" << videoOptions::FlipMethodToStr(mOptions.flipMethod) << " ! ";
 		
