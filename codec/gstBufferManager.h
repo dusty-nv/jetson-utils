@@ -38,7 +38,7 @@
 #endif
 
 #ifdef GST_CODECS_V4L2
-	#undef ENABLE_NVMM  // NVMM code having some issues on JetPack 5.x
+//	#undef ENABLE_NVMM  // NVMM code having some issues on JetPack 5.x
 #endif
 #endif
 
