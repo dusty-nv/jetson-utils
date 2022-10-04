@@ -13,8 +13,8 @@ else()
 	# standalone project
 	project(jetson-utils)
   
-	# -std=gnu++11
-	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wno-write-strings")	
+	# -std=gnu++14
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14 -Wno-write-strings")	
   
 	# setup CUDA
 	set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cuda")
@@ -85,7 +85,7 @@ file(GLOB jetsonUtilitySources *.cpp camera/*.cpp codec/*.cpp cuda/*.cu cuda/*.c
 file(GLOB jetsonUtilityIncludes *.h *.hpp camera/*.h codec/*.h cuda/*.h cuda/*.cuh display/*.h image/*.h image/*.inl input/*.h network/*.h threads/*.h threads/*.inl video/*.h)
 
 cuda_add_library(jetson-utils SHARED ${jetsonUtilitySources})
-target_link_libraries(jetson-utils GL GLU GLEW gstreamer-1.0 gstapp-1.0 gstpbutils-1.0 ${CUDA_nppicc_LIBRARY})	
+target_link_libraries(jetson-utils GL GLU GLEW gstreamer-1.0 gstapp-1.0 gstpbutils-1.0 SDL2 ${CUDA_nppicc_LIBRARY})	
 
 if(ENABLE_NVMM)
 	target_link_libraries(jetson-utils nvbuf_utils)
