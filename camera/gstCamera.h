@@ -220,7 +220,7 @@ private:
 	
 	bool matchCaps( GstCaps* caps );
 	bool printCaps( GstCaps* caps );
-	bool parseCaps( GstStructure* caps, videoOptions::Codec* codec, imageFormat* format, uint32_t* width, uint32_t* height, float* frameRate );
+	bool parseCaps( GstStructure* caps, videoOptions::Codec* codec, imageFormat* format, uint32_t* width, uint32_t* height, float* frameRate, int* frameRateNum, int* frameRateDenom );
 	
 	_GstBus*     mBus;
 	_GstAppSink* mAppSink;

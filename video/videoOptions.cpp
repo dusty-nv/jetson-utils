@@ -32,6 +32,8 @@ videoOptions::videoOptions()
 	width 	  = 0;
 	height 	  = 0;
 	frameRate   = 0;
+	frameRateNum = 0;
+	frameRateDenom = 0;
 	bitRate     = 0;
 	numBuffers  = 4;
 	loop        = 0;
@@ -62,7 +64,7 @@ void videoOptions::Print( const char* prefix ) const
 	LogInfo("  -- codec:      %s\n", CodecToStr(codec));
 	LogInfo("  -- width:      %u\n", width);
 	LogInfo("  -- height:     %u\n", height);
-	LogInfo("  -- frameRate:  %f\n", frameRate);
+	LogInfo("  -- frameRate:  %.2f (%d/%d)\n", frameRate, frameRateNum, frameRateDenom);
 	LogInfo("  -- bitRate:    %u\n", bitRate);
 	LogInfo("  -- numBuffers: %u\n", numBuffers);
 	LogInfo("  -- zeroCopy:   %s\n", zeroCopy ? "true" : "false");	
@@ -125,6 +127,11 @@ bool videoOptions::Parse( const char* URI, const commandLine& cmdLine, videoOpti
 
 	if( frameRate == 0 )
 		frameRate = cmdLine.GetFloat("framerate");
+
+	if (frameRate != 0) {
+		frameRateDenom = 100;
+		frameRateNum = int(frameRate * frameRateDenom);
+	}
 
 	// flip-method
 	const char* flipStr = (type == INPUT) ? cmdLine.GetString("input-flip")

@@ -68,6 +68,8 @@ public:
 	 * for input and output streams, respectively. The `--framerate=N` option sets it for both.
 	 */
 	float frameRate;
+	int frameRateNum;
+	int frameRateDenom;
 	
 	/**
 	 * The encoding bitrate for compressed streams (only applies to video codecs like H264/H265).
