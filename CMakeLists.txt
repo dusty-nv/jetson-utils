@@ -74,7 +74,7 @@ endif()
 
 # additional paths for includes and libraries
 include_directories(${PROJECT_INCLUDE_DIR}/jetson-utils)
-include_directories(/usr/include/gstreamer-1.0 /usr/include/glib-2.0 /usr/include/libxml2 /usr/lib/${CMAKE_SYSTEM_PROCESSOR}-linux-gnu/gstreamer-1.0/include /usr/lib/${CMAKE_SYSTEM_PROCESSOR}-linux-gnu/glib-2.0/include/)
+include_directories(/usr/include/gstreamer-1.0 /usr/include/glib-2.0 /usr/include/libxml2 /usr/include/json-glib-1.0 /usr/include/libsoup-2.4 /usr/lib/${CMAKE_SYSTEM_PROCESSOR}-linux-gnu/gstreamer-1.0/include /usr/lib/${CMAKE_SYSTEM_PROCESSOR}-linux-gnu/glib-2.0/include/)
 
 if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64")
 	link_directories(/usr/lib/aarch64-linux-gnu/tegra)
@@ -85,7 +85,7 @@ file(GLOB jetsonUtilitySources *.cpp camera/*.cpp codec/*.cpp cuda/*.cu cuda/*.c
 file(GLOB jetsonUtilityIncludes *.h *.hpp camera/*.h codec/*.h cuda/*.h cuda/*.cuh display/*.h image/*.h image/*.inl input/*.h network/*.h threads/*.h threads/*.inl video/*.h)
 
 cuda_add_library(jetson-utils SHARED ${jetsonUtilitySources})
-target_link_libraries(jetson-utils GL GLU GLEW gstreamer-1.0 gstapp-1.0 gstpbutils-1.0 ${CUDA_nppicc_LIBRARY})	
+target_link_libraries(jetson-utils GL GLU GLEW gstreamer-1.0 gstapp-1.0 gstpbutils-1.0 gstwebrtc-1.0 gstsdp-1.0 json-glib-1.0 soup-2.4 ${CUDA_nppicc_LIBRARY})	
 
 if(ENABLE_NVMM)
 	target_link_libraries(jetson-utils nvbuf_utils)
@@ -115,4 +115,5 @@ install(EXPORT jetson-utilsConfig DESTINATION share/jetson-utils/cmake)
 add_subdirectory(camera/camera-viewer)
 add_subdirectory(video/video-viewer)
 add_subdirectory(display/gl-display-test)
+add_subdirectory(network/webrtc-server)
 add_subdirectory(python)
