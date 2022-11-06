@@ -21,8 +21,8 @@
  */
 
 #include "WebRTCServer.h"
-
 #include "NetworkAdapter.h"
+
 #include "logging.h"
 
 
@@ -152,6 +152,7 @@ WebRTCServer::WebRTCServer( uint16_t port )
 {	
 	mPort = port;
 	mRefCount = 1;
+	mPeerCount = 0;
 	mSoupServer = NULL;
 }
 
@@ -159,6 +160,8 @@ WebRTCServer::WebRTCServer( uint16_t port )
 // destructor
 WebRTCServer::~WebRTCServer()
 {
+	// TODO free routes and peers
+	
 	/*if( mWebsocketConnection != NULL )
 	{
 		g_object_unref(mWebsocketConnection);
@@ -211,8 +214,9 @@ bool WebRTCServer::init()
 	}
 	
 	soup_server_add_handler(mSoupServer, "/", onHttpRequest, this, NULL);
-	//soup_server_add_websocket_handler(mSoupServer, "/ws", NULL, NULL, onWebsocketConnection, this, NULL);
-	AddRoute("/", onHttpDefault, this);
+	soup_server_add_websocket_handler(mSoupServer, "/", NULL, NULL, onWebsocketOpened, this, NULL);
+	
+	AddRoute("/", onHttpDefault, this);  // serve the server-default HTML pages
 	
 	// start the server listening
 	GError* err = NULL;
@@ -377,6 +381,22 @@ void WebRTCServer::freeRoute( WebRTCServer::WebsocketRoute* route )
 }
 
 
+// remove an element from a vector (only removes the first instance)
+template<typename T> static void vector_remove_element( std::vector<T>& vector, const T& element )
+{
+	const size_t numElements = vector.size();
+	
+	for( size_t n=0; n < numElements; n++ )
+	{
+		if( vector[n] == element )
+		{
+			vector.erase(vector.begin() + n);
+			return;
+		}
+	}
+}
+
+
 // onHttpRequest
 void WebRTCServer::onHttpRequest( SoupServer* soup_server, SoupMessage* message, const char* path, GHashTable* query, SoupClientContext* client_context, void* user_data )
 {
@@ -442,30 +462,119 @@ void WebRTCServer::onHttpDefault( SoupServer* soup_server, SoupMessage* message,
 }
 
 
-/*
-// onWebsocketConnection
-void WebRTCServer::onWebsocketConnection( SoupServer* soup_server, SoupMessage* message, const char* path, GHashTable* query, SoupClientContext* client_context, void* user_data )
+// onWebsocketOpened
+void WebRTCServer::onWebsocketOpened( SoupServer* soup_server, SoupWebsocketConnection* connection, const char *path, SoupClientContext* client_context, void* user_data )
 {
+	const char* ip_address = soup_client_context_get_host(client_context);
+	LogInfo(LOG_WEBRTC "websocket %s opened by %s\n", path, ip_address);
+	
 	if( !user_data )
-	{
-		soup_message_set_status(message, SOUP_STATUS_INTERNAL_SERVER_ERROR);
 		return;
-	}
 	
+	// lookup the route using the path the websocket connected on
 	WebRTCServer* server = (WebRTCServer*)user_data;
-	
-	// find if path is found
-	HttpRoute* route = server->findHttpRoute(path);
+	WebsocketRoute* route = server->findWebsocketRoute(path);
 	
 	if( !route )
 	{
-		soup_message_set_status(message, SOUP_STATUS_NOT_FOUND);
+		LogVerbose(LOG_WEBRTC "websocket %s %s not found\n", ip_address, path);
 		return;
 	}
 	
-	// dispatch callback
-	route->callback(soup_server, message, path, query, client_context, route->user_data);
-}*/
+	// create new peer object
+	WebRTCPeer* peer = new WebRTCPeer();
+		
+	peer->connection = connection;
+	peer->client_context = client_context;
+	peer->server = server;
+	
+	peer->ID = server->mPeerCount;
+	peer->path = path;
+	peer->flags = route->flags | WEBRTC_PEER_CONNECTING;
+	peer->user_data = NULL;
+	peer->ip_address = ip_address;
+	
+	route->peers.push_back(peer);
+	server->mPeerCount++;
+		
+	g_object_ref(G_OBJECT(connection));
+	
+	// subscribe to messages
+	g_signal_connect(G_OBJECT(connection), "message", G_CALLBACK(onWebsocketMessage), peer);
+	g_signal_connect(G_OBJECT(connection), "closed", G_CALLBACK(onWebsocketClosed), peer);
+
+	// call the route
+	route->callback(peer, NULL, 0, route->user_data);
+}
+	
+	
+// onWebsocketClosed	
+void WebRTCServer::onWebsocketClosed( SoupWebsocketConnection* connection, void* user_data )
+{
+	if( !user_data )
+		return;
+	
+	WebRTCPeer* peer = (WebRTCPeer*)user_data;
+	
+	LogInfo(LOG_WEBRTC "websocket %s connection to %s closed\n", peer->path.c_str(), peer->ip_address.c_str());
+	
+	peer->flags &= ~(WEBRTC_PEER_CONNECTED|WEBRTC_PEER_STREAMING);
+	peer->flags |= WEBRTC_PEER_CLOSED;
+	
+	WebsocketRoute* route = peer->server->findWebsocketRoute(peer->path.c_str());
+
+	if( route != NULL )
+	{
+		route->callback(peer, NULL, 0, route->user_data); // closed flag set above
+		vector_remove_element(route->peers, peer);
+	}
+	
+	g_object_unref(G_OBJECT(peer->connection));
+	delete peer;
+}
+
+
+// onWebsocketMessage
+void WebRTCServer::onWebsocketMessage( SoupWebsocketConnection* connection, SoupWebsocketDataType data_type, GBytes* message, void* user_data )
+{
+	if( !user_data )
+		return;
+	
+	WebRTCPeer* peer = (WebRTCPeer*)user_data;
+	
+	LogVerbose(LOG_WEBRTC "websocket %s message from %s (zu bytes)\n", peer->path.c_str(), peer->ip_address.c_str());
+	
+	// extract the message to string
+	gchar* data = NULL;
+	gchar* data_string = NULL;
+	gsize  data_size = 0;
+	
+	switch (data_type) 
+	{
+		case SOUP_WEBSOCKET_DATA_BINARY:
+			LogWarning(LOG_WEBRTC "websocket %s received unknown binary message from %s, ignoring\n", peer->path.c_str(), peer->ip_address.c_str());
+			g_bytes_unref(message);
+			return;
+
+		case SOUP_WEBSOCKET_DATA_TEXT:
+			data = (gchar*)g_bytes_unref_to_data(message, &data_size);
+			data_string = g_strndup(data, data_size); // Convert to NULL-terminated string
+			g_free(data);
+			break;
+
+		default:
+			g_assert_not_reached();
+	}
+
+	// relay to route handler
+	WebsocketRoute* route = peer->server->findWebsocketRoute(peer->path.c_str());
+
+	if( route != NULL )
+		route->callback(peer, data_string, data_size, route->user_data);
+		
+	g_free(data_string);
+}
+
 
 
 // ProcessRequests

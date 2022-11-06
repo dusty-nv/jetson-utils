@@ -21,6 +21,7 @@
  */
 
 #include "gstEncoder.h"
+#include "WebRTCServer.h"
 
 #include "filesystem.h"
 #include "timespec.h"
@@ -28,8 +29,13 @@
 
 #include "cudaColorspace.h"
 
+#define GST_USE_UNSTABLE_API
+
 #include <gst/gst.h>
 #include <gst/app/gstappsrc.h>
+#include <gst/webrtc/webrtc.h>
+
+#include <json-glib/json-glib.h>
 
 #include <sstream>
 #include <string.h>
@@ -67,12 +73,12 @@ bool gstEncoder::IsSupportedExtension( const char* ext )
 // constructor
 gstEncoder::gstEncoder( const videoOptions& options ) : videoOutput(options)
 {	
-	mAppSrc     = NULL;
-	mBus        = NULL;
-	mBufferCaps = NULL;
-	mPipeline   = NULL;
-	mNeedData   = false;
-	mOutputPort = 0;
+	mAppSrc       = NULL;
+	mBus          = NULL;
+	mBufferCaps   = NULL;
+	mPipeline     = NULL;
+	mWebRTCServer = NULL;
+	mNeedData     = false;
 
 	mBufferYUV.SetThreaded(false);
 }
@@ -83,6 +89,12 @@ gstEncoder::~gstEncoder()
 {
 	Close();
 
+	if( mWebRTCServer != NULL )
+	{
+		mWebRTCServer->Release();
+		mWebRTCServer = NULL;
+	}
+	
 	if( mAppSrc != NULL )
 	{
 		gst_object_unref(mAppSrc);
@@ -209,17 +221,16 @@ bool gstEncoder::init()
 	g_signal_connect(appsrcElement, "need-data", G_CALLBACK(onNeedData), this);
 	g_signal_connect(appsrcElement, "enough-data", G_CALLBACK(onEnoughData), this);
 
-#if GST_CHECK_VERSION(1,0,0)
-	//gst_app_src_set_caps(appsrc, mBufferCaps);
-#endif
-	
-#if 0
-	// set stream properties (note: these are now set in the pipeline)
-	gst_app_src_set_stream_type(appsrc, GST_APP_STREAM_TYPE_STREAM);
-	
-	g_object_set(G_OBJECT(mAppSrc), "is-live", TRUE, NULL); 
-	g_object_set(G_OBJECT(mAppSrc), "do-timestamp", TRUE, NULL); 
-#endif
+	// create servers for some protocols
+	if( mOptions.resource.protocol == "webrtc" )
+	{
+		mWebRTCServer = WebRTCServer::Create(mOptions.resource.port);
+		
+		if( !mWebRTCServer )
+			return false;
+		
+		mWebRTCServer->AddRoute(mOptions.resource.path.c_str(), onWebsocketMsg, this, WEBRTC_VIDEO|WEBRTC_SEND|WEBRTC_PUBLIC);
+	}		
 
 	return true;
 }
@@ -256,7 +267,7 @@ bool gstEncoder::buildLaunchStr()
 	std::ostringstream ss;
 
 	// setup appsrc input element
-	ss << "appsrc name=mysource is-live=true do-timestamp=true format=3 ! ";
+	ss << "appsrc name=mysource is-live=true do-timestamp=true format=3 max-bytes=0 ! ";
 
 	// set default bitrate (if needed)
 	if( mOptions.bitRate == 0 )
@@ -349,7 +360,7 @@ bool gstEncoder::buildLaunchStr()
 
 		mOptions.deviceType = videoOptions::DEVICE_FILE;
 	}
-	else if( uri.protocol == "rtp" )
+	else if( uri.protocol == "rtp" || uri.protocol == "webrtc" )
 	{
 		if( mOptions.codec == videoOptions::CODEC_H264 )
 			ss << "rtph264pay";
@@ -362,18 +373,27 @@ bool gstEncoder::buildLaunchStr()
 		else if( mOptions.codec == videoOptions::CODEC_MJPEG )
 			ss << "rtpjpegpay";
 
-		if (mOptions.codec == videoOptions::CODEC_H264 || mOptions.codec == videoOptions::CODEC_H265) {
-				ss << " config-interval=1 ! udpsink host=";
-		} else {
-				ss << " ! udpsink host=";
+		if( mOptions.codec == videoOptions::CODEC_H264 || mOptions.codec == videoOptions::CODEC_H265 ) 
+			ss << " config-interval=1";
+		
+		ss << " ! ";
+		
+		if( uri.protocol == "rtp" )
+		{
+			ss << "udpsink host=" << uri.location << " ";
+
+			if( uri.port != 0 )
+				ss << "port=" << uri.port;
+
+			ss << " auto-multicast=true";
 		}
-		ss << uri.location << " ";
-
-		if( uri.port != 0 )
-			ss << "port=" << uri.port;
-
-		ss << " auto-multicast=true";
-
+		else if( uri.protocol == "webrtc" )
+		{
+			ss << "application/x-rtp,media=video,encoding-name=" << videoOptions::CodecToStr(mOptions.codec) << ",payload=96 ! ";
+			//ss << "webrtcbin name=webrtcbin stun-server=" << STUN_SERVER;
+			ss << "tee name=videotee ! queue ! fakesink";  // webrtcbin's will be added when clients connect
+		}
+		
 		mOptions.deviceType = videoOptions::DEVICE_IP;
 	}
 	else if( uri.protocol == "rtpmp2ts" )
@@ -548,6 +568,9 @@ bool gstEncoder::encodeYUV( void* buffer, size_t size )
 // Render
 bool gstEncoder::Render( void* image, uint32_t width, uint32_t height, imageFormat format )
 {
+	//if( mWebRTCServer != NULL )
+	//	mWebRTCServer->ProcessMessages();	// update the webrtc server
+	
 	if( !image || width == 0 || height == 0 )
 		return false;
 
@@ -622,6 +645,8 @@ bool gstEncoder::Open()
 
 	if( result == GST_STATE_CHANGE_ASYNC )
 	{
+		LogDebug(LOG_GSTREAMER "gstEncoder -- queued state to GST_STATE_PLAYING => GST_STATE_CHANGE_ASYNC\n");
+		
 #if 0
 		GstMessage* asyncMsg = gst_bus_timed_pop_filtered(mBus, 5 * GST_SECOND, 
     	 					      (GstMessageType)(GST_MESSAGE_ASYNC_DONE|GST_MESSAGE_ERROR)); 
@@ -698,4 +723,323 @@ void gstEncoder::checkMsgBus()
 }
 
 
+// gstreamer-specific context for each WebRTC peer
+struct gstWebRTCPeerContext
+{
+	GstElement* webrtcbin;
+	GstElement* queue;
+	gstEncoder* encoder;
+};
+
+
+// onWebsocketMessage
+void gstEncoder::onWebsocketMsg( WebRTCPeer* peer, const char* message, size_t message_size, void* user_data )
+{
+	LogDebug(LOG_GSTREAMER "gstEncoder -- onWebsocketMessage()\n");
+	
+	if( !user_data )
+		return;
+	
+	gstEncoder* encoder = (gstEncoder*)user_data;
+	gstWebRTCPeerContext* peer_context = (gstWebRTCPeerContext*)peer->user_data;
+	
+	if( peer->flags & WEBRTC_PEER_CONNECTING )
+	{
+		// new peer context
+		peer_context = new gstWebRTCPeerContext();
+		peer->user_data = peer_context;
+		
+		// add queue and webrtcbin elements to the pipeline
+		gchar* tmp = g_strdup_printf("queue-%u", peer->ID);
+		peer_context->queue = gst_element_factory_make("queue", tmp);
+		g_free(tmp);
+		
+		tmp = g_strdup_printf("webrtcbin-%u", peer->ID);
+		peer_context->webrtcbin = gst_element_factory_make("webrtcbin", tmp);
+		g_free(tmp);
+		
+		gst_bin_add_many(GST_BIN(encoder->mPipeline), peer_context->queue, peer_context->webrtcbin, NULL);
+		
+		// link the queue to webrtc bin
+		GstPad* srcpad = gst_element_get_static_pad(peer_context->queue, "src");
+		g_assert_nonnull(srcpad);
+		GstPad* sinkpad = gst_element_get_request_pad(peer_context->webrtcbin, "sink_%u");
+		g_assert_nonnull(sinkpad);
+		int ret = gst_pad_link(srcpad, sinkpad);
+		g_assert_cmpint(ret, ==, GST_PAD_LINK_OK);
+		gst_object_unref(srcpad);
+		gst_object_unref(sinkpad);
+		
+		// link the queue to the tee
+		GstElement* tee = gst_bin_get_by_name(GST_BIN(encoder->mPipeline), "videotee");
+		g_assert_nonnull(tee);
+		srcpad = gst_element_get_request_pad(tee, "src_%u");
+		g_assert_nonnull(srcpad);
+		gst_object_unref(tee);
+		sinkpad = gst_element_get_static_pad(peer_context->queue, "sink");
+		g_assert_nonnull(sinkpad);
+		ret = gst_pad_link(srcpad, sinkpad);
+		g_assert_cmpint(ret, ==, GST_PAD_LINK_OK);
+		gst_object_unref(srcpad);
+		gst_object_unref(sinkpad);
+		
+		// subscribe to callbacks
+		g_signal_connect(encoder->mPipeline, "on-negotiation-needed", G_CALLBACK(onNegotiationNeeded), peer);
+		g_signal_connect(encoder->mPipeline, "on-ice-candidate", G_CALLBACK(onIceCandidate), peer);
+
+		return;
+	}
+	else if( peer->flags & WEBRTC_PEER_CLOSED )
+	{
+		// remove webrtcbin from pipeline
+		gst_bin_remove(GST_BIN(encoder->mPipeline), peer_context->webrtcbin);
+		gst_element_set_state(GST_ELEMENT(peer_context->webrtcbin), GST_STATE_NULL);
+		gst_object_unref(peer_context->webrtcbin);
+		
+		// disconnect queue pads
+		GstPad* sinkpad = gst_element_get_static_pad(peer_context->queue, "sink");
+		g_assert_nonnull(sinkpad);
+		GstPad* srcpad = gst_pad_get_peer(sinkpad);
+		g_assert_nonnull(srcpad);
+		gst_object_unref(sinkpad);
+  
+		// remove queue from pipeline
+		gst_bin_remove(GST_BIN(encoder->mPipeline), peer_context->queue);
+		gst_element_set_state(GST_ELEMENT(peer_context->queue), GST_STATE_NULL);
+		gst_object_unref(peer_context->queue);
+  
+		// free encoder-specific context
+		delete peer_context;
+		peer->user_data = NULL;
+		
+		return;
+	}
+	
+	#define cleanup() { \
+		if( json_parser != NULL ) \
+			g_object_unref(G_OBJECT(json_parser)); \
+		return; } \
+
+	#define unknown_message() { \
+		LogWarning(LOG_GSTREAMER "WebRTCServer::onWebsocketMessage() -- unknown message, ignoring...\n%s\n", message); \
+		cleanup(); }
+
+	// parse JSON data string
+	JsonParser* json_parser = json_parser_new();
+	
+	if( !json_parser_load_from_data(json_parser, message, -1, NULL) )
+		unknown_message();
+
+	JsonNode* root_json = json_parser_get_root(json_parser);
+	
+	if( !JSON_NODE_HOLDS_OBJECT(root_json) )
+		unknown_message();
+
+	JsonObject* root_json_object = json_node_get_object(root_json);
+
+	// retrieve type string
+	if( !json_object_has_member(root_json_object, "type") ) 
+	{
+		LogError(LOG_GSTREAMER "gstEncoder::onWebsocketMessage() -- received JSON message without 'type' field\n");
+		cleanup();
+	}
+	
+	const gchar* type_string = json_object_get_string_member(root_json_object, "type");
+
+	// retrieve data object
+	if( !json_object_has_member(root_json_object, "data") ) 
+	{
+		LogError(LOG_GSTREAMER "gstEncoder::onWebsocketMessage() -- received JSON message without 'data' field\n");
+		cleanup();
+	}
+	
+	JsonObject* data_json_object = json_object_get_object_member(root_json_object, "data");
+
+	// handle message types
+	if( g_strcmp0(type_string, "sdp") == 0 ) 
+	{
+		// validate SDP message
+		if( !json_object_has_member(data_json_object, "type") ) 
+		{
+			LogError(LOG_GSTREAMER "gstEncoder::onWebsocketMessage() -- received SDP message without 'type' field\n");
+			cleanup();
+		}
+		
+		const gchar* sdp_type_string = json_object_get_string_member(data_json_object, "type");
+
+		if( g_strcmp0(sdp_type_string, "answer") != 0 ) 
+		{
+			LogError(LOG_GSTREAMER "gstEncoder::onWebsocketMessage() -- expected SDP message type 'answer', got '%s'\n", sdp_type_string);
+			cleanup();
+		}
+
+		if( !json_object_has_member(data_json_object, "sdp") )
+		{
+			LogError(LOG_GSTREAMER "gstEncoder::onWebsocketMessage() -- received SDP message without 'sdp' field\n");
+			cleanup();
+		}
+		
+		const gchar* sdp_string = json_object_get_string_member(data_json_object, "sdp");
+		LogVerbose(LOG_GSTREAMER "gstEncoder::onWebsocketMessage() -- received SDP message:\n%s\n", sdp_string);
+		
+		// parse SDP string
+		GstSDPMessage* sdp = NULL;
+		int ret = gst_sdp_message_new(&sdp);
+		g_assert_cmphex(ret, ==, GST_SDP_OK);
+
+		ret = gst_sdp_message_parse_buffer((guint8*)sdp_string, strlen(sdp_string), sdp);
+		
+		if( ret != GST_SDP_OK )
+		{
+			LogError(LOG_GSTREAMER "gstEncoder::onWebsocketMessage() -- failed to parse SDP string\n");
+			cleanup();
+		}
+
+		// provide the SDP to webrtcbin
+		GstWebRTCSessionDescription* answer = gst_webrtc_session_description_new(GST_WEBRTC_SDP_TYPE_ANSWER, sdp);
+		g_assert_nonnull(answer);
+
+		GstPromise* promise = gst_promise_new();
+		g_signal_emit_by_name(peer_context->webrtcbin, "set-remote-description", answer, promise);
+		gst_promise_interrupt(promise);
+		gst_promise_unref(promise);
+		gst_webrtc_session_description_free(answer);
+		
+	} 
+	else if( g_strcmp0(type_string, "ice") == 0 )
+	{
+		// validate ICE message
+		if( !json_object_has_member(data_json_object, "sdpMLineIndex") )
+		{
+			LogError(LOG_GSTREAMER "WebRTCServer::onWebsocketMessage() -- received ICE message without 'sdpMLineIndex' field\n");
+			cleanup();
+		}
+		
+		const uint32_t mline_index = json_object_get_int_member(data_json_object, "sdpMLineIndex");
+
+		// extract the ICE candidate
+		if( !json_object_has_member(data_json_object, "candidate") ) 
+		{
+			LogError(LOG_GSTREAMER "WebRTCServer::onWebsocketMessage() -- received ICE message without 'candidate' field\n");
+			cleanup();
+		}
+		
+		const gchar* candidate_string = json_object_get_string_member(data_json_object, "candidate");
+
+		LogVerbose(LOG_GSTREAMER "WebRTCServer::onWebsocketMessage() -- received ICE message with mline index %u; candidate: %s\n", mline_index, candidate_string);
+
+		// provide the ICE candidate to webrtcbin
+		g_signal_emit_by_name(peer_context->webrtcbin, "add-ice-candidate", mline_index, candidate_string);
+	} 
+	else
+		unknown_message();
+
+	cleanup();
+}
+
+
+// get_string_from_json_object
+static gchar* get_string_from_json_object(JsonObject* object)
+{
+	JsonNode* root = json_node_init_object (json_node_alloc (), object);
+	JsonGenerator* generator = json_generator_new ();
+	json_generator_set_root (generator, root);
+	gchar* text = json_generator_to_data (generator, NULL);
+
+	g_object_unref(generator);
+	json_node_free(root);
+	
+	return text;
+}
+
+
+// onNegotiationNeeded
+void gstEncoder::onNegotiationNeeded( GstElement* webrtcbin, void* user_data )
+{
+	LogDebug(LOG_GSTREAMER "gstEncoder -- onNegotiationNeeded()\n");
+	
+	if( !user_data )
+		return;
+	
+	WebRTCPeer* peer = (WebRTCPeer*)user_data;
+	gstWebRTCPeerContext* peer_context = (gstWebRTCPeerContext*)peer->user_data;
+	
+	// setup offer created callback
+	GstPromise* promise = gst_promise_new_with_change_func(onOfferCreated, peer, NULL);
+	g_signal_emit_by_name(G_OBJECT(peer_context->webrtcbin), "create-offer", NULL, promise);
+}
+
+
+// onOfferCreated
+void gstEncoder::onOfferCreated( GstPromise* promise, void* user_data )
+{
+	LogDebug(LOG_GSTREAMER "gstEncoder -- onOfferCreated()\n");
+	
+	if( !user_data )
+		return;
+	
+	WebRTCPeer* peer = (WebRTCPeer*)user_data;
+	gstWebRTCPeerContext* peer_context = (gstWebRTCPeerContext*)peer->user_data;
+
+	// send the SDP offer
+	const GstStructure* reply = gst_promise_get_reply(promise);
+	
+	GstWebRTCSessionDescription* offer = NULL;
+	gst_structure_get(reply, "offer", GST_TYPE_WEBRTC_SESSION_DESCRIPTION, &offer, NULL);
+	gst_promise_unref(promise);
+
+	GstPromise* local_desc_promise = gst_promise_new();
+	g_signal_emit_by_name(peer_context->webrtcbin, "set-local-description", offer, local_desc_promise);
+	gst_promise_interrupt(local_desc_promise);
+	gst_promise_unref(local_desc_promise);
+
+	gchar* sdp_string = gst_sdp_message_as_text(offer->sdp);
+	LogVerbose(LOG_GSTREAMER "gstEncoder -- negotiation offer created:\n%s\n", sdp_string);
+
+	JsonObject* sdp_json = json_object_new();
+	json_object_set_string_member(sdp_json, "type", "sdp");
+
+	JsonObject* sdp_data_json = json_object_new ();
+	json_object_set_string_member(sdp_data_json, "type", "offer");
+	json_object_set_string_member(sdp_data_json, "sdp", sdp_string);
+	json_object_set_object_member(sdp_json, "data", sdp_data_json);
+
+	gchar* json_string = get_string_from_json_object(sdp_json);
+	json_object_unref(sdp_json);
+
+	soup_websocket_connection_send_text(peer->connection, json_string);
+	
+	//g_free(json_string);
+	g_free(sdp_string);
+	gst_webrtc_session_description_free(offer);
+}
+
+
+// onIceCandidate
+void gstEncoder::onIceCandidate( GstElement* webrtcbin, uint32_t mline_index, char* candidate, void* user_data )
+{
+	LogDebug(LOG_GSTREAMER "gstEncoder -- onIceCandidate()\n");
+	
+	if( !user_data )
+		return;
+	
+	WebRTCPeer* peer = (WebRTCPeer*)user_data;
+	gstWebRTCPeerContext* peer_context = (gstWebRTCPeerContext*)peer->user_data;
+
+	// send the ICE candidate
+	JsonObject* ice_json = json_object_new();
+	json_object_set_string_member(ice_json, "type", "ice");
+
+	JsonObject* ice_data_json = json_object_new();
+	json_object_set_int_member(ice_data_json, "sdpMLineIndex", mline_index);
+	json_object_set_string_member(ice_data_json, "candidate", candidate);
+	json_object_set_object_member(ice_json, "data", ice_data_json);
+
+	gchar* json_string = get_string_from_json_object(ice_json);
+	json_object_unref(ice_json);
+
+	soup_websocket_connection_send_text(peer->connection, json_string);
+	
+	g_free(json_string);
+}
 

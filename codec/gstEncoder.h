@@ -28,6 +28,11 @@
 #include "RingBuffer.h"
 
 
+// Forward declarations
+class WebRTCServer;
+struct WebRTCPeer;
+
+
 /**
  * Hardware-accelerated video encoder for Jetson using GStreamer.
  *
@@ -85,9 +90,19 @@ public:
 	virtual void Close();
 
 	/**
+	 * Return the GStreamer pipeline object.
+	 */
+	inline GstPipeline* GetPipeline() const			{ return GST_PIPELINE(mPipeline); }
+	
+	/**
+	 * Return the WebRTC server (only used when the protocol is "webrtc://")
+	 */
+	inline WebRTCServer* GetWebRTCServer() const 	{ return mWebRTCServer; }
+	
+	/**
 	 * Return the interface type (gstEncoder::Type)
 	 */
-	virtual inline uint32_t GetType() const		{ return Type; }
+	virtual inline uint32_t GetType() const			{ return Type; }
 
 	/**
 	 * Unique type identifier of gstEncoder class.
@@ -125,22 +140,28 @@ protected:
 	
 	bool encodeYUV( void* buffer, size_t size );
 
-	static void onNeedData( _GstElement* pipeline, uint32_t size, void* user_data );
-	static void onEnoughData( _GstElement* pipeline, void* user_data );
+	// appsrc callbacks
+	static void onNeedData( GstElement* pipeline, uint32_t size, void* user_data );
+	static void onEnoughData( GstElement* pipeline, void* user_data );
 
-	_GstBus*     mBus;
-	_GstCaps*    mBufferCaps;
-	_GstElement* mAppSrc;
-	_GstElement* mPipeline;
-	bool         mNeedData;
+	// WebRTC callbacks
+	static void onWebsocketMsg( WebRTCPeer* peer, const char* message, size_t message_size, void* user_data );
+	static void onOfferCreated( GstPromise* promise, void* user_data );
+	static void onNegotiationNeeded( GstElement* webrtcbin, void* user_data );
+	static void onIceCandidate( GstElement* webrtcbin, uint32_t mline_index, char* candidate, void* user_data );
+	
+	GstBus*     mBus;
+	GstCaps*    mBufferCaps;
+	GstElement* mAppSrc;
+	GstElement* mPipeline;
+	bool        mNeedData;
 	
 	std::string  mCapsStr;
 	std::string  mLaunchStr;
-	std::string  mOutputPath;
-	std::string  mOutputIP;
-	uint16_t     mOutputPort;
 
 	RingBuffer mBufferYUV;
+	
+	WebRTCServer* mWebRTCServer;
 };
  
  

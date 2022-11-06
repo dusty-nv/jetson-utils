@@ -54,24 +54,30 @@ enum WebRTCFlags
 //AddRoute("/my_video", my_function, this, WEBRTC_VIDEO|WEBRTC_SEND|WEBRTC_STREAM_PUBLIC);
 
 
+class WebRTCServer;
+
+
 /**
  * Remote peer that has connected.
  * @ingroup network
  */
 struct WebRTCPeer
 {
-	SoupWebsocketConnection* websocket;
-	SoupClientContext* clientContext;
-	
-	uint32_t ID;
-	uint32_t flags;
-	uint32_t ipAddress;
-	
-	std::string path;  // the route the peer is connected on
+	SoupWebsocketConnection* connection;
+	SoupClientContext* client_context;
+	WebRTCServer* server;
 
-	void* userData;
+	uint32_t ID;		 	// unique ID
+	uint32_t flags;	 	// WebRTCFlags
+
+	std::string path;   	// the route the peer is connected on
+	std::string ip_address;	// IP address of the peer
+	
+	void* user_data;		// private data for the route handler
 };
 
+
+// TODO implement server caching by port
 
 /**
  * GStreamer-based WebRTC http/websocket signalling server for establishing 
@@ -90,6 +96,7 @@ public:
 	// html root path for serving files - if NULL, serve default   "disabled" or any string that doesn't resolve to files to disable alltogether
 	// eventually change threaded default to true => ProcessMessages()
 	// TODO added threaded (or flags?)
+	// TODO implement server caching by port
 	static WebRTCServer* Create( uint16_t port=8080 );	
 	
 	/**
@@ -102,7 +109,7 @@ public:
 	 * Function pointer to a callback for handling websocket requests.
 	 * @see AddConnectionListener
 	 */
-	typedef bool (*WebsocketListener)( WebRTCPeer* peer, const char* message, size_t message_size, void* user_data );
+	typedef void (*WebsocketListener)( WebRTCPeer* peer, const char* message, size_t message_size, void* user_data );
 
 	/**
 	 * Function pointer to a callback for handling HTTP requests.
@@ -142,6 +149,10 @@ protected:
 	static void onHttpRequest( SoupServer* soup_server, SoupMessage* message, const char* path, GHashTable* query, SoupClientContext* client_context, void* user_data );
 	static void onHttpDefault( SoupServer* soup_server, SoupMessage* message, const char* path, GHashTable* query, SoupClientContext* client_context, void* user_data );
 	
+	static void onWebsocketOpened( SoupServer* server, SoupWebsocketConnection* connection, const char *path, SoupClientContext* client_context, void* user_data );
+	static void onWebsocketMessage( SoupWebsocketConnection* connection, SoupWebsocketDataType data_type, GBytes* message, void* user_data );
+	static void onWebsocketClosed( SoupWebsocketConnection* connection, void* user_data );
+	
 	struct HttpRoute
 	{
 		std::string path;
@@ -170,6 +181,7 @@ protected:
 	
 	uint16_t mPort;
 	uint32_t mRefCount;
+	uint32_t mPeerCount;
 	
 	SoupServer* mSoupServer;
 };
