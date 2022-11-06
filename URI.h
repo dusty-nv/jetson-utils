@@ -149,14 +149,19 @@ public:
 	std::string protocol;
 
 	/**
-	 * Path, IP address, or device name
+	 * Path (for a network URI this comes after the port)
 	 */
-	std::string location;
+	std::string path;
 
 	/**
 	 * File extension (for files only, otherwise empty)
 	 */
 	std::string extension;
+	
+	/**
+	 * Path, IP address, or device name
+	 */
+	std::string location;
 	
 	/**
 	 * IP port, camera port, ect.

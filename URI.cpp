@@ -102,7 +102,8 @@ bool URI::Parse( const char* uri )
 		}
 
 		location = string;
-
+		path = string;
+		
 		// reconstruct full URI string
 		string = protocol + "://";
 
@@ -150,7 +151,7 @@ bool URI::Parse( const char* uri )
 		std::string port_str;
 		pos = location.find(":");		
 
-		if( pos != std::string::npos )	// "xxx.xxx.xxx.xxx:port"
+		if( pos != std::string::npos )	// "xxx.xxx.xxx.xxx:port" or "@:port"
 		{	
 			if( protocol == "rtsp" )		// "user:pass@ip:port"
 			{
@@ -161,13 +162,18 @@ bool URI::Parse( const char* uri )
 					pos = port_pos;
 			}
 		
-			port_str = location.substr(pos+1, std::string::npos);
+			std::size_t path_pos = location.find("/", pos+1);	// "xxx.xxx.xxx.xxxx:port/path"
+			
+			if( path_pos != std::string::npos )
+				path = location.substr(path_pos, std::string::npos);
+			
+			port_str = location.substr(pos+1, path_pos);
 			location = location.substr(0, pos);
 		}
 		else if( std::count(location.begin(), location.end(), '.') == 0 ) // "port"
 		{
 			port_str = location;
-			location = "127.0.0.1";
+			location = "0.0.0.0";
 		}
 
 		// parse the port number
@@ -190,7 +196,7 @@ bool URI::Parse( const char* uri )
 
 		// convert "@:port" format to localhost
 		if( location == "@" )
-			location = "127.0.0.1";
+			location = "0.0.0.0";
 	}
 		
 	return true;
