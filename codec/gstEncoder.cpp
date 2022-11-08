@@ -443,7 +443,7 @@ bool gstEncoder::buildLaunchStr()
 // onNeedData
 void gstEncoder::onNeedData( GstElement* pipeline, guint size, gpointer user_data )
 {
-	LogDebug(LOG_GSTREAMER "gstEncoder -- appsrc requesting data (%u bytes)\n", size);
+	//LogDebug(LOG_GSTREAMER "gstEncoder -- appsrc requesting data (%u bytes)\n", size);
 	
 	if( !user_data )
 		return;
@@ -568,8 +568,8 @@ bool gstEncoder::encodeYUV( void* buffer, size_t size )
 // Render
 bool gstEncoder::Render( void* image, uint32_t width, uint32_t height, imageFormat format )
 {
-	//if( mWebRTCServer != NULL )
-	//	mWebRTCServer->ProcessMessages();	// update the webrtc server
+	if( mWebRTCServer != NULL )
+		mWebRTCServer->ProcessRequests();	// update the webrtc server
 	
 	if( !image || width == 0 || height == 0 )
 		return false;
@@ -735,8 +735,6 @@ struct gstWebRTCPeerContext
 // onWebsocketMessage
 void gstEncoder::onWebsocketMsg( WebRTCPeer* peer, const char* message, size_t message_size, void* user_data )
 {
-	LogDebug(LOG_GSTREAMER "gstEncoder -- onWebsocketMessage()\n");
-	
 	if( !user_data )
 		return;
 	
@@ -745,6 +743,8 @@ void gstEncoder::onWebsocketMsg( WebRTCPeer* peer, const char* message, size_t m
 	
 	if( peer->flags & WEBRTC_PEER_CONNECTING )
 	{
+		LogVerbose(LOG_WEBRTC "new WebRTC peer connecting (%s, peer_id=%u)\n", peer->ip_address.c_str(), peer->ID);
+		
 		// new peer context
 		peer_context = new gstWebRTCPeerContext();
 		peer->user_data = peer_context;
@@ -752,10 +752,12 @@ void gstEncoder::onWebsocketMsg( WebRTCPeer* peer, const char* message, size_t m
 		// add queue and webrtcbin elements to the pipeline
 		gchar* tmp = g_strdup_printf("queue-%u", peer->ID);
 		peer_context->queue = gst_element_factory_make("queue", tmp);
+		gst_object_ref(peer_context->queue);
 		g_free(tmp);
 		
 		tmp = g_strdup_printf("webrtcbin-%u", peer->ID);
 		peer_context->webrtcbin = gst_element_factory_make("webrtcbin", tmp);
+		gst_object_ref(peer_context->webrtcbin);
 		g_free(tmp);
 		
 		gst_bin_add_many(GST_BIN(encoder->mPipeline), peer_context->queue, peer_context->webrtcbin, NULL);
@@ -784,18 +786,26 @@ void gstEncoder::onWebsocketMsg( WebRTCPeer* peer, const char* message, size_t m
 		gst_object_unref(sinkpad);
 		
 		// subscribe to callbacks
-		g_signal_connect(encoder->mPipeline, "on-negotiation-needed", G_CALLBACK(onNegotiationNeeded), peer);
-		g_signal_connect(encoder->mPipeline, "on-ice-candidate", G_CALLBACK(onIceCandidate), peer);
+		g_signal_connect(peer_context->webrtcbin, "on-negotiation-needed", G_CALLBACK(onNegotiationNeeded), peer);
+		g_signal_connect(peer_context->webrtcbin, "on-ice-candidate", G_CALLBACK(onIceCandidate), peer);
 
+		// Set to pipeline branch to PLAYING
+		ret = gst_element_sync_state_with_parent(peer_context->queue);
+		g_assert_true(ret);
+		ret = gst_element_sync_state_with_parent(peer_context->webrtcbin);
+		g_assert_true(ret);
+  
 		return;
 	}
 	else if( peer->flags & WEBRTC_PEER_CLOSED )
 	{
+		LogVerbose(LOG_WEBRTC "WebRTC peer disconnected (%s, peer_id=%u)\n", peer->ip_address.c_str(), peer->ID);
+		
 		// remove webrtcbin from pipeline
 		gst_bin_remove(GST_BIN(encoder->mPipeline), peer_context->webrtcbin);
-		gst_element_set_state(GST_ELEMENT(peer_context->webrtcbin), GST_STATE_NULL);
+		gst_element_set_state(peer_context->webrtcbin, GST_STATE_NULL);
 		gst_object_unref(peer_context->webrtcbin);
-		
+
 		// disconnect queue pads
 		GstPad* sinkpad = gst_element_get_static_pad(peer_context->queue, "sink");
 		g_assert_nonnull(sinkpad);
@@ -805,9 +815,9 @@ void gstEncoder::onWebsocketMsg( WebRTCPeer* peer, const char* message, size_t m
   
 		// remove queue from pipeline
 		gst_bin_remove(GST_BIN(encoder->mPipeline), peer_context->queue);
-		gst_element_set_state(GST_ELEMENT(peer_context->queue), GST_STATE_NULL);
+		gst_element_set_state(peer_context->queue, GST_STATE_NULL);
 		gst_object_unref(peer_context->queue);
-  
+
 		// free encoder-specific context
 		delete peer_context;
 		peer->user_data = NULL;
@@ -821,7 +831,7 @@ void gstEncoder::onWebsocketMsg( WebRTCPeer* peer, const char* message, size_t m
 		return; } \
 
 	#define unknown_message() { \
-		LogWarning(LOG_GSTREAMER "WebRTCServer::onWebsocketMessage() -- unknown message, ignoring...\n%s\n", message); \
+		LogWarning(LOG_WEBRTC "gstEncoder -- unknown message, ignoring...\n%s\n", message); \
 		cleanup(); }
 
 	// parse JSON data string
@@ -840,7 +850,7 @@ void gstEncoder::onWebsocketMsg( WebRTCPeer* peer, const char* message, size_t m
 	// retrieve type string
 	if( !json_object_has_member(root_json_object, "type") ) 
 	{
-		LogError(LOG_GSTREAMER "gstEncoder::onWebsocketMessage() -- received JSON message without 'type' field\n");
+		LogError(LOG_WEBRTC "received JSON message without 'type' field\n");
 		cleanup();
 	}
 	
@@ -849,7 +859,7 @@ void gstEncoder::onWebsocketMsg( WebRTCPeer* peer, const char* message, size_t m
 	// retrieve data object
 	if( !json_object_has_member(root_json_object, "data") ) 
 	{
-		LogError(LOG_GSTREAMER "gstEncoder::onWebsocketMessage() -- received JSON message without 'data' field\n");
+		LogError(LOG_WEBRTC "received JSON message without 'data' field\n");
 		cleanup();
 	}
 	
@@ -861,7 +871,7 @@ void gstEncoder::onWebsocketMsg( WebRTCPeer* peer, const char* message, size_t m
 		// validate SDP message
 		if( !json_object_has_member(data_json_object, "type") ) 
 		{
-			LogError(LOG_GSTREAMER "gstEncoder::onWebsocketMessage() -- received SDP message without 'type' field\n");
+			LogError(LOG_WEBRTC "received SDP message without 'type' field\n");
 			cleanup();
 		}
 		
@@ -869,18 +879,18 @@ void gstEncoder::onWebsocketMsg( WebRTCPeer* peer, const char* message, size_t m
 
 		if( g_strcmp0(sdp_type_string, "answer") != 0 ) 
 		{
-			LogError(LOG_GSTREAMER "gstEncoder::onWebsocketMessage() -- expected SDP message type 'answer', got '%s'\n", sdp_type_string);
+			LogError(LOG_WEBRTC "expected SDP message type 'answer', got '%s'\n", sdp_type_string);
 			cleanup();
 		}
 
 		if( !json_object_has_member(data_json_object, "sdp") )
 		{
-			LogError(LOG_GSTREAMER "gstEncoder::onWebsocketMessage() -- received SDP message without 'sdp' field\n");
+			LogError(LOG_WEBRTC "received SDP message without 'sdp' field\n");
 			cleanup();
 		}
 		
 		const gchar* sdp_string = json_object_get_string_member(data_json_object, "sdp");
-		LogVerbose(LOG_GSTREAMER "gstEncoder::onWebsocketMessage() -- received SDP message:\n%s\n", sdp_string);
+		LogVerbose(LOG_WEBRTC "received SDP message for %s from %s (peer_id=%u)\n%s\n", peer->path.c_str(), peer->ip_address.c_str(), peer->ID, sdp_string);
 		
 		// parse SDP string
 		GstSDPMessage* sdp = NULL;
@@ -891,7 +901,7 @@ void gstEncoder::onWebsocketMsg( WebRTCPeer* peer, const char* message, size_t m
 		
 		if( ret != GST_SDP_OK )
 		{
-			LogError(LOG_GSTREAMER "gstEncoder::onWebsocketMessage() -- failed to parse SDP string\n");
+			LogError(LOG_WEBRTC "failed to parse SDP string\n");
 			cleanup();
 		}
 
@@ -911,7 +921,7 @@ void gstEncoder::onWebsocketMsg( WebRTCPeer* peer, const char* message, size_t m
 		// validate ICE message
 		if( !json_object_has_member(data_json_object, "sdpMLineIndex") )
 		{
-			LogError(LOG_GSTREAMER "WebRTCServer::onWebsocketMessage() -- received ICE message without 'sdpMLineIndex' field\n");
+			LogError(LOG_WEBRTC "received ICE message without 'sdpMLineIndex' field\n");
 			cleanup();
 		}
 		
@@ -920,13 +930,13 @@ void gstEncoder::onWebsocketMsg( WebRTCPeer* peer, const char* message, size_t m
 		// extract the ICE candidate
 		if( !json_object_has_member(data_json_object, "candidate") ) 
 		{
-			LogError(LOG_GSTREAMER "WebRTCServer::onWebsocketMessage() -- received ICE message without 'candidate' field\n");
+			LogError(LOG_WEBRTC "received ICE message without 'candidate' field\n");
 			cleanup();
 		}
 		
 		const gchar* candidate_string = json_object_get_string_member(data_json_object, "candidate");
 
-		LogVerbose(LOG_GSTREAMER "WebRTCServer::onWebsocketMessage() -- received ICE message with mline index %u; candidate: %s\n", mline_index, candidate_string);
+		LogVerbose(LOG_WEBRTC "received ICE message on %s from %s (peer_id=%u) with mline index %u; candidate: \n%s\n", peer->path.c_str(), peer->ip_address.c_str(), peer->ID, mline_index, candidate_string);
 
 		// provide the ICE candidate to webrtcbin
 		g_signal_emit_by_name(peer_context->webrtcbin, "add-ice-candidate", mline_index, candidate_string);
@@ -956,7 +966,7 @@ static gchar* get_string_from_json_object(JsonObject* object)
 // onNegotiationNeeded
 void gstEncoder::onNegotiationNeeded( GstElement* webrtcbin, void* user_data )
 {
-	LogDebug(LOG_GSTREAMER "gstEncoder -- onNegotiationNeeded()\n");
+	LogDebug(LOG_WEBRTC "gstEncoder -- onNegotiationNeeded()\n");
 	
 	if( !user_data )
 		return;
@@ -973,7 +983,7 @@ void gstEncoder::onNegotiationNeeded( GstElement* webrtcbin, void* user_data )
 // onOfferCreated
 void gstEncoder::onOfferCreated( GstPromise* promise, void* user_data )
 {
-	LogDebug(LOG_GSTREAMER "gstEncoder -- onOfferCreated()\n");
+	LogDebug(LOG_WEBRTC "gstEncoder -- onOfferCreated()\n");
 	
 	if( !user_data )
 		return;
@@ -994,7 +1004,7 @@ void gstEncoder::onOfferCreated( GstPromise* promise, void* user_data )
 	gst_promise_unref(local_desc_promise);
 
 	gchar* sdp_string = gst_sdp_message_as_text(offer->sdp);
-	LogVerbose(LOG_GSTREAMER "gstEncoder -- negotiation offer created:\n%s\n", sdp_string);
+	LogVerbose(LOG_WEBRTC "negotiation offer created:\n%s\n", sdp_string);
 
 	JsonObject* sdp_json = json_object_new();
 	json_object_set_string_member(sdp_json, "type", "sdp");
@@ -1007,6 +1017,8 @@ void gstEncoder::onOfferCreated( GstPromise* promise, void* user_data )
 	gchar* json_string = get_string_from_json_object(sdp_json);
 	json_object_unref(sdp_json);
 
+	LogVerbose(LOG_WEBRTC "sending offer for %s to %s (peer_id=%u): \n%s\n", peer->path.c_str(), peer->ip_address.c_str(), peer->ID, json_string);
+	
 	soup_websocket_connection_send_text(peer->connection, json_string);
 	
 	//g_free(json_string);
@@ -1018,7 +1030,7 @@ void gstEncoder::onOfferCreated( GstPromise* promise, void* user_data )
 // onIceCandidate
 void gstEncoder::onIceCandidate( GstElement* webrtcbin, uint32_t mline_index, char* candidate, void* user_data )
 {
-	LogDebug(LOG_GSTREAMER "gstEncoder -- onIceCandidate()\n");
+	LogDebug(LOG_WEBRTC "gstEncoder -- onIceCandidate()\n");
 	
 	if( !user_data )
 		return;
@@ -1037,6 +1049,8 @@ void gstEncoder::onIceCandidate( GstElement* webrtcbin, uint32_t mline_index, ch
 
 	gchar* json_string = get_string_from_json_object(ice_json);
 	json_object_unref(ice_json);
+
+	LogVerbose(LOG_WEBRTC "sending ICE candidate for %s to %s (peer_id=%u): \n%s\n", peer->path.c_str(), peer->ip_address.c_str(), peer->ID, json_string);
 
 	soup_websocket_connection_send_text(peer->connection, json_string);
 	

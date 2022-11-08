@@ -29,6 +29,18 @@
 #include <string>
 #include <vector>
 
+// TODO added threaded (or flags?)
+// TODO generate default page to match stream name (or provide drop-down)
+
+// forward declarations
+class WebRTCServer;
+
+
+/**
+ * @ingroup network
+ */
+#define LOG_WEBRTC "[webrtc] "
+
 
 /**
  * Flags for route decorators or peer state.
@@ -51,11 +63,6 @@ enum WebRTCFlags
 	WEBRTC_PEER_CLOSED     = (1 << 9),  // the peer has closed
 };
 
-//AddRoute("/my_video", my_function, this, WEBRTC_VIDEO|WEBRTC_SEND|WEBRTC_STREAM_PUBLIC);
-
-
-class WebRTCServer;
-
 
 /**
  * Remote peer that has connected.
@@ -77,8 +84,6 @@ struct WebRTCPeer
 };
 
 
-// TODO implement server caching by port
-
 /**
  * GStreamer-based WebRTC http/websocket signalling server for establishing 
  * and negotiating connections with peers for bi-directional media streaming.   // full-duplex
@@ -92,11 +97,11 @@ struct WebRTCPeer
 class WebRTCServer
 {
 public:
-	// if port already in use, return an existing instance
-	// html root path for serving files - if NULL, serve default   "disabled" or any string that doesn't resolve to files to disable alltogether
-	// eventually change threaded default to true => ProcessMessages()
-	// TODO added threaded (or flags?)
-	// TODO implement server caching by port
+
+	/**
+	 * Create a WebRTC server on this port.
+	 * If this port is already in use, the existing server will be returned.
+	 */
 	static WebRTCServer* Create( uint16_t port=8080 );	
 	
 	/**
