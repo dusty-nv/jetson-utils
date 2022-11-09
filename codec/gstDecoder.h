@@ -29,6 +29,9 @@
 #include "videoSource.h"
 
 
+// Forward declarations
+class WebRTCServer;
+struct WebRTCPeer;
 struct _GstAppSink;
 
 
@@ -139,22 +142,35 @@ protected:
 	
 	inline bool isLooping() const { return (mOptions.loop < 0) || ((mOptions.loop > 0) && (mLoopCount < mOptions.loop)); }
 
+	// appsink callbacks
 	static void onEOS(_GstAppSink* sink, void* user_data);
+	
 	static GstFlowReturn onPreroll(_GstAppSink* sink, void* user_data);
 	static GstFlowReturn onBuffer(_GstAppSink* sink, void* user_data);
 
-	_GstBus*     mBus;
+	// WebRTC callbacks
+	static void onWebsocketMessage( WebRTCPeer* peer, const char* message, size_t message_size, void* user_data );
+	static void onCreateOffer( GstPromise* promise, void* user_data );
+	static void onNegotiationNeeded( GstElement* webrtcbin, void* user_data );
+	static void onIceCandidate( GstElement* webrtcbin, uint32_t mline_index, char* candidate, void* user_data );
+	
+	GstBus*      mBus;
+	GstElement*  mPipeline;
 	_GstAppSink* mAppSink;
-	_GstElement* mPipeline;
-
-	Event	   mWaitEvent;
-	std::string  mLaunchStr;
-	bool         mCustomSize;
-	bool		   mCustomRate;
-	bool         mEOS;
-	size_t	   mLoopCount;
+	
+	Event	  mWaitEvent;
+	std::string mLaunchStr;
+	bool        mCustomSize;
+	bool		  mCustomRate;
+	bool        mEOS;
+	size_t	  mLoopCount;
 		
 	gstBufferManager* mBufferManager;
+	
+	WebRTCServer* mWebRTCServer;
+	WebRTCPeer* mWebRTCPeer;
+	GstElement* mWebRTCBin;
+	bool mWebRTCConnected;
 };
   
 #endif

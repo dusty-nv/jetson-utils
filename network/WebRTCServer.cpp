@@ -26,9 +26,7 @@
 #include "logging.h"
 
 
-// TODO make this configurable
-#define STUN_SERVER "stun.l.google.com:19302"
-
+// HTML video viewer page
 const char* html_viewer = " \n \
 <html> \n \
   <head> \n \
@@ -120,7 +118,7 @@ const char* html_viewer = " \n \
  \n \
       window.onload = function() { \n \
         var vidstream = document.getElementById(\"stream\"); \n \
-        var config = { 'iceServers': [{ 'urls': 'stun:" STUN_SERVER "' }] }; \n\
+        var config = { 'iceServers': [{ 'urls': 'stun:" WEBRTC_DEFAULT_STUN_SERVER "' }] }; \n\
         playStream(vidstream, null, null, null, config, function (errmsg) { console.error(errmsg); }); \n \
       }; \n \
  \n \
@@ -134,6 +132,115 @@ const char* html_viewer = " \n \
   </body> \n \
 </html> \n \
 ";
+
+
+const gchar *html_send = " \n \
+<html> \n \
+  <head> \n \
+    <script type=\"text/javascript\" src=\"https://webrtc.github.io/adapter/adapter-latest.js\"></script> \n \
+    <script type=\"text/javascript\"> \n \
+      var websocketConnection; \n \
+      var webrtcPeerConnection; \n \
+      var webrtcConfiguration; \n \
+      var reportError; \n \
+ \n \
+      function getLocalStream() { \n \
+         var constraints = {\"video\":true,\"audio\":false}; \n \
+         if (navigator.mediaDevices.getUserMedia) { \n \
+             return navigator.mediaDevices.getUserMedia(constraints); \n \
+         } \n \
+     } \n \
+ \n \
+      function onLocalDescription(desc) { \n \
+        console.log(\"Local description: \" + JSON.stringify(desc)); \n \
+        webrtcPeerConnection.setLocalDescription(desc).then(function() { \n \
+          websocketConnection.send(JSON.stringify({ type: \"sdp\", \"data\": webrtcPeerConnection.localDescription })); \n \
+        }).catch(reportError); \n \
+      } \n \
+ \n \
+ \n \
+      function onIncomingSDP(sdp) { \n \
+        console.log(\"Incoming SDP: \" + JSON.stringify(sdp)); \n \
+        webrtcPeerConnection.setRemoteDescription(sdp).catch(reportError); \n \
+        /* Send our video/audio to the other peer */ \n \
+        local_stream_promise = getLocalStream().then((stream) => { \n \
+           console.log('Adding local stream'); \n \
+           webrtcPeerConnection.addStream(stream); \n \
+           webrtcPeerConnection.createAnswer().then(onLocalDescription).catch(reportError); \n \
+        }); \n \
+      } \n \
+ \n \
+ \n \
+      function onIncomingICE(ice) { \n \
+        var candidate = new RTCIceCandidate(ice); \n \
+        console.log(\"Incoming ICE: \" + JSON.stringify(ice)); \n \
+        webrtcPeerConnection.addIceCandidate(candidate).catch(reportError); \n \
+      } \n \
+ \n \
+ \n \
+      function onIceCandidate(event) { \n \
+        if (event.candidate == null) \n \
+          return; \n \
+ \n \
+        console.log(\"Sending ICE candidate out: \" + JSON.stringify(event.candidate)); \n \
+        websocketConnection.send(JSON.stringify({ \"type\": \"ice\", \"data\": event.candidate })); \n \
+      } \n \
+ \n \
+ \n \
+      function onServerMessage(event) { \n \
+        var msg; \n \
+ \n \
+        try { \n \
+          msg = JSON.parse(event.data); \n \
+        } catch (e) { \n \
+          return; \n \
+        } \n \
+ \n \
+        if (!webrtcPeerConnection) { \n \
+          webrtcPeerConnection = new RTCPeerConnection(webrtcConfiguration); \n \
+          webrtcPeerConnection.onicecandidate = onIceCandidate; \n \
+        } \n \
+ \n \
+        switch (msg.type) { \n \
+          case \"sdp\": onIncomingSDP(msg.data); break; \n \
+          case \"ice\": onIncomingICE(msg.data); break; \n \
+          default: break; \n \
+        } \n \
+      } \n \
+ \n \
+ \n \
+      function sendStream(hostname, port, path, configuration, reportErrorCB) { \n \
+        var l = window.location;\n \
+        var wsHost = (hostname != undefined) ? hostname : l.hostname; \n \
+        var wsPort = (port != undefined) ? port : l.port; \n \
+        var wsPath = (path != undefined) ? path : \"ws\"; \n \
+        if (wsPort) \n\
+          wsPort = \":\" + wsPort; \n\
+        var wsUrl = \"ws://\" + wsHost + wsPort + \"/\" + wsPath; \n \
+ \n \
+        webrtcConfiguration = configuration; \n \
+        reportError = (reportErrorCB != undefined) ? reportErrorCB : function(text) {}; \n \
+ \n \
+        websocketConnection = new WebSocket(wsUrl); \n \
+        websocketConnection.addEventListener(\"message\", onServerMessage); \n \
+      } \n \
+ \n \
+      window.onload = function() { \n \
+        var config = { 'iceServers': [{ 'urls': 'stun:" WEBRTC_DEFAULT_STUN_SERVER "' }] }; \n\
+        sendStream(null, null, null, config, function (errmsg) { console.error(errmsg); }); \n \
+      }; \n \
+ \n \
+    </script> \n \
+  </head> \n \
+ \n \
+  <body> \n \
+    <div> \n \
+      <p>sending WebRTC stream</p> \n \
+    </div> \n \
+  </body> \n \
+</html> \n \
+";
+
 
 const char* html_inactive = " \n \
 <html> \n \
@@ -166,12 +273,13 @@ std::vector<WebRTCServer*> gServers;
 
 
 // constructor
-WebRTCServer::WebRTCServer( uint16_t port )
+WebRTCServer::WebRTCServer( uint16_t port, const char* stun_server )
 {	
 	mPort = port;
 	mRefCount = 1;
 	mPeerCount = 0;
 	mSoupServer = NULL;
+	mStunServer = stun_server;
 }
 
 
@@ -209,7 +317,7 @@ void WebRTCServer::Release()
 		
 
 // Create
-WebRTCServer* WebRTCServer::Create( uint16_t port )
+WebRTCServer* WebRTCServer::Create( uint16_t port, const char* stun_server )
 {
 	// see if a server on this port already exists
 	const uint32_t numServers = gServers.size();
@@ -221,7 +329,7 @@ WebRTCServer* WebRTCServer::Create( uint16_t port )
 	}
 	
 	// create a new server
-	WebRTCServer* server = new WebRTCServer(port);
+	WebRTCServer* server = new WebRTCServer(port, stun_server);
 
 	if( !server || !server->init() )
 	{
@@ -461,6 +569,7 @@ void WebRTCServer::onHttpDefault( SoupServer* soup_server, SoupMessage* message,
 	
 	WebRTCServer* server = (WebRTCServer*)user_data;
 	const char* html = NULL;
+	#define html_source html_viewer
 	
 #if 1
 	// find if path is found
@@ -469,17 +578,17 @@ void WebRTCServer::onHttpDefault( SoupServer* soup_server, SoupMessage* message,
 	if( !websocketRoute )
 	{
 		if( strcmp(path, "/") == 0 || strcmp(path, "index.html") == 0 )
-			html = html_viewer;
+			html = html_source;
 		else
 			html = html_inactive;
 	}
 	else
 	{
-		html = html_viewer;
+		html = html_source;
 	}
 #else
 	if( server->mWebsocketRoutes.size() > 0 )
-		html = html_viewer;
+		html = html_source;
 #endif
 
 	if( !html )
