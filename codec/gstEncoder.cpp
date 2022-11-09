@@ -221,7 +221,7 @@ bool gstEncoder::init()
 	g_signal_connect(appsrcElement, "need-data", G_CALLBACK(onNeedData), this);
 	g_signal_connect(appsrcElement, "enough-data", G_CALLBACK(onEnoughData), this);
 
-	// create servers for some protocols
+	// create server for WebRTC streams
 	if( mOptions.resource.protocol == "webrtc" )
 	{
 		mWebRTCServer = WebRTCServer::Create(mOptions.resource.port);
@@ -229,7 +229,7 @@ bool gstEncoder::init()
 		if( !mWebRTCServer )
 			return false;
 		
-		mWebRTCServer->AddRoute(mOptions.resource.path.c_str(), onWebsocketMsg, this, WEBRTC_VIDEO|WEBRTC_SEND|WEBRTC_PUBLIC);
+		mWebRTCServer->AddRoute(mOptions.resource.path.c_str(), onWebsocketMessage, this, WEBRTC_VIDEO|WEBRTC_SEND|WEBRTC_PUBLIC|WEBRTC_MULTI_CLIENT);
 	}		
 
 	return true;
@@ -267,7 +267,7 @@ bool gstEncoder::buildLaunchStr()
 	std::ostringstream ss;
 
 	// setup appsrc input element
-	ss << "appsrc name=mysource is-live=true do-timestamp=true format=3 max-bytes=0 ! ";
+	ss << "appsrc name=mysource is-live=true do-timestamp=true format=3 ! ";
 
 	// set default bitrate (if needed)
 	if( mOptions.bitRate == 0 )
@@ -733,7 +733,7 @@ struct gstWebRTCPeerContext
 
 
 // onWebsocketMessage
-void gstEncoder::onWebsocketMsg( WebRTCPeer* peer, const char* message, size_t message_size, void* user_data )
+void gstEncoder::onWebsocketMessage( WebRTCPeer* peer, const char* message, size_t message_size, void* user_data )
 {
 	if( !user_data )
 		return;
@@ -749,17 +749,26 @@ void gstEncoder::onWebsocketMsg( WebRTCPeer* peer, const char* message, size_t m
 		peer_context = new gstWebRTCPeerContext();
 		peer->user_data = peer_context;
 		
-		// add queue and webrtcbin elements to the pipeline
+		// create a new queue element
 		gchar* tmp = g_strdup_printf("queue-%u", peer->ID);
 		peer_context->queue = gst_element_factory_make("queue", tmp);
+		g_assert_nonnull(peer_context->queue);
 		gst_object_ref(peer_context->queue);
 		g_free(tmp);
 		
+		// create a new webrtcbin element
 		tmp = g_strdup_printf("webrtcbin-%u", peer->ID);
 		peer_context->webrtcbin = gst_element_factory_make("webrtcbin", tmp);
+		g_assert_nonnull(peer_context->webrtcbin);
 		gst_object_ref(peer_context->webrtcbin);
 		g_free(tmp);
 		
+		// set webrtcbin properties
+		std::string stun_server = std::string("stun://") + peer->server->GetSTUNServer();
+		g_object_set(peer_context->webrtcbin, "stun-server", stun_server.c_str(), NULL);
+		//g_object_set(peer_context->webrtcbin, "latency", 40, NULL);   // this doesn't seem to have an impact
+	
+		// add queue and webrtcbin elements to the pipeline
 		gst_bin_add_many(GST_BIN(encoder->mPipeline), peer_context->queue, peer_context->webrtcbin, NULL);
 		
 		// link the queue to webrtc bin
@@ -785,16 +794,26 @@ void gstEncoder::onWebsocketMsg( WebRTCPeer* peer, const char* message, size_t m
 		gst_object_unref(srcpad);
 		gst_object_unref(sinkpad);
 		
+		// set transciever to send-only mode
+		GArray* transceivers = NULL;
+		
+		g_signal_emit_by_name(peer_context->webrtcbin, "get-transceivers", &transceivers);
+		g_assert(transceivers != NULL && transceivers->len > 0);
+		
+		GstWebRTCRTPTransceiver* transceiver = g_array_index(transceivers, GstWebRTCRTPTransceiver*, 0);
+		g_object_set(transceiver, "direction", GST_WEBRTC_RTP_TRANSCEIVER_DIRECTION_SENDONLY, NULL);
+		g_array_unref(transceivers);
+		
 		// subscribe to callbacks
 		g_signal_connect(peer_context->webrtcbin, "on-negotiation-needed", G_CALLBACK(onNegotiationNeeded), peer);
 		g_signal_connect(peer_context->webrtcbin, "on-ice-candidate", G_CALLBACK(onIceCandidate), peer);
-
+		
 		// Set to pipeline branch to PLAYING
 		ret = gst_element_sync_state_with_parent(peer_context->queue);
 		g_assert_true(ret);
 		ret = gst_element_sync_state_with_parent(peer_context->webrtcbin);
 		g_assert_true(ret);
-  
+		
 		return;
 	}
 	else if( peer->flags & WEBRTC_PEER_CLOSED )
@@ -975,15 +994,15 @@ void gstEncoder::onNegotiationNeeded( GstElement* webrtcbin, void* user_data )
 	gstWebRTCPeerContext* peer_context = (gstWebRTCPeerContext*)peer->user_data;
 	
 	// setup offer created callback
-	GstPromise* promise = gst_promise_new_with_change_func(onOfferCreated, peer, NULL);
+	GstPromise* promise = gst_promise_new_with_change_func(onCreateOffer, peer, NULL);
 	g_signal_emit_by_name(G_OBJECT(peer_context->webrtcbin), "create-offer", NULL, promise);
 }
 
 
 // onOfferCreated
-void gstEncoder::onOfferCreated( GstPromise* promise, void* user_data )
+void gstEncoder::onCreateOffer( GstPromise* promise, void* user_data )
 {
-	LogDebug(LOG_WEBRTC "gstEncoder -- onOfferCreated()\n");
+	LogDebug(LOG_WEBRTC "gstEncoder -- onCreateOffer()\n");
 	
 	if( !user_data )
 		return;

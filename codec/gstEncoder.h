@@ -145,8 +145,8 @@ protected:
 	static void onEnoughData( GstElement* pipeline, void* user_data );
 
 	// WebRTC callbacks
-	static void onWebsocketMsg( WebRTCPeer* peer, const char* message, size_t message_size, void* user_data );
-	static void onOfferCreated( GstPromise* promise, void* user_data );
+	static void onWebsocketMessage( WebRTCPeer* peer, const char* message, size_t message_size, void* user_data );
+	static void onCreateOffer( GstPromise* promise, void* user_data );
 	static void onNegotiationNeeded( GstElement* webrtcbin, void* user_data );
 	static void onIceCandidate( GstElement* webrtcbin, uint32_t mline_index, char* candidate, void* user_data );
 	
