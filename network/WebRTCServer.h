@@ -60,8 +60,8 @@ enum WebRTCFlags
 	WEBRTC_PUBLIC  = (1 << 1),		// allow discoverability
 	WEBRTC_AUDIO   = (1 << 0),		// produces/accepts video
 	WEBRTC_VIDEO   = (1 << 1),  		// produces/accepts audio
-	WEBRTC_SEND 	= (1 << 2),		// can send to the client
-	WEBRTC_RECEIVE = (1 << 3),		// can recieve from the client
+	WEBRTC_SEND 	= (1 << 2),		// can send to the client (outgoing)
+	WEBRTC_RECEIVE = (1 << 3),		// can recieve from the client (incoming)
 	WEBRTC_MULTI_CLIENT = (1 << 4),	// can connect with multiple clients simultaneously
 	
 	// state flags
@@ -93,9 +93,9 @@ struct WebRTCPeer
 
 
 /**
- * WebRTC signalling server using websockets for establishing and negotiating connections  
- * with peers for bi-directional media streaming, and linking them with user-defined pipelines
- * via routing functions that configure the pipelines to deliver or recieve the streams.
+ * WebRTC signalling server for establishing and negotiating connections with peers 
+ * for bi-directional media streaming. Users can bind routing functions that configure
+ * their pipelines dynamically to handle incoming/outgoing streams.
  *
  * It uses websockets to handle the communication with clients for SDP offers, ICE messages, ect.
  * @see https://doc-kurento.readthedocs.io/en/stable/_static/client-javadoc/org/kurento/client/WebRtcEndpoint.html
