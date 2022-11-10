@@ -108,8 +108,8 @@ int main( int argc, char** argv )
 		{
 			LogError("video-viewer:  failed to capture video frame\n");
 
-			//if( !inputStream->IsStreaming() )
-			//	signal_recieved = true;
+			if( !inputStream->IsStreaming() )
+				signal_recieved = true;
 
 			continue;
 		}
