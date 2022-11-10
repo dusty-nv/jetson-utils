@@ -221,6 +221,9 @@ protected:
 	void freeRoute( HttpRoute* route );
 	void freeRoute( WebsocketRoute* route );
 	
+	std::string printRouteInfo( WebsocketRoute* route ) const;
+	//std::string printRouteList();
+	
 	std::vector<HttpRoute*> mHttpRoutes;
 	std::vector<WebsocketRoute*> mWebsocketRoutes;
 	

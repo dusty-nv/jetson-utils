@@ -24,18 +24,16 @@
 #include "NetworkAdapter.h"
 
 #include "logging.h"
+#include <sstream>
 
 
-#define USE_HTTPS
 
-#ifdef USE_HTTPS
-	#define WEBSOCKET_PROTOCOL "wss"
-#else
-	#define WEBSOCKET_PROTOCOL "ws"
-#endif
-
-
-// HTML video viewer page
+// HTML outgoing video viewer page template (for server->client)
+//  string params:
+//    1. websocket path
+//    2. websocket protocol (ws or wss)
+//    3. stun server
+//    4. body content
 const char* html_viewer = " \n \
 <html> \n \
   <head> \n \
@@ -111,10 +109,10 @@ const char* html_viewer = " \n \
         var l = window.location;\n \
         var wsHost = (hostname != undefined) ? hostname : l.hostname; \n \
         var wsPort = (port != undefined) ? port : l.port; \n \
-        var wsPath = (path != undefined) ? path : \"ws\"; \n \
+        var wsPath = (path != undefined) ? path : \"%s\"; \n \
         if (wsPort) \n\
           wsPort = \":\" + wsPort; \n\
-        var wsUrl = \"" WEBSOCKET_PROTOCOL "://\" + wsHost + wsPort + \"/\" + wsPath; \n \
+        var wsUrl = \"%s://\" + wsHost + wsPort + wsPath; \n \
 	   console.log(\"Video server URL: \" + wsUrl); \n \
  \n \
         html5VideoElement = videoElement; \n \
@@ -127,7 +125,7 @@ const char* html_viewer = " \n \
  \n \
       window.onload = function() { \n \
         var vidstream = document.getElementById(\"stream\"); \n \
-        var config = { 'iceServers': [{ 'urls': 'stun:" WEBRTC_DEFAULT_STUN_SERVER "' }] }; \n\
+        var config = { 'iceServers': [{ 'urls': 'stun:%s' }] }; \n\
         playStream(vidstream, null, null, null, config, function (errmsg) { console.error(errmsg); }); \n \
       }; \n \
  \n \
@@ -138,12 +136,19 @@ const char* html_viewer = " \n \
     <div> \n \
       <video id=\"stream\" autoplay controls playsinline>Your browser does not support video</video> \n \
     </div> \n \
+    %s \n \
   </body> \n \
 </html> \n \
 ";
 
 
-const gchar *html_send = " \n \
+// HTML incoming video sender page template (for client->server)
+//  string params:
+//    1. websocket path
+//    2. websocket protocol (ws or wss)
+//    3. stun server
+//    4. body content
+const char* html_sender = " \n \
 <html> \n \
   <head> \n \
     <script type=\"text/javascript\" src=\"https://webrtc.github.io/adapter/adapter-latest.js\"></script> \n \
@@ -222,10 +227,10 @@ const gchar *html_send = " \n \
         var l = window.location;\n \
         var wsHost = (hostname != undefined) ? hostname : l.hostname; \n \
         var wsPort = (port != undefined) ? port : l.port; \n \
-        var wsPath = (path != undefined) ? path : \"ws\"; \n \
+        var wsPath = (path != undefined) ? path : \"%s\"; \n \
         if (wsPort) \n\
           wsPort = \":\" + wsPort; \n\
-        var wsUrl = \"" WEBSOCKET_PROTOCOL "://\" + wsHost + wsPort + \"/\" + wsPath; \n \
+        var wsUrl = \"%s://\" + wsHost + wsPort + wsPath; \n \
  \n \
         webrtcConfiguration = configuration; \n \
         reportError = (reportErrorCB != undefined) ? reportErrorCB : function(text) {}; \n \
@@ -235,7 +240,12 @@ const gchar *html_send = " \n \
       } \n \
  \n \
       window.onload = function() { \n \
-        var config = { 'iceServers': [{ 'urls': 'stun:" WEBRTC_DEFAULT_STUN_SERVER "' }] }; \n\
+	   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { \n \
+	      console.log(\"getUserMedia() not available -- confirm HTTPS connection is being used\"); \n \
+		 document.write(\"getUserMedia() not available -- confirm HTTPS connection is being used\"); \n \
+		 return; \n \
+	   } \n \
+        var config = { 'iceServers': [{ 'urls': 'stun:%s' }] }; \n\
         sendStream(null, null, null, config, function (errmsg) { console.error(errmsg); }); \n \
       }; \n \
  \n \
@@ -246,11 +256,30 @@ const gchar *html_send = " \n \
     <div> \n \
       <p>sending WebRTC stream</p> \n \
     </div> \n \
+    %s \n \
   </body> \n \
 </html> \n \
 ";
 
+// when the requested stream couldn't be found
+const char* html_not_found = " \n \
+<html> \n \
+<body> \n \
+    <p>Couldn't find stream %s</p>\n \
+  </body> \n \
+</html> \n \
+";
 
+// when the server doesn't have a page for this type of stream
+const char* html_unable = " \n \
+<html> \n \
+<body> \n \
+    <p>Couldn't handle this type of stream: %s</p>\n \
+  </body> \n \
+</html> \n \
+";
+
+// when there are no streams on the server
 const char* html_inactive = " \n \
 <html> \n \
 <body> \n \
@@ -289,9 +318,15 @@ WebRTCServer::WebRTCServer( uint16_t port, const char* stun_server, const char* 
 	mPeerCount = 0;
 	mHasHTTPS = false;
 	mSoupServer = NULL;
-	mStunServer = stun_server;
-	mSSLCertFile = ssl_cert_file;
-	mSSLKeyFile = ssl_key_file;
+	
+	if( stun_server != NULL )
+		mStunServer = stun_server;
+	
+	if( ssl_cert_file != NULL )
+		mSSLCertFile = ssl_cert_file;
+	
+	if( ssl_key_file != NULL )
+		mSSLKeyFile = ssl_key_file;
 }
 
 
@@ -341,7 +376,7 @@ WebRTCServer* WebRTCServer::Create( uint16_t port, const char* stun_server, cons
 	}
 	
 	// assign a default STUN server if needed
-	if( !stun_server )
+	if( !stun_server || strlen(stun_server) == 0 )
 		stun_server = WEBRTC_DEFAULT_STUN_SERVER;
 	
 	// create a new server
@@ -368,8 +403,7 @@ bool WebRTCServer::init()
 		LogError(LOG_WEBRTC "failed to create SOUP server\n");
 		return false;
 	}
-	
-#ifdef USE_HTTPS								
+								
 	// load SSL/HTTPS certificate
 	if( mSSLCertFile.length() > 0 && mSSLKeyFile.length() > 0 )
 	{
@@ -391,8 +425,7 @@ bool WebRTCServer::init()
 		LogError(LOG_WEBRTC "(see the --ssl-cert and --ssl-key command line options)\n");
 		return false;
 	}
-#endif
-
+	
 	// add default handlers
 	soup_server_add_handler(mSoupServer, "/", onHttpRequest, this, NULL);
 	//soup_server_add_websocket_handler(mSoupServer, "/", NULL, NULL, onWebsocketOpened, this, NULL);
@@ -568,13 +601,13 @@ void WebRTCServer::freeRoute( WebRTCServer::WebsocketRoute* route )
 // onHttpRequest
 void WebRTCServer::onHttpRequest( SoupServer* soup_server, SoupMessage* message, const char* path, GHashTable* query, SoupClientContext* client_context, void* user_data )
 {
-	if( !user_data )
+	WebRTCServer* server = (WebRTCServer*)user_data;
+	
+	if( !server )
 	{
 		soup_message_set_status(message, SOUP_STATUS_INTERNAL_SERVER_ERROR);
 		return;
 	}
-	
-	WebRTCServer* server = (WebRTCServer*)user_data;
 	
 	// find if path is found
 	HttpRoute* route = server->findHttpRoute(path);
@@ -587,65 +620,132 @@ void WebRTCServer::onHttpRequest( SoupServer* soup_server, SoupMessage* message,
 
 	if( !route )
 	{
-		LogVerbose(LOG_WEBRTC "HTTP %s %s '%s' -- not found 404\n", soup_client_context_get_host(client_context), message->method, path);
+		LogVerbose(LOG_WEBRTC "%s %s %s '%s' -- not found 404\n", server->HasHTTPS() ? "HTTPS" : "HTTP", soup_client_context_get_host(client_context), message->method, path);
 		soup_message_set_status(message, SOUP_STATUS_NOT_FOUND);
 		return;
 	}
 	
-	LogVerbose(LOG_WEBRTC "HTTP %s %s '%s'\n", soup_client_context_get_host(client_context), message->method, path);
+	LogVerbose(LOG_WEBRTC "%s %s %s '%s'\n", server->HasHTTPS() ? "HTTPS" : "HTTP", soup_client_context_get_host(client_context), message->method, path);
 	
 	// dispatch callback
 	route->callback(soup_server, message, path, query, client_context, route->user_data);
 }
 
-
+	
 // onHttpDefault (this serves the default site)
 void WebRTCServer::onHttpDefault( SoupServer* soup_server, SoupMessage* message, const char* path, GHashTable* query, SoupClientContext* client_context, void* user_data )
 {
-	if( !user_data )
+	WebRTCServer* server = (WebRTCServer*)user_data;
+	
+	if( !server )
 	{
 		soup_message_set_status(message, SOUP_STATUS_INTERNAL_SERVER_ERROR);
 		return;
 	}
-	
-	WebRTCServer* server = (WebRTCServer*)user_data;
-	const char* html = NULL;
-	#define html_source html_viewer
-	
-#if 1
-	// find if path is found
-	WebsocketRoute* websocketRoute = server->findWebsocketRoute(path);
 
-	if( !websocketRoute )
+	// the HTML to serve will be rendered to this buffer
+	char html[8192];
+
+	#define CHECK_SNPRINTF(x) \
+		const int chars_needed = x; \
+		if( chars_needed < 0 || chars_needed >= sizeof(html) ) { \
+			LogError(LOG_WEBRTC "buffer length exceeded rendering html template (%i vs %zu bytes)\n", chars_needed, sizeof(html)); \
+			soup_message_set_status(message, SOUP_STATUS_INTERNAL_SERVER_ERROR); \
+			return; \
+		}
+				
+	// get the stream name the user wishes to view from the 'stream' query param
+	// this takes the form:  http://0.0.0.0:8080/?stream=name  (or any page, like index.html?stream=name)
+	// it's done with query params to avoid collisions with the websockets running on this port
+	// if 'stream' isn't specified in the URL, then it will default to the first available stream
+	const char* stream = NULL;
+	
+	if( query != NULL )
+		stream = (const char*)g_hash_table_lookup(query, "stream");
+
+	if( !stream && server->mWebsocketRoutes.size() > 0 )
+		stream = server->mWebsocketRoutes[0]->path.c_str();  // default to the first stream
+	
+	if( stream != NULL )
 	{
-		if( strcmp(path, "/") == 0 || strcmp(path, "index.html") == 0 )
-			html = html_source;
+		WebsocketRoute* route = server->findWebsocketRoute(stream);
+		
+		if( !route && stream[0] != '/' )  // append '/' to stream name if needed
+		{
+			const std::string stream_leading_slash = std::string("/") + std::string(stream);
+			route = server->findWebsocketRoute(stream_leading_slash.c_str());
+		}
+		
+		if( route != NULL )
+		{
+			const std::string stream_info = server->printRouteInfo(route);
+			
+			if( (route->flags & WEBRTC_VIDEO) && (route->flags & WEBRTC_SEND) )
+			{
+				CHECK_SNPRINTF(snprintf(html, sizeof(html), html_viewer, 
+								    route->path.c_str(), 
+								    server->HasHTTPS() ? "wss" : "ws", 
+								    server->GetSTUNServer(),
+								    stream_info.c_str()));
+			}
+			else if( (route->flags & WEBRTC_VIDEO) && (route->flags & WEBRTC_RECEIVE) )
+			{
+				CHECK_SNPRINTF(snprintf(html, sizeof(html), html_sender, 
+								    route->path.c_str(), 
+								    server->HasHTTPS() ? "wss" : "ws", 
+								    server->GetSTUNServer(),
+								    stream_info.c_str()));
+			}
+			else
+			{
+				CHECK_SNPRINTF(snprintf(html, sizeof(html), html_unable, route->path.c_str()));
+			}
+		}
 		else
-			html = html_inactive;
+		{
+			CHECK_SNPRINTF(snprintf(html, sizeof(html), html_not_found, stream));
+		}
 	}
 	else
 	{
-		html = html_source;
+		strncpy(html, html_inactive, sizeof(html));	// no streams available
 	}
-#else
-	if( server->mWebsocketRoutes.size() > 0 )
-		html = html_source;
-#endif
-
-	if( !html )
-	{
-		LogVerbose(LOG_WEBRTC "HTTP %s %s '%s' -- not found 404\n", soup_client_context_get_host(client_context), message->method, path);
-		soup_message_set_status(message, SOUP_STATUS_NOT_FOUND);
-		return;
-	}
-		
-	SoupBuffer* soup_buffer = soup_buffer_new(SOUP_MEMORY_STATIC, html, strlen(html)); // TODO watch SOUP_MEMORY_STATIC when we start making other strings
+	
+	// reply with the HTML content
+	SoupBuffer* soup_buffer = soup_buffer_new(SOUP_MEMORY_COPY, html, strlen(html)); // SOUP_MEMORY_STATIC
 
 	soup_message_headers_set_content_type(message->response_headers, "text/html", NULL);
 	soup_message_body_append_buffer(message->response_body, soup_buffer);
 	soup_buffer_free(soup_buffer);
 
 	soup_message_set_status(message, SOUP_STATUS_OK);
+}
+
+
+// print stream info for use in HTML
+std::string WebRTCServer::printRouteInfo( WebsocketRoute* route ) const
+{
+	std::ostringstream ss;
+	
+	ss << "<p>Stream " << route->path << "&nbsp;&nbsp;&nbsp;(flags:";
+
+	if( route->flags & WEBRTC_AUDIO )
+		ss << " audio";
+	
+	if( route->flags & WEBRTC_VIDEO )
+		ss << " video";
+	
+	if( route->flags & WEBRTC_SEND )
+		ss << " send";
+	
+	if( route->flags & WEBRTC_RECEIVE )
+		ss << " receive";
+	
+	if( route->flags & WEBRTC_MULTI_CLIENT )
+		ss << " multi-client";
+	
+	ss << ")&nbsp;&nbsp;(peers: " << route->peers.size() << ")</p>";
+	return ss.str();
 }
 
 
