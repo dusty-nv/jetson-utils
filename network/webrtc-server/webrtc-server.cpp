@@ -75,7 +75,7 @@ int main( int argc, char** argv )
 	/*
 	 * create server
 	 */
-	const uint32_t port = cmdLine.GetUnsignedInt("port", 8080);
+	const uint32_t port = cmdLine.GetUnsignedInt("port", 49567);
 	
 	WebRTCServer* server = WebRTCServer::Create(port);
 	
