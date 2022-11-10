@@ -70,6 +70,15 @@ void videoOptions::Print( const char* prefix ) const
 	LogInfo("  -- loop:       %i\n", loop);
 	LogInfo("  -- rtspLatency %i\n", rtspLatency);
 	
+	if( stunServer.length() > 0 )
+		LogInfo("  -- stunServer  %s\n", stunServer.c_str());
+
+	if( sslCert.length() > 0 )
+		LogInfo("  -- sslCert     %s\n", sslCert.c_str());
+	
+	if( sslKey.length() > 0 )
+		LogInfo("  -- sslKey      %s\n", sslKey.c_str());
+	
 	LogInfo("------------------------------------------------\n");
 }
 
@@ -167,6 +176,22 @@ bool videoOptions::Parse( const char* URI, const commandLine& cmdLine, videoOpti
 	// RTSP latency
 	rtspLatency = cmdLine.GetUnsignedInt("input-rtsp-latency", rtspLatency);
 	
+	// STUN server
+	const char* stunStr = cmdLine.GetString("stun-server");
+	
+	if( stunStr != NULL )
+		stunServer = stunStr;
+
+	// SSL certificate/key
+	const char* certStr = cmdLine.GetString("ssl-cert", cmdLine.GetString("https-cert"));
+	const char* keyStr = cmdLine.GetString("ssl-key", cmdLine.GetString("https-key"));
+	
+	if( certStr )
+		sslCert = certStr;
+	
+	if( keyStr )
+		sslKey = keyStr;
+
 	return true;
 }
 

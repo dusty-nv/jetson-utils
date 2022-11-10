@@ -114,8 +114,12 @@ public:
 	 * Create a WebRTC server on this port.
 	 * If this port is already in use, the existing server will be returned.
 	 * TODO Create() shouldn't have additional params because servers are only cached by port
+	 * Set the SSL PEM-encoded cert/key filenames for enabling HTTPS.
+	 * This should be called before Create() is, and will be the default
+	 * --https-cert --https-key --ssl-cert --ssl-key --stun-server
 	 */
-	static WebRTCServer* Create( uint16_t port=8080, const char* stun_server=WEBRTC_DEFAULT_STUN_SERVER );	
+	static WebRTCServer* Create( uint16_t port=8080, const char* stun_server=WEBRTC_DEFAULT_STUN_SERVER,
+						    const char* ssl_cert_file=NULL, const char* ssl_key_file=NULL );	
 	
 	/**
 	 * Release
@@ -169,6 +173,12 @@ public:
 	inline const char* GetSTUNServer() const		{ return mStunServer.c_str(); }
 	
 	/**
+	 * Return true if the server is using HTTPS.
+	 * For HTTPS to be enabled, SSL cert/key files must have been provided to WebRTCServer::Create().
+	 */
+	inline bool HasHTTPS() const					{ return mHasHTTPS; }
+	
+	/**
 	 * Process incoming requests on the server.
 	 * If set to blocking, the function can wait indefinitely for requests.
 	 */
@@ -176,7 +186,7 @@ public:
 	
 protected:
 
-	WebRTCServer( uint16_t port, const char* stun_server );
+	WebRTCServer( uint16_t port, const char* stun_server, const char* ssl_cert_file, const char* ssl_key_file );
 	~WebRTCServer();
 	
 	bool init();
@@ -213,13 +223,18 @@ protected:
 	
 	std::vector<HttpRoute*> mHttpRoutes;
 	std::vector<WebsocketRoute*> mWebsocketRoutes;
-
-	uint16_t mPort;
-	uint32_t mRefCount;
-	uint32_t mPeerCount;
 	
 	SoupServer* mSoupServer;
 	std::string mStunServer;
+	
+	std::string mSSLCertFile;
+	std::string mSSLKeyFile;
+	
+	bool mHasHTTPS;
+	
+	uint16_t mPort;
+	uint32_t mRefCount;
+	uint32_t mPeerCount;
 };
 
 #endif

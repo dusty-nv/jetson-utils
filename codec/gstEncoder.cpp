@@ -224,7 +224,8 @@ bool gstEncoder::init()
 	// create server for WebRTC streams
 	if( mOptions.resource.protocol == "webrtc" )
 	{
-		mWebRTCServer = WebRTCServer::Create(mOptions.resource.port);
+		mWebRTCServer = WebRTCServer::Create(mOptions.resource.port, mOptions.stunServer.c_str(),
+									  mOptions.sslCert.c_str(), mOptions.sslKey.c_str());
 		
 		if( !mWebRTCServer )
 			return false;

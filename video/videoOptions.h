@@ -207,6 +207,31 @@ public:
 	Codec codec;
 
 	/**
+	 * URL of STUN server used for WebRTC.  This can be set using the `--stun-server` command-line argument.
+	 * STUN servers are used during ICE/NAT and allow a local device to determine its public IP address.
+	 * If this is left blank and WebRTC is used, then a default STUN server will be assigned.
+	 */
+	std::string stunServer;
+	
+	/**
+	 * Path to a file containing a PEM-encoded SSL/TLS certificate.
+	 * This is used for enabling HTTPS in the WebRTC server.
+	 * It can be set from the command-line using the `--ssl-cert` or `--https-cert` options.
+	 * You can make your own self-signed certificate by running a command like:
+	 *   `openssl req -x509 -newkey rsa:2048 -keyout key.pem -out cert.pem -days 365`
+	 */
+	std::string sslCert;
+	
+	/**
+	 * Path to a file containing a PEM-encoded private key.
+	 * This is used for enabling HTTPS in the WebRTC server.
+	 * It can be set from the command-line using the `--ssl-key` or `--https-key` options.
+	 * You can make your own self-signed certificate by running a command like:
+	 *   `openssl req -x509 -newkey rsa:2048 -keyout key.pem -out cert.pem -days 365`
+	 */
+	std::string sslKey;
+	
+	/**
 	 * Log the video settings, with an optional prefix label.
 	 */
 	void Print( const char* prefix=NULL ) const;

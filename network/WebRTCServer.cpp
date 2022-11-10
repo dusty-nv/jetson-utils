@@ -26,6 +26,15 @@
 #include "logging.h"
 
 
+#define USE_HTTPS
+
+#ifdef USE_HTTPS
+	#define WEBSOCKET_PROTOCOL "wss"
+#else
+	#define WEBSOCKET_PROTOCOL "ws"
+#endif
+
+
 // HTML video viewer page
 const char* html_viewer = " \n \
 <html> \n \
@@ -105,7 +114,7 @@ const char* html_viewer = " \n \
         var wsPath = (path != undefined) ? path : \"ws\"; \n \
         if (wsPort) \n\
           wsPort = \":\" + wsPort; \n\
-        var wsUrl = \"ws://\" + wsHost + wsPort + \"/\" + wsPath; \n \
+        var wsUrl = \"" WEBSOCKET_PROTOCOL "://\" + wsHost + wsPort + \"/\" + wsPath; \n \
 	   console.log(\"Video server URL: \" + wsUrl); \n \
  \n \
         html5VideoElement = videoElement; \n \
@@ -216,7 +225,7 @@ const gchar *html_send = " \n \
         var wsPath = (path != undefined) ? path : \"ws\"; \n \
         if (wsPort) \n\
           wsPort = \":\" + wsPort; \n\
-        var wsUrl = \"ws://\" + wsHost + wsPort + \"/\" + wsPath; \n \
+        var wsUrl = \"" WEBSOCKET_PROTOCOL "://\" + wsHost + wsPort + \"/\" + wsPath; \n \
  \n \
         webrtcConfiguration = configuration; \n \
         reportError = (reportErrorCB != undefined) ? reportErrorCB : function(text) {}; \n \
@@ -273,13 +282,16 @@ std::vector<WebRTCServer*> gServers;
 
 
 // constructor
-WebRTCServer::WebRTCServer( uint16_t port, const char* stun_server )
+WebRTCServer::WebRTCServer( uint16_t port, const char* stun_server, const char* ssl_cert_file, const char* ssl_key_file )
 {	
 	mPort = port;
 	mRefCount = 1;
 	mPeerCount = 0;
+	mHasHTTPS = false;
 	mSoupServer = NULL;
 	mStunServer = stun_server;
+	mSSLCertFile = ssl_cert_file;
+	mSSLKeyFile = ssl_key_file;
 }
 
 
@@ -317,7 +329,7 @@ void WebRTCServer::Release()
 		
 
 // Create
-WebRTCServer* WebRTCServer::Create( uint16_t port, const char* stun_server )
+WebRTCServer* WebRTCServer::Create( uint16_t port, const char* stun_server, const char* ssl_cert_file, const char* ssl_key_file )
 {
 	// see if a server on this port already exists
 	const uint32_t numServers = gServers.size();
@@ -328,8 +340,12 @@ WebRTCServer* WebRTCServer::Create( uint16_t port, const char* stun_server )
 			return gServers[n];
 	}
 	
+	// assign a default STUN server if needed
+	if( !stun_server )
+		stun_server = WEBRTC_DEFAULT_STUN_SERVER;
+	
 	// create a new server
-	WebRTCServer* server = new WebRTCServer(port, stun_server);
+	WebRTCServer* server = new WebRTCServer(port, stun_server, ssl_cert_file, ssl_key_file);
 
 	if( !server || !server->init() )
 	{
@@ -353,6 +369,31 @@ bool WebRTCServer::init()
 		return false;
 	}
 	
+#ifdef USE_HTTPS								
+	// load SSL/HTTPS certificate
+	if( mSSLCertFile.length() > 0 && mSSLKeyFile.length() > 0 )
+	{
+		GError* error = NULL;
+		
+		if( !soup_server_set_ssl_cert_file(mSoupServer, mSSLCertFile.c_str(), mSSLKeyFile.c_str(), &error) )
+		{
+			LogError(LOG_WEBRTC "failed to load SSL certificate, unable to use HTTPS\n");
+			LogError(LOG_WEBRTC "(%s)\n", error->message);
+			g_error_free(error);	
+			return false;
+		}
+
+		mHasHTTPS = true;
+	}
+	else if( mSSLCertFile.length() > 0 || mSSLKeyFile.length() > 0 )
+	{
+		LogError(LOG_WEBRTC "must provide valid SSL certificate AND key files to enable HTTPS\n");
+		LogError(LOG_WEBRTC "(see the --ssl-cert and --ssl-key command line options)\n");
+		return false;
+	}
+#endif
+
+	// add default handlers
 	soup_server_add_handler(mSoupServer, "/", onHttpRequest, this, NULL);
 	//soup_server_add_websocket_handler(mSoupServer, "/", NULL, NULL, onWebsocketOpened, this, NULL);
 	
@@ -361,14 +402,14 @@ bool WebRTCServer::init()
 	// start the server listening
 	GError* err = NULL;
 
-	if( !soup_server_listen_all(mSoupServer, mPort, (SoupServerListenOptions)0, &err) )
+	if( !soup_server_listen_all(mSoupServer, mPort, mHasHTTPS ? SOUP_SERVER_LISTEN_HTTPS : (SoupServerListenOptions)0, &err) )
 	{
 		LogError(LOG_WEBRTC "SOUP server failed to listen on port %hu\n", mPort);
 		LogError(LOG_WEBRTC "   (%s)\n", err->message);
 		g_error_free(err);
 	}
 	
-	LogSuccess(LOG_WEBRTC "WebRTC server started @ http://%s:%hu\n", networkHostname().c_str(), mPort);
+	LogSuccess(LOG_WEBRTC "WebRTC server started @ %s://%s:%hu\n", mHasHTTPS ? "https" : "http", networkHostname().c_str(), mPort);
 	return true;
 }
 
