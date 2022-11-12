@@ -23,7 +23,9 @@
 #include "WebRTCServer.h"
 #include "NetworkAdapter.h"
 
+#include "json.hpp"
 #include "logging.h"
+
 #include <sstream>
 
 
@@ -640,6 +642,51 @@ void WebRTCServer::onHttpDefault( SoupServer* soup_server, SoupMessage* message,
 	if( !server )
 	{
 		soup_message_set_status(message, SOUP_STATUS_INTERNAL_SERVER_ERROR);
+		return;
+	}
+	
+	// JSON REST API
+	if( strcmp(path, "/api/streams") == 0 )
+	{
+		nlohmann::json json;
+		
+		const uint32_t numWebsocketRoutes = server->mWebsocketRoutes.size();
+		
+		for( uint32_t n=0; n < numWebsocketRoutes; n++ )
+		{
+			WebsocketRoute* route = server->mWebsocketRoutes[n];
+			
+			std::vector<std::string> flags;
+			
+			if( route->flags & WEBRTC_AUDIO )  
+				flags.push_back("audio");
+			
+			if( route->flags & WEBRTC_VIDEO )
+				flags.push_back("video");
+			
+			if( route->flags & WEBRTC_SEND )
+				flags.push_back("send");
+			
+			if( route->flags & WEBRTC_RECEIVE )
+				flags.push_back("receive");
+			
+			if( route->flags & WEBRTC_MULTI_CLIENT )
+				flags.push_back("multi_client");
+			
+			json[route->path]["flags"] = flags;
+			json[route->path]["peer_count"] = route->peers.size();
+		}
+		
+		const std::string json_str = json.dump(2);
+		
+		// reply with the JSON
+		SoupBuffer* soup_buffer = soup_buffer_new(SOUP_MEMORY_COPY, json_str.c_str(), json_str.length()); // SOUP_MEMORY_STATIC
+
+		soup_message_headers_set_content_type(message->response_headers, "application/json", NULL);
+		soup_message_body_append_buffer(message->response_body, soup_buffer);
+		soup_buffer_free(soup_buffer);
+
+		soup_message_set_status(message, SOUP_STATUS_OK);
 		return;
 	}
 

@@ -60,8 +60,8 @@ enum WebRTCFlags
 	WEBRTC_PUBLIC  = (1 << 1),		// allow discoverability
 	WEBRTC_AUDIO   = (1 << 0),		// produces/accepts video
 	WEBRTC_VIDEO   = (1 << 1),  		// produces/accepts audio
-	WEBRTC_SEND 	= (1 << 2),		// can send to the client (outgoing)
-	WEBRTC_RECEIVE = (1 << 3),		// can recieve from the client (incoming)
+	WEBRTC_SEND 	= (1 << 2),		// server sends to the client (outgoing)
+	WEBRTC_RECEIVE = (1 << 3),		// server receives from the client (incoming)
 	WEBRTC_MULTI_CLIENT = (1 << 4),	// can connect with multiple clients simultaneously
 	
 	// state flags
