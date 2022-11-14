@@ -42,6 +42,62 @@ typedef struct {
 
 
 //-------------------------------------------------------------------------------
+// PyURI_ToDict
+static PyObject* PyURI_ToDict( const URI& resource )
+{
+	PyObject* dict = PyDict_New();
+
+	PYDICT_SET_STDSTR(dict, "string", resource.string);
+	PYDICT_SET_STDSTR(dict, "protocol", resource.protocol);
+	PYDICT_SET_STDSTR(dict, "path", resource.path);
+	PYDICT_SET_STDSTR(dict, "extension", resource.extension);
+	PYDICT_SET_STDSTR(dict, "location", resource.location);
+
+	PYDICT_SET_INT(dict, "port", resource.port);
+	
+	return dict;
+}
+
+// PyVideoOptions_ToDict
+static PyObject* PyVideoOptions_ToDict( const videoOptions& options )
+{
+	PyObject* dict = PyDict_New();
+	
+	PYDICT_SET_ITEM(dict, "resource", PyURI_ToDict(options.resource));
+	PYDICT_SET_UINT(dict, "width", options.width);
+	PYDICT_SET_UINT(dict, "height", options.height);
+	PYDICT_SET_FLOAT(dict, "frameRate", options.frameRate);
+	PYDICT_SET_STRING(dict, "codec", videoOptions::CodecToStr(options.codec));
+	
+	if( options.ioType == videoOptions::OUTPUT )
+		PYDICT_SET_UINT(dict, "bitRate", options.bitRate);
+	
+	if( options.ioType == videoOptions::INPUT )
+	{
+		PYDICT_SET_INT(dict, "loop", options.loop);
+		PYDICT_SET_STRING(dict, "flipMethod", videoOptions::FlipMethodToStr(options.flipMethod));
+	}
+
+	PYDICT_SET_UINT(dict, "numBuffers", options.numBuffers);
+	PYDICT_SET_BOOL(dict, "zeroCopy", options.zeroCopy);
+	
+	PYDICT_SET_STRING(dict, "deviceType", videoOptions::DeviceTypeToStr(options.deviceType));
+	PYDICT_SET_STRING(dict, "ioType", videoOptions::IoTypeToStr(options.ioType));
+	
+	if( options.resource.protocol == "rtsp" )
+		PYDICT_SET_INT(dict, "rtspLatency", options.rtspLatency);
+	
+	if( options.resource.protocol == "webrtc" )
+	{
+		PYDICT_SET_STDSTR(dict, "stunServer", options.stunServer);
+		PYDICT_SET_STDSTR(dict, "sslCert", options.sslCert);
+		PYDICT_SET_STDSTR(dict, "sslKey", options.sslKey);
+	}
+	
+	return dict;
+}
+
+//-------------------------------------------------------------------------------
 // PyVideoSource_New
 static PyObject* PyVideoSource_New( PyTypeObject *type, PyObject *args, PyObject *kwds )
 {
@@ -255,6 +311,7 @@ static PyObject* PyVideoSource_Capture( PyVideoSource_Object* self, PyObject* ar
 	return PyCUDA_RegisterImage(ptr, self->source->GetWidth(), self->source->GetHeight(), format, self->source->GetLastTimestamp(), self->source->GetOptions().zeroCopy, false);
 }
 
+
 // PyVideoSource_GetWidth
 static PyObject* PyVideoSource_GetWidth( PyVideoSource_Object* self )
 {
@@ -291,6 +348,18 @@ static PyObject* PyVideoSource_GetFrameRate( PyVideoSource_Object* self )
 	return PYLONG_FROM_UNSIGNED_LONG(self->source->GetFrameRate());
 }
 
+// PyVideoSource_GetOptions
+static PyObject* PyVideoSource_GetOptions( PyVideoSource_Object* self )
+{
+	if( !self || !self->source )
+	{
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "videoSource invalid object instance");
+		return NULL;
+	}
+
+	return PyVideoOptions_ToDict(self->source->GetOptions());
+}
+
 // PyVideoSource_IsStreaming
 static PyObject* PyVideoSource_IsStreaming( PyVideoSource_Object* self )
 {
@@ -322,6 +391,7 @@ static PyMethodDef pyVideoSource_Methods[] =
 	{ "GetWidth", (PyCFunction)PyVideoSource_GetWidth, METH_NOARGS, "Return the width of the video source (in pixels)"},
 	{ "GetHeight", (PyCFunction)PyVideoSource_GetHeight, METH_NOARGS, "Return the height of the video source (in pixels)"},
 	{ "GetFrameRate", (PyCFunction)PyVideoSource_GetFrameRate, METH_NOARGS, "Return the frames per second of the video source"},	
+	{ "GetOptions", (PyCFunction)PyVideoSource_GetOptions, METH_NOARGS, "Return a dict representing the videoOptions of the source"},	
 	{ "IsStreaming", (PyCFunction)PyVideoSource_IsStreaming, METH_NOARGS, "Return true if the stream is open, return false if closed"},
 	{ "Usage", (PyCFunction)PyVideoSource_Usage, METH_NOARGS|METH_STATIC, "Return help text describing the command line options"},		
 	{NULL}  /* Sentinel */
@@ -386,9 +456,9 @@ static int PyVideoOutput_Init( PyVideoOutput_Object* self, PyObject *args, PyObj
 	PyObject* argList = NULL;
 	int positionArg = -1;
 	
-	static char* kwlist[] = {"uri", "argv", "positionArg", NULL};
+	static char* kwlist[] = {"uri", "argv", "positionArg", "options", NULL};
 
-	if( !PyArg_ParseTupleAndKeywords(args, kwds, "|sOi", kwlist, &URI, &argList, &positionArg))
+	if( !PyArg_ParseTupleAndKeywords(args, kwds, "|sOiO", kwlist, &URI, &argList, &positionArg))
 	{
 		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "videoOutput.__init()__ failed to parse args tuple");
 		LogError(LOG_PY_UTILS "videoOutput.__init()__ failed to parse args tuple\n");
@@ -602,6 +672,18 @@ static PyObject* PyVideoOutput_GetFrameRate( PyVideoOutput_Object* self )
 	return PyFloat_FromDouble(self->output->GetFrameRate());
 }
 
+// PyVideoOutput_GetOptions
+static PyObject* PyVideoOutput_GetOptions( PyVideoOutput_Object* self )
+{
+	if( !self || !self->output )
+	{
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "videoOutput invalid object instance");
+		return NULL;
+	}
+
+	return PyVideoOptions_ToDict(self->output->GetOptions());
+}
+
 // PyVideoOutput_IsStreaming
 static PyObject* PyVideoOutput_IsStreaming( PyVideoOutput_Object* self )
 {
@@ -656,7 +738,8 @@ static PyMethodDef pyVideoOutput_Methods[] =
 	{ "Render", (PyCFunction)PyVideoOutput_Render, METH_VARARGS|METH_KEYWORDS, "Render a frame (supplied as a cudaImage)"},
 	{ "GetWidth", (PyCFunction)PyVideoOutput_GetWidth, METH_NOARGS, "Return the width of the video output (in pixels)"},
 	{ "GetHeight", (PyCFunction)PyVideoOutput_GetHeight, METH_NOARGS, "Return the height of the video output (in pixels)"},
-	{ "GetFrameRate", (PyCFunction)PyVideoOutput_GetFrameRate, METH_NOARGS, "Return the frames per second of the video output"},		
+	{ "GetFrameRate", (PyCFunction)PyVideoOutput_GetFrameRate, METH_NOARGS, "Return the frames per second of the video output"},	
+	{ "GetOptions", (PyCFunction)PyVideoOutput_GetOptions, METH_NOARGS, "Return the dict representation of the videoOptions of the output"},
 	{ "IsStreaming", (PyCFunction)PyVideoOutput_IsStreaming, METH_NOARGS, "Return true if the stream is open, return false if closed"},		
 	{ "SetStatus", (PyCFunction)PyVideoOutput_SetStatus, METH_VARARGS, "Set the status string (i.e. window title bar text)"},
      { "Usage", (PyCFunction)PyVideoOutput_Usage, METH_NOARGS|METH_STATIC, "Return help text describing the command line options"},	
