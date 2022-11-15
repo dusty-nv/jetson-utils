@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2022, NVIDIA CORPORATION. All rights reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -20,39 +20,44 @@
  * DEALINGS IN THE SOFTWARE.
  */
  
-#ifndef __NETWORK_IPV4_H_
-#define __NETWORK_IPV4_H_
+#ifndef __NETWORK_IPV6_H_
+#define __NETWORK_IPV6_H_
 
 #include <string>
 
 
 /**
- * Convert an IPv4 address string in "xxx.xxx.xxx.xxx" format to binary representation.
+ * Convert an IPv6 address string in "x:x:x:x:x:x:x:x" hexadecimal format to 128-bit binary representation.
  *
- * @param str the IPv4 string, in "xxx.xxx.xxx.xxx" format
- * @param ipAddress output pointer to converted IPv4 address, in network byte order.
+ * @param str the IPv6 string, in "x:x:x:x:x:x:x:x" hexadecimal format
+ * @param ipAddress output pointer to converted 128-bit IPv6 address (16 bytes long), in network byte order.
+ *                  this buffer can be a variety of representations (commonly uint8[16] or uint16[8]),
+ *                  as long as it's at least 128 bits (16 bytes) long.
  *
- * @returns true, if str was a valid IPv4 address and the conversion was successful.
+ * @returns true, if str was a valid IPv6 address and the conversion was successful.
  *          false, if the conversion failed.
  *
  * @ingroup network
  */
-bool IPv4AddressFromStr( const char* str, uint32_t* ipAddress );
+bool IPv6AddressFromStr( const char* str, void* ipAddress );
 
 
 /**
- * Return text string of IPv4 address in "xxx.xxx.xxx.xxx" format
- * @param ipAddress IPv4 address, supplied in network byte order.
+ * Return text string of IPv6 address in "x:x:x:x:x:x:x:x" hexadecimal format.
+ * @param ipAddress pointer to 128-bit IPv6 address (16 bytes long), in network byte order.
+ *                   this buffer can be a variety of representations (commonly uint8[16] or uint16[8]),
+ *                   as long as it's at least 128 bits (16 bytes) long.
  * @ingroup network
  */
-std::string IPv4AddressToStr( uint32_t ipAddress );
+std::string IPv6AddressToStr( void* ipAddress );
 
 
 /**
- * The size in bytes of an IPv4 address (4 bytes)
- * This is meant to compliment POSIX's INET4_ADDRSTRLEN (16)
+ * The size in bytes of an IPv6 address (16 bytes)
+ * This is meant to compliment POSIX's INET6_ADDRSTRLEN (46)
  * @ingroup network
  */
-#define INET4_ADDRLEN 4
+#define INET6_ADDRLEN 16
+
 
 #endif

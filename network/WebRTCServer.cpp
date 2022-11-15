@@ -21,7 +21,7 @@
  */
 
 #include "WebRTCServer.h"
-#include "NetworkAdapter.h"
+#include "Network.h"
 
 #include "json.hpp"
 #include "logging.h"
@@ -444,7 +444,7 @@ bool WebRTCServer::init()
 		g_error_free(err);
 	}
 	
-	LogSuccess(LOG_WEBRTC "WebRTC server started @ %s://%s:%hu\n", mHasHTTPS ? "https" : "http", networkHostname().c_str(), mPort);
+	LogSuccess(LOG_WEBRTC "WebRTC server started @ %s://%s:%hu\n", mHasHTTPS ? "https" : "http", getHostname().c_str(), mPort);
 	return true;
 }
 

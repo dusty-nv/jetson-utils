@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2022, NVIDIA CORPORATION. All rights reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -20,7 +20,7 @@
  * DEALINGS IN THE SOFTWARE.
  */
  
-#include "IPv4.h"
+#include "IPv6.h"
 #include "Network.h"
 #include "logging.h"
 
@@ -32,38 +32,43 @@
 #include <errno.h>
 
 
-// IPv4AddressFromStr
-bool IPv4AddressFromStr( const char* str, uint32_t* ipAddress )
+// IPv6AddressFromStr
+bool IPv6AddressFromStr( const char* str, void* ipAddress )
 {
 	if( !str || !ipAddress )
 		return false;
 
-	in_addr addr;
+	in6_addr addr;
 
-	const int res = inet_pton(AF_INET, str, &addr);
+	const int res = inet_pton(AF_INET6, str, &addr);
 
 	if( res != 1 )
 	{
-		LogError(LOG_NETWORK "IPv4AddressFromStr() failed to convert '%s' to valid IPv4 address\n", str);
+		LogError(LOG_NETWORK "IPv6AddressFromStr() failed to convert '%s' to valid IPv6 address\n", str);
 		return false;
 	}
 	
-	*ipAddress = addr.s_addr;
+	memcpy(ipAddress, addr.s6_addr, INET6_ADDRLEN);
 	return true;
 }
 
 
-// IPv4AddressStr
-std::string IPv4AddressToStr( uint32_t ipAddress )
+// IPv6AddressToStr
+std::string IPv6AddressToStr( void* ipAddress )
 {
-	char str[INET_ADDRSTRLEN];
-	memset(str, 0, INET_ADDRSTRLEN);
+	if( !ipAddress )
+		return "";
+	
+	char str[INET6_ADDRSTRLEN];
+	memset(str, 0, INET6_ADDRSTRLEN);
 
-	if( inet_ntop(AF_INET, &ipAddress, str, INET_ADDRSTRLEN) == NULL )
+	if( inet_ntop(AF_INET6, ipAddress, str, INET6_ADDRSTRLEN) == NULL )
 	{
-		LogError(LOG_NETWORK "IPv4AddressToStr() failed to convert 0x%08X to string\n", ipAddress);
+		uint16_t* i = (uint16_t*)ipAddress;
+		LogError("IPv6AddressToStr() failed to convert %04hX:%04hX:%04hX:%04hX:%04hX:%04hX:%04hX:%04hX to string\n", i[0], i[1], i[2], i[3], i[4], i[5], i[6], i[7]);
 		return "";
 	}
 	
 	return std::string(str);
 }
+

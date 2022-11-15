@@ -22,7 +22,7 @@
 
 #include "Socket.h"
 #include "Endian.h"
-#include "IPv4.h"
+#include "Network.h"
 
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -38,7 +38,7 @@ static void printErrno()
 {
 	const int e = errno;
 	const char* err = strerror(e);
-	LogError("Socket error %i : %s\n", e, err);
+	LogError(LOG_NETWORK "socket error %i : %s\n", e, err);
 }
 
 
@@ -78,19 +78,19 @@ bool Socket::SetBufferSize( size_t size )
 
 	if( setsockopt(mSock, SOL_SOCKET, SO_RCVBUF, &isz, sizeof(int)) != 0 )
 	{
-		LogError("Socket failed to set rx buffer size of %zu bytes.\n", size);
+		LogError(LOG_NETWORK "Socket failed to set rx buffer size of %zu bytes.\n", size);
 		printErrno();			
 		return false;
 	}
 
 	if( setsockopt(mSock, SOL_SOCKET, SO_SNDBUF, &isz, sizeof(int)) != 0 )
 	{
-		LogError("Socket failed to set rx buffer size of %zu bytes.\n", size);
+		LogError(LOG_NETWORK "Socket failed to set rx buffer size of %zu bytes.\n", size);
 		printErrno();		
 		return false;
 	}
 
-	LogVerbose("successfully set socket buffer size of %s:%u to %zu bytes\n", IPv4AddressStr(mLocalIP).c_str(), (uint32_t)mLocalPort, size);
+	LogVerbose(LOG_NETWORK "successfully set socket buffer size of %s:%u to %zu bytes\n", IPv4AddressToStr(mLocalIP).c_str(), (uint32_t)mLocalPort, size);
 	return true;
 }
 
@@ -145,7 +145,7 @@ bool Socket::Accept( uint64_t timeout )
 	{
 		if( listen(mSock, 1) < 0 )
 		{
-			LogError("failed to listen() on socket.\n");
+			LogError(LOG_NETWORK "failed to listen() on socket.\n");
 			return false;
 		}
 
@@ -169,13 +169,13 @@ bool Socket::Accept( uint64_t timeout )
 
 		if( result < 0 )
 		{
-			LogError("select() error occurred during Socket::Accept()   (code=%i)\n", result);
+			LogError(LOG_NETWORK "select() error occurred during Socket::Accept()   (code=%i)\n", result);
 			printErrno();
 			return false;
 		}
 		else if( result == 0 )
 		{
-			LogError("Socket::Accept() timeout occurred\n");
+			LogError(LOG_NETWORK "Socket::Accept() timeout occurred\n");
 			return false;
 		}
 	}
@@ -189,7 +189,7 @@ bool Socket::Accept( uint64_t timeout )
 
 	if( fd < 0 )
 	{
-		LogError("Socket::Accept() failed  (code=%i)\n", fd);
+		LogError(LOG_NETWORK "Socket::Accept() failed  (code=%i)\n", fd);
 		printErrno();
 		return false;
 	}
@@ -215,7 +215,7 @@ bool Socket::Bind( const char* ipStr, uint16_t port )
 
 	uint32_t ipAddress = 0;
 
-	if( !IPv4Address(ipStr, &ipAddress) )
+	if( !IPv4AddressFromStr(ipStr, &ipAddress) )
 		return false;
 
 	return Bind(ipAddress, port);
@@ -234,7 +234,7 @@ bool Socket::Bind( uint32_t ipAddress, uint16_t port )
 
 	if( bind(mSock, (struct sockaddr*)&addr, sizeof(addr)) < 0 )
 	{
-		LogError("failed to bind socket to %s port %hu\n", IPv4AddressStr(ipAddress).c_str(), port);
+		LogError(LOG_NETWORK "failed to bind socket to %s port %hu\n", IPv4AddressToStr(ipAddress).c_str(), port);
 		printErrno();
 		return false;
 	}
@@ -268,7 +268,7 @@ bool Socket::Connect( uint32_t ipAddress, uint16_t port )
 
 	if( connect(mSock, (struct sockaddr*)&addr, sizeof(addr)) < 0 )
 	{
-		LogError("Socket failed to connect to %X port %hi.\n", ipAddress, port);
+		LogError(LOG_NETWORK "socket failed to connect to %X port %hi.\n", ipAddress, port);
 		printErrno();
 		return false;
 	}
@@ -288,7 +288,7 @@ bool Socket::Connect( const char* ipStr, uint16_t port )
 
 	uint32_t ipAddress = 0;
 
-	if( !IPv4Address(ipStr, &ipAddress) )
+	if( !IPv4AddressFromStr(ipStr, &ipAddress) )
 		return false;
 
 	return Connect(ipAddress, port);
@@ -309,7 +309,7 @@ size_t Socket::Recieve( uint8_t* buffer, size_t size, uint32_t* srcIpAddress, ui
 
 	if( res < 0 )
 	{
-		//printf(LOG_SYS "Socket::Recieve() timed out\n");
+		//LogVerbose(LOG_NETWORK "Socket::Recieve() timed out\n");
 		//printErrno();
 		return 0;
 	}
@@ -320,8 +320,8 @@ size_t Socket::Recieve( uint8_t* buffer, size_t size, uint32_t* srcIpAddress, ui
 	if( srcPort != NULL )
 		*srcPort = ntohs(srcAddr.sin_port);
 
-#if 0	// DEBUG
-	printf(LOG_SYS "recieved %04lli bytes from %s:%hu\n", res, IPv4AddressStr(srcAddr.sin_addr.s_addr).c_str(), (uint16_t)ntohs(srcAddr.sin_port));
+#if 0 // DEBUG
+	LogDebug(LOG_NETWORK "recieved %04lli bytes from %s:%hu\n", res, IPv4AddressToStr(srcAddr.sin_addr.s_addr).c_str(), (uint16_t)ntohs(srcAddr.sin_port));
 #endif
 
 	return res;
@@ -342,7 +342,7 @@ size_t Socket::Recieve( uint8_t* buffer, size_t size, uint32_t* remoteIP, uint16
 		
 		if( setsockopt(mSock, IPPROTO_IP, IP_PKTINFO, (const char*)&opt, sizeof(int)) != 0 )
 		{
-			LogError("Socket::Receive() failed to enabled extended PKTINFO\n");
+			LogError(LOG_NETWORK "Socket::Receive() failed to enabled extended PKTINFO\n");
 			printErrno();
 			return 0;
 		}
@@ -382,7 +382,7 @@ size_t Socket::Recieve( uint8_t* buffer, size_t size, uint32_t* remoteIP, uint16
 	
 	if( res < 0 )
 	{
-		//printf(LOG_SYS "Socket::Recieve() timed out\n");
+		//printf(LOG_NETWORK "Socket::Recieve() timed out\n");
 		//printErrno();
 		return 0;
 	}
@@ -420,7 +420,7 @@ bool Socket::SetRecieveTimeout( uint64_t timeout )
 		
 	if( setsockopt(mSock, SOL_SOCKET, SO_RCVTIMEO, (char*)&tv, sizeof(struct timeval)) != 0 )
 	{
-		LogError("Socket::SetRecieveTimeout() failed to set timeout of %zu microseconds.\n", timeout);
+		LogError(LOG_NETWORK "Socket::SetRecieveTimeout() failed to set timeout of %zu microseconds.\n", timeout);
 		printErrno();
 		return false;
 	}
@@ -443,7 +443,7 @@ bool Socket::Send( void* buffer, size_t size, uint32_t remoteIP, uint16_t remote
 		
 		if( setsockopt(mSock, SOL_SOCKET, SO_BROADCAST, (const char*)&opt, sizeof(int)) != 0 )
 		{
-			LogError("Socket::Send() failed to enabled broadcasting...\n");
+			LogError(LOG_NETWORK "Socket::Send() failed to enabled broadcasting...\n");
 			printErrno();
 			return false;
 		}
@@ -464,7 +464,7 @@ bool Socket::Send( void* buffer, size_t size, uint32_t remoteIP, uint16_t remote
 	
 	if( res != size )
 	{
-		LogError("failed send() to %s port %hu  (%li of %zu bytes)\n", IPv4AddressStr(remoteIP).c_str(), remotePort, res, size);
+		LogError(LOG_NETWORK "failed send() to %s port %hu  (%li of %zu bytes)\n", IPv4AddressToStr(remoteIP).c_str(), remotePort, res, size);
 		printErrno();
 		return false;
 	}
@@ -476,8 +476,8 @@ bool Socket::Send( void* buffer, size_t size, uint32_t remoteIP, uint16_t remote
 // PrintIP
 void Socket::PrintIP() const
 {
-	LogInfo("Socket %i   host %s:%hu   remote %s:%hu\n", mSock, IPv4AddressStr(mLocalIP).c_str(), mLocalPort,
-														  IPv4AddressStr(mRemoteIP).c_str(), mRemotePort );
+	LogInfo(LOG_NETWORK "socket %i   host %s:%hu   remote %s:%hu\n", mSock, IPv4AddressToStr(mLocalIP).c_str(), mLocalPort,
+														  IPv4AddressToStr(mRemoteIP).c_str(), mRemotePort );
 }
 
 
@@ -489,7 +489,7 @@ size_t Socket::GetMTU()
 	
 	if( getsockopt(mSock, IPPROTO_IP, IP_MTU, &mtu, &mtuSize) < 0 )
 	{
-		LogError("Socket::GetMTU() -- getsockopt(SOL_IP, IP_MTU) failed.\n");
+		LogError(LOG_NETWORK "Socket::GetMTU() -- getsockopt(SOL_IP, IP_MTU) failed.\n");
 		printErrno();
 		return 0;
 	}
