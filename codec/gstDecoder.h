@@ -150,10 +150,7 @@ protected:
 
 	// WebRTC callbacks
 	static void onWebsocketMessage( WebRTCPeer* peer, const char* message, size_t message_size, void* user_data );
-	static void onCreateOffer( GstPromise* promise, void* user_data );
-	static void onNegotiationNeeded( GstElement* webrtcbin, void* user_data );
-	static void onIceCandidate( GstElement* webrtcbin, uint32_t mline_index, char* candidate, void* user_data );
-	
+
 	GstBus*      mBus;
 	GstElement*  mPipeline;
 	_GstAppSink* mAppSink;
@@ -168,8 +165,6 @@ protected:
 	gstBufferManager* mBufferManager;
 	
 	WebRTCServer* mWebRTCServer;
-	WebRTCPeer* mWebRTCPeer;
-	GstElement* mWebRTCBin;
 	bool mWebRTCConnected;
 };
   
