@@ -20,8 +20,8 @@
  * DEALINGS IN THE SOFTWARE.
  */
  
-#ifndef __NETWORK_ADAPTER_H_
-#define __NETWORK_ADAPTER_H_
+#ifndef __NETWORKING_H_
+#define __NETWORKING_H_
 
 #include <string>
 #include <vector>

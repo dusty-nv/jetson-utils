@@ -21,7 +21,7 @@
  */
  
 #include "IPv6.h"
-#include "Network.h"
+#include "Networking.h"
 #include "logging.h"
 
 #include <arpa/inet.h>

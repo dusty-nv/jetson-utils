@@ -22,7 +22,7 @@
 
 #include "Socket.h"
 #include "Endian.h"
-#include "Network.h"
+#include "Networking.h"
 
 #include <sys/socket.h>
 #include <netinet/in.h>
