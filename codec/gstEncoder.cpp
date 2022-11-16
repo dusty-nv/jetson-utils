@@ -42,6 +42,10 @@
 #include <strings.h>
 #include <unistd.h>
 
+#include "Network.h"
+#include <iostream>
+#include <regex>
+
 
 // supported video file extensions
 const char* gstEncoder::SupportedExtensions[] = { "mkv", "mp4", "qt", 
@@ -733,6 +737,63 @@ struct gstWebRTCPeerContext
 };
 
 
+// Deal with MDNS candidates in ICE messages
+// candidate:2612432513 1 udp 2113937151 968c736b-1028-4011-8977-df7a7c5eaea0.local 52811 typ host generation 0 ufrag thqf network-cost 999
+// https://gitlab.freedesktop.org/gstreamer/gst-plugins-bad/-/issues/1139
+// https://gitlab.freedesktop.org/gstreamer/gst-plugins-bad/-/issues/1344
+static std::string resolveICECandidate( const std::string& candidate )
+{
+	std::regex regex("(candidate:([0-9]*) ([0-9]*) (udp|UDP|tcp|TCP) ([0-9]*) (\\S*))");
+	std::smatch matches;
+
+	if( std::regex_search(candidate.begin(), candidate.end(), matches, regex) )
+	{
+		const uint32_t numMatches = matches.size();
+		
+		if( numMatches < 7 )
+			printf("only %u matches\n", numMatches);
+		
+		const std::string match = matches.str(6);		// https://gitlab.freedesktop.org/gstreamer/gst-plugins-bad/-/issues/1344
+		
+		if( match.find(".local") != std::string::npos )
+		{
+			const std::string ipAddress = getHostByName(match.c_str());
+			
+			if( ipAddress.size() == 0 )
+			{
+				printf("couldn't resolve %s from SDP candidate string\n", match.c_str());
+				return candidate;
+			}
+			
+			LogVerbose(LOG_WEBRTC "resolved %s for %s in incoming ICE message\n", match.c_str(), ipAddress.c_str());
+
+			const size_t org_position = candidate.find(match);
+			
+			if( org_position == std::string::npos )
+			{
+				printf("couldn't find '%s' in candidate string\n", match.c_str());
+				return candidate;
+			}
+			
+			std::string candidate_out = candidate;
+			candidate_out.replace(org_position, match.size(), ipAddress);
+			LogVerbose(LOG_WEBRTC "%s\n", candidate_out.c_str());
+			return candidate_out;
+		}
+		
+		for( uint32_t n=0; n < numMatches; n++ )
+		{
+			const std::string match = matches.str(n);
+			std::cout << "  submatch " << matches.str(n) << "\n";
+		}
+	}
+	else
+		std::cout << "No match\n";
+	
+	return candidate;
+}
+
+
 // onWebsocketMessage
 void gstEncoder::onWebsocketMessage( WebRTCPeer* peer, const char* message, size_t message_size, void* user_data )
 {
@@ -908,7 +969,7 @@ void gstEncoder::onWebsocketMessage( WebRTCPeer* peer, const char* message, size
 			LogError(LOG_WEBRTC "received SDP message without 'sdp' field\n");
 			cleanup();
 		}
-		
+
 		const gchar* sdp_string = json_object_get_string_member(data_json_object, "sdp");
 		LogVerbose(LOG_WEBRTC "received SDP message for %s from %s (peer_id=%u)\n%s\n", peer->path.c_str(), peer->ip_address.c_str(), peer->ID, sdp_string);
 		
@@ -955,11 +1016,13 @@ void gstEncoder::onWebsocketMessage( WebRTCPeer* peer, const char* message, size
 		}
 		
 		const gchar* candidate_string = json_object_get_string_member(data_json_object, "candidate");
-
 		LogVerbose(LOG_WEBRTC "received ICE message on %s from %s (peer_id=%u) with mline index %u; candidate: \n%s\n", peer->path.c_str(), peer->ip_address.c_str(), peer->ID, mline_index, candidate_string);
 
+		// resolve mDNS addresses
+		const std::string candidate_resolved = resolveICECandidate(candidate_string);	
+
 		// provide the ICE candidate to webrtcbin
-		g_signal_emit_by_name(peer_context->webrtcbin, "add-ice-candidate", mline_index, candidate_string);
+		g_signal_emit_by_name(peer_context->webrtcbin, "add-ice-candidate", mline_index, candidate_resolved.c_str());
 	} 
 	else
 		unknown_message();
