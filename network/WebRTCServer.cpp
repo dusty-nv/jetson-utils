@@ -22,6 +22,7 @@
 
 #include "WebRTCServer.h"
 #include "Networking.h"
+#include "Thread.h"
 
 #include "json.hpp"
 #include "logging.h"
@@ -313,7 +314,7 @@ std::vector<WebRTCServer*> gServers;
 
 
 // constructor
-WebRTCServer::WebRTCServer( uint16_t port, const char* stun_server, const char* ssl_cert_file, const char* ssl_key_file )
+WebRTCServer::WebRTCServer( uint16_t port, const char* stun_server, const char* ssl_cert_file, const char* ssl_key_file, bool threaded )
 {	
 	mPort = port;
 	mRefCount = 1;
@@ -329,6 +330,9 @@ WebRTCServer::WebRTCServer( uint16_t port, const char* stun_server, const char* 
 	
 	if( ssl_key_file != NULL )
 		mSSLKeyFile = ssl_key_file;
+	
+	if( threaded )
+		mThread = new Thread();
 }
 
 
@@ -336,12 +340,18 @@ WebRTCServer::WebRTCServer( uint16_t port, const char* stun_server, const char* 
 WebRTCServer::~WebRTCServer()
 {
 	// TODO free routes and peers
-	
 	/*if( mWebsocketConnection != NULL )
 	{
 		g_object_unref(mWebsocketConnection);
 		mWebsocketConnection = NULL;
 	}*/
+	
+	if( mThread != NULL )
+	{
+		//mThread->Stop(true);
+		delete mThread;
+		mThread = NULL;
+	}
 
 	if( mSoupServer != NULL )
 	{
@@ -366,7 +376,7 @@ void WebRTCServer::Release()
 		
 
 // Create
-WebRTCServer* WebRTCServer::Create( uint16_t port, const char* stun_server, const char* ssl_cert_file, const char* ssl_key_file )
+WebRTCServer* WebRTCServer::Create( uint16_t port, const char* stun_server, const char* ssl_cert_file, const char* ssl_key_file, bool threaded )
 {
 	// see if a server on this port already exists
 	const uint32_t numServers = gServers.size();
@@ -382,12 +392,22 @@ WebRTCServer* WebRTCServer::Create( uint16_t port, const char* stun_server, cons
 		stun_server = WEBRTC_DEFAULT_STUN_SERVER;
 	
 	// create a new server
-	WebRTCServer* server = new WebRTCServer(port, stun_server, ssl_cert_file, ssl_key_file);
+	WebRTCServer* server = new WebRTCServer(port, stun_server, ssl_cert_file, ssl_key_file, threaded);
 
 	if( !server || !server->init() )
 	{
 		LogError(LOG_WEBRTC "failed to create WebRTC server on port %hu\n", port);
 		return NULL;
+	}
+	
+	// start the thread if needed
+	if( server->mThread != NULL )
+	{
+		if( !server->mThread->Start(runThread, server) )
+		{
+			LogError(LOG_WEBRTC "failed to start thread for running WebRTC server\n");
+			return NULL;
+		}
 	}
 	
 	return server;
@@ -925,3 +945,23 @@ bool WebRTCServer::ProcessRequests( bool blocking )
 	g_main_context_iteration(NULL, blocking);
 	return true;
 }
+
+
+// runThread
+void* WebRTCServer::runThread( void* user_data )
+{
+	WebRTCServer* server = (WebRTCServer*)user_data;
+	
+	if( !server )
+		return 0;
+	
+	LogVerbose(LOG_WEBRTC "WebRTC server thread running...\n");
+	
+	while( server->mRefCount > 0 )
+		server->ProcessRequests(true);
+	
+	LogVerbose(LOG_WEBRTC "WebRTC server thread stopped\n");
+	return 0;
+}
+
+	

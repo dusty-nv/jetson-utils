@@ -818,8 +818,8 @@ void gstDecoder::checkBuffer()
 // Capture
 bool gstDecoder::Capture( void** output, imageFormat format, uint64_t timeout )
 {
-	// update the webrtc server
-	if( mWebRTCServer != NULL )
+	// update the webrtc server if needed
+	if( mWebRTCServer != NULL && !mWebRTCServer->IsThreaded() )
 		mWebRTCServer->ProcessRequests();
 	
 	// verify the output pointer exists

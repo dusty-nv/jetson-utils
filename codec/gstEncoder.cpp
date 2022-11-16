@@ -565,9 +565,11 @@ bool gstEncoder::encodeYUV( void* buffer, size_t size )
 // Render
 bool gstEncoder::Render( void* image, uint32_t width, uint32_t height, imageFormat format )
 {
-	if( mWebRTCServer != NULL )
-		mWebRTCServer->ProcessRequests();	// update the webrtc server
+	// update the webrtc server if needed
+	if( mWebRTCServer != NULL && !mWebRTCServer->IsThreaded() )
+		mWebRTCServer->ProcessRequests();	
 	
+	// verify image dimensions
 	if( !image || width == 0 || height == 0 )
 		return false;
 

@@ -32,14 +32,14 @@
 
 // forward declarations
 class WebRTCServer;
+class Thread;
 
 
 /**
- * WebRTC logging prefix
+ * Default HTTP/websocket port used by the WebRTC server.
  * @ingroup network
  */
-#define LOG_WEBRTC "[webrtc] "
-
+#define WEBRTC_DEFAULT_PORT 41567
 
 /**
  * Default STUN server used for WebRTC.
@@ -47,6 +47,12 @@ class WebRTCServer;
  * @ingroup network
  */
 #define WEBRTC_DEFAULT_STUN_SERVER "stun.l.google.com:19302"
+
+/**
+ * WebRTC logging prefix
+ * @ingroup network
+ */
+#define LOG_WEBRTC "[webrtc] "
 
 
 /**
@@ -113,17 +119,15 @@ public:
 	/**
 	 * Create a WebRTC server on this port.
 	 * If this port is already in use, the existing server will be returned.
-	 * TODO Create() shouldn't have additional params because servers are only cached by port
-	 * Set the SSL PEM-encoded cert/key filenames for enabling HTTPS.
-	 * This should be called before Create() is, and will be the default
-	 * --https-cert --https-key --ssl-cert --ssl-key --stun-server
 	 */
-	static WebRTCServer* Create( uint16_t port=8080, const char* stun_server=WEBRTC_DEFAULT_STUN_SERVER,
-						    const char* ssl_cert_file=NULL, const char* ssl_key_file=NULL );	
+	static WebRTCServer* Create( uint16_t port=WEBRTC_DEFAULT_PORT, 
+						    const char* stun_server=WEBRTC_DEFAULT_STUN_SERVER,
+						    const char* ssl_cert_file=NULL, const char* ssl_key_file=NULL,
+						    bool threaded=true );	
 	
 	/**
-	 * Release
-	 * Server will be shut down when refcount reaches 0
+	 * Release a reference to the server instance.
+	 * Server will be shut down when the reference count reaches zero.
 	 */
 	void Release();
 	
@@ -179,18 +183,27 @@ public:
 	inline bool HasHTTPS() const					{ return mHasHTTPS; }
 	
 	/**
+	 * Return true if the server is running in it's own thread.
+	 * Otherwise, ProcessRequests() must be called periodically.
+	 */
+	inline bool IsThreaded() const				{ return (mThread != NULL); }
+	
+	/**
 	 * Process incoming requests on the server.
 	 * If set to blocking, the function can wait indefinitely for requests.
+	 * This should only be called externally if the server was created with threaded=false
 	 */
 	bool ProcessRequests( bool blocking=false );
 	
 protected:
 
-	WebRTCServer( uint16_t port, const char* stun_server, const char* ssl_cert_file, const char* ssl_key_file );
+	WebRTCServer( uint16_t port, const char* stun_server, const char* ssl_cert_file, const char* ssl_key_file, bool threaded );
 	~WebRTCServer();
 	
 	bool init();
 
+	static void* runThread( void* user_data );
+	
 	static void onHttpRequest( SoupServer* soup_server, SoupMessage* message, const char* path, GHashTable* query, SoupClientContext* client_context, void* user_data );
 	static void onHttpDefault( SoupServer* soup_server, SoupMessage* message, const char* path, GHashTable* query, SoupClientContext* client_context, void* user_data );
 	
@@ -238,6 +251,8 @@ protected:
 	uint16_t mPort;
 	uint32_t mRefCount;
 	uint32_t mPeerCount;
+	
+	Thread* mThread;
 };
 
 #endif
