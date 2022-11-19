@@ -67,6 +67,24 @@ static PyObject* PyLogging_Warning( PyObject* cls, PyObject* args )
 }
 
 
+// Success()
+static PyObject* PyLogging_Success( PyObject* cls, PyObject* args )
+{
+	// parse arguments
+	const char* str = NULL;
+
+	if( !PyArg_ParseTuple(args, "s", &str) )
+	{
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "Log.Success() failed to parse args tuple");
+		return NULL;
+	}
+	
+	LogSuccess("%s\n", str);
+	
+	Py_RETURN_NONE;
+}
+
+
 // Info()
 static PyObject* PyLogging_Info( PyObject* cls, PyObject* args )
 {
@@ -190,6 +208,7 @@ static PyMethodDef pyLogging_Methods[] =
 {
 	{ "Error", (PyCFunction)PyLogging_Error, METH_VARARGS | METH_CLASS, "Log an error message"},
 	{ "Warning", (PyCFunction)PyLogging_Warning, METH_VARARGS | METH_CLASS, "Log a warning message"},
+	{ "Success", (PyCFunction)PyLogging_Success, METH_VARARGS | METH_CLASS, "Log a success message"},
 	{ "Info", (PyCFunction)PyLogging_Info, METH_VARARGS | METH_CLASS, "Log an info message"},
 	{ "Verbose", (PyCFunction)PyLogging_Verbose, METH_VARARGS | METH_CLASS, "Log a verbose message"},
 	{ "Debug", (PyCFunction)PyLogging_Debug, METH_VARARGS | METH_CLASS, "Log a debug message"},
