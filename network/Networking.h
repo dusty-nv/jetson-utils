@@ -43,11 +43,12 @@ std::string getHostname();
  * This uses the system function gethostbyname() and supports both IPv6/IPv6 addresses.
  *
  * @param name the hostname to lookup.
+ * @param retries the number of times to retry the lookup should it fail.
  * @returns the IP address in string format, or an empty string if an error occurred.
  *
  * @ingroup network
  */
-std::string getHostByName( const char* name );
+std::string getHostByName( const char* name, uint32_t retries=10 );
 
 
 /**
@@ -59,13 +60,14 @@ std::string getHostByName( const char* name );
  *                  this buffer should be up to 16 bytes long for supporting IPv6 addresses,
  *                  or 4 bytes long for only supporting IPv4 addresses.
  * @param size the size of the ipAddress buffer (4 bytes for IPv6 or 16 bytes for IPv6)
+ * @param retries the number of times to retry the lookup should it fail.
  *
  * @returns the size in bytes of the ipAddress that was written (4 bytes for IPv6 or 16 bytes for IPv6)
  *          0 is returned if an error occurred, or the provided ipAddress buffer was not large enough.
  *
  * @ingroup network
  */
-uint32_t getHostByName( const char* name, void* ipAddress, uint32_t size );
+uint32_t getHostByName( const char* name, void* ipAddress, uint32_t size, uint32_t retries=10 );
 
 
 /**

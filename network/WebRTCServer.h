@@ -122,7 +122,7 @@ public:
 	 */
 	static WebRTCServer* Create( uint16_t port=WEBRTC_DEFAULT_PORT, 
 						    const char* stun_server=WEBRTC_DEFAULT_STUN_SERVER,
-						    const char* ssl_cert_file=NULL, const char* ssl_key_file=NULL,
+						    const char* ssl_cert=NULL, const char* ssl_key=NULL,
 						    bool threaded=true );	
 	
 	/**

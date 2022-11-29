@@ -51,11 +51,11 @@ std::string getHostname()
 
 
 // getHostByName
-std::string getHostByName( const char* name )
+std::string getHostByName( const char* name, uint32_t retries )
 {
 	uint8_t ipBuffer[INET6_ADDRLEN];
 	
-	const uint32_t size = getHostByName(name, ipBuffer, sizeof(ipBuffer));
+	const uint32_t size = getHostByName(name, ipBuffer, sizeof(ipBuffer), retries);
 	
 	if( size == INET4_ADDRLEN )
 		return IPv4AddressToStr(*((uint32_t*)ipBuffer));
@@ -67,7 +67,7 @@ std::string getHostByName( const char* name )
 
 	
 // getHostByName
-uint32_t getHostByName( const char* name, void* ipAddress, uint32_t size )
+uint32_t getHostByName( const char* name, void* ipAddress, uint32_t size, uint32_t retries )
 {
 	if( !name )
 		return 0;
@@ -75,7 +75,18 @@ uint32_t getHostByName( const char* name, void* ipAddress, uint32_t size )
 	// hostent struct:  https://stackoverflow.com/a/57313156
 	//   h_addrtype:  AF_INET = 2  AF_INET6 = 10
 	//   h_length:    AF_INET = 4  AF_INET6 = 16
-	struct hostent* ent = gethostbyname(name);
+	struct hostent* ent = NULL;
+	
+	for( uint32_t r=0; r < retries; r++ )
+	{
+		ent = gethostbyname(name);
+	
+		if( ent != NULL )
+			break;
+		
+		//sleep(1);
+		LogVerbose(LOG_NETWORK "getHostByName() trying to resolve host '%s' (retry %u of %u)\n", name, r+1, retries);
+	}
 	
 	if( !ent )
 	{

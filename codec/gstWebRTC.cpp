@@ -171,7 +171,7 @@ static std::string resolveIceCandidate( const std::string& candidate )
 			
 			if( ipAddress.size() == 0 )
 			{
-				printf("couldn't resolve %s from SDP candidate string\n", match.c_str());
+				LogError(LOG_WEBRTC "couldn't resolve %s from SDP candidate string\n", match.c_str());
 				return candidate;
 			}
 			
@@ -181,7 +181,7 @@ static std::string resolveIceCandidate( const std::string& candidate )
 			
 			if( org_position == std::string::npos )
 			{
-				printf("couldn't find '%s' in candidate string\n", match.c_str());
+				LogError(LOG_WEBRTC "couldn't find '%s' in candidate string\n", match.c_str());
 				return candidate;
 			}
 			
