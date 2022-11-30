@@ -384,7 +384,10 @@ WebRTCServer* WebRTCServer::Create( uint16_t port, const char* stun_server, cons
 	for( uint32_t n=0; n < numServers; n++ )
 	{
 		if( gServers[n]->mPort == port )
+		{
+			gServers[n]->mRefCount++;
 			return gServers[n];
+		}
 	}
 	
 	// assign a default STUN server if needed
@@ -410,6 +413,7 @@ WebRTCServer* WebRTCServer::Create( uint16_t port, const char* stun_server, cons
 		}
 	}
 	
+	gServers.push_back(server);
 	return server;
 }
 
