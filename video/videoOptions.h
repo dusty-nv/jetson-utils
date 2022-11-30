@@ -106,7 +106,9 @@ public:
 	int loop;
 
 	/**
-	 * Number of milliseconds of video to buffer for incoming RTSP streams (the default is 2000 ms).
+	 * Number of milliseconds of video to buffer for incoming RTSP streams.
+	 * The default setting is 10ms (which is lower than GStreamer's default of 2000 ms).
+	 * If you have connection/buffering problems, try increasing the latency setting.
 	 * This option can be set from the command line using `--input-rtsp-latency=N`
 	 */
 	int rtspLatency;

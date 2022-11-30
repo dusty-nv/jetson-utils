@@ -35,7 +35,7 @@ videoOptions::videoOptions()
 	bitRate     = 0;
 	numBuffers  = 4;
 	loop        = 0;
-	rtspLatency = 2000;
+	rtspLatency = 10;
 	zeroCopy    = true;
 	ioType      = INPUT;
 	deviceType  = DEVICE_DEFAULT;
