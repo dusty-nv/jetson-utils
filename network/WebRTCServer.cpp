@@ -309,8 +309,8 @@ template<typename T> static void vector_remove_element( std::vector<T>& vector, 
 }
 
 
-// list of existing servers
-std::vector<WebRTCServer*> gServers;
+// list of existing server instances
+std::vector<WebRTCServer*> gWebRTCServers;
 
 
 // constructor
@@ -368,8 +368,8 @@ void WebRTCServer::Release()
 	
 	if( mRefCount == 0 )
 	{
-		LogInfo(LOG_WEBRTC "server on port %hu is shutting down\n", mPort);
-		vector_remove_element(gServers, this);
+		LogInfo(LOG_WEBRTC "WebRTC server on port %hu is shutting down\n", mPort);
+		vector_remove_element(gWebRTCServers, this);
 		delete this;
 	}
 }
@@ -379,14 +379,14 @@ void WebRTCServer::Release()
 WebRTCServer* WebRTCServer::Create( uint16_t port, const char* stun_server, const char* ssl_cert_file, const char* ssl_key_file, bool threaded )
 {
 	// see if a server on this port already exists
-	const uint32_t numServers = gServers.size();
+	const uint32_t numServers = gWebRTCServers.size();
 	
 	for( uint32_t n=0; n < numServers; n++ )
 	{
-		if( gServers[n]->mPort == port )
+		if( gWebRTCServers[n]->mPort == port )
 		{
-			gServers[n]->mRefCount++;
-			return gServers[n];
+			gWebRTCServers[n]->mRefCount++;
+			return gWebRTCServers[n];
 		}
 	}
 	
@@ -413,7 +413,7 @@ WebRTCServer* WebRTCServer::Create( uint16_t port, const char* stun_server, cons
 		}
 	}
 	
-	gServers.push_back(server);
+	gWebRTCServers.push_back(server);
 	return server;
 }
 
