@@ -118,7 +118,7 @@ class WebRTCServer
 public:
 	/**
 	 * Create a WebRTC server on this port.
-	 * If this port is already in use, the existing server will be returned.
+	 * If this port is already in use, the existing server instance will be returned.
 	 */
 	static WebRTCServer* Create( uint16_t port=WEBRTC_DEFAULT_PORT, 
 						    const char* stun_server=WEBRTC_DEFAULT_STUN_SERVER,
