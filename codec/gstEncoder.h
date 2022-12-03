@@ -29,6 +29,7 @@
 
 
 // Forward declarations
+class RTSPServer;
 class WebRTCServer;
 struct WebRTCPeer;
 
@@ -158,6 +159,7 @@ protected:
 
 	RingBuffer mBufferYUV;
 	
+	RTSPServer*   mRTSPServer;
 	WebRTCServer* mWebRTCServer;
 };
  

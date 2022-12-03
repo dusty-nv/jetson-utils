@@ -33,6 +33,9 @@
 // list of existing server instances
 std::vector<RTSPServer*> gRTSPServers;
 
+// map of media factories to pipeline elements
+std::vector<std::pair<GstRTSPMediaFactory*, GstElement*>> gMediaFactoryMap;
+
 
 // constructor
 RTSPServer::RTSPServer( uint16_t port )
@@ -222,8 +225,24 @@ void* RTSPServer::runThread( void* user_data )
 }
 
 
+// custom implementation of GstRTSPMediaFactory::create_element()
+static GstElement* gst_rtsp_media_factory_custom_element( GstRTSPMediaFactory* factory, const GstRTSPUrl* url )
+{
+	const uint32_t numFactories = gMediaFactoryMap.size();
+	
+	for( uint32_t n=0; n < numFactories; n++ )
+	{
+		if( factory == gMediaFactoryMap[n].first )
+			return gMediaFactoryMap[n].second;
+	}
+	
+	LogError(LOG_RTSP "failed to lookup media factory pipeline element\n");
+	return NULL;
+}
+    
+    
 // AddRoute
-bool RTSPServer::AddRoute( const char* path, const char* pipeline )
+bool RTSPServer::AddRoute( const char* path, GstElement* pipeline )
 {
 	// get the mount points for the server
 	GstRTSPMountPoints* mounts = gst_rtsp_server_get_mount_points(mServer);
@@ -234,19 +253,40 @@ bool RTSPServer::AddRoute( const char* path, const char* pipeline )
 		return false;
 	}
 	
-	// make a media factory for the stream
+	// redirect the media factory create_element() to our function
 	GstRTSPMediaFactory* factory = gst_rtsp_media_factory_new();
-
-	gst_rtsp_media_factory_set_launch(factory, pipeline);
+	GstRTSPMediaFactoryClass* factoryFunctions = GST_RTSP_MEDIA_FACTORY_GET_CLASS(factory);
+	
+	factoryFunctions->create_element = gst_rtsp_media_factory_custom_element;
+	gMediaFactoryMap.push_back( std::pair<GstRTSPMediaFactory*, GstElement*>(factory, pipeline) );
+	
 	gst_rtsp_media_factory_set_shared(factory, true);
 	
 	// attach the factory to the url
 	gst_rtsp_mount_points_add_factory(mounts, path, factory);
 	
 	g_object_unref(mounts);
-	LogVerbose(LOG_RTSP "RTSP route added %s\n", path);
+	//g_object_ref(pipeline);
+	
+	LogVerbose(LOG_RTSP "RTSP route added %s @ rtsp://%s:%hu\n", path, getHostname().c_str(), mPort);
 	return true;
 }
 
 
+// AddRoute
+bool RTSPServer::AddRoute( const char* path, const char* pipeline_str )
+{
+	GError* err = NULL;
+	GstElement* pipeline = gst_parse_launch(pipeline_str, &err);
+
+	if( err != NULL )
+	{
+		LogError(LOG_GSTREAMER "failed to create pipeline:\n");
+		LogError(LOG_GSTREAMER "   %s\n", pipeline_str);
+		LogError(LOG_GSTREAMER "   (%s)\n", err->message);
+		g_error_free(err);
+		return false;
+	}
 	
+	return AddRoute(path, pipeline);
+}

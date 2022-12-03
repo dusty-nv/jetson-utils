@@ -29,8 +29,8 @@
 #include <unistd.h>
 
 
-#define TEST_PIPELINE_1 "( videotestsrc pattern=smpte ! x264enc ! rtph264pay pt=96 name=pay0 )"
-#define TEST_PIPELINE_2 "( videotestsrc pattern=zone-plate kx2=20 ky2=20 kt=1 ! x264enc ! rtph264pay pt=96 name=pay0 )"
+#define TEST_PIPELINE_1 "videotestsrc pattern=smpte ! x264enc ! rtph264pay name=pay0"
+#define TEST_PIPELINE_2 "videotestsrc pattern=zone-plate kx2=20 ky2=20 kt=1 ! x264enc ! rtph264pay name=pay0"
 
 
 bool signal_recieved = false;

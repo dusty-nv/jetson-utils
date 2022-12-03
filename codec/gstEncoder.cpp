@@ -23,6 +23,9 @@
 #include "gstEncoder.h"
 #include "gstWebRTC.h"
 
+#include "RTSPServer.h"
+#include "WebRTCServer.h"
+
 #include "filesystem.h"
 #include "timespec.h"
 #include "logging.h"
@@ -73,6 +76,7 @@ gstEncoder::gstEncoder( const videoOptions& options ) : videoOutput(options)
 	mBus          = NULL;
 	mBufferCaps   = NULL;
 	mPipeline     = NULL;
+	mRTSPServer   = NULL;
 	mWebRTCServer = NULL;
 	mNeedData     = false;
 
@@ -85,6 +89,12 @@ gstEncoder::~gstEncoder()
 {
 	Close();
 
+	if( mRTSPServer != NULL )
+	{
+		mRTSPServer->Release();
+		mRTSPServer = NULL;
+	}
+	
 	if( mWebRTCServer != NULL )
 	{
 		mWebRTCServer->Release();
@@ -172,7 +182,7 @@ bool gstEncoder::init()
 	
 	// create the pipeline
 	GError* err = NULL;
-	mPipeline   = gst_parse_launch(mLaunchStr.c_str(), &err);
+	mPipeline = gst_parse_launch(mLaunchStr.c_str(), &err);
 
 	if( err != NULL )
 	{
@@ -217,8 +227,17 @@ bool gstEncoder::init()
 	g_signal_connect(appsrcElement, "need-data", G_CALLBACK(onNeedData), this);
 	g_signal_connect(appsrcElement, "enough-data", G_CALLBACK(onEnoughData), this);
 
-	// create server for WebRTC streams
-	if( mOptions.resource.protocol == "webrtc" )
+	// create servers for RTSP/WebRTC streams
+	if( mOptions.resource.protocol == "rtsp" )
+	{
+		mRTSPServer = RTSPServer::Create(mOptions.resource.port);
+		
+		if( !mRTSPServer )
+			return false;
+		
+		mRTSPServer->AddRoute(mOptions.resource.path.c_str(), mPipeline);
+	}
+	else if( mOptions.resource.protocol == "webrtc" )
 	{
 		mWebRTCServer = WebRTCServer::Create(mOptions.resource.port, mOptions.stunServer.c_str(),
 									  mOptions.sslCert.c_str(), mOptions.sslKey.c_str());
@@ -357,7 +376,7 @@ bool gstEncoder::buildLaunchStr()
 
 		mOptions.deviceType = videoOptions::DEVICE_FILE;
 	}
-	else if( uri.protocol == "rtp" || uri.protocol == "webrtc" )
+	else if( uri.protocol == "rtp" || uri.protocol == "rtsp" || uri.protocol == "webrtc" )
 	{
 		if( mOptions.codec == videoOptions::CODEC_H264 )
 			ss << "rtph264pay";
@@ -373,7 +392,10 @@ bool gstEncoder::buildLaunchStr()
 		if( mOptions.codec == videoOptions::CODEC_H264 || mOptions.codec == videoOptions::CODEC_H265 ) 
 			ss << " config-interval=1";
 		
-		ss << " ! ";
+		if( uri.protocol == "rtsp" )
+			ss << " name=pay0";	 // GstRTSPServer expects the payloaders to be named pay0, pay1, ect
+		else
+			ss << " ! ";
 		
 		if( uri.protocol == "rtp" )
 		{
@@ -479,7 +501,9 @@ bool gstEncoder::encodeYUV( void* buffer, size_t size )
 	// check to see if data can be accepted
 	if( !mNeedData )
 	{
-		LogVerbose(LOG_GSTREAMER "gstEncoder -- pipeline full, skipping frame (%zu bytes)\n", size);
+		if( mOptions.frameCount % 25 == 0 )
+			LogVerbose(LOG_GSTREAMER "gstEncoder -- pipeline full, skipping frame %zu (%ux%u, %zu bytes)\n", mOptions.frameCount, mOptions.width, mOptions.height, size);
+		
 		return true;
 	}
 
@@ -564,11 +588,14 @@ bool gstEncoder::encodeYUV( void* buffer, size_t size )
 
 // Render
 bool gstEncoder::Render( void* image, uint32_t width, uint32_t height, imageFormat format )
-{
+{	
 	// update the webrtc server if needed
 	if( mWebRTCServer != NULL && !mWebRTCServer->IsThreaded() )
 		mWebRTCServer->ProcessRequests();	
 	
+	// increment frame counter
+	mOptions.frameCount += 1;
+		
 	// verify image dimensions
 	if( !image || width == 0 || height == 0 )
 		return false;

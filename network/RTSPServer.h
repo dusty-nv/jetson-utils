@@ -48,16 +48,35 @@ struct _GstElement;
 
 
 /**
+ * RTSP server for transmitting encoded GStreamer pipelines to client devices.
+ * This is integrated into videoOutput/gstEncoder, but can be used standalone (@see rtsp-server example)
  * @ingroup network
  */
 class RTSPServer
 {
 public:
+	/**
+	 * Create a RTSP server on this port.
+	 * If this port is already in use, the existing server instance will be returned.
+	 */
 	static RTSPServer* Create( uint16_t port=RTSP_DEFAULT_PORT );
 	
+	/**
+	 * Release a reference to the server instance.
+	 * Server will be shut down when the reference count reaches zero.
+	 */
 	void Release();
 	
-	//bool AddRoute( const char* path, _GstElement* pipeline );
+	/**
+	 * Register a GStreamer pipeline to be served at the specified path.
+	 * It will be able to be viewed from clients at `rtsp://hostname:port/path`
+	 */
+	bool AddRoute( const char* path, _GstElement* pipeline );
+	
+	/**
+	 * Create a GStreamer pipeline and register it to be served at the specified path.
+	 * It will be able to be viewed from clients at `rtsp://hostname:port/path`
+	 */
 	bool AddRoute( const char* path, const char* pipeline );
 	
 protected:
