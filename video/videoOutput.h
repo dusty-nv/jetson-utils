@@ -37,11 +37,13 @@
  */
 #define VIDEO_OUTPUT_USAGE_STRING  "videoOutput arguments: \n" 							\
 		  "    output_URI           resource URI of the output stream, for example:\n"		\
-		  "                             * file://my_image.jpg    (image file)\n"			\
-		  "                             * file://my_video.mp4    (video file)\n"			\
-		  "                             * file://my_directory/   (directory of images)\n"	\
-		  "                             * rtp://<remote-ip>:1234 (RTP stream)\n"			\
-		  "                             * display://0            (OpenGL window)\n" 		\
+		  "                             * file://my_image.jpg       (image file)\n"		\
+		  "                             * file://my_video.mp4       (video file)\n"		\
+		  "                             * file://my_directory/      (directory of images)\n"	\
+		  "                             * rtp://<remote-ip>:1234    (RTP stream)\n"		\
+		  "                             * rtsp://@:8554/my_stream   (RTSP stream)\n"		\
+		  "                             * webrtc://@:1234/my_stream (WebRTC stream)\n"      	\
+		  "                             * display://0               (OpenGL window)\n" 		\
 		  "  --output-codec=CODEC   desired codec for compressed output streams:\n"		\
 		  "                            * h264 (default), h265\n"						\
 		  "                            * vp8, vp9\n"									\
@@ -68,6 +70,16 @@
  *
  *     - `rtp://<remote-host>:1234` to broadcast a compressed RTP stream to a remote host, where you should
  *        substitute `<remote-host>` with the remote host's IP address or hostname, and `1234` is the port.
+ *
+ *     - `rtsp://@:8554/my_stream` to serve a compressed RTSP stream at the specified port and stream path.
+ *        RTSP clients can connect to the stream at the specified path.  Using this will create a RTSP server
+ *        that can handle multiple videoOutput streams on the same port but with different paths
+ *        (e.g. `rtsp://<hostname>:8554/my_stream_1`, `rtsp://<hostname>:8554/my_stream_2`, ect)
+ *
+ *     - `webrtc://@:1234/my_stream` to serve a compressed WebRTC stream at the specified port and path
+ *        that browsers can connect to and view.  Users will be able to navigate their browser to
+ *        `http://<hostname>:1234/my_stream` and view a rudimentary video player that plays the stream.
+ *        More advanced web front-ends can be created by using standard client-side Javascript WebRTC APIs.
  *
  *     - `file:///home/user/my_video.mp4` for saving videos, images, and directories of images to disk.
  *        You can leave off the `file://` protocol identifier and it will be deduced from the path.
@@ -224,6 +236,11 @@ public:
 	 * Return the framerate, in Hz or FPS.
 	 */
 	inline float GetFrameRate() const						{ return mOptions.frameRate; }
+	
+	/**
+	 * Return the number of frames output.
+	 */
+	inline uint64_t GetFrameCount() const					{ return mOptions.frameCount; }
 	
 	/**
 	 * Return the resource URI of the stream.

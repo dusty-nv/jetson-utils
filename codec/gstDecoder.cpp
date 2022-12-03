@@ -808,9 +808,14 @@ void gstDecoder::checkBuffer()
 	}
 #endif
 	
+	// enqueue the buffer for color conversion
 	if( !mBufferManager->Enqueue(gstBuffer, gstCaps) )
+	{
 		LogError(LOG_GSTREAMER "gstDecoder -- failed to handle incoming buffer\n");
+		release_return;
+	}
 	
+	mOptions.frameCount++;
 	release_return;
 }
 

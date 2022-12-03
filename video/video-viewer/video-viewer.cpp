@@ -92,8 +92,11 @@ int main( int argc, char** argv )
 	videoOutput* outputStream = videoOutput::Create(cmdLine, ARG_POSITION(1));
 	
 	if( !outputStream )
+	{
 		LogError("video-viewer:  failed to create output stream\n");
-
+		return 0;
+	}
+	
 
 	/*
 	 * capture/display loop
@@ -108,14 +111,14 @@ int main( int argc, char** argv )
 		{
 			LogError("video-viewer:  failed to capture video frame\n");
 
-			if( !inputStream->IsStreaming() )
-				signal_recieved = true;
+			//if( !inputStream->IsStreaming() )
+			//	signal_recieved = true;
 
 			continue;
 		}
 
 		if( numFrames % 25 == 0 || numFrames < 15 )
-			LogInfo("video-viewer:  captured %u frames (%u x %u)\n", numFrames, inputStream->GetWidth(), inputStream->GetHeight());
+			LogVerbose("video-viewer:  captured %u frames (%ux%u)\n", numFrames, inputStream->GetWidth(), inputStream->GetHeight());
 		
 		numFrames++;
 		

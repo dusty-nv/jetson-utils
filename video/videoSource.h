@@ -258,6 +258,11 @@ public:
 	inline uint32_t GetFrameRate() const			{ return mOptions.frameRate; }
 
 	/**
+	 * Return the number of frames captured.
+	 */
+	inline uint64_t GetFrameCount() const			{ return mOptions.frameCount; }
+	
+	/**
 	 * Get timestamp of the last captured frame, in nanoseconds.
  	 */
 	uint64_t GetLastTimestamp() const { return mLastTimestamp; }

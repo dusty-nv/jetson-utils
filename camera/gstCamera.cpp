@@ -619,6 +619,7 @@ GstFlowReturn gstCamera::onBuffer(_GstAppSink* sink, void* user_data)
 	
 	dec->checkBuffer();
 	dec->checkMsgBus();
+	
 	return GST_FLOW_OK;
 }
 	
@@ -658,9 +659,14 @@ void gstCamera::checkBuffer()
 		release_return;
 	}
 
+	// enqueue the buffer for color conversion
 	if( !mBufferManager->Enqueue(gstBuffer, gstCaps) )
+	{
 		LogError(LOG_GSTREAMER "gstCamera -- failed to handle incoming buffer\n");
+		release_return;
+	}
 	
+	mOptions.frameCount++;
 	release_return;
 }
 

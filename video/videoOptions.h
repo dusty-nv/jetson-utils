@@ -70,6 +70,11 @@ public:
 	float frameRate;
 	
 	/**
+	 * The number of frames that have been captured or output on this interface.
+	 */
+	uint64_t frameCount;
+	
+	/**
 	 * The encoding bitrate for compressed streams (only applies to video codecs like H264/H265).
 	 * For videoOutput streams, this option can be set from the command line using `--bitrate=N`.
 	 * @note the default bitrate for encoding output streams is 4Mbps (target VBR).

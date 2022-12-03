@@ -32,6 +32,7 @@ videoOptions::videoOptions()
 	width 	  = 0;
 	height 	  = 0;
 	frameRate   = 0;
+	frameCount  = 0;
 	bitRate     = 0;
 	numBuffers  = 4;
 	loop        = 0;
