@@ -241,6 +241,15 @@ static GstElement* gst_rtsp_media_factory_custom_element( GstRTSPMediaFactory* f
 }
     
     
+// apply some additional settings on each GstRTSPMedia object
+static void gst_rtsp_media_factory_custom_configure( GstRTSPMediaFactory* factory, GstRTSPMedia* media, gpointer user_data )
+{
+	gst_rtsp_media_set_reusable(media, true);
+	gst_rtsp_media_prepare(media, NULL);
+	gst_rtsp_media_set_pipeline_state(media, GST_STATE_PLAYING);
+}
+
+    
 // AddRoute
 bool RTSPServer::AddRoute( const char* path, GstElement* pipeline )
 {
@@ -260,13 +269,21 @@ bool RTSPServer::AddRoute( const char* path, GstElement* pipeline )
 	factoryFunctions->create_element = gst_rtsp_media_factory_custom_element;
 	gMediaFactoryMap.push_back( std::pair<GstRTSPMediaFactory*, GstElement*>(factory, pipeline) );
 	
+	// setup media streaming options
+	gst_rtsp_media_factory_set_latency(factory, 0);
+	gst_rtsp_media_factory_set_buffer_size(factory, 0);
 	gst_rtsp_media_factory_set_shared(factory, true);
+	gst_rtsp_media_factory_set_eos_shutdown(factory, false);
+	gst_rtsp_media_factory_set_stop_on_disconnect(factory, false);
+	gst_rtsp_media_factory_set_do_retransmission(factory, false);
+	gst_rtsp_media_factory_set_suspend_mode(factory, GST_RTSP_SUSPEND_MODE_NONE);
+	gst_rtsp_media_factory_set_transport_mode(factory, GST_RTSP_TRANSPORT_MODE_PLAY);
 	
+	g_signal_connect(factory, "media-configure", (GCallback)gst_rtsp_media_factory_custom_configure, NULL);
+	 
 	// attach the factory to the url
 	gst_rtsp_mount_points_add_factory(mounts, path, factory);
-	
 	g_object_unref(mounts);
-	//g_object_ref(pipeline);
 	
 	LogVerbose(LOG_RTSP "RTSP route added %s @ rtsp://%s:%hu\n", path, getHostname().c_str(), mPort);
 	return true;
@@ -277,7 +294,7 @@ bool RTSPServer::AddRoute( const char* path, GstElement* pipeline )
 bool RTSPServer::AddRoute( const char* path, const char* pipeline_str )
 {
 	GError* err = NULL;
-	GstElement* pipeline = gst_parse_launch(pipeline_str, &err);
+	GstElement* pipeline = gst_parse_launch_full(pipeline_str, NULL, GST_PARSE_FLAG_PLACE_IN_BIN, &err);
 
 	if( err != NULL )
 	{

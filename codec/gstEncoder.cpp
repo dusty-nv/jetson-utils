@@ -574,12 +574,36 @@ bool gstEncoder::encodeYUV( void* buffer, size_t size )
 #endif
 
 	// queue buffer to gstreamer
-	GstFlowReturn ret;	
-	g_signal_emit_by_name(mAppSrc, "push-buffer", gstBuffer, &ret);
-	gst_buffer_unref(gstBuffer);
-
-	if( ret != 0 )
-		LogError(LOG_GSTREAMER "gstEncoder -- appsrc pushed buffer abnormally (result %u)\n", ret);
+	while( true )
+	{
+		GstFlowReturn ret;	
+		g_signal_emit_by_name(mAppSrc, "push-buffer", gstBuffer, &ret);
+		
+		if( ret >= 0 )
+		{
+			gst_buffer_unref(gstBuffer);
+			break;
+		}
+		
+		LogError(LOG_GSTREAMER "gstEncoder -- an error occurred pushing appsrc buffer (result=%i '%s')\n", (int)ret, gst_flow_get_name(ret));
+		
+		// check to make sure the pipeline is still playing (some pipelines like RTSP server may disconnect)
+		GstState state = GST_STATE_VOID_PENDING;
+		gst_element_get_state(mPipeline, &state, NULL, GST_CLOCK_TIME_NONE);
+	
+		if( state != GST_STATE_PLAYING )
+		{
+			LogError(LOG_GSTREAMER "gstEncoder -- pipeline is in the '%s' state, restarting pipeline...\n", gst_element_state_get_name(state));
+			
+			mStreaming = false;
+			
+			if( !Open() )
+			{
+				gst_buffer_unref(gstBuffer);
+				return false;
+			}
+		}
+	}
 	
 	checkMsgBus();
 	return true;
@@ -665,7 +689,7 @@ bool gstEncoder::Open()
 		return true;
 
 	// transition pipline to STATE_PLAYING
-	LogInfo(LOG_GSTREAMER "gstEncoder-- starting pipeline, transitioning to GST_STATE_PLAYING\n");
+	LogInfo(LOG_GSTREAMER "gstEncoder -- starting pipeline, transitioning to GST_STATE_PLAYING\n");
 
 	const GstStateChangeReturn result = gst_element_set_state(mPipeline, GST_STATE_PLAYING);
 
