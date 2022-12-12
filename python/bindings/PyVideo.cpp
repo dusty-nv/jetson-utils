@@ -109,7 +109,6 @@ static PyObject* PyVideoSource_New( PyTypeObject *type, PyObject *args, PyObject
 	if( !self )
 	{
 		PyErr_SetString(PyExc_MemoryError, LOG_PY_UTILS "videoSource tp_alloc() failed to allocate a new object");
-		LogError(LOG_PY_UTILS "videoSource tp_alloc() failed to allocate a new object\n");
 		return NULL;
 	}
 	
@@ -130,11 +129,7 @@ static int PyVideoSource_Init( PyVideoSource_Object* self, PyObject *args, PyObj
 	static char* kwlist[] = {"uri", "argv", "positionArg", NULL};
 
 	if( !PyArg_ParseTupleAndKeywords(args, kwds, "|sOi", kwlist, &URI, &argList, &positionArg))
-	{
-		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "videoSource.__init()__ failed to parse args tuple");
-		LogError(LOG_PY_UTILS "videoSource.__init()__ failed to parse args tuple\n");
 		return -1;
-	}
   
 	// parse argument list
 	size_t argc = 0;
@@ -270,10 +265,7 @@ static PyObject* PyVideoSource_Capture( PyVideoSource_Object* self, PyObject* ar
 	static char* kwlist[] = {"format", "timeout", NULL};
 
 	if( !PyArg_ParseTupleAndKeywords(args, kwds, "|si", kwlist, &pyFormat, &pyTimeout))
-	{
-		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "videoSource.Capture() failed to parse args tuple");
 		return NULL;
-	}
 
 	// convert signed timeout to unsigned long
 	uint64_t timeout = videoSource::DEFAULT_TIMEOUT;
@@ -438,7 +430,6 @@ static PyObject* PyVideoOutput_New( PyTypeObject *type, PyObject *args, PyObject
 	if( !self )
 	{
 		PyErr_SetString(PyExc_MemoryError, LOG_PY_UTILS "videoOutput tp_alloc() failed to allocate a new object");
-		LogError(LOG_PY_UTILS "videoOutput tp_alloc() failed to allocate a new object\n");
 		return NULL;
 	}
 	
@@ -459,12 +450,8 @@ static int PyVideoOutput_Init( PyVideoOutput_Object* self, PyObject *args, PyObj
 	static char* kwlist[] = {"uri", "argv", "positionArg", "options", NULL};
 
 	if( !PyArg_ParseTupleAndKeywords(args, kwds, "|sOiO", kwlist, &URI, &argList, &positionArg))
-	{
-		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "videoOutput.__init()__ failed to parse args tuple");
-		LogError(LOG_PY_UTILS "videoOutput.__init()__ failed to parse args tuple\n");
 		return -1;
-	}
-  
+
 	// parse argument list
 	size_t argc = 0;
 	char** argv = NULL;
@@ -607,10 +594,7 @@ static PyObject* PyVideoOutput_Render( PyVideoOutput_Object* self, PyObject* arg
 	static char* kwlist[] = {"image", NULL};
 
 	if( !PyArg_ParseTupleAndKeywords(args, kwds, "O", kwlist, &capsule))
-	{
-		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "videoOutput.Render() failed to parse args tuple");
 		return NULL;
-	}
 
 	// get pointer to image data
 	PyCudaImage* img = PyCUDA_GetImage(capsule);

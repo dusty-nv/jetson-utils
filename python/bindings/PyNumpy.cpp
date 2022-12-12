@@ -62,10 +62,7 @@ PyObject* PyNumpy_FromCUDA( PyObject* self, PyObject* args, PyObject* kwds )
 	static char* kwlist[] = {"array", "width", "height", "depth", NULL};
 
 	if( !PyArg_ParseTupleAndKeywords(args, kwds, "O|iii", kwlist, &capsule, &width, &height, &depth))
-	{
-		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaToNumpy() failed to parse args tuple");
 		return NULL;
-	}
 
 	// verify dimensions
 	/*if( width <= 0 || height <= 0 || depth <= 0 )
@@ -154,11 +151,8 @@ PyObject* PyNumpy_ToCUDA( PyObject* self, PyObject* args, PyObject* kwds )
 	long long timestamp = 0;
 
 	if( !PyArg_ParseTupleAndKeywords(args, kwds, "O|iL", kwlist, &object, &pyBGR, &timestamp) )
-	{
-		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaFromNumpy() failed to parse array argument");
 		return NULL;
-	}
-		
+
 	if( !PyArray_Check(object) )
 	{
 		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "Object passed to cudaFromNumpy() wasn't a numpy ndarray");
@@ -312,7 +306,7 @@ PyMethodDef* PyNumpy_RegisterFunctions()
 }
 
 // Initialize NumPy
-PyMODINIT_FUNC PyNumpy_ImportNumPy()
+PyMODINIT_FUNC PyNumpy_ImportNumpy()
 {
 	import_array();
 	//import_ufunc();	// only needed if using ufunctions
@@ -324,7 +318,7 @@ bool PyNumpy_RegisterTypes( PyObject* module )
 	if( !module )
 		return false;
 	
-	PyNumpy_ImportNumPy();
+	PyNumpy_ImportNumpy();
 	return true;
 }
 

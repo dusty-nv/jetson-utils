@@ -35,11 +35,8 @@ PyObject* PyImageIO_Load( PyObject* self, PyObject* args, PyObject* kwds )
 	long long timestamp = 0;
 
 	if( !PyArg_ParseTupleAndKeywords(args, kwds, "s|sL", kwlist, &filename, &formatStr, &timestamp))
-	{
-		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "loadImage() failed to parse filename argument");
 		return NULL;
-	}
-		
+
 	const imageFormat format = imageFormatFromStr(formatStr);
 
 	if( format == IMAGE_UNKNOWN )
@@ -81,10 +78,7 @@ PyObject* PyImageIO_LoadRGBA( PyObject* self, PyObject* args, PyObject* kwds )
 	long long timestamp = 0;
 
 	if( !PyArg_ParseTupleAndKeywords(args, kwds, "s|sL", kwlist, &filename, &formatStr, &timestamp))
-	{
-		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "loadImageRGBA() failed to parse filename argument");
 		return NULL;
-	}
 		
 	const imageFormat format = imageFormatFromStr(formatStr);
 
@@ -147,10 +141,7 @@ PyObject* PyImageIO_Save( PyObject* self, PyObject* args, PyObject* kwds )
 	static char* kwlist[] = {"filename", "image", "quality", NULL};
 
 	if( !PyArg_ParseTupleAndKeywords(args, kwds, "sO|i", kwlist, &filename, &capsule, &quality))
-	{
-		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "saveImageRGBA() failed to parse args tuple");
 		return NULL;
-	}
 
 	// get pointer to image data
 	PyCudaImage* img = PyCUDA_GetImage(capsule);
@@ -196,10 +187,7 @@ PyObject* PyImageIO_SaveRGBA( PyObject* self, PyObject* args, PyObject* kwds )
 	static char* kwlist[] = {"filename", "image", "width", "height", "max_pixel", "quality", NULL};
 
 	if( !PyArg_ParseTupleAndKeywords(args, kwds, "sO|iifi", kwlist, &filename, &capsule, &width, &height, &max_pixel, &quality))
-	{
-		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "saveImageRGBA() failed to parse args tuple");
 		return NULL;
-	}
 
 	// get pointer to image data
 	PyCudaImage* img = PyCUDA_GetImage(capsule);

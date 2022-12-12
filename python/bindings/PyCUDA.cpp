@@ -46,7 +46,6 @@ static PyObject* PyCudaMemory_New( PyTypeObject *type, PyObject *args, PyObject 
 	if( !self )
 	{
 		PyErr_SetString(PyExc_MemoryError, LOG_PY_UTILS "cudaMemory tp_alloc() failed to allocate a new object");
-		LogError(LOG_PY_UTILS "cudaMemory tp_alloc() failed to allocate a new object\n");
 		return NULL;
 	}
 	
@@ -90,11 +89,7 @@ static int PyCudaMemory_Init( PyCudaMemory* self, PyObject *args, PyObject *kwds
 	static char* kwlist[] = {"size", "mapped", "freeOnDelete", NULL};
 
 	if( !PyArg_ParseTupleAndKeywords(args, kwds, "i|ii", kwlist, &size, &mapped, &freeOnDelete))
-	{
-		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaMemory.__init()__ failed to parse args tuple");
-		LogDebug(LOG_PY_UTILS "cudaMemory.__init()__ failed to parse args tuple\n");
 		return -1;
-	}
     
 	if( size < 0 )
 	{
@@ -230,7 +225,6 @@ static PyObject* PyCudaImage_New( PyTypeObject *type, PyObject *args, PyObject *
 	if( !self )
 	{
 		PyErr_SetString(PyExc_MemoryError, LOG_PY_UTILS "cudaImage tp_alloc() failed to allocate a new object");
-		LogError(LOG_PY_UTILS "cudaImage tp_alloc() failed to allocate a new object\n");
 		return NULL;
 	}
 	
@@ -293,12 +287,8 @@ static int PyCudaImage_Init( PyCudaImage* self, PyObject *args, PyObject *kwds )
 	static char* kwlist[] = {"width", "height", "format", "timestamp", "mapped", "freeOnDelete", NULL};
 
 	if( !PyArg_ParseTupleAndKeywords(args, kwds, "ii|sLii", kwlist, &width, &height, &formatStr, &timestamp, &mapped, &freeOnDelete))
-	{
-		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaImage.__init()__ failed to parse args tuple");
-		LogDebug(LOG_PY_UTILS "cudaImage.__init()__ failed to parse args tuple\n");
 		return -1;
-	}
-    
+
 	if( width < 0 || height < 0 )
 	{
 		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaImage.__init()__ had invalid width/height");
@@ -1012,11 +1002,8 @@ PyObject* PyCUDA_Malloc( PyObject* self, PyObject* args, PyObject* kwds )
 	static char* kwlist[] = {"size", "width", "height", "format", "timestamp", NULL};
 
 	if( !PyArg_ParseTupleAndKeywords(args, kwds, "|iiisL", kwlist, &size, &width, &height, &formatStr, &timestamp))
-	{
-		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaMalloc() failed to parse arguments");
 		return NULL;
-	}
-		
+
 	if( size <= 0 && (width <= 0 || height <= 0) )
 	{
 		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaMalloc() requested size/dimensions are negative or zero");
@@ -1068,10 +1055,7 @@ PyObject* PyCUDA_AllocMapped( PyObject* self, PyObject* args, PyObject* kwds )
 	static char* kwlist[] = {"size", "width", "height", "format", "timestamp", "like", NULL};
 
 	if( !PyArg_ParseTupleAndKeywords(args, kwds, "|iffsLO", kwlist, &size, &width, &height, &formatStr, &timestamp, &pyImageLike))
-	{
-		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaAllocMapped() failed to parse arguments");
 		return NULL;
-	}
 
 	imageFormat format = imageFormatFromStr(formatStr);
 	
@@ -1130,11 +1114,8 @@ PyObject* PyCUDA_Memcpy( PyObject* self, PyObject* args, PyObject* kwds )
 	static char* kwlist[]  = {"dst", "src", NULL};
 
 	if( !PyArg_ParseTupleAndKeywords(args, kwds, "O|O", kwlist, &dst_capsule, &src_capsule))
-	{
-		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaMemcpy() failed to parse arguments");
 		return NULL;
-	}
-	
+
 	// check if the args were reversed in the single-arg version
 	if( !src_capsule && dst_capsule != NULL )
 	{
@@ -1222,11 +1203,8 @@ PyObject* PyCUDA_AdaptFontSize( PyObject* self, PyObject* args )
 	int dim = 0;
 
 	if( !PyArg_ParseTuple(args, "i", &dim) )
-	{
-		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "adaptFontSize() failed to parse size argument");
 		return NULL;
-	}
-		
+
 	if( dim <= 0 )
 	{
 		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "adaptFontSize() requested size is negative or zero");
@@ -1247,10 +1225,7 @@ PyObject* PyCUDA_ConvertColor( PyObject* self, PyObject* args, PyObject* kwds )
 	static char* kwlist[] = {"input", "output", NULL};
 
 	if( !PyArg_ParseTupleAndKeywords(args, kwds, "OO", kwlist, &pyInput, &pyOutput))
-	{
-		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaConvertColor() failed to parse args");
 		return NULL;
-	}
 	
 	// get pointers to image data
 	PyCudaImage* input = PyCUDA_GetImage(pyInput);
@@ -1293,11 +1268,8 @@ PyObject* PyCUDA_Resize( PyObject* self, PyObject* args, PyObject* kwds )
 	static char* kwlist[] = {"input", "output", "filter", NULL};
 
 	if( !PyArg_ParseTupleAndKeywords(args, kwds, "OO|s", kwlist, &pyInput, &pyOutput, &filter_str))
-	{
-		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaResize() failed to parse args");
 		return NULL;
-	}
-	
+
 	const cudaFilterMode filter_mode = cudaFilterModeFromStr(filter_str);
 	
 	// get pointers to image data
@@ -1341,11 +1313,8 @@ PyObject* PyCUDA_Crop( PyObject* self, PyObject* args, PyObject* kwds )
 	static char* kwlist[] = {"input", "output", "roi", NULL};
 
 	if( !PyArg_ParseTupleAndKeywords(args, kwds, "OO(ffff)", kwlist, &pyInput, &pyOutput, &left, &top, &right, &bottom))
-	{
-		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaCrop() failed to parse args");
 		return NULL;
-	}
-	
+
 	// get pointers to image data
 	PyCudaImage* input = PyCUDA_GetImage(pyInput);
 	PyCudaImage* output = PyCUDA_GetImage(pyOutput);
@@ -1402,11 +1371,8 @@ PyObject* PyCUDA_Normalize( PyObject* self, PyObject* args, PyObject* kwds )
 	static char* kwlist[] = {"input", "inputRange", "output", "outputRange", NULL};
 
 	if( !PyArg_ParseTupleAndKeywords(args, kwds, "O(ff)O(ff)", kwlist, &pyInput, &input_min, &input_max, &pyOutput, &output_min, &output_max))
-	{
-		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaNormalize() failed to parse args");
 		return NULL;
-	}
-	
+
 	// get pointers to image data
 	PyCudaImage* input = PyCUDA_GetImage(pyInput);
 	PyCudaImage* output = PyCUDA_GetImage(pyOutput);
@@ -1456,11 +1422,8 @@ PyObject* PyCUDA_Overlay( PyObject* self, PyObject* args, PyObject* kwds )
 	static char* kwlist[] = {"input", "output", "x", "y", NULL};
 
 	if( !PyArg_ParseTupleAndKeywords(args, kwds, "OO|ff", kwlist, &pyInput, &pyOutput, &x, &y))
-	{
-		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaOverlay() failed to parse args");
 		return NULL;
-	}
-	
+
 	// get pointers to image data
 	PyCudaImage* input = PyCUDA_GetImage(pyInput);
 	PyCudaImage* output = PyCUDA_GetImage(pyOutput);
@@ -1506,10 +1469,7 @@ PyObject* PyCUDA_DrawCircle( PyObject* self, PyObject* args, PyObject* kwds )
 	static char* kwlist[] = {"input", "center", "radius", "color", "output", NULL};
 
 	if( !PyArg_ParseTupleAndKeywords(args, kwds, "O(ff)fO|O", kwlist, &pyInput, &x, &y, &radius, &pyColor, &pyOutput))
-	{
-		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaDrawCircle() failed to parse arguments");
 		return NULL;
-	}
 	
 	if( !pyOutput )
 		pyOutput = pyInput;
@@ -1577,11 +1537,8 @@ PyObject* PyCUDA_DrawLine( PyObject* self, PyObject* args, PyObject* kwds )
 	static char* kwlist[] = {"input", "a", "b", "color", "line_width", "output", NULL};
 
 	if( !PyArg_ParseTupleAndKeywords(args, kwds, "O(ff)(ff)O|fO", kwlist, &pyInput, &x1, &y1, &x2, &y2, &pyColor, &line_width, &pyOutput))
-	{
-		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaDrawLine() failed to parse arguments");
 		return NULL;
-	}
-	
+
 	if( !pyOutput )
 		pyOutput = pyInput;
 	
@@ -1646,11 +1603,8 @@ PyObject* PyCUDA_DrawRect( PyObject* self, PyObject* args, PyObject* kwds )
 	static char* kwlist[] = {"input", "rect", "color", "output", NULL};
 
 	if( !PyArg_ParseTupleAndKeywords(args, kwds, "O(ffff)O|O", kwlist, &pyInput, &left, &top, &right, &bottom, &pyColor, &pyOutput))
-	{
-		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaDrawRect() failed to parse arguments");
 		return NULL;
-	}
-	
+
 	if( !pyOutput )
 		pyOutput = pyInput;
 	
@@ -1806,11 +1760,8 @@ static int PyFont_Init( PyFont_Object* self, PyObject *args, PyObject *kwds )
 	static char* kwlist[] = {"font", "size", NULL};
 
 	if( !PyArg_ParseTupleAndKeywords(args, kwds, "|sf", kwlist, &font_name, &font_size))
-	{
-		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "pyFont.__init()__ failed to parse args tuple");
 		return -1;
-	}
-  
+
 	// create the font
 	cudaFont* font = cudaFont::Create(font_name, font_size);
 
@@ -1894,14 +1845,12 @@ static PyObject* PyFont_OverlayText( PyFont_Object* self, PyObject* args, PyObje
 	static char* kwlist[] = {"image", "width", "height", "text", "x", "y", "color", "background", "format", NULL};
 
 	if( !PyArg_ParseTupleAndKeywords(args, kwds, "O|iisiiOOs", kwlist, &input, &width, &height, &text, &x, &y, &color, &bg, &format_str))
-	{
-		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaFont.OverlayText() failed to parse function arguments");
 		return NULL;
-	}
 
+	// make sure that text exists
 	if( !text )
 	{
-		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaFont.OverlayText() was not passed in a text string");
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaFont.OverlayText() needs to be called with the 'text' string argument");
 		return NULL;
 	}
 

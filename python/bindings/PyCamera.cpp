@@ -67,11 +67,7 @@ static int PyCamera_Init( PyCamera_Object* self, PyObject *args, PyObject *kwds 
 	static char* kwlist[] = {"width", "height", "camera", NULL};
 
 	if( !PyArg_ParseTupleAndKeywords(args, kwds, "|iis", kwlist, &camera_width, &camera_height, &device))
-	{
-		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "gstCamera.__init()__ failed to parse args tuple");
-		LogError(LOG_PY_UTILS "gstCamera.__init()__ failed to parse args tuple\n");
 		return -1;
-	}
   
 	if( camera_width <= 0 )	
 		camera_width = gstCamera::DefaultWidth;
@@ -166,10 +162,7 @@ static PyObject* PyCamera_Capture( PyCamera_Object* self, PyObject* args, PyObje
 	static char* kwlist[] = {"format", "timeout", "zeroCopy", NULL};
 
 	if( !PyArg_ParseTupleAndKeywords(args, kwds, "|sii", kwlist, &pyFormat, &pyTimeout, &pyZeroCopy))
-	{
-		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "gstCamera.Capture() failed to parse args tuple");
 		return NULL;
-	}
 
 	// convert signed timeout to unsigned long
 	uint64_t timeout = UINT64_MAX;

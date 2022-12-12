@@ -38,11 +38,8 @@ static PyObject* PyLogging_Error( PyObject* cls, PyObject* args )
 	const char* str = NULL;
 
 	if( !PyArg_ParseTuple(args, "s", &str) )
-	{
-		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "Log.Error() failed to parse args tuple");
 		return NULL;
-	}
-	
+
 	LogError("%s\n", str);
 	
 	Py_RETURN_NONE;
@@ -56,11 +53,8 @@ static PyObject* PyLogging_Warning( PyObject* cls, PyObject* args )
 	const char* str = NULL;
 
 	if( !PyArg_ParseTuple(args, "s", &str) )
-	{
-		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "Log.Warning() failed to parse args tuple");
 		return NULL;
-	}
-	
+
 	LogWarning("%s\n", str);
 	
 	Py_RETURN_NONE;
@@ -74,11 +68,8 @@ static PyObject* PyLogging_Success( PyObject* cls, PyObject* args )
 	const char* str = NULL;
 
 	if( !PyArg_ParseTuple(args, "s", &str) )
-	{
-		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "Log.Success() failed to parse args tuple");
 		return NULL;
-	}
-	
+
 	LogSuccess("%s\n", str);
 	
 	Py_RETURN_NONE;
@@ -92,11 +83,8 @@ static PyObject* PyLogging_Info( PyObject* cls, PyObject* args )
 	const char* str = NULL;
 
 	if( !PyArg_ParseTuple(args, "s", &str) )
-	{
-		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "Log.Info() failed to parse args tuple");
 		return NULL;
-	}
-	
+
 	LogInfo("%s\n", str);
 	
 	Py_RETURN_NONE;
@@ -110,10 +98,7 @@ static PyObject* PyLogging_Verbose( PyObject* cls, PyObject* args )
 	const char* str = NULL;
 
 	if( !PyArg_ParseTuple(args, "s", &str) )
-	{
-		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "Log.Verbose() failed to parse args tuple");
 		return NULL;
-	}
 	
 	LogVerbose("%s\n", str);
 	
@@ -128,11 +113,8 @@ static PyObject* PyLogging_Debug( PyObject* cls, PyObject* args )
 	const char* str = NULL;
 
 	if( !PyArg_ParseTuple(args, "s", &str) )
-	{
-		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "Log.Debug() failed to parse args tuple");
 		return NULL;
-	}
-	
+
 	LogDebug("%s\n", str);
 	
 	Py_RETURN_NONE;
@@ -153,11 +135,8 @@ static PyObject* PyLogging_SetLevel( PyObject* cls, PyObject* args )
 	const char* level_str = NULL;
 
 	if( !PyArg_ParseTuple(args, "s", &level_str) )
-	{
-		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "Log.SetLevel() failed to parse args tuple");
 		return NULL;
-	}
-	
+
 	Log::SetLevel(Log::LevelFromStr(level_str));
 	
 	Py_RETURN_NONE;
@@ -179,11 +158,8 @@ static PyObject* PyLogging_SetFilename( PyObject* cls, PyObject* args )
 	const char* filename = NULL;
 
 	if( !PyArg_ParseTuple(args, "s", &filename) )
-	{
-		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "Log.SetFilename() failed to parse args tuple");
 		return NULL;
-	}
-	
+
 	Log::SetFile(filename);
 	
 	Py_RETURN_NONE;
