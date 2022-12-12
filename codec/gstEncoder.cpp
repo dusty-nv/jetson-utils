@@ -807,8 +807,14 @@ void gstEncoder::onWebsocketMessage( WebRTCPeer* peer, const char* message, size
 		// set webrtcbin properties
 		std::string stun_server = std::string("stun://") + peer->server->GetSTUNServer();
 		g_object_set(peer_context->webrtcbin, "stun-server", stun_server.c_str(), NULL);
-		//g_object_set(peer_context->webrtcbin, "latency", 40, NULL);   // this doesn't seem to have an impact
+		g_object_set(peer_context->webrtcbin, "latency", 40, NULL);   // this doesn't seem to have an impact?
 	
+		// set latency on the rtpbin (https://github.com/centricular/gstwebrtc-demos/issues/102#issuecomment-575157321)
+		GstElement* rtpbin = gst_bin_get_by_name(GST_BIN(peer_context->webrtcbin), "rtpbin");
+		g_assert_nonnull(rtpbin);
+		g_object_set(rtpbin, "latency", 40, NULL);
+		gst_object_unref(rtpbin);
+		
 		// add queue and webrtcbin elements to the pipeline
 		gst_bin_add_many(GST_BIN(encoder->mPipeline), peer_context->queue, peer_context->webrtcbin, NULL);
 		
