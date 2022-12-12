@@ -121,6 +121,11 @@ public:
 	}
 
 	/**
+	 * Return the size of the font (height in pixels)
+	 */
+	inline float GetSize() const	{ return mSize; }
+	
+	/**
 	 * Return the bounding rectangle of the given text string.
 	 */
 	int4 TextExtents( const char* str, int x=0, int y=0 );
@@ -129,7 +134,9 @@ public:
 protected:
 	cudaFont();
 	bool init( const char* font, float size );
-
+		
+	float mSize;
+		
 	uint8_t* mFontMapCPU;
 	uint8_t* mFontMapGPU;
 	

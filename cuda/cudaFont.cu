@@ -73,6 +73,8 @@ float adaptFontSize( uint32_t dimension )
 // constructor
 cudaFont::cudaFont()
 {
+	mSize = 0.0f;
+	
 	mCommandCPU = NULL;
 	mCommandGPU = NULL;
 	mCmdIndex   = 0;
@@ -315,6 +317,7 @@ bool cudaFont::init( const char* filename, float size )
 	if( !cudaAllocMapped((void**)&mRectsCPU, (void**)&mRectsGPU, sizeof(float4) * MaxCommands) )
 		return false;
 
+	mSize = size;
 	return true;
 }
 

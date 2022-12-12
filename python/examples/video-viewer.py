@@ -24,12 +24,12 @@
 import sys
 import argparse
 
-from jetson_utils import videoSource, videoOutput, logUsage
+from jetson_utils import videoSource, videoOutput, Log
 
 # parse command line
 parser = argparse.ArgumentParser(description="View various types of video streams", 
                                  formatter_class=argparse.RawTextHelpFormatter, 
-                                 epilog=videoSource.Usage() + videoOutput.Usage() + logUsage())
+                                 epilog=videoSource.Usage() + videoOutput.Usage() + Log.Usage())
 
 parser.add_argument("input_URI", type=str, help="URI of the input stream")
 parser.add_argument("output_URI", type=str, default="", nargs='?', help="URI of the output stream")
@@ -46,11 +46,18 @@ input = videoSource(opt.input_URI, argv=sys.argv)
 output = videoOutput(opt.output_URI, argv=sys.argv)
 
 # capture frames until user exits
-while output.IsStreaming():
-	image = input.Capture()
-	#print(image)
-	output.Render(image)
-	output.SetStatus("Video Viewer | {:d}x{:d} | {:.1f} FPS".format(image.width, image.height, output.GetFrameRate()))
+numFrames = 0
+
+while True:
+    image = input.Capture()
+
+    if numFrames % 25 == 0 or numFrames < 15:
+        Log.Verbose(f"video-viewer:  captured {numFrames} frames ({image.width} x {image.height}")
+	
+    numFrames += 1
+	
+    output.Render(image)
+    output.SetStatus("Video Viewer | {:d}x{:d} | {:.1f} FPS".format(image.width, image.height, output.GetFrameRate()))
 	
 
 

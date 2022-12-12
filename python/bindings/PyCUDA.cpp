@@ -633,6 +633,8 @@ static PyObject* PyCudaImage_GetItem(PyCudaImage *self, PyObject *key)
 			return PyFloat_FromDouble(((float*)ptr)[0]);
 		else if( baseType == IMAGE_UINT8 )
 			return PYLONG_FROM_UNSIGNED_LONG(ptr[0]);
+		else
+			return NULL;  // suppress compiler return warning
 	}
 }
 
@@ -1955,6 +1957,19 @@ static PyObject* PyFont_OverlayText( PyFont_Object* self, PyObject* args, PyObje
 	Py_RETURN_NONE;
 }
 
+// GetSize
+static PyObject* PyFont_GetSize( PyFont_Object* self )
+{
+	if( !self || !self->font )
+	{
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaFont invalid object instance");
+		return NULL;
+	}
+	
+	//return PyFloat_FromDouble(self->font->GetSize());
+	return PYLONG_FROM_UNSIGNED_LONG(self->font->GetSize());
+}
+
 static PyTypeObject pyFont_Type = 
 {
     PyVarObject_HEAD_INIT(NULL, 0)
@@ -1963,6 +1978,7 @@ static PyTypeObject pyFont_Type =
 static PyMethodDef pyFont_Methods[] = 
 {
 	{ "OverlayText", (PyCFunction)PyFont_OverlayText, METH_VARARGS|METH_KEYWORDS, "Render the font overlay for a given text string"},
+	{ "GetSize", (PyCFunction)PyFont_GetSize, METH_NOARGS, "Return the size of the font (height in pixels)"},
 	{NULL}  /* Sentinel */
 };
 
