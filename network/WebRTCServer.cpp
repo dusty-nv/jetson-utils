@@ -71,8 +71,15 @@ const char* html_viewer = " \n \
       } \n \
  \n \
  \n \
+ 	 function onConnectionStateChange(event) { \n \
+	   console.log(\"WebRTC connection state:  \" + webrtcPeerConnection.connectionState); \n \
+	 } \n \
+ \n \
+ \n \
       function onAddRemoteStream(event) { \n \
+	   console.log(\"Setting video element source to WebRTC stream\"); \n \
         html5VideoElement.srcObject = event.streams[0]; \n \
+	   html5VideoElement.play(); \n \
       } \n \
  \n \
  \n \
@@ -96,6 +103,7 @@ const char* html_viewer = " \n \
  \n \
         if (!webrtcPeerConnection) { \n \
           webrtcPeerConnection = new RTCPeerConnection(webrtcConfiguration); \n \
+		webrtcPeerConnection.onconnectionstatechange = onConnectionStateChange; \n \
           webrtcPeerConnection.ontrack = onAddRemoteStream; \n \
           webrtcPeerConnection.onicecandidate = onIceCandidate; \n \
         } \n \
@@ -137,9 +145,9 @@ const char* html_viewer = " \n \
  \n \
   <body> \n \
     <div> \n \
-      <video id=\"stream\" autoplay controls playsinline>Your browser does not support video</video> \n \
+      <video id=\"stream\" autoplay controls playsinline muted>Your browser does not support video</video> \n \
     </div> \n \
-    %s \n \
+    <pre>%s</pre> \n \
   </body> \n \
 </html> \n \
 ";
