@@ -173,6 +173,10 @@ bool gstEncoder::init()
 	if( mOptions.frameRate <= 0 )
 		mOptions.frameRate = 30;
 
+	// set default bitrate if needed
+	if( mOptions.bitRate == 0 )
+		mOptions.bitRate = 4000000; 
+	
 	// build pipeline string
 	if( !buildLaunchStr() )
 	{
@@ -281,34 +285,30 @@ bool gstEncoder::buildCapsStr()
 bool gstEncoder::buildLaunchStr()
 {
 	std::ostringstream ss;
-
-	// setup appsrc input element
-	ss << "appsrc name=mysource is-live=true do-timestamp=true format=3 ! ";
-
-	// set default bitrate (if needed)
-	if( mOptions.bitRate == 0 )
-		mOptions.bitRate = 4000000; 
+	ss << "appsrc name=mysource is-live=true do-timestamp=true format=3 ! ";  // setup appsrc input element
 	
-	// determine the requested protocol to use
 	const URI& uri = GetResource();
-	
-	//ss << mCapsStr << " ! ";
+	std::string encoderOptions = "";
 
 #ifdef GST_CODECS_V4L2
 	// the V4L2 encoders expect NVMM memory, so use nvvidconv to convert it
 	if( mOptions.codec != videoOptions::CODEC_MJPEG )
 		ss << "nvvidconv ! video/x-raw(memory:NVMM) ! ";
+	
+	// send keyframes/I-frames more frequently for network streams
+	if( mOptions.deviceType == videoOptions::DEVICE_IP )
+		encoderOptions = " idrinterval=30 ";
 #endif
 	
 	// select hardware codec to use
 	if( mOptions.codec == videoOptions::CODEC_H264 )
-		ss << GST_ENCODER_H264 << " bitrate=" << mOptions.bitRate << " ! video/x-h264 !  ";	// TODO:  investigate quality-level setting
+		ss << GST_ENCODER_H264 << " bitrate=" << mOptions.bitRate << encoderOptions << " ! video/x-h264 ! ";	// TODO:  investigate quality-level setting
 	else if( mOptions.codec == videoOptions::CODEC_H265 )
-		ss << GST_ENCODER_H265 << " bitrate=" << mOptions.bitRate << " ! video/x-h265 ! ";
+		ss << GST_ENCODER_H265 << " bitrate=" << mOptions.bitRate << encoderOptions << " ! video/x-h265 ! ";
 	else if( mOptions.codec == videoOptions::CODEC_VP8 )
-		ss << GST_ENCODER_VP8 << " bitrate=" << mOptions.bitRate << " ! video/x-vp8 ! ";
+		ss << GST_ENCODER_VP8 << " bitrate=" << mOptions.bitRate << encoderOptions << " ! video/x-vp8 ! ";
 	else if( mOptions.codec == videoOptions::CODEC_VP9 )
-		ss << GST_ENCODER_VP9 << " bitrate=" << mOptions.bitRate << " ! video/x-vp9 ! ";
+		ss << GST_ENCODER_VP9 << " bitrate=" << mOptions.bitRate << encoderOptions << " ! video/x-vp9 ! ";
 	else if( mOptions.codec == videoOptions::CODEC_MJPEG )
 		ss << GST_ENCODER_MJPEG << " ! image/jpeg ! ";
 	else
@@ -321,9 +321,6 @@ bool gstEncoder::buildLaunchStr()
 		LogError(LOG_GSTREAMER "                 * vp9\n");
 		LogError(LOG_GSTREAMER "                 * mjpeg\n");
 	}
-
-	//if( fileLen > 0 && ipLen > 0 )
-	//	ss << "nvtee name=t ! ";
 
 	if( uri.protocol == "file" )
 	{
@@ -373,8 +370,6 @@ bool gstEncoder::buildLaunchStr()
 		}
 
 		ss << "filesink location=" << uri.location;
-
-		mOptions.deviceType = videoOptions::DEVICE_FILE;
 	}
 	else if( uri.protocol == "rtp" || uri.protocol == "rtsp" || uri.protocol == "webrtc" )
 	{
@@ -390,7 +385,7 @@ bool gstEncoder::buildLaunchStr()
 			ss << "rtpjpegpay";
 
 		if( mOptions.codec == videoOptions::CODEC_H264 || mOptions.codec == videoOptions::CODEC_H265 ) 
-			ss << " config-interval=1";
+			ss << " config-interval=1";	// aggregate-mode=zero-latency";
 		
 		if( uri.protocol == "rtsp" )
 			ss << " name=pay0";	 // GstRTSPServer expects the payloaders to be named pay0, pay1, ect
@@ -408,12 +403,9 @@ bool gstEncoder::buildLaunchStr()
 		}
 		else if( uri.protocol == "webrtc" )
 		{
-			ss << "application/x-rtp,media=video,encoding-name=" << videoOptions::CodecToStr(mOptions.codec) << ",payload=96 ! ";
-			//ss << "webrtcbin name=webrtcbin stun-server=" << STUN_SERVER;
+			ss << "application/x-rtp,media=video,encoding-name=" << videoOptions::CodecToStr(mOptions.codec) << ",clock-rate=90000,payload=96 ! ";
 			ss << "tee name=videotee ! queue ! fakesink";  // webrtcbin's will be added when clients connect
 		}
-		
-		mOptions.deviceType = videoOptions::DEVICE_IP;
 	}
 	else if( uri.protocol == "rtpmp2ts" )
 	{
@@ -434,15 +426,11 @@ bool gstEncoder::buildLaunchStr()
 			ss << "port=" << uri.port;
 
 		ss << " auto-multicast=true";
-
-		mOptions.deviceType = videoOptions::DEVICE_IP;
 	}
 	else if( uri.protocol == "rtmp" )
 	{
 		ss << "flvmux streamable=true ! queue ! rtmpsink location=";
 		ss << uri.string << " ";
-
-		mOptions.deviceType = videoOptions::DEVICE_IP;
 	}
 	else
 	{
@@ -807,12 +795,12 @@ void gstEncoder::onWebsocketMessage( WebRTCPeer* peer, const char* message, size
 		// set webrtcbin properties
 		std::string stun_server = std::string("stun://") + peer->server->GetSTUNServer();
 		g_object_set(peer_context->webrtcbin, "stun-server", stun_server.c_str(), NULL);
-		g_object_set(peer_context->webrtcbin, "latency", 40, NULL);   // this doesn't seem to have an impact?
+		g_object_set(peer_context->webrtcbin, "latency", encoder->mOptions.latency, NULL);   // this doesn't seem to have an impact?
 	
 		// set latency on the rtpbin (https://github.com/centricular/gstwebrtc-demos/issues/102#issuecomment-575157321)
 		GstElement* rtpbin = gst_bin_get_by_name(GST_BIN(peer_context->webrtcbin), "rtpbin");
 		g_assert_nonnull(rtpbin);
-		g_object_set(rtpbin, "latency", 40, NULL);
+		g_object_set(rtpbin, "latency", encoder->mOptions.latency, NULL);
 		gst_object_unref(rtpbin);
 		
 		// add queue and webrtcbin elements to the pipeline

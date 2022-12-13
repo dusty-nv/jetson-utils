@@ -556,7 +556,7 @@ bool gstDecoder::buildLaunchStr()
 		if( uri.protocol == "rtsp" )
 		{
 			ss << "rtspsrc location=" << uri.string;
-			ss << " latency=" << mOptions.rtspLatency;
+			ss << " latency=" << mOptions.latency;
 			ss << " ! queue ! ";
 		}
 		else

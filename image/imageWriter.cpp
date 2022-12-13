@@ -61,8 +61,6 @@ imageWriter::imageWriter( const videoOptions& options ) : videoOutput(options)
 	mFileCount = 0;
 	mStreaming = true;
 
-	mOptions.deviceType = videoOptions::DEVICE_FILE;
-	
 	// replace wildcards with %i
 	const size_t wildcard = mOptions.resource.location.find("*");
 	

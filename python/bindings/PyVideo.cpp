@@ -84,8 +84,8 @@ static PyObject* PyVideoOptions_ToDict( const videoOptions& options )
 	PYDICT_SET_STRING(dict, "deviceType", videoOptions::DeviceTypeToStr(options.deviceType));
 	PYDICT_SET_STRING(dict, "ioType", videoOptions::IoTypeToStr(options.ioType));
 	
-	if( options.resource.protocol == "rtsp" )
-		PYDICT_SET_INT(dict, "rtspLatency", options.rtspLatency);
+	if( options.deviceType == videoOptions::DEVICE_IP )
+		PYDICT_SET_INT(dict, "latency", options.latency);
 	
 	if( options.resource.protocol == "webrtc" )
 	{

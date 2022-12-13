@@ -84,11 +84,12 @@ gstCamera* gstCamera::Create( uint32_t width, uint32_t height, const char* camer
 	if( !camera )
 		camera = "csi://0";
 
-	opt.resource = camera;
-	opt.width    = width;
-	opt.height   = height;
-	opt.ioType   = videoOptions::INPUT;
-
+	opt.resource   = camera;
+	opt.width      = width;
+	opt.height     = height;
+	opt.ioType     = videoOptions::INPUT;
+	opt.deviceType = videoOptions::DeviceTypeFromStr(opt.resource.protocol.c_str());
+	
 	return Create(opt);
 }
 
@@ -583,12 +584,6 @@ bool gstCamera::init()
 	
 	// disable looping for cameras
 	mOptions.loop = 0;	
-
-	// set device flags
-	if( mOptions.resource.protocol == "csi" )
-		mOptions.deviceType = videoOptions::DEVICE_CSI;
-	else if( mOptions.resource.protocol == "v4l2" )
-		mOptions.deviceType = videoOptions::DEVICE_V4L2;
 
 	return true;
 }

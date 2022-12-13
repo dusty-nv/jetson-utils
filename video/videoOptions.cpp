@@ -36,7 +36,7 @@ videoOptions::videoOptions()
 	bitRate     = 0;
 	numBuffers  = 4;
 	loop        = 0;
-	rtspLatency = 10;
+	latency     = 10;
 	zeroCopy    = true;
 	ioType      = INPUT;
 	deviceType  = DEVICE_DEFAULT;
@@ -60,16 +60,34 @@ void videoOptions::Print( const char* prefix ) const
 
 	LogInfo("  -- deviceType: %s\n", DeviceTypeToStr(deviceType));
 	LogInfo("  -- ioType:     %s\n", IoTypeToStr(ioType));
-	LogInfo("  -- codec:      %s\n", CodecToStr(codec));
-	LogInfo("  -- width:      %u\n", width);
-	LogInfo("  -- height:     %u\n", height);
-	LogInfo("  -- frameRate:  %f\n", frameRate);
-	LogInfo("  -- bitRate:    %u\n", bitRate);
+	
+	if( deviceType != DEVICE_CSI && deviceType != DEVICE_DISPLAY )
+		LogInfo("  -- codec:      %s\n", CodecToStr(codec));
+	
+	if( width != 0 )
+		LogInfo("  -- width:      %u\n", width);
+	
+	if( height != 0 )
+		LogInfo("  -- height:     %u\n", height);
+	
+	LogInfo("  -- frameRate:  %g\n", frameRate);
+	
+	if( ioType == OUTPUT && (deviceType == DEVICE_IP || deviceType == DEVICE_FILE) )
+		LogInfo("  -- bitRate:    %u\n", bitRate);
+	
 	LogInfo("  -- numBuffers: %u\n", numBuffers);
 	LogInfo("  -- zeroCopy:   %s\n", zeroCopy ? "true" : "false");	
-	LogInfo("  -- flipMethod: %s\n", FlipMethodToStr(flipMethod));
-	LogInfo("  -- loop:       %i\n", loop);
-	LogInfo("  -- rtspLatency %i\n", rtspLatency);
+	
+	if( ioType == INPUT )
+	{
+		LogInfo("  -- flipMethod: %s\n", FlipMethodToStr(flipMethod));
+	
+		if( deviceType != DEVICE_CSI && deviceType != DEVICE_V4L2 )
+			LogInfo("  -- loop:       %i\n", loop);
+	}
+	
+	if( deviceType == DEVICE_IP )
+		LogInfo("  -- latency     %i\n", latency);
 	
 	if( stunServer.length() > 0 )
 		LogInfo("  -- stunServer  %s\n", stunServer.c_str());
@@ -111,6 +129,8 @@ bool videoOptions::Parse( const char* URI, const commandLine& cmdLine, videoOpti
 		return false;
 	}
 
+	deviceType = DeviceTypeFromStr(resource.protocol.c_str());
+	
 	// parse stream settings
 	numBuffers = cmdLine.GetUnsignedInt("num-buffers", numBuffers);
 	//zeroCopy = cmdLine.GetFlag("zero-copy");	// no default returned, so disable this for now
@@ -174,8 +194,9 @@ bool videoOptions::Parse( const char* URI, const commandLine& cmdLine, videoOpti
 			loop = cmdLine.GetInt("loop");
 	}
 
-	// RTSP latency
-	rtspLatency = cmdLine.GetUnsignedInt("input-rtsp-latency", rtspLatency);
+	// latency
+	latency = (type == INPUT) ? cmdLine.GetUnsignedInt("input-latency", cmdLine.GetUnsignedInt("input-rtsp-latency", latency))
+						 : cmdLine.GetUnsignedInt("output-latency", latency);
 	
 	// STUN server
 	const char* stunStr = cmdLine.GetString("stun-server");
@@ -299,6 +320,9 @@ videoOptions::DeviceType videoOptions::DeviceTypeFromStr( const char* str )
 		if( strcasecmp(str, DeviceTypeToStr(value)) == 0 )
 			return value;
 	}
+
+	if( strcasecmp(str, "rtp") == 0 || strcasecmp(str, "rtsp") == 0 || strcasecmp(str, "rtmp") == 0 || strcasecmp(str, "rtpmp2ts") == 0 || strcasecmp(str, "webrtc") == 0 )
+		return DEVICE_IP;
 
 	return DEVICE_DEFAULT;
 }

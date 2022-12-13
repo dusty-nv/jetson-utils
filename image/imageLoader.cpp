@@ -65,7 +65,6 @@ imageLoader::imageLoader( const videoOptions& options ) : videoSource(options)
 	mNextFile = 0;
 
 	mBuffers.reserve(options.numBuffers);
-	mOptions.deviceType = videoOptions::DEVICE_FILE;
 
 	// list files to use
 	std::vector<std::string> files;
