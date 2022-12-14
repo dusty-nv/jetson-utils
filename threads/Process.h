@@ -36,7 +36,7 @@ class Process
 {
 public:
 	/**
-	 * Get process ID (PID)
+	 * Get this process ID (PID)
 	 */
 	static pid_t GetID();
 	
@@ -46,25 +46,36 @@ public:
 	static pid_t GetParentID();
 	
 	/**
-	 * Duplicate the calling process
+	 * Retrieve the command line of the process with the specified PID,
+	 * or of this calling process if PID is -1 (which is the default).
 	 */
-	static void Fork();
-
+	static std::string GetCommandLine( pid_t pid=-1 );
+	
 	/**
-	 * Retrieve the absolute path of the calling process executable,
-	 * including the process' filename.
+	 * Retrieve the absolute path of the process with the specified PID,
+	 * or of this calling process if PID is -1 (which is the default).
+	 * This path will include the process' filename.
 	 */
-	static std::string ExecutablePath();
+	static std::string GetExecutablePath( pid_t pid=-1 );
 
 	/**
 	 * Retrieve the directory that the process executable resides in.
+	 * For example, if the process executable is located at `/usr/bin/exe`,
+      * then `GetExecutableDir()` would return the path `/usr/bin`.
+	 * If the specified PID is -1, then the calling process will be used.
 	 */
-	static std::string ExecutableDirectory();
+	static std::string GetExecutableDir( pid_t pid=-1 );
 
 	/**
 	 * Retrieve the current working directory of the process.
+	 * If the specified PID is -1, then the calling process will be used.
 	 */
-	static std::string WorkingDirectory();
+	static std::string GetWorkingDir( pid_t pid=-1 );
+	
+	/**
+	 * Duplicate the calling process
+	 */
+	static void Fork();
 };
 
 

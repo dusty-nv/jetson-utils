@@ -188,31 +188,6 @@ std::string fileRemoveExtension( const std::string& filename );
  */
 std::string fileChangeExtension( const std::string& filename, const std::string& newExtension );
 
-/**
- * Return the absolute path that of the calling process executable,
- * include the process executable's filename.
- * @ingroup filesystem
- */
-std::string processPath();
-
-/**
- * Return the directory that the calling process resides in.
- * For example, if the process executable is located at `/usr/bin/exe`,
- * then `processDirectory()` would return the path `/usr/bin`.
- *
- * @note to retrieve the full path of the calling process, including
- *       the process executable's filename, @see processPath()
- *
- * @ingroup filesystem
- */
-std::string processDirectory();
-
-/**
- * Return the current working directory of the calling process.
- * @ingroup filesystem
- */
-std::string workingDirectory();
-
 
 #endif
 

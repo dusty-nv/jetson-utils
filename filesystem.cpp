@@ -43,7 +43,7 @@ std::string absolutePath( const std::string& relative_path )
 			return relative_path;
 	}
 
-	return pathJoin(workingDirectory(), relative_path);
+	return pathJoin(Process::GetWorkingDir(), relative_path);
 }
 
 
@@ -63,7 +63,7 @@ std::string locateFile( const std::string& path, std::vector<std::string>& locat
 		return path;
 
 	// add standard search locations
-	locations.push_back(Process::ExecutableDirectory());
+	locations.push_back(Process::GetExecutableDir());
 
 	locations.push_back("/usr/local/bin/");
 	locations.push_back("/usr/local/");
@@ -122,7 +122,7 @@ bool listDir( const std::string& path_in, std::vector<std::string>& output, uint
 
 			// if nothing was found and a full path wasn't specified, try the exe path
 			if( firstChar != '.' && firstChar != '/' && firstChar != '\\' && firstChar != '*' && firstChar != '?' && firstChar != '~' )
-				return listDir(pathJoin(Process::ExecutableDirectory(), path), output, mask);
+				return listDir(pathJoin(Process::GetExecutableDir(), path), output, mask);
 			else
 				LogError("listDir('%s') - found no matches\n", path.c_str());
 		}
@@ -360,26 +360,4 @@ std::string fileChangeExtension(const std::string& filename, const std::string& 
 {
 	return fileRemoveExtension(filename).append(newExtension);
 }
-
-
-// processPath
-std::string processPath()
-{
-	return Process::ExecutablePath();
-}
-
-
-// processDirectory
-std::string processDirectory()
-{
-	return Process::ExecutableDirectory();
-}
-
-
-// workingDirectory
-std::string workingDirectory()
-{
-	return Process::WorkingDirectory();
-}
-
 
