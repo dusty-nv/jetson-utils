@@ -22,6 +22,7 @@
 
 #include "WebRTCServer.h"
 #include "Networking.h"
+#include "Process.h"
 #include "Thread.h"
 
 #include "json.hpp"
@@ -824,6 +825,8 @@ std::string WebRTCServer::printRouteInfo( WebsocketRoute* route ) const
 		ss << " multi-client";
 	
 	ss << ")&nbsp;&nbsp;(peers: " << route->peers.size() << ")</p>";
+	ss << "<p>" << Process::GetCommandLine() << "</p>";
+	
 	return ss.str();
 }
 
