@@ -81,6 +81,19 @@ std::string pathJoin( const std::string& a, const std::string& b );
 std::string pathDir( const std::string& path );
 
 /**
+ * Return the filename from the path, including the file extension.
+ * @ingroup filesystem
+ */
+std::string pathFilename( const std::string& path );
+
+/**
+ * Split a path into directory and filename components.
+ * The directory will be returned first in the pair, and the filename second.
+ * @ingroup filesystem
+ */
+std::pair<std::string, std::string> splitPath( const std::string& path );
+
+/**
  * File types
  * @ingroup filesystem
  */
@@ -100,15 +113,20 @@ enum fileTypes
  * Return a sorted list of the files in the specified directory.  listDir() will glob files from
  * the specified path, and filter against wildcard characters including `*` and `?`.
  * For example, valid paths would include `~/workspace`, `~/workspace/*.jpg`, ect.
+ *
  * @see here for a description of wildcard matching:  https://www.man7.org/linux/man-pages/man7/glob.7.html
+ *
  * @param path the path of the directory (may include wildcard characters)
  * @param[out] list the alphanumerically sorted output list of the files in the directory
  * @param mask filter by file type (by default, any file including directories will be included).
  *             The mask should consist of fileTypes OR'd together (e.g. `FILE_REGULAR|FILE_DIR`).
+ *
  * @ingroup filesystem
  */
 bool listDir( const std::string& path, std::vector<std::string>& list, uint32_t mask=0 );
 
+/**
+ * Return the directory 
 /**
  * Verify path and return true if the file exists.
  * @param mask filter by file type (by default, any file including directories will be checked).

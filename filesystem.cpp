@@ -238,15 +238,45 @@ size_t fileSize( const std::string& path )
 }
 
 
-// pathDir
-std::string pathDir( const std::string& filename )
+// splitPath
+std::pair<std::string, std::string> splitPath( const std::string& path )
 {
-	const std::string::size_type slashIdx = filename.find_last_of("/");
+	const std::string::size_type slashIdx = path.find_last_of("/");
+	const std::string ext = fileExtension(path);
+	
+	if( slashIdx == std::string::npos )
+	{
+		if( ext.length() > 0 )
+			return std::pair<std::string, std::string>("", path);
+		else
+			return std::pair<std::string, std::string>(path, "");
+	}
+	
+	return std::pair<std::string, std::string>(path.substr(0, slashIdx + 1), path.substr(slashIdx + 1));
+}
+
+
+// pathFilename
+std::string pathFilename( const std::string& path )
+{
+	const std::string::size_type slashIdx = path.find_last_of("/");
+	
+	if( slashIdx == std::string::npos )
+		return path;
+	
+	return path.substr(slashIdx + 1);
+}
+
+
+// pathDir
+std::string pathDir( const std::string& path )
+{
+	const std::string::size_type slashIdx = path.find_last_of("/");
 
 	if( slashIdx == std::string::npos || slashIdx == 0 )
-		return filename;
+		return path;
 
-	return filename.substr(0, slashIdx + 1);
+	return path.substr(0, slashIdx + 1);
 }
 
 
