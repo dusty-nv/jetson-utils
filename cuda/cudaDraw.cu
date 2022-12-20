@@ -208,7 +208,7 @@ __global__ void gpuDrawRect( T* img, int imgWidth, int imgHeight, int x0, int y0
 
 
 // cudaDrawRect
-cudaError_t cudaDrawRect( void* input, void* output, size_t width, size_t height, imageFormat format, int left, int top, int right, int bottom, const float4& color )
+cudaError_t cudaDrawRect( void* input, void* output, size_t width, size_t height, imageFormat format, int left, int top, int right, int bottom, const float4& color, const float4& line_color, float line_width )
 {
 	if( !input || !output || width == 0 || height == 0 )
 		return cudaErrorInvalidValue;
@@ -238,29 +238,46 @@ cudaError_t cudaDrawRect( void* input, void* output, size_t width, size_t height
 	
 	if( boxWidth <= 0 || boxHeight <= 0 )
 	{
-		LogError("cudaDrawRect() -- rect had width/height <= 0  left=%i top=%i right=%i bottom=%i\n", left, top, right, bottom);
+		LogError(LOG_CUDA "cudaDrawRect() -- rect had width/height <= 0  left=%i top=%i right=%i bottom=%i\n", left, top, right, bottom);
 		return cudaErrorInvalidValue;
 	}
 
-	// launch kernel
-	const dim3 blockDim(8, 8);
-	const dim3 gridDim(iDivUp(boxWidth,blockDim.x), iDivUp(boxHeight,blockDim.y));
-			
-	#define LAUNCH_DRAW_RECT(type) \
-		gpuDrawRect<type><<<gridDim, blockDim>>>((type*)output, width, height, left, top, boxWidth, boxHeight, color)
-	
-	if( format == IMAGE_RGB8 )
-		LAUNCH_DRAW_RECT(uchar3);
-	else if( format == IMAGE_RGBA8 )
-		LAUNCH_DRAW_RECT(uchar4);
-	else if( format == IMAGE_RGB32F )
-		LAUNCH_DRAW_RECT(float3); 
-	else if( format == IMAGE_RGBA32F )
-		LAUNCH_DRAW_RECT(float4);
-	else
+	// rect fill
+	if( color.w > 0 )
 	{
-		imageFormatErrorMsg(LOG_CUDA, "cudaDrawRect()", format);
-		return cudaErrorInvalidValue;
+		const dim3 blockDim(8, 8);
+		const dim3 gridDim(iDivUp(boxWidth,blockDim.x), iDivUp(boxHeight,blockDim.y));
+				
+		#define LAUNCH_DRAW_RECT(type) \
+			gpuDrawRect<type><<<gridDim, blockDim>>>((type*)output, width, height, left, top, boxWidth, boxHeight, color)
+		
+		if( format == IMAGE_RGB8 )
+			LAUNCH_DRAW_RECT(uchar3);
+		else if( format == IMAGE_RGBA8 )
+			LAUNCH_DRAW_RECT(uchar4);
+		else if( format == IMAGE_RGB32F )
+			LAUNCH_DRAW_RECT(float3); 
+		else if( format == IMAGE_RGBA32F )
+			LAUNCH_DRAW_RECT(float4);
+		else
+		{
+			imageFormatErrorMsg(LOG_CUDA, "cudaDrawRect()", format);
+			return cudaErrorInvalidValue;
+		}
+	}
+	
+	// rect outline
+	if( line_color.w > 0 && line_width > 0 )
+	{
+		int lines[4][4] = {
+			{left, top, right, top},
+			{right, top, right, bottom},
+			{right, bottom, left, bottom},
+			{left, bottom, left, top}
+		};
+		
+		for( uint32_t n=0; n < 4; n++ )
+			CUDA(cudaDrawLine(output, width, height, format, lines[n][0], lines[n][1], lines[n][2], lines[n][3], line_color, line_width));
 	}
 	
 	return cudaGetLastError();

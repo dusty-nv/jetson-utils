@@ -115,8 +115,11 @@ print(color_img)
 
 # draw some shapes
 cudaDrawCircle(color_img, (50,50), 50, (0,255,127,200)) # (cx,cy), radius, color
-cudaDrawRect(color_img, (200,25,350,250), (255,127,0,200)) # (left, top, right, bottom), color
 cudaDrawLine(color_img, (25,150), (325,15), (255,0,200,200), 10) # (x1,y1), (x2,y2), color, thickness
+
+cudaDrawRect(color_img, (200,25,350,250), (255,127,0,200)) # (left, top, right, bottom), color
+cudaDrawRect(color_img, (25,175,175,250), line_color=(0,75,255,200), line_width=5)
+cudaDrawRect(color_img, (125,275,300,350), (255,0,0,200), line_color=(200,0,200,255), line_width=2)
 
 # save the image
 if opt.file_out is not None:

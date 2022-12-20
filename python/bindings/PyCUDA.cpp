@@ -1500,10 +1500,7 @@ PyObject* PyCUDA_DrawCircle( PyObject* self, PyObject* args, PyObject* kwds )
 	}
 
 	if( !PyArg_ParseTuple(pyColor, "fff|f", &color.x, &color.y, &color.z, &color.w) )
-	{
-		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "failed to parse color tuple");
 		return NULL;
-	}
 
 	// run the CUDA function
 	if( CUDA_FAILED(cudaDrawCircle(input->base.ptr, output->base.ptr, input->width, input->height, input->format, 
@@ -1568,10 +1565,7 @@ PyObject* PyCUDA_DrawLine( PyObject* self, PyObject* args, PyObject* kwds )
 	}
 
 	if( !PyArg_ParseTuple(pyColor, "fff|f", &color.x, &color.y, &color.z, &color.w) )
-	{
-		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "failed to parse color tuple");
 		return NULL;
-	}
 
 	// run the CUDA function
 	if( CUDA_FAILED(cudaDrawLine(input->base.ptr, output->base.ptr, input->width, input->height, input->format,
@@ -1594,15 +1588,18 @@ PyObject* PyCUDA_DrawRect( PyObject* self, PyObject* args, PyObject* kwds )
 	PyObject* pyInput  = NULL;
 	PyObject* pyOutput = NULL;
 	PyObject* pyColor  = NULL;
+	PyObject* pyLineColor = NULL;
 	
 	float left = 0.0f;
 	float top = 0.0f;
 	float right = 0.0f;
 	float bottom = 0.0f;
+	
+	float line_width = 1.0f;
+	
+	static char* kwlist[] = {"input", "rect", "color", "line_color", "line_width", "output", NULL};
 
-	static char* kwlist[] = {"input", "rect", "color", "output", NULL};
-
-	if( !PyArg_ParseTupleAndKeywords(args, kwds, "O(ffff)O|O", kwlist, &pyInput, &left, &top, &right, &bottom, &pyColor, &pyOutput))
+	if( !PyArg_ParseTupleAndKeywords(args, kwds, "O(ffff)|OOfO", kwlist, &pyInput, &left, &top, &right, &bottom, &pyColor, &pyLineColor, &line_width, &pyOutput))
 		return NULL;
 
 	if( !pyOutput )
@@ -1625,23 +1622,36 @@ PyObject* PyCUDA_DrawRect( PyObject* self, PyObject* args, PyObject* kwds )
 	}	
 	
 	// parse the color
-	float4 color = make_float4(0, 0, 0, 255);
-	
-	if( !PyTuple_Check(pyColor) )
+	float4 color = make_float4(0,0,0,0);
+
+	if( pyColor != NULL && PyTuple_Check(pyColor) )
+	{
+		if( !PyArg_ParseTuple(pyColor, "fff|f", &color.x, &color.y, &color.z, &color.w) )
+			return NULL;
+	}
+	else if( pyColor != NULL )
 	{
 		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "color argument isn't a valid tuple");
 		return NULL;
 	}
 
-	if( !PyArg_ParseTuple(pyColor, "fff|f", &color.x, &color.y, &color.z, &color.w) )
+	// parse the line color
+	float4 line_color = make_float4(0,0,0,0);
+	
+	if( pyLineColor != NULL && PyTuple_Check(pyLineColor) )
 	{
-		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "failed to parse color tuple");
+		if( !PyArg_ParseTuple(pyLineColor, "fff|f", &line_color.x, &line_color.y, &line_color.z, &line_color.w) )
+			return NULL;
+	}
+	else if( pyLineColor != NULL )
+	{
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "line_color argument isn't a valid tuple");
 		return NULL;
 	}
 
 	// run the CUDA function
 	if( CUDA_FAILED(cudaDrawRect(input->base.ptr, output->base.ptr, input->width, input->height, input->format,
-						    left, top, right, bottom, color)) )
+						    left, top, right, bottom, color, line_color, line_width)) )
 	{
 		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaDrawRect() failed to render");
 		return NULL;
