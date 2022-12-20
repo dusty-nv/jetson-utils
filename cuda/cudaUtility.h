@@ -89,10 +89,14 @@ inline cudaError_t cudaCheckError(cudaError_t retval, const char* txt, const cha
 	//Log("[cuda]   device %i  -  %s\n", activeDevice, txt);
 	
 	if( retval == cudaSuccess )
+	{
 		LogDebug(LOG_CUDA "%s\n", txt);
+	}
 	else
+	{
 		LogError(LOG_CUDA "%s\n", txt);
-
+	}
+	
 	if( retval != cudaSuccess )
 	{
 		LogError(LOG_CUDA "   %s (error %u) (hex 0x%02X)\n", cudaGetErrorString(retval), retval, retval);
