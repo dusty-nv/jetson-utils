@@ -503,6 +503,12 @@ static int PyVideoOutput_Init( PyVideoOutput_Object* self, PyObject *args, PyObj
 	
 	if( !source )
 	{
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "failed to create videoOutput device");
+		return -1;
+	}
+
+	/*if( !source )
+	{
 		//if( headless )
 		//{
 			LogWarning(LOG_PY_UTILS "no output streams, creating fake null output\n");
@@ -514,7 +520,7 @@ static int PyVideoOutput_Init( PyVideoOutput_Object* self, PyObject *args, PyObj
 			PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "failed to create videoOutput device");
 			return -1;
 		}
-	}
+	}*/
 
 	self->output = source;
 	return 0;
