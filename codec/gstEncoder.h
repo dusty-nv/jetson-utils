@@ -138,7 +138,6 @@ protected:
 	void checkMsgBus();
 	bool buildCapsStr();
 	bool buildLaunchStr();
-	
 	bool encodeYUV( void* buffer, size_t size );
 
 	// appsrc callbacks

@@ -102,7 +102,6 @@ bool URI::Parse( const char* uri )
 		}
 
 		location = string;
-		path = string;
 		
 		// reconstruct full URI string
 		string = protocol + "://";
@@ -113,6 +112,9 @@ bool URI::Parse( const char* uri )
 			string += location;
 	}
 
+	// the path is typically the full location except with IP streams
+	path = location;
+	
 	// protocol should be all lowercase for easier parsing
 	protocol = toLower(protocol);
 

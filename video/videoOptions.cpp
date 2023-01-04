@@ -61,6 +61,9 @@ void videoOptions::Print( const char* prefix ) const
 	LogInfo("  -- deviceType: %s\n", DeviceTypeToStr(deviceType));
 	LogInfo("  -- ioType:     %s\n", IoTypeToStr(ioType));
 	
+	if( save.path.length() > 0 )
+		LogInfo("  -- save:       %s\n", save.path.c_str());
+
 	if( deviceType != DEVICE_CSI && deviceType != DEVICE_DISPLAY )
 		LogInfo("  -- codec:      %s\n", CodecToStr(codec));
 	
@@ -128,8 +131,27 @@ bool videoOptions::Parse( const char* URI, const commandLine& cmdLine, videoOpti
 		LogError(LOG_VIDEO "videoOptions -- failed to parse %s resource URI (%s)\n", IoTypeToStr(type), URI != NULL ? URI : "null");
 		return false;
 	}
-
+	
 	deviceType = DeviceTypeFromStr(resource.protocol.c_str());
+	
+	// parse 'save' URI
+	const char* save_path = (type == INPUT) ? cmdLine.GetString("input-save")
+	                                        : cmdLine.GetString("output-save");
+								
+	if( save_path != NULL )
+	{
+		if( !save.Parse(save_path) )
+		{
+			LogError(LOG_VIDEO "videoOptions -- failed to parse --%s-save path (%s)\n", IoTypeToStr(type), save_path);
+			return false;
+		}
+		
+		if( DeviceTypeFromStr(save.protocol.c_str()) != DEVICE_FILE )
+		{
+			LogError(LOG_VIDEO "videoOptions -- the --%s-save argument must be a file path (%s)\n", IoTypeToStr(type), save_path);
+			return false;
+		}
+	}
 	
 	// parse stream settings
 	numBuffers = cmdLine.GetUnsignedInt("num-buffers", numBuffers);

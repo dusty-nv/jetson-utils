@@ -66,14 +66,24 @@
  *        decoding include H.264, H.265, VP8, VP9, MPEG-2, MPEG-4, and MJPEG. Supported image formats
  *        for loading include JPG, PNG, TGA, BMP, GIF, PSD, HDR, PIC, and PNM (PPM/PGM binary).
  *
- * URI protocols for videoOutput streams include rendering to displays (`display://`), broadcasting RTP  
- * streams to a remote host (`rtp://`), and saving videos/images/directories to disk (`file://`) 
+ * URI protocols for videoOutput streams include rendering to displays (`display://`), broadcasting RTP/RTSP 
+ * streams (`rtp://`, `rtsp://`), WebRTC streams (`webrtc://`), and saving videos/images to disk (`file://`) 
  *
  *     - `display://0` for rendering to display using OpenGL, where `0` corresponds to the display number.
  *        By default, an OpenGL window will be created, unless the `--headless` command line option is used.
  *
  *     - `rtp://<remote-host>:1234` to broadcast a compressed RTP stream to a remote host, where you should
  *        substitute `<remote-host>` with the remote host's IP address or hostname, and `1234` is the port.
+ *
+ *     - `rtsp://@:8554/my_stream` to serve a compressed RTSP stream at the specified port and stream path.
+ *        RTSP clients can connect to the stream at the specified path.  Using this will create a RTSP server
+ *        that can handle multiple videoOutput streams on the same port but with different paths
+ *        (e.g. `rtsp://<hostname>:8554/my_stream_1`, `rtsp://<hostname>:8554/my_stream_2`, ect)
+ *
+ *     - `webrtc://@:1234/my_stream` to serve a compressed WebRTC stream at the specified port and path
+ *        that browsers can connect to and view.  Users will be able to navigate their browser to
+ *        `http://<hostname>:1234/my_stream` and view a rudimentary video player that plays the stream.
+ *        More advanced web front-ends can be created by using standard client-side Javascript WebRTC APIs.
  *
  *     - `file:///home/user/my_video.mp4` for saving videos, images, and directories of images to disk.
  *        You can leave off the `file://` protocol identifier and it will be deduced from the path.

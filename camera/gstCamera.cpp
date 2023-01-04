@@ -133,6 +133,12 @@ bool gstCamera::buildLaunchStr()
 {
 	std::ostringstream ss;
 
+	if( mOptions.save.path.length() > 0 && (mOptions.codec == videoOptions::CODEC_RAW || mOptions.codec == videoOptions::CODEC_UNKNOWN) )
+	{
+		LogError(LOG_GSTREAMER "can't use the --input-save option on a raw/uncompressed input stream\n");
+		return false;
+	}
+	
 	if( mOptions.resource.protocol == "csi" )
 	{
 	#if defined(__x86_64__) || defined(__amd64__)
@@ -178,6 +184,16 @@ bool gstCamera::buildLaunchStr()
 		
 		//ss << "queue max-size-buffers=16 ! ";
 
+		if( mOptions.save.path.length() > 0 )
+		{
+			ss << "tee name=savetee savetee. ! queue ! ";
+			
+			if( !gst_build_filesink(mOptions.save, mOptions.codec, ss) )
+				return false;
+
+			ss << "savetee. ! queue ! ";
+		}
+	
 	#if defined(ENABLE_NVMM)
 		const char* output_format = "video/x-raw(memory:NVMM) ! ";
 		const bool  enable_nvmm = true;

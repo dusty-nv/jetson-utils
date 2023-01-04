@@ -49,6 +49,14 @@ public:
 	URI resource;
 
 	/**
+	 * Optional path to save the compressed stream to a video file on disk,
+	 * which is to be used in addition to the primary resource URI above.
+	 * This option can be set from the command-line using `--input-save`
+	 * for videoSource streams, or `--output-save` for videoOutput streams.
+	 */
+	URI save;
+	
+	/**
 	 * The width of the stream (in pixels).
 	 * This option can be set from the command line using `--input-width=N`
 	 * for videoSource streams, or `--output-width=N` for videoOutput streams.

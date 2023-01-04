@@ -594,6 +594,16 @@ bool gstDecoder::buildLaunchStr()
 		return false;
 	}
 
+	if( mOptions.save.path.length() > 0 )
+	{
+		ss << "tee name=savetee savetee. ! queue ! ";
+		
+		if( !gst_build_filesink(mOptions.save, mOptions.codec, ss) )
+			return false;
+
+		ss << "savetee. ! queue ! ";
+	}
+		
 	// select the decoder
 	if( mOptions.codec == videoOptions::CODEC_H264 )
 		ss << GST_DECODER_H264 << " ! ";

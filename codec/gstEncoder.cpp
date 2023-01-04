@@ -281,6 +281,7 @@ bool gstEncoder::buildCapsStr()
 }
 	
 	
+
 // buildLaunchStr
 bool gstEncoder::buildLaunchStr()
 {
@@ -322,54 +323,20 @@ bool gstEncoder::buildLaunchStr()
 		LogError(LOG_GSTREAMER "                 * mjpeg\n");
 	}
 
+	if( mOptions.save.path.length() > 0 )
+	{
+		ss << "tee name=savetee savetee. ! queue ! ";
+		
+		if( !gst_build_filesink(mOptions.save, mOptions.codec, ss) )
+			return false;
+
+		ss << "savetee. ! queue ! ";
+	}
+	
 	if( uri.protocol == "file" )
 	{
-		if( uri.extension == "mkv" )
-		{
-			ss << "matroskamux ! ";
-		}
-		else if( uri.extension == "flv" )
-		{
-			ss << "flvmux ! ";
-		}
-		else if( uri.extension == "avi" )
-		{
-			if( mOptions.codec == videoOptions::CODEC_H265 || mOptions.codec == videoOptions::CODEC_VP9 )
-			{
-				LogError(LOG_GSTREAMER "gstEncoder -- AVI format doesn't support codec %s\n", videoOptions::CodecToStr(mOptions.codec));
-				LogError(LOG_GSTREAMER "              supported AVI codecs are:\n");
-				LogError(LOG_GSTREAMER "                 * h264\n");
-				LogError(LOG_GSTREAMER "                 * vp8\n");
-				LogError(LOG_GSTREAMER "                 * mjpeg\n");
-
-				return false;
-			}
-
-			ss << "avimux ! ";
-		}
-		else if( uri.extension == "mp4" || uri.extension == "qt" )
-		{
-			if( mOptions.codec == videoOptions::CODEC_H264 )
-				ss << "h264parse ! ";
-			else if( mOptions.codec == videoOptions::CODEC_H265 )
-				ss << "h265parse ! ";
-
-			ss << "qtmux ! ";
-		}
-		else if( uri.extension != "h264" && uri.extension != "h265" )
-		{
-			printf(LOG_GSTREAMER "gstEncoder -- unsupported video file extension (%s)\n", uri.extension.c_str());
-			printf(LOG_GSTREAMER "              supported video extensions are:\n");
-			printf(LOG_GSTREAMER "                 * mkv\n");
-			printf(LOG_GSTREAMER "                 * mp4, qt\n");
-			printf(LOG_GSTREAMER "                 * flv\n");
-			printf(LOG_GSTREAMER "                 * avi\n");
-			printf(LOG_GSTREAMER "                 * h264, h265\n");
-
+		if( !gst_build_filesink(uri, mOptions.codec, ss) )
 			return false;
-		}
-
-		ss << "filesink location=" << uri.location;
 	}
 	else if( uri.protocol == "rtp" || uri.protocol == "rtsp" || uri.protocol == "webrtc" )
 	{

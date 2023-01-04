@@ -366,3 +366,65 @@ gboolean gst_message_print(GstBus* bus, GstMessage* message, gpointer user_data)
 	return TRUE;
 }
 
+
+// gst_build_filesink
+bool gst_build_filesink( const URI& uri, videoOptions::Codec codec, std::ostringstream& pipeline )
+{
+	if( uri.path.length() <= 0 || uri.protocol != "file" )
+	{
+		LogError(LOG_GSTREAMER "invalid file path -- unable to build filesink pipeline\n");
+		return false;
+	}
+	
+	#define ADD_CODEC_PARSER() \
+		if( codec == videoOptions::CODEC_H264 ) \
+			pipeline << "h264parse ! "; \
+		else if( codec == videoOptions::CODEC_H265 ) \
+			pipeline << "h265parse ! ";
+		
+	if( uri.extension == "mkv" )
+	{
+		ADD_CODEC_PARSER();
+		pipeline << "matroskamux ! ";
+	}
+	else if( uri.extension == "flv" )
+	{
+		ADD_CODEC_PARSER();
+		pipeline << "flvmux ! ";
+	}
+	else if( uri.extension == "avi" )
+	{
+		if( codec == videoOptions::CODEC_H265 || codec == videoOptions::CODEC_VP9 )
+		{
+			LogError(LOG_GSTREAMER "AVI format doesn't support codec %s\n", videoOptions::CodecToStr(codec));
+			LogError(LOG_GSTREAMER "supported AVI codecs are:\n");
+			LogError(LOG_GSTREAMER "   * h264\n");
+			LogError(LOG_GSTREAMER "   * vp8\n");
+			LogError(LOG_GSTREAMER "   * mjpeg\n");
+
+			return false;
+		}
+
+		pipeline << "avimux ! ";
+	}
+	else if( uri.extension == "mp4" || uri.extension == "qt" )
+	{
+		ADD_CODEC_PARSER();
+		pipeline << "qtmux ! ";
+	}
+	else if( uri.extension != "h264" && uri.extension != "h265" )
+	{
+		printf(LOG_GSTREAMER "unsupported video file extension (%s)\n", uri.extension.c_str());
+		printf(LOG_GSTREAMER "supported video extensions are:\n");
+		printf(LOG_GSTREAMER "   * mkv\n");
+		printf(LOG_GSTREAMER "   * mp4, qt\n");
+		printf(LOG_GSTREAMER "   * flv\n");
+		printf(LOG_GSTREAMER "   * avi\n");
+		printf(LOG_GSTREAMER "   * h264, h265\n");
+
+		return false;
+	}
+
+	pipeline << "filesink location=" << uri.location << " ";
+	return true;
+}

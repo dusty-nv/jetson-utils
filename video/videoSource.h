@@ -45,6 +45,7 @@
 		  "  --input-width=WIDTH    explicitly request a width of the stream (optional)\n"   	\
 		  "  --input-height=HEIGHT  explicitly request a height of the stream (optional)\n"  	\
 		  "  --input-rate=RATE      explicitly request a framerate of the stream (optional)\n"	\
+		  "  --input-save=FILE      path to video file for saving the input stream to disk\n"	\
 		  "  --input-codec=CODEC    RTP requires the codec to be set, one of these:\n"			\
 		  "                             * h264, h265\n"									\
 		  "                             * vp8, vp9\n"									\
