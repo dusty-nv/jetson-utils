@@ -174,7 +174,12 @@ videoOutput* videoOutput::Create( const commandLine& cmdLine, int positionArg )
 	videoOutput* output = Create(opt);
 	
 	if( !output )
-		return NULL;
+	{
+		if( positionArg >= cmdLine.GetPositionArgs() )
+			return CreateNullOutput();
+		else
+			return NULL;
+	}
 	
 	output = createDisplaySubstream(output, opt, cmdLine);
 	applyDisplayFlags(output, cmdLine);
@@ -201,6 +206,7 @@ videoOutput* videoOutput::CreateNullOutput()
 		return NULL;
 
 	output->mStreaming = true;
+	LogWarning(LOG_VIDEO "no valid output streams, creating fake null output\n");
 	return output;
 }
 	
