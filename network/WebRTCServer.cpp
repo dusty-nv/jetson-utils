@@ -188,7 +188,7 @@ const char* html_viewer = " \n \
     </script> \n \
   </head> \n \
  \n \
-  <body style='background-color:#222222; color:#FFFFFF;'> \n \
+  <body style='background-color:#333333; color:#FFFFFF;'> \n \
     <div> \n \
       <video id='stream' autoplay controls playsinline muted>Your browser does not support video</video> \n \
     </div> \n \
