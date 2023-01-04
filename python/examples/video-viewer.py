@@ -31,19 +31,19 @@ parser = argparse.ArgumentParser(description="View various types of video stream
                                  formatter_class=argparse.RawTextHelpFormatter, 
                                  epilog=videoSource.Usage() + videoOutput.Usage() + Log.Usage())
 
-parser.add_argument("input_URI", type=str, help="URI of the input stream")
-parser.add_argument("output_URI", type=str, default="", nargs='?', help="URI of the output stream")
+parser.add_argument("input", type=str, help="URI of the input stream")
+parser.add_argument("output", type=str, default="", nargs='?', help="URI of the output stream")
 
 try:
-	opt = parser.parse_known_args()[0]
+	args = parser.parse_known_args()[0]
 except:
 	print("")
 	parser.print_help()
 	sys.exit(0)
 
 # create video sources & outputs
-input = videoSource(opt.input_URI, argv=sys.argv)
-output = videoOutput(opt.output_URI, argv=sys.argv)
+input = videoSource(args.input, argv=sys.argv)
+output = videoOutput(args.output, argv=sys.argv)
 
 # capture frames until user exits
 numFrames = 0
@@ -52,7 +52,7 @@ while True:
     image = input.Capture()
 
     if numFrames % 25 == 0 or numFrames < 15:
-        Log.Verbose(f"video-viewer:  captured {numFrames} frames ({image.width} x {image.height}")
+        Log.Verbose(f"video-viewer:  captured {numFrames} frames ({image.width} x {image.height})")
 	
     numFrames += 1
 	
