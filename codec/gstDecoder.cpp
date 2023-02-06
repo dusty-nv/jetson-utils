@@ -639,7 +639,7 @@ bool gstDecoder::buildLaunchStr()
 	if( mCustomSize || mOptions.flipMethod != videoOptions::FLIP_NONE )
 	{
 	#if defined(__aarch64__)
-		ss << "nvvidconv";
+		ss << "nvvidconv name=vidconv";
 
 		if( mOptions.flipMethod != videoOptions::FLIP_NONE )
 			ss << " flip-method=" << (int)mOptions.flipMethod;
@@ -675,7 +675,7 @@ bool gstDecoder::buildLaunchStr()
 	#ifndef ENABLE_NVMM
 		// V4L2 codecs only output NVMM memory
 		// so if NVMM is disabled, put it through nvvidconv first
-		ss << " ! nvvidconv ! video/x-raw";
+		ss << " ! nvvidconv name=vidconv ! video/x-raw";
 	#endif
 	#endif
 	
@@ -818,11 +818,29 @@ void gstDecoder::checkBuffer()
 	}
 #endif
 	
+	const uint32_t width = mOptions.width;
+	const uint32_t height = mOptions.height;
+	
 	// enqueue the buffer for color conversion
 	if( !mBufferManager->Enqueue(gstBuffer, gstCaps) )
 	{
 		LogError(LOG_GSTREAMER "gstDecoder -- failed to handle incoming buffer\n");
 		release_return;
+	}
+	
+	if( (width > 0 && width != mOptions.width) || (height > 0 && height != mOptions.height) )
+	{
+		LogWarning(LOG_GSTREAMER "gstDecoder -- resolution changing from (%ux%u) to (%ux%u)\n", width, height, mOptions.width, mOptions.height);
+		
+		// nvbufsurface: NvBufSurfaceCopy: buffer param mismatch
+		GstElement* vidconv = gst_bin_get_by_name(GST_BIN(mPipeline), "vidconv");
+		
+		if( vidconv != NULL )
+		{
+			gst_element_set_state(vidconv, GST_STATE_NULL);
+			gst_element_set_state(vidconv, GST_STATE_PLAYING);
+			gst_object_unref(vidconv);
+		}
 	}
 	
 	mOptions.frameCount++;

@@ -101,6 +101,13 @@ gstEncoder::~gstEncoder()
 		mWebRTCServer = NULL;
 	}
 	
+	destroyPipeline();
+}
+
+
+// destroyPipeline
+void gstEncoder::destroyPipeline()
+{
 	if( mAppSrc != NULL )
 	{
 		gst_object_unref(mAppSrc);
@@ -115,6 +122,7 @@ gstEncoder::~gstEncoder()
 
 	if( mPipeline != NULL )
 	{
+		gst_element_set_state(mPipeline, GST_STATE_NULL);
 		gst_object_unref(mPipeline);
 		mPipeline = NULL;
 	}
@@ -152,16 +160,9 @@ gstEncoder* gstEncoder::Create( const URI& resource, videoOptions::Codec codec )
 }
 	
 
-// init
-bool gstEncoder::init()
+// initPipeline
+bool gstEncoder::initPipeline()
 {
-	// initialize GStreamer libraries
-	if( !gstreamerInit() )
-	{
-		LogError(LOG_GSTREAMER "failed to initialize gstreamer API\n");
-		return NULL;
-	}
-
 	// check for default codec
 	if( mOptions.codec == videoOptions::CODEC_UNKNOWN )
 	{
@@ -230,6 +231,27 @@ bool gstEncoder::init()
 
 	g_signal_connect(appsrcElement, "need-data", G_CALLBACK(onNeedData), this);
 	g_signal_connect(appsrcElement, "enough-data", G_CALLBACK(onEnoughData), this);
+	
+	return true;
+}
+
+
+// init
+bool gstEncoder::init()
+{
+	// initialize GStreamer libraries
+	if( !gstreamerInit() )
+	{
+		LogError(LOG_GSTREAMER "failed to initialize gstreamer API\n");
+		return NULL;
+	}
+
+	// create GStreamer pipeline
+	if( !initPipeline() )
+	{
+		LogError(LOG_GSTREAMER "failed to create encoder pipeline\n");
+		return NULL;
+	}
 
 	// create servers for RTSP/WebRTC streams
 	if( mOptions.resource.protocol == "rtsp" )
@@ -294,7 +316,7 @@ bool gstEncoder::buildLaunchStr()
 #ifdef GST_CODECS_V4L2
 	// the V4L2 encoders expect NVMM memory, so use nvvidconv to convert it
 	if( mOptions.codec != videoOptions::CODEC_MJPEG )
-		ss << "nvvidconv ! video/x-raw(memory:NVMM) ! ";
+		ss << "nvvidconv name=vidconv ! video/x-raw(memory:NVMM) ! ";
 	
 	// send keyframes/I-frames more frequently for network streams
 	if( mOptions.deviceType == videoOptions::DEVICE_IP )
@@ -303,13 +325,13 @@ bool gstEncoder::buildLaunchStr()
 	
 	// select hardware codec to use
 	if( mOptions.codec == videoOptions::CODEC_H264 )
-		ss << GST_ENCODER_H264 << " bitrate=" << mOptions.bitRate << encoderOptions << " ! video/x-h264 ! ";	// TODO:  investigate quality-level setting
+		ss << GST_ENCODER_H264 << " name=encoder bitrate=" << mOptions.bitRate << encoderOptions << " ! video/x-h264 ! ";	// TODO:  investigate quality-level setting
 	else if( mOptions.codec == videoOptions::CODEC_H265 )
-		ss << GST_ENCODER_H265 << " bitrate=" << mOptions.bitRate << encoderOptions << " ! video/x-h265 ! ";
+		ss << GST_ENCODER_H265 << " name=encoder bitrate=" << mOptions.bitRate << encoderOptions << " ! video/x-h265 ! ";
 	else if( mOptions.codec == videoOptions::CODEC_VP8 )
-		ss << GST_ENCODER_VP8 << " bitrate=" << mOptions.bitRate << encoderOptions << " ! video/x-vp8 ! ";
+		ss << GST_ENCODER_VP8 << " name=encoder bitrate=" << mOptions.bitRate << encoderOptions << " ! video/x-vp8 ! ";
 	else if( mOptions.codec == videoOptions::CODEC_VP9 )
-		ss << GST_ENCODER_VP9 << " bitrate=" << mOptions.bitRate << encoderOptions << " ! video/x-vp9 ! ";
+		ss << GST_ENCODER_VP9 << " name=encoder bitrate=" << mOptions.bitRate << encoderOptions << " ! video/x-vp9 ! ";
 	else if( mOptions.codec == videoOptions::CODEC_MJPEG )
 		ss << GST_ENCODER_MJPEG << " ! image/jpeg ! ";
 	else
@@ -582,7 +604,7 @@ bool gstEncoder::Render( void* image, uint32_t width, uint32_t height, imageForm
 	if( mOptions.width != width || mOptions.height != height )
 	{
 		if( mOptions.width != 0 || mOptions.height != 0 )
-			LogWarning(LOG_GSTREAMER "gstEncoder::Render() -- warning, input dimensions (%ux%u) are different than expected (%ux%u)\n", width, height, mOptions.width, mOptions.height);
+			LogWarning(LOG_GSTREAMER "gstEncoder -- resolution changing from (%ux%u) to (%ux%u)\n", mOptions.width, mOptions.height, width, height);
 		
 		mOptions.width  = width;
 		mOptions.height = height;
@@ -591,7 +613,35 @@ bool gstEncoder::Render( void* image, uint32_t width, uint32_t height, imageForm
 		{
 			gst_object_unref(mBufferCaps);
 			mBufferCaps = NULL;
+			
+			destroyPipeline();
+		
+			mStreaming = false;
+			
+			if( !initPipeline() || !Open() )
+			{
+				LogError(LOG_GSTREAMER "failed to re-initialize encoder with new dimensions (%ux%u)\n", width, height);
+				return false;
+			}
 		}
+		
+		/*// nvbufsurface: NvBufSurfaceCopy: buffer param mismatch
+		GstElement* vidconv = gst_bin_get_by_name(GST_BIN(mPipeline), "vidconv");
+		GstElement* encoder = gst_bin_get_by_name(GST_BIN(mPipeline), "encoder");
+		
+		if( vidconv != NULL && encoder != NULL )
+		{
+			gst_element_set_state(mAppSrc, GST_STATE_NULL);
+			gst_element_set_state(vidconv, GST_STATE_NULL);
+			gst_element_set_state(encoder, GST_STATE_NULL);
+			gst_element_set_state(mAppSrc, GST_STATE_PLAYING);
+			gst_element_set_state(vidconv, GST_STATE_PLAYING);
+			gst_element_set_state(encoder, GST_STATE_PLAYING);
+			gst_object_unref(vidconv);
+			gst_object_unref(encoder);
+			usleep(500*1000);
+			checkMsgBus();
+		}*/
 	}
 
 	// error checking / return

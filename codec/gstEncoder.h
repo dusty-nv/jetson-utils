@@ -134,12 +134,14 @@ protected:
 	gstEncoder( const videoOptions& options );
 	
 	bool init();
-
+	bool initPipeline();
+	void destroyPipeline();
+	
 	void checkMsgBus();
 	bool buildCapsStr();
 	bool buildLaunchStr();
 	bool encodeYUV( void* buffer, size_t size );
-
+	
 	// appsrc callbacks
 	static void onNeedData( GstElement* pipeline, uint32_t size, void* user_data );
 	static void onEnoughData( GstElement* pipeline, void* user_data );
