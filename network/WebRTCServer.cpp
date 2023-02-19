@@ -244,7 +244,7 @@ const char* html_template = " \n \
         if( path == 'null' ) \n \
 	      return; \n \
         if( l.protocol != 'https:' ) { \n \
-	      alert('Unable to use your webcam because HTTPS needs to be enabled'); \n \
+	      alert('Please use HTTPS to enable the use of your browser webcam'); \n \
 		 return; \n \
 	   } \n \
         if( !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia ) { \n \
