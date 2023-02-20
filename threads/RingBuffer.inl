@@ -57,7 +57,7 @@ RingBuffer::~RingBuffer()
 // Alloc
 inline bool RingBuffer::Alloc( uint32_t numBuffers, size_t size, uint32_t flags )
 {
-	if( numBuffers == mNumBuffers && size == mBufferSize && (flags & ZeroCopy) == (mFlags & ZeroCopy) )
+	if( numBuffers == mNumBuffers && size <= mBufferSize && (flags & ZeroCopy) == (mFlags & ZeroCopy) )
 		return true;
 	
 	Free();
