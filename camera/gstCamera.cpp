@@ -230,8 +230,8 @@ bool gstCamera::buildLaunchStr()
 			
 			ss << decoder << " ! "; //ss << "nvjpegdec ! video/x-raw ! "; //ss << "jpegparse ! nvv4l2decoder mjpeg=1 ! video/x-raw(memory:NVMM) ! nvvidconv ! video/x-raw ! "; //
 
-			if( enable_nvmm || mOptions.codecType == videoOptions::CODEC_V4L2 )
-				ss << "video/x-raw(memory:NVMM) ! ";
+			if( (enable_nvmm && mOptions.codecType != videoOptions::CODEC_CPU) || mOptions.codecType == videoOptions::CODEC_V4L2 )
+				ss << "video/x-raw(memory:NVMM) ! ";  // V4L2 codecs can only output NVMM
 			else
 				ss << "video/x-raw ! ";
 		}
@@ -241,8 +241,8 @@ bool gstCamera::buildLaunchStr()
 		// V4L2 decoders can only output NVMM memory, if we aren't using NVMM have nvvidconv convert it 
 		if( mOptions.flipMethod != videoOptions::FLIP_NONE || (mOptions.codecType == videoOptions::CODEC_V4L2 && !enable_nvmm) )
 		{
-			if( enable_nvmm || mOptions.codecType == videoOptions::CODEC_OMX || mOptions.codecType == videoOptions::CODEC_V4L2 )
-				ss << "nvvidconv flip-method=" << mOptions.flipMethod << " ! " << enable_nvmm ? "video/x-raw(memory:NVMM) ! " : "video/x-raw ! ";
+			if( (enable_nvmm && mOptions.codecType != videoOptions::CODEC_CPU) || mOptions.codecType == videoOptions::CODEC_V4L2 )
+				ss << "nvvidconv flip-method=" << mOptions.flipMethod << " ! " << (enable_nvmm ? "video/x-raw(memory:NVMM) ! " : "video/x-raw ! ");
 			else
 				ss << "videoflip method=" << videoOptions::FlipMethodToStr(mOptions.flipMethod) << " ! ";  // the videoflip enum varies slightly, but the strings are the same
 		}

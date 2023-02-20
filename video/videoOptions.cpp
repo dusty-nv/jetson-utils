@@ -371,9 +371,9 @@ const char* videoOptions::FlipMethodToStr( videoOptions::FlipMethod flip )
 		case FLIP_COUNTERCLOCKWISE:		return "counterclockwise";
 		case FLIP_ROTATE_180:			return "rotate-180";
 		case FLIP_CLOCKWISE:			return "clockwise";
-		case FLIP_HORIZONTAL:			return "horizontal";
+		case FLIP_HORIZONTAL:			return "horizontal-flip";
 		case FLIP_UPPER_RIGHT_DIAGONAL:	return "upper-right-diagonal";
-		case FLIP_VERTICAL:				return "vertical";
+		case FLIP_VERTICAL:				return "vertical-flip";
 		case FLIP_UPPER_LEFT_DIAGONAL:	return "upper-left-diagonal";
 	}
 	return nullptr;
@@ -393,6 +393,11 @@ videoOptions::FlipMethod videoOptions::FlipMethodFromStr( const char* str )
 		if( strcasecmp(str, FlipMethodToStr(value)) == 0 )
 			return value;
 	}
+	
+	if( strcasecmp(str, "horizontal") == 0 )
+		return FLIP_HORIZONTAL;
+	else if( strcasecmp(str, "vertical") == 0 )
+		return FLIP_VERTICAL;
 
 	return FLIP_DEFAULT;
 }
