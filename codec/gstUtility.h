@@ -88,7 +88,7 @@ bool gst_build_filesink( const URI& uri, videoOptions::Codec codec, std::ostring
 
 
 #if defined(__aarch64__)
-#if NV_TENSORRT_MAJOR >= 8 && NV_TENSORRT_MINOR >= 4
+#if NV_TENSORRT_MAJOR > 8 || (NV_TENSORRT_MAJOR == 8 && NV_TENSORRT_MINOR >= 4)
 
 /**
  * Use nvv4l2 codecs for JetPack 5 and newer
