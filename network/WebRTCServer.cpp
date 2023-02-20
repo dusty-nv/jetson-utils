@@ -1307,7 +1307,7 @@ void* WebRTCServer::runThread( void* user_data )
 	
 	while( server->mRefCount > 0 )
 	{
-		printf(LOG_WEBRTC "WebRTC processing requests\n");
+		//LogDebug(LOG_WEBRTC "WebRTC processing requests\n");
 		server->ProcessRequests(true);
 	}
 	
