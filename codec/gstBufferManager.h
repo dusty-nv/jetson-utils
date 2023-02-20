@@ -36,15 +36,9 @@
 #if !GST_CHECK_VERSION(1,0,0)
 	#undef ENABLE_NVMM	// NVMM is only enabled for GStreamer 1.0 and newer
 #endif
-
-#ifdef GST_CODECS_V4L2
-	#undef ENABLE_NVMM  // NVMM code having some issues on JetPack 5.x
-#endif
 #endif
 
-//#ifdef ENABLE_NVMM
 #define GST_CAPS_FEATURE_MEMORY_NVMM "memory:NVMM"
-//#endif
 
 
 /**

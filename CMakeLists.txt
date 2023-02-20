@@ -88,6 +88,7 @@ include_directories(${PROJECT_INCLUDE_DIR}/jetson-utils)
 include_directories(/usr/include/gstreamer-1.0 /usr/include/glib-2.0 /usr/include/libxml2 /usr/include/json-glib-1.0 /usr/include/libsoup-2.4 /usr/lib/${CMAKE_SYSTEM_PROCESSOR}-linux-gnu/gstreamer-1.0/include /usr/lib/${CMAKE_SYSTEM_PROCESSOR}-linux-gnu/glib-2.0/include/)
 
 if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64")
+	include_directories(/usr/src/jetson_multimedia_api/include)
 	link_directories(/usr/lib/aarch64-linux-gnu/tegra)
 endif()
 

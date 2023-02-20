@@ -36,7 +36,7 @@
  * @ingroup video
  */
 #define VIDEO_OUTPUT_USAGE_STRING  "videoOutput arguments: \n" 							\
-		  "    output_URI           resource URI of the output stream, for example:\n"		\
+		  "    output               resource URI of the output stream, for example:\n"		\
 		  "                             * file://my_image.jpg       (image file)\n"		\
 		  "                             * file://my_video.mp4       (video file)\n"		\
 		  "                             * file://my_directory/      (directory of images)\n"	\
@@ -49,6 +49,10 @@
 		  "                            * vp8, vp9\n"									\
 		  "                            * mpeg2, mpeg4\n"								\
 		  "                            * mjpeg\n"        								\
+		  "  --output-encoder=TYPE  the encoder engine to use, one of these:\n"              \
+		  "                            * cpu\n"                                              \
+		  "                            * omx  (aarch64/JetPack 4 only)\n"                    \
+		  "                            * v4l2 (aarch64/JetPack 5 only)\n"                    \
 		  "  --output-save=FILE     path to a video file for saving the compressed stream\n" \
 		  "                         to disk, in addition to the primary output above\n"      \
 		  "  --bitrate=BITRATE      desired target VBR bitrate for compressed streams,\n"    \

@@ -193,7 +193,7 @@ public:
 	FlipMethod flipMethod;
 
 	/**
-	 * Video codec types.
+	 * Video codecs.
 	 */
 	enum Codec
 	{
@@ -220,6 +220,27 @@ public:
 	 * the `--output-codec=xyz` command line option (same values for `xyz` as above).
 	 */
 	Codec codec;
+	
+	/**
+	 * Video codec engines.
+	 */
+	enum CodecType
+	{
+		CODEC_CPU = 0,	 /**< CPU-based implementation using libav (e.g. avdec_h264 / x264enc) */
+		CODEC_OMX,	 /**< aarch64 & JetPack 4 only - OMX hardware plugins (e.g. omxh264dec/omxh264enc) */
+		CODEC_V4L2,	 /**< aarch64 & JetPack 5 only - V4L2 hardware plugins (e.g. nvv4l2decoder/nvv4l2h264enc) */
+		CODEC_NVENC,	 /**< x86 only - NVENC hardware plugin (not currently implemented) */
+		CODEC_NVDEC	 /**< x86 only - NVDEC hardware plugin (not currently implemented) */
+	};
+	
+	/**
+	 * Indicates the underlying hardware/software engine used by the codec.
+	 * For input streams, this can be set with `--decode=cpu` or `--decode=v4l2` for example.
+	 * For output streams, this can be set with `--encode=cpu` or `--encode=v4l2` for example.
+	 * The default setting is to use hardware-acceleration on Jetson (aarch64) and CPU on x86.
+	 */
+	CodecType codecType;
+		
 
 	/**
 	 * URL of STUN server used for WebRTC.  This can be set using the `--stun-server` command-line argument.
@@ -310,6 +331,16 @@ public:
 	 * Parse a Codec enum from a string.
 	 */
 	static Codec CodecFromStr( const char* str );
+	
+	/**
+	 * Convert a CodecType enum to a string.
+	 */
+	static const char* CodecTypeToStr( CodecType codecType );
+
+	/**
+	 * Parse a Codec enum from a string.
+	 */
+	static CodecType CodecTypeFromStr( const char* str );
 };
 
 

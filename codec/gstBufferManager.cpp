@@ -29,6 +29,11 @@
 #ifdef ENABLE_NVMM
 #include <nvbuf_utils.h>
 #include <cuda_egl_interop.h>
+#include <NvInfer.h>
+
+#if NV_TENSORRT_MAJOR > 8 || (NV_TENSORRT_MAJOR == 8 && NV_TENSORRT_MINOR >= 4)
+#include <nvbufsurface.h>   // JetPack 5
+#endif
 #endif
 
 
@@ -160,12 +165,17 @@ bool gstBufferManager::Enqueue( GstBuffer* gstBuffer, GstCaps* gstCaps )
 		if( mFrameCount == 0 )
 			LogVerbose(LOG_GSTREAMER "gstBufferManager -- recieved NVMM memory\n");
 	
+	#if NV_TENSORRT_MAJOR > 8 || (NV_TENSORRT_MAJOR == 8 && NV_TENSORRT_MINOR >= 4)
+		NvBufSurface* surf = (NvBufSurface*)map.data;
+		nvmmFD = surf->surfaceList[0].bufferDesc;
+	#else
 		if( ExtractFdFromNvBuffer(map.data, &nvmmFD) != 0 )
 		{
 			LogError(LOG_GSTREAMER "gstBufferManager -- failed to get FD from NVMM memory\n");
 			return false;
 		}
-
+	#endif
+	
 		NvBufferParams nvmmParams;
 	
 		if( NvBufferGetParams(nvmmFD, &nvmmParams) != 0 )

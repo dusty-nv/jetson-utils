@@ -21,6 +21,7 @@
  */
  
 #include "videoOptions.h"
+#include "gstUtility.h"
 
 #include "logging.h"
 #include <strings.h>
@@ -42,6 +43,7 @@ videoOptions::videoOptions()
 	deviceType  = DEVICE_DEFAULT;
 	flipMethod  = FLIP_DEFAULT;
 	codec       = CODEC_UNKNOWN;
+	codecType   = gst_default_codec();
 }
 
 
@@ -65,7 +67,10 @@ void videoOptions::Print( const char* prefix ) const
 		LogInfo("  -- save:       %s\n", save.path.c_str());
 
 	if( deviceType != DEVICE_CSI && deviceType != DEVICE_DISPLAY )
+	{
 		LogInfo("  -- codec:      %s\n", CodecToStr(codec));
+		LogInfo("  -- codecType:  %s\n", CodecTypeToStr(codecType));
+	}
 	
 	if( width != 0 )
 		LogInfo("  -- width:      %u\n", width);
@@ -203,6 +208,13 @@ bool videoOptions::Parse( const char* URI, const commandLine& cmdLine, videoOpti
 	if( codecStr != NULL )	
 		codec = videoOptions::CodecFromStr(codecStr);
 		
+	// codec type
+	const char* codecTypeStr = (type == INPUT) ? cmdLine.GetString("input-decoder")
+								        : cmdLine.GetString("output-encoder");
+									   
+	if( codecTypeStr != NULL )	
+		codecType = videoOptions::CodecTypeFromStr(codecTypeStr);
+	
 	// bitrate
 	if( type == OUTPUT )
 		bitRate = cmdLine.GetUnsignedInt("bitrate", bitRate);
@@ -401,6 +413,7 @@ const char* videoOptions::CodecToStr( videoOptions::Codec codec )
 		case CODEC_MPEG4:	return "MPEG4";
 		case CODEC_MJPEG:	return "MJPEG";
 	}
+	
 	return nullptr;
 }
 
@@ -418,9 +431,42 @@ videoOptions::Codec videoOptions::CodecFromStr( const char* str )
 		if( strcasecmp(str, CodecToStr(value)) == 0 )
 			return value;
 	}
+	
 	return CODEC_UNKNOWN;
 }
 
 
+// CodecTypeToStr
+const char* videoOptions::CodecTypeToStr( videoOptions::CodecType codec )
+{
+	switch(codec)
+	{
+		case CODEC_CPU:   return "cpu";
+		case CODEC_OMX:   return "omx";
+		case CODEC_V4L2:  return "v4l2";
+		case CODEC_NVENC: return "nvenc";
+		case CODEC_NVDEC: return "nvdec";
+	}
+	
+	return nullptr;
+}
+
+
+// CodecFromStr
+videoOptions::CodecType videoOptions::CodecTypeFromStr( const char* str )
+{
+	if( !str )
+		return gst_default_codec();
+
+	for( int n=0; n <= CODEC_NVDEC; n++ )
+	{
+		const CodecType value = (CodecType)n;
+
+		if( strcasecmp(str, CodecTypeToStr(value)) == 0 )
+			return value;
+	}
+	
+	return gst_default_codec();
+}
 
 

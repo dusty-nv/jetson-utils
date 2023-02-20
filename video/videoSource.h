@@ -34,7 +34,7 @@
  * @ingroup video
  */
 #define VIDEO_SOURCE_USAGE_STRING  "videoSource arguments: \n" 								\
-		  "    input_URI            resource URI of the input stream, for example:\n"			\
+		  "    input                resource URI of the input stream, for example:\n"			\
 		  "                             * /dev/video0              (V4L2 camera #0)\n"			\
 		  "                             * csi://0                  (MIPI CSI camera #0)\n"		\
 		  "                             * rtp://@:1234             (RTP stream)\n"				\
@@ -51,6 +51,10 @@
 		  "                             * vp8, vp9\n"									\
 		  "                             * mpeg2, mpeg4\n"									\
 		  "                             * mjpeg\n"        								\
+		  "  --input-decoder=TYPE   the decoder engine to use, one of these:\n"                   \
+		  "                             * cpu\n"                                                  \
+		  "                             * omx  (aarch64/JetPack 4 only)\n"                        \
+		  "                             * v4l2 (aarch64/JetPack 5 only)\n"                        \
 		  "  --input-flip=FLIP      flip method to apply to input:\n" 						\
 		  "                             * none (default)\n" 								\
 		  "                             * counterclockwise\n" 								\

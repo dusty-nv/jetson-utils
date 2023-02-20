@@ -313,28 +313,10 @@ bool gstEncoder::buildLaunchStr()
 	const URI& uri = GetResource();
 	std::string encoderOptions = "";
 
-#ifdef GST_CODECS_V4L2
-	// the V4L2 encoders expect NVMM memory, so use nvvidconv to convert it
-	if( mOptions.codec != videoOptions::CODEC_MJPEG )
-		ss << "nvvidconv name=vidconv ! video/x-raw(memory:NVMM) ! ";
+	// select the encoder
+	const char* encoder = gst_select_encoder(mOptions.codec, mOptions.codecType);
 	
-	// send keyframes/I-frames more frequently for network streams
-	if( mOptions.deviceType == videoOptions::DEVICE_IP )
-		encoderOptions = " idrinterval=30 ";
-#endif
-	
-	// select hardware codec to use
-	if( mOptions.codec == videoOptions::CODEC_H264 )
-		ss << GST_ENCODER_H264 << " name=encoder bitrate=" << mOptions.bitRate << encoderOptions << " ! video/x-h264 ! ";	// TODO:  investigate quality-level setting
-	else if( mOptions.codec == videoOptions::CODEC_H265 )
-		ss << GST_ENCODER_H265 << " name=encoder bitrate=" << mOptions.bitRate << encoderOptions << " ! video/x-h265 ! ";
-	else if( mOptions.codec == videoOptions::CODEC_VP8 )
-		ss << GST_ENCODER_VP8 << " name=encoder bitrate=" << mOptions.bitRate << encoderOptions << " ! video/x-vp8 ! ";
-	else if( mOptions.codec == videoOptions::CODEC_VP9 )
-		ss << GST_ENCODER_VP9 << " name=encoder bitrate=" << mOptions.bitRate << encoderOptions << " ! video/x-vp9 ! ";
-	else if( mOptions.codec == videoOptions::CODEC_MJPEG )
-		ss << GST_ENCODER_MJPEG << " ! image/jpeg ! ";
-	else
+	if( !encoder )
 	{
 		LogError(LOG_GSTREAMER "gstEncoder -- unsupported codec requested (%s)\n", videoOptions::CodecToStr(mOptions.codec));
 		LogError(LOG_GSTREAMER "              supported encoder codecs are:\n");
@@ -343,8 +325,30 @@ bool gstEncoder::buildLaunchStr()
 		LogError(LOG_GSTREAMER "                 * vp8\n");
 		LogError(LOG_GSTREAMER "                 * vp9\n");
 		LogError(LOG_GSTREAMER "                 * mjpeg\n");
+		
+		return false;
 	}
-
+	
+	// the V4L2 encoders expect NVMM memory, so use nvvidconv to convert it
+	if( mOptions.codecType == videoOptions::CODEC_V4L2 && mOptions.codec != videoOptions::CODEC_MJPEG )
+		ss << "nvvidconv name=vidconv ! video/x-raw(memory:NVMM) ! ";
+	
+	// send keyframes/I-frames more frequently for network streams
+	if( mOptions.codecType == videoOptions::CODEC_V4L2 && mOptions.deviceType == videoOptions::DEVICE_IP )
+		encoderOptions = " idrinterval=30 ";
+	
+	// select hardware codec to use
+	if( mOptions.codec == videoOptions::CODEC_H264 )
+		ss << encoder << " name=encoder bitrate=" << mOptions.bitRate << encoderOptions << " ! video/x-h264 ! ";	// TODO:  investigate quality-level setting
+	else if( mOptions.codec == videoOptions::CODEC_H265 )
+		ss << encoder << " name=encoder bitrate=" << mOptions.bitRate << encoderOptions << " ! video/x-h265 ! ";
+	else if( mOptions.codec == videoOptions::CODEC_VP8 )
+		ss << encoder << " name=encoder bitrate=" << mOptions.bitRate << encoderOptions << " ! video/x-vp8 ! ";
+	else if( mOptions.codec == videoOptions::CODEC_VP9 )
+		ss << encoder << " name=encoder bitrate=" << mOptions.bitRate << encoderOptions << " ! video/x-vp9 ! ";
+	else if( mOptions.codec == videoOptions::CODEC_MJPEG )
+		ss << encoder << " ! image/jpeg ! ";
+	
 	if( mOptions.save.path.length() > 0 )
 	{
 		ss << "tee name=savetee savetee. ! queue ! ";

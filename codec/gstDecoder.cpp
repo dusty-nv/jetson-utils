@@ -604,23 +604,16 @@ bool gstDecoder::buildLaunchStr()
 		ss << "savetee. ! queue ! ";
 	}
 		
+	#if defined(ENABLE_NVMM)
+		const bool enable_nvmm = true;
+	#else
+		const bool enable_nvmm = false;
+	#endif
+	
 	// select the decoder
-	if( mOptions.codec == videoOptions::CODEC_H264 )
-		ss << GST_DECODER_H264 << " ! ";
-	else if( mOptions.codec == videoOptions::CODEC_H265 )
-		ss << GST_DECODER_H265 << " ! ";
-	else if( mOptions.codec == videoOptions::CODEC_VP8 )
-		ss << GST_DECODER_VP8 << " ! ";
-	else if( mOptions.codec == videoOptions::CODEC_VP9 )
-		ss << GST_DECODER_VP9 << " ! ";
-	else if( mOptions.codec == videoOptions::CODEC_MPEG2 )
-		ss << GST_DECODER_MPEG2 << " ! ";
-	else if( mOptions.codec == videoOptions::CODEC_MPEG4 )
-		ss << GST_DECODER_MPEG4 << " ! ";
-	else if( mOptions.codec == videoOptions::CODEC_MJPEG )
-		ss << GST_DECODER_MJPEG << " ! ";
-
-	else
+	const char* decoder = gst_select_decoder(mOptions.codec, mOptions.codecType);
+	
+	if( !decoder )
 	{
 		LogError(LOG_GSTREAMER "gstDecoder -- unsupported codec requested (%s)\n", videoOptions::CodecToStr(mOptions.codec));
 		LogError(LOG_GSTREAMER "              supported decoder codecs are:\n");
@@ -631,10 +624,12 @@ bool gstDecoder::buildLaunchStr()
 		LogError(LOG_GSTREAMER "                 * mpeg2\n");
 		LogError(LOG_GSTREAMER "                 * mpeg4\n");
 		LogError(LOG_GSTREAMER "                 * mjpeg\n");
-
+		
 		return false;
 	}
-
+	
+	ss << decoder << " ! ";
+	
 	// resize if requested
 	if( mCustomSize || mOptions.flipMethod != videoOptions::FLIP_NONE )
 	{
@@ -656,10 +651,9 @@ bool gstDecoder::buildLaunchStr()
 		ss << "video/x-raw";
 	#endif
 
-	#ifdef ENABLE_NVMM
-		ss << "(" << GST_CAPS_FEATURE_MEMORY_NVMM << ")";
-	#endif
-	
+		if( enable_nvmm )
+			ss << "(" << GST_CAPS_FEATURE_MEMORY_NVMM << ")";
+
 		if( mOptions.width != 0 && mOptions.height != 0 )
 			ss << ", width=(int)" << mOptions.width << ", height=(int)" << mOptions.height << ", format=(string)NV12";
 
@@ -669,16 +663,17 @@ bool gstDecoder::buildLaunchStr()
 	{
 		ss << "video/x-raw";
 		
-	#if defined(ENABLE_NVMM) || defined(GST_CODECS_V4L2)
-		// add NVMM caps when requested, or if using V4L2 codecs
-		ss << "(" << GST_CAPS_FEATURE_MEMORY_NVMM << ")";
-	#ifndef ENABLE_NVMM
-		// V4L2 codecs only output NVMM memory
-		// so if NVMM is disabled, put it through nvvidconv first
-		ss << " ! nvvidconv name=vidconv ! video/x-raw";
-	#endif
-	#endif
-	
+		if( enable_nvmm || mOptions.codecType == videoOptions::CODEC_V4L2 )
+		{
+			// add NVMM caps when requested, or if using V4L2 codecs
+			ss << "(" << GST_CAPS_FEATURE_MEMORY_NVMM << ")";
+			
+			// V4L2 codecs only output NVMM memory
+			// so if NVMM is disabled, put it through nvvidconv first
+			if( !enable_nvmm )
+				ss << " ! nvvidconv name=vidconv ! video/x-raw";
+		}
+
 		ss << " ! ";
 	}
 
