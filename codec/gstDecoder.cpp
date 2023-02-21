@@ -480,130 +480,6 @@ bool gstDecoder::buildLaunchStr()
 {
 	std::ostringstream ss;
 
-	// determine the requested protocol to use
-	const URI& uri = GetResource();
-
-	if( uri.protocol == "file" )
-	{
-		ss << "filesrc location=" << mOptions.resource.location << " ! ";
-
-		if( uri.extension == "mkv" || uri.extension == "webm" )
-			ss << "matroskademux ! ";
-		else if( uri.extension == "mp4" || uri.extension == "qt" || uri.extension == "mov" )
-			ss << "qtdemux ! ";
-		else if( uri.extension == "flv" )
-			ss << "flvdemux ! ";
-		else if( uri.extension == "avi" )
-			ss << "avidemux ! ";
-		else if( uri.extension != "h264" && uri.extension != "h265" )
-		{
-			LogError(LOG_GSTREAMER "gstDecoder -- unsupported video file extension (%s)\n", uri.extension.c_str());
-			LogError(LOG_GSTREAMER "              supported video extensions are:\n");
-			LogError(LOG_GSTREAMER "                 * mkv, webm\n");
-			LogError(LOG_GSTREAMER "                 * mp4, qt, mov\n");
-			LogError(LOG_GSTREAMER "                 * flv\n");
-			LogError(LOG_GSTREAMER "                 * avi\n");
-			LogError(LOG_GSTREAMER "                 * h264, h265\n");
-
-			return false;
-		}
-
-		ss << "queue ! ";
-		
-		if( mOptions.codec == videoOptions::CODEC_H264 )
-			ss << "h264parse ! ";
-		else if( mOptions.codec == videoOptions::CODEC_H265 )
-			ss << "h265parse ! ";
-		else if( mOptions.codec == videoOptions::CODEC_MPEG2 )
-			ss << "mpegvideoparse ! ";
-		else if( mOptions.codec == videoOptions::CODEC_MPEG4 )
-			ss << "mpeg4videoparse ! ";
-
-		mOptions.deviceType = videoOptions::DEVICE_FILE;
-	}
-	else if( uri.protocol == "rtp" )
-	{
-		if( uri.port <= 0 )
-		{
-			LogError(LOG_GSTREAMER "gstDecoder -- invalid RTP port (%i)\n", uri.port);
-			return false;
-		}
-
-		ss << "udpsrc port=" << uri.port;
-		ss << " multicast-group=" << uri.location << " auto-multicast=true";
-
-		ss << " caps=\"" << "application/x-rtp,media=(string)video,clock-rate=(int)90000,encoding-name=(string)";
-		
-		if( mOptions.codec == videoOptions::CODEC_H264 )
-			ss << "H264\" ! rtph264depay ! h264parse ! ";
-		else if( mOptions.codec == videoOptions::CODEC_H265 )
-			ss << "H265\" ! rtph265depay ! h265parse ! ";
-		else if( mOptions.codec == videoOptions::CODEC_VP8 )
-			ss << "VP8\" ! rtpvp8depay ! ";
-		else if( mOptions.codec == videoOptions::CODEC_VP9 )
-			ss << "VP9\" ! rtpvp9depay ! ";
-		else if( mOptions.codec == videoOptions::CODEC_MPEG2 )
-			ss << "MP2T\" ! rtpmp2tdepay ! ";		// MP2T-ES
-		else if( mOptions.codec == videoOptions::CODEC_MPEG4 )
-			ss << "MP4V-ES\" ! rtpmp4vdepay ! ";	// MPEG4-GENERIC\" ! rtpmp4gdepay
-		else if( mOptions.codec == videoOptions::CODEC_MJPEG )
-			ss << "JPEG\" ! rtpjpegdepay ! ";
-
-		mOptions.deviceType = videoOptions::DEVICE_IP;
-	}
-	else if( uri.protocol == "rtsp" || uri.protocol == "webrtc" )
-	{
-		if( uri.protocol == "rtsp" )
-		{
-			ss << "rtspsrc location=" << uri.string;
-			ss << " latency=" << mOptions.latency;
-			ss << " ! queue ! ";
-		}
-		else
-		{
-			ss << "webrtcbin name=webrtcbin ";
-			ss << "stun-server=stun://" << WEBRTC_DEFAULT_STUN_SERVER;
-			ss << " ! queue ! ";
-		}
-		
-		if( mOptions.codec == videoOptions::CODEC_H264 )
-			ss << "rtph264depay ! h264parse ! ";
-		else if( mOptions.codec == videoOptions::CODEC_H265 )
-			ss << "rtph265depay ! h265parse ! ";
-		else if( mOptions.codec == videoOptions::CODEC_VP8 )
-			ss << "rtpvp8depay ! ";
-		else if( mOptions.codec == videoOptions::CODEC_VP9 )
-			ss << "rtpvp9depay ! ";
-		else if( mOptions.codec == videoOptions::CODEC_MPEG2 )
-			ss << "rtpmp2tdepay ! ";		// MP2T-ES
-		else if( mOptions.codec == videoOptions::CODEC_MPEG4 )
-			ss << "rtpmp4vdepay ! ";	// rtpmp4gdepay
-		else if( mOptions.codec == videoOptions::CODEC_MJPEG )
-			ss << "rtpjpegdepay ! ";
-
-		mOptions.deviceType = videoOptions::DEVICE_IP;
-	}
-	else
-	{
-		LogError(LOG_GSTREAMER "gstDecoder -- unsupported protocol (%s)\n", uri.protocol.c_str());
-		LogError(LOG_GSTREAMER "              supported protocols are:\n");
-		LogError(LOG_GSTREAMER "                 * file://\n");
-		LogError(LOG_GSTREAMER "                 * rtp://\n");
-		LogError(LOG_GSTREAMER "                 * rtsp://\n");
-
-		return false;
-	}
-
-	if( mOptions.save.path.length() > 0 )
-	{
-		ss << "tee name=savetee savetee. ! queue ! ";
-		
-		if( !gst_build_filesink(mOptions.save, mOptions.codec, ss) )
-			return false;
-
-		ss << "savetee. ! queue ! ";
-	}
-		
 	#if defined(ENABLE_NVMM)
 		const bool enable_nvmm = true;
 	#else
@@ -628,6 +504,140 @@ bool gstDecoder::buildLaunchStr()
 		return false;
 	}
 	
+	// select the parser (if needed)
+	const char* parser = "";
+
+	if( mOptions.codec == videoOptions::CODEC_H264 )
+		parser = "h264parse ! ";
+	else if( mOptions.codec == videoOptions::CODEC_H265 )
+		parser = "h265parse ! ";
+	else if( mOptions.codec == videoOptions::CODEC_MPEG2 )
+		parser = "mpegvideoparse ! ";
+	else if( mOptions.codec == videoOptions::CODEC_MPEG4 )
+		parser = "mpeg4videoparse ! ";
+
+	// determine the requested protocol to use
+	const URI& uri = GetResource();
+
+	if( uri.protocol == "file" )
+	{
+		mOptions.deviceType = videoOptions::DEVICE_FILE;
+		
+		ss << "filesrc location=" << mOptions.resource.location << " ! ";
+
+		if( uri.extension == "mkv" || uri.extension == "webm" )
+			ss << "matroskademux ! ";
+		else if( uri.extension == "mp4" || uri.extension == "qt" || uri.extension == "mov" )
+			ss << "qtdemux ! ";
+		else if( uri.extension == "flv" )
+			ss << "flvdemux ! ";
+		else if( uri.extension == "avi" )
+			ss << "avidemux ! ";
+		else if( uri.extension != "h264" && uri.extension != "h265" )
+		{
+			LogError(LOG_GSTREAMER "gstDecoder -- unsupported video file extension (%s)\n", uri.extension.c_str());
+			LogError(LOG_GSTREAMER "              supported video extensions are:\n");
+			LogError(LOG_GSTREAMER "                 * mkv, webm\n");
+			LogError(LOG_GSTREAMER "                 * mp4, qt, mov\n");
+			LogError(LOG_GSTREAMER "                 * flv\n");
+			LogError(LOG_GSTREAMER "                 * avi\n");
+			LogError(LOG_GSTREAMER "                 * h264, h265\n");
+
+			return false;
+		}
+
+		ss << "queue ! " << parser;
+	}
+	else if( uri.protocol == "rtp" )
+	{
+		mOptions.deviceType = videoOptions::DEVICE_IP;
+				
+		if( uri.port <= 0 )
+		{
+			LogError(LOG_GSTREAMER "gstDecoder -- invalid RTP port (%i)\n", uri.port);
+			return false;
+		}
+
+		ss << "udpsrc port=" << uri.port;
+		ss << " multicast-group=" << uri.location << " auto-multicast=true";
+
+		ss << " caps=\"" << "application/x-rtp,media=(string)video,clock-rate=(int)90000,encoding-name=(string)";
+		
+		if( mOptions.codec == videoOptions::CODEC_H264 )
+			ss << "H264\" ! rtph264depay ! ";
+		else if( mOptions.codec == videoOptions::CODEC_H265 )
+			ss << "H265\" ! rtph265depay ! ";
+		else if( mOptions.codec == videoOptions::CODEC_VP8 )
+			ss << "VP8\" ! rtpvp8depay ! ";
+		else if( mOptions.codec == videoOptions::CODEC_VP9 )
+			ss << "VP9\" ! rtpvp9depay ! ";
+		else if( mOptions.codec == videoOptions::CODEC_MPEG2 )
+			ss << "MP2T\" ! rtpmp2tdepay ! ";		// MP2T-ES
+		else if( mOptions.codec == videoOptions::CODEC_MPEG4 )
+			ss << "MP4V-ES\" ! rtpmp4vdepay ! ";	// MPEG4-GENERIC\" ! rtpmp4gdepay
+		else if( mOptions.codec == videoOptions::CODEC_MJPEG )
+			ss << "JPEG\" ! rtpjpegdepay ! ";
+
+		if( mOptions.codecType != videoOptions::CODEC_V4L2 )
+			ss << parser;
+	}
+	else if( uri.protocol == "rtsp" || uri.protocol == "webrtc" )
+	{
+		mOptions.deviceType = videoOptions::DEVICE_IP;
+		
+		if( uri.protocol == "rtsp" )
+		{
+			ss << "rtspsrc location=" << uri.string;
+			ss << " latency=" << mOptions.latency;
+			ss << " ! queue ! ";
+		}
+		else
+		{
+			ss << "webrtcbin name=webrtcbin ";
+			ss << "stun-server=stun://" << WEBRTC_DEFAULT_STUN_SERVER;
+			ss << " ! queue ! ";
+		}
+		
+		if( mOptions.codec == videoOptions::CODEC_H264 )
+			ss << "rtph264depay ! ";
+		else if( mOptions.codec == videoOptions::CODEC_H265 )
+			ss << "rtph265depay ! ";
+		else if( mOptions.codec == videoOptions::CODEC_VP8 )
+			ss << "rtpvp8depay ! ";
+		else if( mOptions.codec == videoOptions::CODEC_VP9 )
+			ss << "rtpvp9depay ! ";
+		else if( mOptions.codec == videoOptions::CODEC_MPEG2 )
+			ss << "rtpmp2tdepay ! ";		// MP2T-ES
+		else if( mOptions.codec == videoOptions::CODEC_MPEG4 )
+			ss << "rtpmp4vdepay ! ";	// rtpmp4gdepay
+		else if( mOptions.codec == videoOptions::CODEC_MJPEG )
+			ss << "rtpjpegdepay ! ";
+
+		if( mOptions.codecType != videoOptions::CODEC_V4L2 )
+			ss << parser;
+	}
+	else
+	{
+		LogError(LOG_GSTREAMER "gstDecoder -- unsupported protocol (%s)\n", uri.protocol.c_str());
+		LogError(LOG_GSTREAMER "              supported protocols are:\n");
+		LogError(LOG_GSTREAMER "                 * file://\n");
+		LogError(LOG_GSTREAMER "                 * rtp://\n");
+		LogError(LOG_GSTREAMER "                 * rtsp://\n");
+		LogError(LOG_GSTREAMER "                 * webrtc://\n");
+
+		return false;
+	}
+
+	if( mOptions.save.path.length() > 0 )
+	{
+		ss << "tee name=savetee savetee. ! queue ! ";
+		
+		if( !gst_build_filesink(mOptions.save, mOptions.codec, ss) )
+			return false;
+
+		ss << "savetee. ! queue ! ";
+	}
+		
 	ss << decoder << " ! ";
 	
 	// resize if requested
