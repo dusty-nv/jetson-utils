@@ -166,7 +166,7 @@ bool gstCamera::buildLaunchStr()
 		ss << "nvcamerasrc fpsRange=\"" << (int)mOptions.frameRate << " " << (int)mOptions.frameRate << "\" ! video/x-raw(memory:NVMM), width=(int)" << GetWidth() << ", height=(int)" << GetHeight() << ", format=(string)NV12 ! nvvidconv flip-method=" << mOptions.flipMethod << " ! "; //'video/x-raw(memory:NVMM), width=(int)1920, height=(int)1080, format=(string)I420, framerate=(fraction)30/1' ! ";
 	#endif
 	
-		ss << enable_nvmm ? "video/x-raw(memory:NVMM) ! " : "video/x-raw ! "; 
+		ss << (enable_nvmm ? "video/x-raw(memory:NVMM) ! " : "video/x-raw ! "); 
 		ss << "appsink name=mysink";
 	}
 	else
@@ -217,7 +217,6 @@ bool gstCamera::buildLaunchStr()
 		{
 			if( mOptions.codecType != videoOptions::CODEC_V4L2 )
 			{
-				// these parsers cause problems with the V4L2 decoders
 				if( mOptions.codec == videoOptions::CODEC_H264 )
 					ss << "h264parse ! ";  
 				else if( mOptions.codec == videoOptions::CODEC_H265 )
