@@ -249,7 +249,7 @@ bool gstCamera::buildLaunchStr()
 		if( mOptions.flipMethod != videoOptions::FLIP_NONE )
 			ss << "videoflip method=" << videoOptions::FlipMethodToStr(mOptions.flipMethod) << " ! ";
 	#endif
-		ss << "appsink name=mysink";
+		ss << "appsink name=mysink sync=false";
 	}
 	
 	mLaunchStr = ss.str();
