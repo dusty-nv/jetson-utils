@@ -333,21 +333,53 @@ bool gstEncoder::buildLaunchStr()
 	if( mOptions.codecType == videoOptions::CODEC_V4L2 && mOptions.codec != videoOptions::CODEC_MJPEG )
 		ss << "nvvidconv name=vidconv ! video/x-raw(memory:NVMM) ! ";
 	
-	// send keyframes/I-frames more frequently for network streams
-	if( mOptions.codecType == videoOptions::CODEC_V4L2 && mOptions.deviceType == videoOptions::DEVICE_IP )
-		encoderOptions = " idrinterval=30 ";
+	// setup the encoder and options
+	ss << encoder << " name=encoder ";
 	
-	// select hardware codec to use
+	if( mOptions.codecType == videoOptions::CODEC_CPU )
+	{
+		if( mOptions.codec == videoOptions::CODEC_H264 || mOptions.codec == videoOptions::CODEC_H265 )
+		{
+			ss << "bitrate=" << mOptions.bitRate / 1000 << " ";	// x264enc/x265enc bitrates are in kbits
+			ss << "speed-preset=ultrafast tune=zerolatency ";
+			
+			if( mOptions.deviceType == videoOptions::DEVICE_IP )
+				ss << "key-int-max=30 insert-vui=1 ";			// send keyframes/I-frames more frequently for network streams
+		}
+		else if( mOptions.codec == videoOptions::CODEC_VP8 || mOptions.codec == videoOptions::CODEC_VP9 )
+		{
+			ss << "target-bitrate=" << mOptions.bitRate << " ";
+			
+			if( mOptions.deviceType == videoOptions::DEVICE_IP )
+				ss << "keyframe-max-dist=30 ";
+		}
+	}
+	else if( mOptions.codec != videoOptions::CODEC_MJPEG )
+	{
+		ss << "bitrate=" << mOptions.bitRate << " ";
+		
+		if( mOptions.deviceType == videoOptions::DEVICE_IP )
+		{
+			if( mOptions.codecType == videoOptions::CODEC_V4L2 )
+				ss << "insert-sps-pps=1 insert-vui=1 idrinterval=30 ";
+			else if( mOptions.codecType == videoOptions::CODEC_OMX )
+				ss << "insert-sps-pps=1 insert-vui=1 ";
+		}
+		
+		if( mOptions.codecType == videoOptions::CODEC_V4L2 )
+			ss << "maxperf-enable=1 ";
+	}
+
 	if( mOptions.codec == videoOptions::CODEC_H264 )
-		ss << encoder << " name=encoder bitrate=" << mOptions.bitRate << encoderOptions << " ! video/x-h264 ! ";	// TODO:  investigate quality-level setting
+		ss << "! video/x-h264 ! ";
 	else if( mOptions.codec == videoOptions::CODEC_H265 )
-		ss << encoder << " name=encoder bitrate=" << mOptions.bitRate << encoderOptions << " ! video/x-h265 ! ";
+		ss << "! video/x-h265 ! ";
 	else if( mOptions.codec == videoOptions::CODEC_VP8 )
-		ss << encoder << " name=encoder bitrate=" << mOptions.bitRate << encoderOptions << " ! video/x-vp8 ! ";
+		ss << "! video/x-vp8 ! ";
 	else if( mOptions.codec == videoOptions::CODEC_VP9 )
-		ss << encoder << " name=encoder bitrate=" << mOptions.bitRate << encoderOptions << " ! video/x-vp9 ! ";
+		ss << "! video/x-vp9 ! ";
 	else if( mOptions.codec == videoOptions::CODEC_MJPEG )
-		ss << encoder << " ! image/jpeg ! ";
+		ss << "! image/jpeg ! ";
 	
 	if( mOptions.save.path.length() > 0 )
 	{
