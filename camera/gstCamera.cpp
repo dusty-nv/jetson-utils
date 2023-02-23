@@ -226,9 +226,14 @@ bool gstCamera::buildLaunchStr()
 				else if( mOptions.codec == videoOptions::CODEC_MPEG4 )
 					ss << "mpeg4videoparse ! ";
 			}
-			
-			ss << decoder << " ! "; //ss << "nvjpegdec ! video/x-raw ! "; //ss << "jpegparse ! nvv4l2decoder mjpeg=1 ! video/x-raw(memory:NVMM) ! nvvidconv ! video/x-raw ! "; //
 
+			ss << decoder << " name=decoder ";  //ss << "nvjpegdec ! video/x-raw ! "; //ss << "jpegparse ! nvv4l2decoder mjpeg=1 ! video/x-raw(memory:NVMM) ! nvvidconv ! video/x-raw ! "; //
+	
+			if( mOptions.codecType == videoOptions::CODEC_V4L2 && mOptions.codec != videoOptions::CODEC_MJPEG )
+				ss << "enable-max-performance=1 ";
+			
+			ss << "! ";
+	
 			if( (enable_nvmm && mOptions.codecType != videoOptions::CODEC_CPU) || mOptions.codecType == videoOptions::CODEC_V4L2 )
 				ss << "video/x-raw(memory:NVMM) ! ";  // V4L2 codecs can only output NVMM
 			else
