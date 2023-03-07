@@ -119,6 +119,15 @@ gstDecoder::~gstDecoder()
 		mWebRTCServer = NULL;
 	}
 	
+	destroyPipeline();
+	
+	SAFE_DELETE(mBufferManager);
+}
+
+
+// destroyPipeline
+void gstDecoder::destroyPipeline()
+{
 	if( mAppSink != NULL )
 	{
 		gst_object_unref(mAppSink);
@@ -133,11 +142,14 @@ gstDecoder::~gstDecoder()
 
 	if( mPipeline != NULL )
 	{
+		gst_element_set_state(mPipeline, GST_STATE_NULL);
 		gst_object_unref(mPipeline);
 		mPipeline = NULL;
 	}
 	
-	SAFE_DELETE(mBufferManager);
+	mEOS = false;
+	mStreaming = false;
+	mWebRTCConnected = false;
 }
 
 
@@ -175,8 +187,6 @@ gstDecoder* gstDecoder::Create( const URI& resource, videoOptions::Codec codec )
 // init
 bool gstDecoder::init()
 {
-	GError* err  = NULL;
-	
 	if( !gstreamerInit() )
 	{
 		LogError(LOG_GSTREAMER "failed to initialize gstreamer API\n");
@@ -233,6 +243,33 @@ bool gstDecoder::init()
 	}
 
 	// create pipeline
+	if( !initPipeline() )
+	{
+		LogError(LOG_GSTREAMER "failed to create decoder pipeline\n");
+		return false;
+	}
+	
+	// create server for WebRTC streams
+	if( mOptions.resource.protocol == "webrtc" )
+	{
+		// create WebRTC server
+		mWebRTCServer = WebRTCServer::Create(mOptions.resource.port, mOptions.stunServer.c_str(),
+									  mOptions.sslCert.c_str(), mOptions.sslKey.c_str());
+		
+		if( !mWebRTCServer )
+			return false;
+		
+		mWebRTCServer->AddRoute(mOptions.resource.path.c_str(), onWebsocketMessage, this, WEBRTC_VIDEO|WEBRTC_RECEIVE|WEBRTC_PUBLIC);
+	}	
+	
+	return true;
+}
+
+
+// initPipeline
+bool gstDecoder::initPipeline()
+{
+	GError* err = NULL;
 	mPipeline = gst_parse_launch(mLaunchStr.c_str(), &err);
 
 	if( err != NULL )
@@ -252,7 +289,7 @@ bool gstDecoder::init()
 	}	
 
 	// retrieve pipeline bus
-	/*GstBus**/ mBus = gst_pipeline_get_bus(pipeline);
+	mBus = gst_pipeline_get_bus(pipeline);
 
 	if( !mBus )
 	{
@@ -288,24 +325,10 @@ bool gstDecoder::init()
 #endif
 	
 	gst_app_sink_set_callbacks(mAppSink, &cb, (void*)this, NULL);
-	
-	// create server for WebRTC streams
-	if( mOptions.resource.protocol == "webrtc" )
-	{
-		// create WebRTC server
-		mWebRTCServer = WebRTCServer::Create(mOptions.resource.port, mOptions.stunServer.c_str(),
-									  mOptions.sslCert.c_str(), mOptions.sslKey.c_str());
-		
-		if( !mWebRTCServer )
-			return false;
-		
-		mWebRTCServer->AddRoute(mOptions.resource.path.c_str(), onWebsocketMessage, this, WEBRTC_VIDEO|WEBRTC_RECEIVE|WEBRTC_PUBLIC);
-	}	
-	
 	return true;
 }
 
-
+	
 // findVideoStreamInfo
 static GstDiscovererVideoInfo* findVideoStreamInfo( GstDiscovererStreamInfo* info )
 {
@@ -1094,7 +1117,8 @@ void gstDecoder::onWebsocketMessage( WebRTCPeer* peer, const char* message, size
 	else if( peer->flags & WEBRTC_PEER_CLOSED )
 	{
 		LogVerbose(LOG_WEBRTC "WebRTC peer disconnected (%s, peer_id=%u)\n", peer->ip_address.c_str(), peer->ID);
-		
+
+		// release the webrtc peer context
 		if( peer_context != NULL )
 		{
 			if( peer_context->webrtcbin != NULL )
@@ -1104,7 +1128,15 @@ void gstDecoder::onWebsocketMessage( WebRTCPeer* peer, const char* message, size
 			peer->user_data = NULL;
 		}
 
-		decoder->mWebRTCConnected = false;		
+		// close and re-init the pipeline, as webrtcbin doesn't like to reconnect in rx mode...
+		decoder->destroyPipeline();
+		
+		if( !decoder->initPipeline() )
+		{
+			LogError(LOG_GSTREAMER "failed to re-initialize decoder pipeline\n");
+			return;
+		}
+		
 		return;
 	}
 	

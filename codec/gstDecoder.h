@@ -136,9 +136,11 @@ protected:
 	void checkMsgBus();
 	void checkBuffer();
 	bool buildLaunchStr();
+	bool discover();
 	
 	bool init();
-	bool discover();
+	bool initPipeline();
+	void destroyPipeline();
 	
 	inline bool isLooping() const { return (mOptions.loop < 0) || ((mOptions.loop > 0) && (mLoopCount < mOptions.loop)); }
 
