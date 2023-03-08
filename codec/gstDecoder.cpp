@@ -901,12 +901,19 @@ bool gstDecoder::Capture( void** output, imageFormat format, uint64_t timeout )
 	}
 
 	// wait until a new frame is recieved
-	if( !mBufferManager->Dequeue(output, format, timeout) )
+	const int result = mBufferManager->Dequeue(output, format, timeout);
+	
+	if( result < 0 )
 	{
-		LogError(LOG_GSTREAMER "gstDecoder -- failed to retrieve next image buffer\n");
+		LogError(LOG_GSTREAMER "gstDecoder::Capture() -- an error occurred retrieving the next image buffer\n");
 		return false;
 	}
-	
+	else if( result == 0 )
+	{
+		LogWarning(LOG_GSTREAMER "gstDecoder::Capture() -- a timeout occurred waiting for the next image buffer\n");
+		return false;
+	}
+		
 	mLastTimestamp = mBufferManager->GetLastTimestamp();
 	mRawFormat = mBufferManager->GetRawFormat();
 	

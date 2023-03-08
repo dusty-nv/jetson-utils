@@ -296,11 +296,11 @@ bool gstBufferManager::Enqueue( GstBuffer* gstBuffer, GstCaps* gstCaps )
 
 
 // Dequeue
-bool gstBufferManager::Dequeue( void** output, imageFormat format, uint64_t timeout )
+int gstBufferManager::Dequeue( void** output, imageFormat format, uint64_t timeout )
 {
 	// wait until a new frame is recieved
 	if( !mWaitEvent.Wait(timeout) )
-		return false;
+		return 0;
 
 	void* latestYUV = NULL;
 	
@@ -320,17 +320,17 @@ bool gstBufferManager::Dequeue( void** output, imageFormat format, uint64_t time
 		mNvmmMutex.Unlock();
 		
 		if( !eglImage )
-			return NULL;
+			return -1;
 		
 		// map EGLImage into CUDA array
 		cudaGraphicsResource* eglResource = NULL;
 		cudaEglFrame eglFrame;
 		
 		if( CUDA_FAILED(cudaGraphicsEGLRegisterImage(&eglResource, eglImage, cudaGraphicsRegisterFlagsReadOnly)) )
-			return false;
+			return -1;
 		
 		if( CUDA_FAILED(cudaGraphicsResourceGetMappedEglFrame(&eglFrame, eglResource, 0, 0)) )
-			return false;
+			return -1;
 
 		if( eglFrame.planeCount != 2 )
 			LogWarning(LOG_GSTREAMER "gstBufferManager -- unexpected number of planes in NVMM buffer (%u vs 2 expected)\n", eglFrame.planeCount);
@@ -338,13 +338,13 @@ bool gstBufferManager::Dequeue( void** output, imageFormat format, uint64_t time
 		if( eglFrame.planeDesc[0].width != mOptions->width || eglFrame.planeDesc[0].height != mOptions->height )
 		{
 			LogError(LOG_GSTREAMER "gstBufferManager -- NVMM EGLImage dimensions mismatch (%ux%u when expected %ux%u)", eglFrame.planeDesc[0].width, eglFrame.planeDesc[0].height, mOptions->width, mOptions->height);
-			return false;
+			return -1;
 		}
 		
 		if( eglFrame.frameType != cudaEglFrameTypeArray )  // cudaEglFrameTypePitch
 		{
 			LogError(LOG_GSTREAMER "gstBufferManager -- NVMM had unexpected frame type (was pitched pointer, expected CUDA array)\n");
-			return false;
+			return -1;
 		}
 		
 		// NV12 buffers have multiple planes (Y @ full res and UV @ half res)
@@ -378,7 +378,7 @@ bool gstBufferManager::Dequeue( void** output, imageFormat format, uint64_t time
 			CUDA_FREE(mNvmmCUDA);
 			
 			if( CUDA_FAILED(cudaMalloc(&mNvmmCUDA, sizeYUV)) )
-				return false;
+				return -1;
 		}
 		
 		// copy arrays into linear memory (so our CUDA kernels can use it)
@@ -387,7 +387,7 @@ bool gstBufferManager::Dequeue( void** output, imageFormat format, uint64_t time
 		for( uint32_t n=0; n < eglFrame.planeCount && n < maxPlanes; n++ )
 		{
 			if( CUDA_FAILED(cudaMemcpy2DFromArrayAsync(((uint8_t*)mNvmmCUDA) + planeOffset, planePitch[n], eglFrame.frame.pArray[n], 0, 0, planePitch[n], eglFrame.planeDesc[n].height, cudaMemcpyDeviceToDevice)) )
-				return false;
+				return -1;
 		
 			planeOffset += planeSize[n];
 		}
@@ -407,7 +407,7 @@ bool gstBufferManager::Dequeue( void** output, imageFormat format, uint64_t time
 		latestYUV = mBufferYUV.Next(RingBuffer::ReadLatestOnce);
 
 	if( !latestYUV )
-		return false;
+		return -1;
 
 	// handle timestamp (both paths)
 	void* pLastTimestamp = NULL;
@@ -427,7 +427,7 @@ bool gstBufferManager::Dequeue( void** output, imageFormat format, uint64_t time
 	if ( format == IMAGE_UNKNOWN )
 	{
 		*output = latestYUV;
-		return true;
+		return 1;
 	}
 
 	// allocate ringbuffer for colorspace conversion
@@ -436,7 +436,7 @@ bool gstBufferManager::Dequeue( void** output, imageFormat format, uint64_t time
 	if( !mBufferRGB.Alloc(mOptions->numBuffers, rgbBufferSize, mOptions->zeroCopy ? RingBuffer::ZeroCopy : 0) )
 	{
 		LogError(LOG_GSTREAMER "gstBufferManager -- failed to allocate %u buffers (%zu bytes each)\n", mOptions->numBuffers, rgbBufferSize);
-		return false;
+		return -1;
 	}
 
 	// perform colorspace conversion
@@ -451,10 +451,10 @@ bool gstBufferManager::Dequeue( void** output, imageFormat format, uint64_t time
 		LogError(LOG_GSTREAMER "                       * rgb32f\n");		
 		LogError(LOG_GSTREAMER "                       * rgba32f\n");
 
-		return false;
+		return -1;
 	}
 
 	*output = nextRGB;
-	return true;
+	return 1;
 }
 

@@ -77,9 +77,9 @@ public:
 	bool Enqueue( GstBuffer* buffer, GstCaps* caps );
 	
 	/**
-	 * Dequeue the next frame.
+	 * Dequeue the next frame.  Returns 1 on success, 0 on timeout, -1 on error.
 	 */
-	bool Dequeue( void** output, imageFormat format, uint64_t timeout=UINT64_MAX );
+	int Dequeue( void** output, imageFormat format, uint64_t timeout=UINT64_MAX );
 
 	/**
 	 * Get timestamp of the latest dequeued frame.
