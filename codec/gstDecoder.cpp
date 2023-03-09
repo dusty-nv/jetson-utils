@@ -882,8 +882,11 @@ void gstDecoder::checkBuffer()
 }
 
 
+#define RETURN_STATUS(code)  { if( status != NULL ) { *status=(code); } return ((code) == videoSource::OK ? true : false); }
+
+
 // Capture
-bool gstDecoder::Capture( void** output, imageFormat format, uint64_t timeout )
+bool gstDecoder::Capture( void** output, imageFormat format, uint64_t timeout, int* status )
 {
 	// update the webrtc server if needed
 	if( mWebRTCServer != NULL && !mWebRTCServer->IsThreaded() )
@@ -891,13 +894,13 @@ bool gstDecoder::Capture( void** output, imageFormat format, uint64_t timeout )
 	
 	// verify the output pointer exists
 	if( !output )
-		return false;
+		RETURN_STATUS(ERROR);
 
 	// confirm the stream is open
 	if( !mStreaming || mEOS )
 	{
 		if( !Open() )
-			return false;
+			RETURN_STATUS(mEOS ? EOS : ERROR);
 	}
 
 	// wait until a new frame is recieved
@@ -906,18 +909,18 @@ bool gstDecoder::Capture( void** output, imageFormat format, uint64_t timeout )
 	if( result < 0 )
 	{
 		LogError(LOG_GSTREAMER "gstDecoder::Capture() -- an error occurred retrieving the next image buffer\n");
-		return false;
+		RETURN_STATUS(ERROR);
 	}
 	else if( result == 0 )
 	{
 		LogWarning(LOG_GSTREAMER "gstDecoder::Capture() -- a timeout occurred waiting for the next image buffer\n");
-		return false;
+		RETURN_STATUS(TIMEOUT);
 	}
 		
 	mLastTimestamp = mBufferManager->GetLastTimestamp();
 	mRawFormat = mBufferManager->GetRawFormat();
 	
-	return true;
+	RETURN_STATUS(OK);
 }
 
 #if 0

@@ -674,18 +674,21 @@ void gstCamera::checkBuffer()
 }
 
 
+#define RETURN_STATUS(code)  { if( status != NULL ) { *status=(code); } return ((code) == videoSource::OK ? true : false); }
+
+
 // Capture
-bool gstCamera::Capture( void** output, imageFormat format, uint64_t timeout )
+bool gstCamera::Capture( void** output, imageFormat format, uint64_t timeout, int* status )
 {
 	// verify the output pointer exists
 	if( !output )
-		return false;
+		RETURN_STATUS(ERROR);
 
 	// confirm the camera is streaming
 	if( !mStreaming )
 	{
 		if( !Open() )
-			return false;
+			RETURN_STATUS(ERROR);
 	}
 
 	// wait until a new frame is recieved
@@ -694,18 +697,18 @@ bool gstCamera::Capture( void** output, imageFormat format, uint64_t timeout )
 	if( result < 0 )
 	{
 		LogError(LOG_GSTREAMER "gstCamera::Capture() -- an error occurred retrieving the next image buffer\n");
-		return false;
+		RETURN_STATUS(ERROR);
 	}
 	else if( result == 0 )
 	{
 		LogWarning(LOG_GSTREAMER "gstCamera::Capture() -- a timeout occurred waiting for the next image buffer\n");
-		return false;
+		RETURN_STATUS(TIMEOUT);
 	}
 
 	mLastTimestamp = mBufferManager->GetLastTimestamp();
 	mRawFormat = mBufferManager->GetRawFormat();
 
-	return true;
+	RETURN_STATUS(OK);
 }
 
 // CaptureRGBA

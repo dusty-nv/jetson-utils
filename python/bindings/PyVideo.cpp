@@ -280,20 +280,24 @@ static PyObject* PyVideoSource_Capture( PyVideoSource_Object* self, PyObject* ar
 	
 	// capture image
 	void* ptr = NULL;
+	int status = 0;
 	bool result = false;
 	
 	Py_BEGIN_ALLOW_THREADS
-	result = self->source->Capture(&ptr, format, timeout);
+	result = self->source->Capture(&ptr, format, timeout, &status);
 	Py_END_ALLOW_THREADS
 	
 	if( !result )
 	{
+		if( status == videoSource::TIMEOUT )
+			Py_RETURN_NONE;
+		
 		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "videoSource failed to capture image");
 		return NULL;
 	}
 
 	// expect raw image if conversion format is unknown
-	if (format == IMAGE_UNKNOWN)
+	if( format == IMAGE_UNKNOWN )
 	{
 		// register memory capsule (videoSource will free the underlying memory when source is deleted)
 		return PyCUDA_RegisterImage(ptr, self->source->GetWidth(), self->source->GetHeight(), self->source->GetRawFormat(), self->source->GetLastTimestamp(), self->source->GetOptions().zeroCopy, false);

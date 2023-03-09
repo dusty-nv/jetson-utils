@@ -135,13 +135,7 @@ public:
 	 * Capture the next image frame from the camera.
 	 * @see videoSource::Capture
 	 */
-	template<typename T> bool Capture( T** image, uint64_t timeout=DEFAULT_TIMEOUT )		{ return Capture((void**)image, imageFormatFromType<T>(), timeout); }
-	
-	/**
-	 * Capture the next image frame from the camera.
-	 * @see videoSource::Capture
-	 */
-	virtual bool Capture( void** image, imageFormat format, uint64_t timeout=DEFAULT_TIMEOUT );
+	virtual bool Capture( void** image, imageFormat format, uint64_t timeout=DEFAULT_TIMEOUT, int* status=NULL );
 
 	/**
 	 * Capture the next image frame from the camera and convert it to float4 RGBA format,

@@ -118,6 +118,17 @@ class videoSource
 {
 public:
 	/**
+	 * Stream status codes that are optionally returned from Capture()
+	 */
+	enum Status
+	{
+		ERROR   = -2,	/**< an error occurred */
+		EOS     = -1,	/**< end-of-stream (EOS) */
+		TIMEOUT = 0,	/**< a timeout occurred */
+		OK      = 1	/**< frame capture successful */
+	};
+	
+	/**
 	 * Create videoSource interface from a videoOptions struct that's already been filled out.
 	 * It's expected that the supplied videoOptions already contain a valid resource URI.
 	 */
@@ -174,6 +185,31 @@ public:
 	static inline const char* Usage() 		{ return VIDEO_SOURCE_USAGE_STRING; }
 	
 	/**
+	 * Capture the next image from the video stream, using the default timeout of 1000ms.
+	 *
+	 * The image formats supported by this templated version of Capture() include the following:
+	 *
+	 *    - uchar3 (`IMAGE_RGB8`)
+	 *    - uchar4 (`IMAGE_RGBA8`)
+	 *    - float3 (`IMAGE_RGB32F`)
+	 *    - float4 (`IMAGE_RGBA32F`)
+	 *
+	 * The image format will automatically be deduced from these types.  If other types are used
+	 * with this overload, a static compile-time error will be asserted.
+	 *
+	 * @param[out] image output pointer that will be set to the memory containing the image.
+ 	 *                   If this interface has it's videoOptions::zeroCopy flag set to true,
+	 *                   the memory was allocated in mapped CPU/GPU memory and is be accessible
+	 *                   from both CPU and CUDA.  Otherwise, it's accessible only from CUDA.
+	 *
+	 * @param[out] status optional status code returned (@see videoSource::Status).
+	 *                    -2 on ERROR, -1 on EOS, 0 on TIMEOUT, 1 on OK.
+	 *
+	 * @returns `true` if a frame was captured, `false` if there was an error or a timeout occurred.
+	 */
+	template<typename T> bool Capture( T** image, int* status )										{ return Capture((void**)image, imageFormatFromType<T>(), DEFAULT_TIMEOUT, status); }
+	
+	/**
 	 * Capture the next image from the video stream.
 	 *
 	 * The image formats supported by this templated version of Capture() include the following:
@@ -192,12 +228,15 @@ public:
 	 *                   from both CPU and CUDA.  Otherwise, it's accessible only from CUDA.
 	 *
 	 * @param[in] timeout timeout in milliseconds to wait to capture the image before returning.
-	 *                    The default is 1000.  A timeout value of `UINT64_MAX` will wait forever.
+	 *                    The default is 1000ms.  A timeout value of `UINT64_MAX` will wait forever.
 	 *                    A timeout of 0 will return instantly if a frame wasn't immediately ready.
+	 *
+	 * @param[out] status optional status code returned (@see videoSource::Status).
+	 *                    -2 on ERROR, -1 on EOS, 0 on TIMEOUT, 1 on OK.
 	 *
 	 * @returns `true` if a frame was captured, `false` if there was an error or a timeout occurred.
 	 */
-	template<typename T> bool Capture( T** image, uint64_t timeout=DEFAULT_TIMEOUT )		{ return Capture((void**)image, imageFormatFromType<T>(), timeout); }
+	template<typename T> bool Capture( T** image, uint64_t timeout=DEFAULT_TIMEOUT, int* status=NULL )		{ return Capture((void**)image, imageFormatFromType<T>(), timeout); }
 	
 	/**
 	 * Capture the next image from the video stream.
@@ -211,12 +250,15 @@ public:
 	 *                   from both CPU and CUDA.  Otherwise, it's accessible only from CUDA.
 	 *
 	 * @param[in] timeout timeout in milliseconds to wait to capture the image before returning.
-	 *                    The default is 1000.  A timeout value of `UINT64_MAX` will wait forever.
+	 *                    The default is 1000ms.  A timeout value of `UINT64_MAX` will wait forever.
 	 *                    A timeout of 0 will return instantly if a frame wasn't immediately ready.
+	 *
+	 * @param[out] status optional status code returned (@see videoSource::Status).
+	 *                    -2 on ERROR, -1 on EOS, 0 on TIMEOUT, 1 on OK.
 	 *
 	 * @returns `true` if a frame was captured, `false` if there was an error or a timeout occurred.
 	 */
-	virtual bool Capture( void** image, imageFormat format, uint64_t timeout=DEFAULT_TIMEOUT ) = 0;
+	virtual bool Capture( void** image, imageFormat format, uint64_t timeout=DEFAULT_TIMEOUT, int* status=NULL ) = 0;
 	
 	/**
 	 * Begin streaming the device.

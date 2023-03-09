@@ -45,19 +45,28 @@ except:
 input = videoSource(args.input, argv=sys.argv)
 output = videoOutput(args.output, argv=sys.argv)
 
-# capture frames until user exits
+# capture frames until EOS or user exits
 numFrames = 0
 
 while True:
-    image = input.Capture()
+    # capture the next image
+    img = input.Capture()
 
+    if img is None: # timeout
+        continue  
+        
     if numFrames % 25 == 0 or numFrames < 15:
-        Log.Verbose(f"video-viewer:  captured {numFrames} frames ({image.width} x {image.height})")
+        Log.Verbose(f"video-viewer:  captured {numFrames} frames ({img.width} x {img.height})")
 	
     numFrames += 1
 	
-    output.Render(image)
-    output.SetStatus("Video Viewer | {:d}x{:d} | {:.1f} FPS".format(image.width, image.height, output.GetFrameRate()))
+    # render the image
+    output.Render(img)
+    
+    # update the title bar
+    output.SetStatus("Video Viewer | {:d}x{:d} | {:.1f} FPS".format(img.width, img.height, output.GetFrameRate()))
 	
-
+    # exit on input/output EOS
+    if not input.IsStreaming() or not output.IsStreaming():
+        break
 

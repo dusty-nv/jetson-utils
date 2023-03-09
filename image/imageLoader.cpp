@@ -131,18 +131,21 @@ imageLoader* imageLoader::Create( const char* resource, const videoOptions& opti
 }
 
 
+#define RETURN_STATUS(code)  { if( status != NULL ) { *status=(code); } return ((code) == videoSource::OK ? true : false); }
+
+
 // Capture
-bool imageLoader::Capture( void** output, imageFormat format, uint64_t timeout )
+bool imageLoader::Capture( void** output, imageFormat format, uint64_t timeout, int* status )
 {
 	// verify the output pointer exists
 	if( !output )
-		return false;
+		RETURN_STATUS(ERROR);
 
 	// confirm the stream is open
 	if( !mStreaming )
 	{
 		if( !Open() )
-			return false;
+			RETURN_STATUS(EOS);
 	}
 
 	// reclaim old buffers
@@ -188,7 +191,7 @@ bool imageLoader::Capture( void** output, imageFormat format, uint64_t timeout )
 	*output = imgPtr;
 	mBuffers.push_back(imgPtr);
 
-	return true;
+	RETURN_STATUS(OK);
 }
 
 
