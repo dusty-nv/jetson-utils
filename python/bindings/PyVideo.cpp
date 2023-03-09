@@ -340,6 +340,18 @@ static PyObject* PyVideoSource_GetFrameRate( PyVideoSource_Object* self )
 	return PYLONG_FROM_UNSIGNED_LONG(self->source->GetFrameRate());
 }
 
+// PyVideoSource_GetFrameCount
+static PyObject* PyVideoSource_GetFrameCount( PyVideoSource_Object* self )
+{
+	if( !self || !self->source )
+	{
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "videoOutput invalid object instance");
+		return NULL;
+	}
+
+	return PYLONG_FROM_UNSIGNED_LONG(self->source->GetFrameCount());
+}
+
 // PyVideoSource_GetOptions
 static PyObject* PyVideoSource_GetOptions( PyVideoSource_Object* self )
 {
@@ -383,6 +395,7 @@ static PyMethodDef pyVideoSource_Methods[] =
 	{ "GetWidth", (PyCFunction)PyVideoSource_GetWidth, METH_NOARGS, "Return the width of the video source (in pixels)"},
 	{ "GetHeight", (PyCFunction)PyVideoSource_GetHeight, METH_NOARGS, "Return the height of the video source (in pixels)"},
 	{ "GetFrameRate", (PyCFunction)PyVideoSource_GetFrameRate, METH_NOARGS, "Return the frames per second of the video source"},	
+	{ "GetFrameCount", (PyCFunction)PyVideoSource_GetFrameCount, METH_NOARGS, "Return the number of frames captured so far"},
 	{ "GetOptions", (PyCFunction)PyVideoSource_GetOptions, METH_NOARGS, "Return a dict representing the videoOptions of the source"},	
 	{ "IsStreaming", (PyCFunction)PyVideoSource_IsStreaming, METH_NOARGS, "Return true if the stream is open, return false if closed"},
 	{ "Usage", (PyCFunction)PyVideoSource_Usage, METH_NOARGS|METH_STATIC, "Return help text describing the command line options"},		
