@@ -239,14 +239,14 @@ bool videoOptions::Parse( const char* URI, const commandLine& cmdLine, videoOpti
 		stunServer = stunStr;
 
 	// SSL certificate/key
-	const char* certStr = cmdLine.GetString("ssl-cert", cmdLine.GetString("https-cert"));
-	const char* keyStr = cmdLine.GetString("ssl-key", cmdLine.GetString("https-key"));
-	
-	if( certStr )
-		sslCert = certStr;
+	const char* keyStr = cmdLine.GetString("ssl-key", getenv("SSL_KEY"));
+	const char* certStr = cmdLine.GetString("ssl-cert", getenv("SSL_CERT"));
 	
 	if( keyStr )
 		sslKey = keyStr;
+	
+	if( certStr )
+		sslCert = certStr;
 
 	return true;
 }
