@@ -67,6 +67,16 @@ std::string locateFile( const std::string& path );
 std::string locateFile( const std::string& path, std::vector<std::string>& locations );
 
 /**
+ * Read a text file into a string.  It's assumed that the file is text, and that it is of a
+ * managegable size (otherwise you should use buffering and read it line-by-line)
+ *
+ * @return the string containing the file contents, or an empty string if an error occurred.
+ *
+ * @ingroup filesystem
+ */
+std::string readFile( const std::string& path );
+
+/**
  * Join two paths, and properly include a path separator (`/`) as needed.
  * For example, 'pathJoin("~/workspace", "somefile.xml")` would return `~/workspace/somefile.xml`.
  * @ingroup filesystem

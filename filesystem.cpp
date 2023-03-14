@@ -27,6 +27,9 @@
 #include <sys/stat.h>
 #include <algorithm>
 #include <strings.h>
+#include <string>
+#include <fstream>
+#include <streambuf>
 #include <glob.h>
 
 #include "logging.h"
@@ -84,6 +87,29 @@ std::string locateFile( const std::string& path, std::vector<std::string>& locat
 	}
 
 	return "";
+}
+
+
+// readFile
+std::string readFile( const std::string& path )
+{
+	// https://insanecoding.blogspot.com/2011/11/how-to-read-in-file-in-c.html
+	std::ifstream in(path, std::ios::in | std::ios::binary);
+
+	if( !in )
+	{
+		LogError("failed to find/open file %s\n", path.c_str());
+		return std::string();
+	}
+	
+	const std::string contents((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+	
+	if( contents.length() == 0 )
+	{
+		LogWarning("file was empty - %s\n", path.c_str());
+	}
+	
+	return contents;
 }
 
 
