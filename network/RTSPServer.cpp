@@ -275,10 +275,13 @@ bool RTSPServer::AddRoute( const char* path, GstElement* pipeline )
 	gst_rtsp_media_factory_set_shared(factory, true);
 	gst_rtsp_media_factory_set_eos_shutdown(factory, false);
 	gst_rtsp_media_factory_set_stop_on_disconnect(factory, false);
-	gst_rtsp_media_factory_set_do_retransmission(factory, false);
 	gst_rtsp_media_factory_set_suspend_mode(factory, GST_RTSP_SUSPEND_MODE_NONE);
 	gst_rtsp_media_factory_set_transport_mode(factory, GST_RTSP_TRANSPORT_MODE_PLAY);
 	
+#if GST_CHECK_VERSION(1,16,0)
+	gst_rtsp_media_factory_set_do_retransmission(factory, false);
+#endif
+
 	g_signal_connect(factory, "media-configure", (GCallback)gst_rtsp_media_factory_custom_configure, NULL);
 	 
 	// attach the factory to the url
