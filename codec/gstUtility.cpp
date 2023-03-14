@@ -21,12 +21,15 @@
  */
 
 #include "gstUtility.h"
+#include "filesystem.h"
+
 #include "NvInfer.h"
 #include "logging.h"
 
 #include <stdint.h>
 #include <stdio.h>
 #include <strings.h>
+#include <algorithm>
 
 
 //---------------------------------------------------------------------------------------------
@@ -503,13 +506,55 @@ const char* gst_select_decoder( videoOptions::Codec codec, videoOptions::CodecTy
 }
 
 
+// check for hardware-accelerated encoder support
+static bool gst_query_hw_encoder()
+{
+#if defined(__aarch64__)
+	std::string board = readFile("/proc/device-tree/model");
+	
+	if( board.length() == 0 )
+		board = readFile("/tmp/nv_jetson_model");  // this is where it gets mounted in the container
+	
+	if( board.length() == 0 )
+		return false;
+	
+	LogVerbose(LOG_GSTREAMER "gstEncoder -- detected board '%s'\n", board.c_str());
+	
+	// convert to lowercase for robustness
+	std::transform(board.begin(), board.end(), board.begin(), [](unsigned char c){ return std::tolower(c); });
+	
+	// look for specific boards that don't have encoder hw
+	if( board.find("orin nano") != std::string::npos )
+		return false;
+	
+	return true;
+#else
+	// TODO check for NVENC/NVDEC
+	return false;
+#endif
+}
+
+
 // gst_select_encoder
 const char* gst_select_encoder( videoOptions::Codec codec, videoOptions::CodecType& type )
 {
 #if defined(__aarch64__)
 #if NV_TENSORRT_MAJOR > 8 || (NV_TENSORRT_MAJOR == 8 && NV_TENSORRT_MINOR >= 4)
-	if( type == videoOptions::CODEC_OMX )  // JetPack 5 doesn't have OMX
+	if( type == videoOptions::CODEC_OMX )
+	{
+		// JetPack 5 doesn't have OMX
 		type = gst_default_codec();
+	}
+	else if( type == videoOptions::CODEC_V4L2 )
+	{
+		const bool has_hw_encoder = gst_query_hw_encoder();
+		
+		if( !has_hw_encoder )
+		{
+			LogWarning(LOG_GSTREAMER "gstEncoder -- hardware encoder not detected, reverting to CPU encoder\n");
+			type = videoOptions::CODEC_CPU;
+		}
+	}
 #endif
 #elif defined(__x86_64__) || defined(__amd64__)
 	if( type == videoOptions::CODEC_OMX || type == videoOptions::CODEC_V4L2 )
@@ -517,7 +562,7 @@ const char* gst_select_encoder( videoOptions::Codec codec, videoOptions::CodecTy
 #endif
 
 	if( type == videoOptions::CODEC_NVENC || type == videoOptions::CODEC_NVDEC )
-		type = gst_default_codec();
+		type = gst_default_codec();  // TODO NVENC/NVDEC support
 	
 	if( codec == videoOptions::CODEC_RAW )
 		type = videoOptions::CODEC_CPU;
