@@ -51,8 +51,8 @@
 		  "                            * mjpeg\n"        								\
 		  "  --output-encoder=TYPE  the encoder engine to use, one of these:\n"              \
 		  "                            * cpu\n"                                              \
-		  "                            * omx  (aarch64/JetPack 4 only)\n"                    \
-		  "                            * v4l2 (aarch64/JetPack 5 only)\n"                    \
+		  "                            * omx  (aarch64/JetPack4 only)\n"                     \
+		  "                            * v4l2 (aarch64/JetPack5 only)\n"                     \
 		  "  --output-save=FILE     path to a video file for saving the compressed stream\n" \
 		  "                         to disk, in addition to the primary output above\n"      \
 		  "  --bitrate=BITRATE      desired target VBR bitrate for compressed streams,\n"    \

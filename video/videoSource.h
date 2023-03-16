@@ -35,13 +35,14 @@
  */
 #define VIDEO_SOURCE_USAGE_STRING  "videoSource arguments: \n" 								\
 		  "    input                resource URI of the input stream, for example:\n"			\
-		  "                             * /dev/video0              (V4L2 camera #0)\n"			\
-		  "                             * csi://0                  (MIPI CSI camera #0)\n"		\
-		  "                             * rtp://@:1234             (RTP stream)\n"				\
-		  "                             * rtsp://user:pass@ip:1234 (RTSP stream)\n"			\
-		  "                             * file://my_image.jpg      (image file)\n"				\
-		  "                             * file://my_video.mp4      (video file)\n"				\
-		  "                             * file://my_directory/     (directory of images)\n"		\
+		  "                             * /dev/video0               (V4L2 camera #0)\n"			\
+		  "                             * csi://0                   (MIPI CSI camera #0)\n"		\
+		  "                             * rtp://@:1234              (RTP stream)\n"			\
+		  "                             * rtsp://user:pass@ip:1234  (RTSP stream)\n"			\
+		  "                             * webrtc://@:1234/my_stream (WebRTC stream)\n"			\
+		  "                             * file://my_image.jpg       (image file)\n"			\
+		  "                             * file://my_video.mp4       (video file)\n"			\
+		  "                             * file://my_directory/      (directory of images)\n"		\
 		  "  --input-width=WIDTH    explicitly request a width of the stream (optional)\n"   	\
 		  "  --input-height=HEIGHT  explicitly request a height of the stream (optional)\n"  	\
 		  "  --input-rate=RATE      explicitly request a framerate of the stream (optional)\n"	\
@@ -53,8 +54,8 @@
 		  "                             * mjpeg\n"        								\
 		  "  --input-decoder=TYPE   the decoder engine to use, one of these:\n"                   \
 		  "                             * cpu\n"                                                  \
-		  "                             * omx  (aarch64/JetPack 4 only)\n"                        \
-		  "                             * v4l2 (aarch64/JetPack 5 only)\n"                        \
+		  "                             * omx  (aarch64/JetPack4 only)\n"                         \
+		  "                             * v4l2 (aarch64/JetPack5 only)\n"                         \
 		  "  --input-flip=FLIP      flip method to apply to input:\n" 						\
 		  "                             * none (default)\n" 								\
 		  "                             * counterclockwise\n" 								\
