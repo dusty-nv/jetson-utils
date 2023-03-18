@@ -721,7 +721,10 @@ bool gstDecoder::buildLaunchStr()
 		ss << "videorate drop-only=true max-rate=" << (int)mOptions.frameRate << " ! ";
 
 	// add the app sink
-	ss << "appsink name=mysink sync=false"; // wait-on-eos=false;
+	ss << "appsink name=mysink";
+
+	if( uri.protocol != "file" )
+		ss << " sync=false"; // wait-on-eos=false;   // this can improve realtime network streaming, but also causes videos to playback as fast as possible
 
 	mLaunchStr = ss.str();
 
