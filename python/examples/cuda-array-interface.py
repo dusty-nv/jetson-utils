@@ -116,7 +116,9 @@ if __name__ == "__main__":
 
     # allocate cuda memory
     cuda_img = cudaAllocMapped(width=args.width, height=args.height, format=args.format)
+    
     print(cuda_img)
+    print(cuda_img.__cuda_array_interface__)
     
     # fill with monotonically increasing pattern
     for y in range(cuda_img.shape[0]):
