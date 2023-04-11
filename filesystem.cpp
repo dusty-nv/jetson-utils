@@ -90,6 +90,53 @@ std::string locateFile( const std::string& path, std::vector<std::string>& locat
 }
 
 
+// loadFile
+size_t loadFile( const std::string& path, void** bufferOut )
+{
+	// determine the file size
+	const size_t file_size = fileSize(path);
+
+	if( file_size == 0 )
+		return 0;
+	
+	// allocate memory to hold the file
+	void* buffer = (void*)malloc(file_size);
+
+	if( !buffer )
+	{
+		LogError("failed to allocate %zu bytes to read %s\n", file_size, path.c_str());
+		return 0;
+	}
+
+	// read the file
+	FILE* file = fopen(path.c_str(), "rb");
+
+	if( !file )
+	{
+		LogError("failed to open %s\n", path.c_str());
+		free(buffer);
+		return 0;
+	}
+
+	// read the serialized engine into memory
+	const size_t bytes_read = fread(buffer, 1, file_size, file);
+
+	if( bytes_read != file_size )
+	{
+		LogError("only read %zu of %zu bytes from %s\n", bytes_read, file_size, path.c_str());
+		free(buffer);
+		return 0;
+	}
+
+	fclose(file);
+
+	if( bufferOut != NULL )
+		*bufferOut = buffer;
+
+	return bytes_read;
+}
+
+
 // readFile
 std::string readFile( const std::string& path )
 {
