@@ -56,6 +56,10 @@ void Log::ParseCmdLine( const commandLine& cmdLine )
 	}
 
 	SetFile(cmdLine.GetString("log-file"));
+	
+	// disable buffering so that the post-newline color resets are used (https://stackoverflow.com/a/1716621)
+	if( mFile == stdout )
+		setbuf(stdout, NULL);
 }
 
 
