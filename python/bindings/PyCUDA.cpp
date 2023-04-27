@@ -279,16 +279,19 @@ static int PyCudaImage_Init( PyCudaImage* self, PyObject *args, PyObject *kwds )
 	// parse arguments
 	int width = 0;
 	int height = 0;
-	int mapped = 1;
-	int freeOnDelete = 1;
+	int mapped = -1;
+	int freeOnDelete = -1;
+	
 	long long timestamp = 0;
-
+	long long externPtr = 0;
+	
 	const char* formatStr = "rgb8";
-	static char* kwlist[] = {"width", "height", "format", "timestamp", "mapped", "freeOnDelete", NULL};
+	static char* kwlist[] = {"width", "height", "format", "timestamp", "mapped", "freeOnDelete", "ptr", NULL};
 
-	if( !PyArg_ParseTupleAndKeywords(args, kwds, "ii|sLii", kwlist, &width, &height, &formatStr, &timestamp, &mapped, &freeOnDelete))
+	if( !PyArg_ParseTupleAndKeywords(args, kwds, "ii|sLiiL", kwlist, &width, &height, &formatStr, &timestamp, &mapped, &freeOnDelete, &externPtr))
 		return -1;
-
+	
+	// get image dimensions / size
 	if( width < 0 || height < 0 )
 	{
 		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaImage.__init()__ had invalid width/height");
@@ -309,26 +312,46 @@ static int PyCudaImage_Init( PyCudaImage* self, PyObject *args, PyObject *kwds )
 		return -1;
 	}
 
-	// allocate CUDA memory
 	const size_t size = imageFormatSize(format, width, height);
-
-	if( mapped > 0 )
-	{
-		if( !cudaAllocMapped(&self->base.ptr, size) )
-		{
-			PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaImage.__init()__ failed to allocate CUDA mapped memory");
-			return -1;
-		}
-	}
-	else
-	{
-		if( CUDA_FAILED(cudaMalloc(&self->base.ptr, size)) )
-		{
-			PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaImage.__init()__ failed to allocate CUDA memory");
-			return -1;
-		}
-	}
 	
+	if( externPtr != 0 )
+	{
+		// import external memory
+		self->base.ptr = (void*)externPtr;
+		
+		if( mapped < 0 )
+			mapped = 0;
+		
+		if( freeOnDelete < 0 )
+			freeOnDelete = 0;
+	}
+	else 
+	{
+		// allocate CUDA memory
+		if( mapped < 0 )
+			mapped = 1;
+		
+		if( freeOnDelete < 0 )
+			freeOnDelete = 1;
+		
+		if( mapped > 0 )
+		{
+			if( !cudaAllocMapped(&self->base.ptr, size) )
+			{
+				PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaImage.__init()__ failed to allocate CUDA mapped memory");
+				return -1;
+			}
+		}
+		else
+		{
+			if( CUDA_FAILED(cudaMalloc(&self->base.ptr, size)) )
+			{
+				PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaImage.__init()__ failed to allocate CUDA memory");
+				return -1;
+			}
+		}
+	}
+
 	PyCudaImage_Config(self, self->base.ptr, width, height, format, timestamp, (mapped > 0) ? true : false, (freeOnDelete > 0) ? true : false);
 	return 0;
 }
