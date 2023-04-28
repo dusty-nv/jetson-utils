@@ -369,11 +369,12 @@ static PyObject* PyCudaImage_ToString( PyCudaImage* self )
 		   "   -- height:   %u\n"
 		   "   -- channels: %u\n"
 		   "   -- format:   %s\n"
-		   "   -- timestamp: %f\n"
 		   "   -- mapped:   %s\n"
-		   "   -- freeOnDelete: %s\n",
+		   "   -- freeOnDelete: %s\n"
+		   "   -- timestamp:    %f\n",
 		   self->base.ptr, self->base.size, (uint32_t)self->width, (uint32_t)self->height, (uint32_t)self->shape[2],  
-		   imageFormatToStr(self->format), self->timestamp / 1.0e+9, self->base.mapped ? "true" : "false", self->base.freeOnDelete ? "true" : "false");
+		   imageFormatToStr(self->format), self->base.mapped ? "true" : "false", self->base.freeOnDelete ? "true" : "false",
+		   self->timestamp / 1.0e+9);
 
 	return PYSTRING_FROM_STRING(str);
 }
