@@ -33,7 +33,7 @@ parser.add_argument("--width", type=int, default=512, help="width of the array (
 parser.add_argument("--height", type=int, default=256, help="height of the array (in pixels)")
 parser.add_argument("--depth", type=int, default=4, help="number of color channels in the array (1, 3, or 4)")
 parser.add_argument("--dtype", type=str, default="float32", help="numpy data type: " + " | ".join(sorted({str(key) for key in np.sctypeDict.keys()})))
-parser.add_argument("--filename", type=str, default="cuda-from-numpy.jpg", help="filename of the output test image")
+parser.add_argument("--filename", type=str, default="images/test/cuda-from-numpy.jpg", help="filename of the output test image")
 
 opt = parser.parse_args()
 

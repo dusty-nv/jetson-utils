@@ -40,6 +40,9 @@ opt = parser.parse_args()
 # load the image
 cv_img = cv2.imread(opt.file_in)
 
+if cv_img is None:
+    raise IOError(f"failed to load {file_in}")
+    
 print('OpenCV image size: ' + str(cv_img.shape))
 print('OpenCV image type: ' + str(cv_img.dtype))
 

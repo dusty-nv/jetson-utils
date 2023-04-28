@@ -22,8 +22,14 @@
 #
 
 import argparse
-import torch
+import sys
 
+try:
+    import torch
+except ImportError:
+    print("failed to import torch - if you wish to test PyTorch interoperability, please install it")
+    sys.exit(0)
+    
 from jetson_utils import cudaAllocMapped
 
 
