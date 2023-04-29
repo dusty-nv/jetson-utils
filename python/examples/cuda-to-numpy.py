@@ -24,7 +24,7 @@
 import argparse
 import numpy as np
 
-from jetson_utils import cudaAllocMapped, cudaToNumpy
+from jetson_utils import cudaImage, cudaToNumpy
 
 # parse the command line
 parser = argparse.ArgumentParser('Map CUDA to memory to numpy ndarray')
@@ -35,7 +35,8 @@ parser.add_argument("--height", type=int, default=2, help="height of the array (
 args = parser.parse_args()
 
 # allocate cuda memory
-cuda_img = cudaAllocMapped(width=args.width, height=args.height, format='rgb32f')
+cuda_img = cudaImage(width=args.width, height=args.height, format='rgb32f')
+
 print(cuda_img)
 
 # create a numpy array and do some ops with it
