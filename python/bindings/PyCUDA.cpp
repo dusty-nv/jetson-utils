@@ -285,24 +285,34 @@ static int PyCudaImage_Init( PyCudaImage* self, PyObject *args, PyObject *kwds )
 	long long timestamp = 0;
 	long long externPtr = 0;
 	
+	PyObject* pyImageLike = NULL;
+	
 	const char* formatStr = "rgb8";
-	static char* kwlist[] = {"width", "height", "format", "timestamp", "mapped", "freeOnDelete", "ptr", NULL};
+	static char* kwlist[] = {"width", "height", "format", "timestamp", "mapped", "freeOnDelete", "ptr", "like", NULL};
 
-	if( !PyArg_ParseTupleAndKeywords(args, kwds, "ii|sLiiL", kwlist, &width, &height, &formatStr, &timestamp, &mapped, &freeOnDelete, &externPtr))
+	if( !PyArg_ParseTupleAndKeywords(args, kwds, "ii|sLiiLO", kwlist, &width, &height, &formatStr, &timestamp, &mapped, &freeOnDelete, &externPtr, &pyImageLike))
 		return -1;
 	
-	// get image dimensions / size
-	if( width < 0 || height < 0 )
-	{
-		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaImage.__init()__ had invalid width/height");
-		return -1;
-	}
-
-	const imageFormat format = imageFormatFromStr(formatStr);
+	imageFormat format = imageFormatFromStr(formatStr);
 
 	if( format == IMAGE_UNKNOWN )
 	{
 		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaImage.__init()__ had invalid image format");
+		return -1;
+	}
+	
+	if( pyImageLike != NULL )
+	{
+		PyCudaImage* image_like = PyCUDA_GetImage(pyImageLike);
+		
+		width = image_like->width;
+		height = image_like->height;
+		format = image_like->format;
+	}
+	
+	if( width < 0 || height < 0 )
+	{
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "cudaImage.__init()__ had invalid width/height");
 		return -1;
 	}
 
