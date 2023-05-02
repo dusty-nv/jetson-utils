@@ -30,7 +30,7 @@ except ImportError:
     print("failed to import torch - if you wish to test PyTorch interoperability, please install it")
     sys.exit(0)
     
-from jetson_utils import cudaAllocMapped
+from jetson_utils import cudaImage
 
 
 # parse the command line
@@ -44,19 +44,18 @@ args = parser.parse_args()
 print(args)
 
 # allocate cuda memory
-cuda_img = cudaAllocMapped(width=args.width, height=args.height, format=args.format)
+cuda_img = cudaImage(width=args.width, height=args.height, format=args.format)
 
 print(cuda_img)
-print(cuda_img.__cuda_array_interface__)
 
-# map to torch tensor using numba __cuda_array_interface__
+# map to torch tensor using __cuda_array_interface__
 tensor = torch.as_tensor(cuda_img, device='cuda')
 
 print("\nPyTorch tensor:\n")
 print(type(tensor))
-print(hex(tensor.data_ptr()))
-print(tensor.dtype)
-print(tensor.shape)
+print(f"    -- ptr:   {hex(tensor.data_ptr())}")
+print(f"    -- type:  {tensor.dtype}")
+print(f"    -- shape: {tensor.shape}\n")
 print(tensor)
 
 # modify PyTorch tensor
