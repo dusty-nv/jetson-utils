@@ -269,6 +269,7 @@ static void PyCudaImage_Config( PyCudaImage* self, void* ptr, uint32_t width, ui
 
 	self->format = format;
 	self->timestamp = timestamp;
+	self->cudaArrayInterfaceDict = NULL;
 }
 
 // PyCudaImage_Init
