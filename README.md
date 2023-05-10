@@ -1,5 +1,5 @@
 # jetson-utils
-C++/CUDA + Python multimedia utilities for NVIDIA Jetson:
+C++/CUDA/Python multimedia utilities for NVIDIA Jetson:
 
 |                        |                                                 |
 |------------------------|-------------------------------------------------|
