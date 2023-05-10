@@ -1,17 +1,18 @@
 # jetson-utils
-C++/Python Linux utilities for NVIDIA Jetson
+C++/CUDA/Python multimedia utilities for NVIDIA Jetson:
 
 |                        |                                                 |
 |------------------------|-------------------------------------------------|
 | [`camera/`](camera/)   | GStreamer-based camera capture (V4L2, MIPI CSI) |
 | [`codec/`](codec/)     | GStreamer-based hardware video encoder/decoder  |
 | [`cuda/`](cuda/)       | CUDA image processing functions                 |
-| [`display/`](display/) | OpenGL window & texture rendering               |
+| [`display/`](display/) | OpenGL window & rendering                       |
 | [`image/`](image/)     | Image loading & saving                          |
-|                        |                                                 |
-|                        |                                                 |
-|                        |                                                 |
-|                        |                                                 |
+| [`input/`](input/)     | Human Interface Devices (HID) from `/dev/input` |
+| [`network/`](network/) | Sockets, IPv4/IPv6, WebRTC/RTSP server          |
+| [`python/`](python/)   | Python bindings and examples                    |
+| [`threads/`](threads/) | Multithreading, locks, and events               |
+| [`video/`](video/)     | Video streaming interfaces                      |
 
 
 ### Documentation
@@ -24,7 +25,7 @@ Documentation for jetson-utils can be found here:
 
 ### Building from Source
 
-jetson-utils is typically built as a submodule of the [jetson-inference](https://github.com/dusty-nv/jetson-inference), but it can also be compiled/installed standalone:
+jetson-utils is typically built as a submodule of [jetson-inference](https://github.com/dusty-nv/jetson-inference), but it can also be compiled/installed standalone:
 
 ``` bash
 git clone https://github.com/dusty-nv/jetson-utils
@@ -36,4 +37,4 @@ sudo make install
 sudo ldconfig
 ```
 
-If you are missing dependencies, run the [`jetson-inference/CMakePreBuild.sh`](https://github.com/dusty-nv/jetson-inference/blob/master/CMakePreBuild.sh) script.
+If you're missing dependencies, run the [`jetson-inference/CMakePreBuild.sh`](https://github.com/dusty-nv/jetson-inference/blob/master/CMakePreBuild.sh) script.
