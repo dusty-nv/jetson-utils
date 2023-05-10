@@ -3,6 +3,7 @@ C++/CUDA/Python multimedia utilities for NVIDIA Jetson:
 
 |                        |                                                 |
 |------------------------|-------------------------------------------------|
+| `/`                    | Filesystem, CSV/JSON/XML parsing, command-line  |
 | [`camera/`](camera/)   | GStreamer-based camera capture (V4L2, MIPI CSI) |
 | [`codec/`](codec/)     | GStreamer-based hardware video encoder/decoder  |
 | [`cuda/`](cuda/)       | CUDA image processing functions                 |
@@ -14,6 +15,19 @@ C++/CUDA/Python multimedia utilities for NVIDIA Jetson:
 | [`threads/`](threads/) | Multithreading, locks, and events               |
 | [`video/`](video/)     | Video streaming interfaces                      |
 
+|                          |                                                 |
+|--------------------------|-------------------------------------------------|
+| `/`                      | Filesystem, CSV/JSON/XML parsing, command-line  |
+| + [`camera/`](camera/)   | GStreamer-based camera capture (V4L2, MIPI CSI) |
+| + [`codec/`](codec/)     | GStreamer-based hardware video encoder/decoder  |
+| + [`cuda/`](cuda/)       | CUDA image processing functions                 |
+| + [`display/`](display/) | OpenGL window & rendering                       |
+| + [`image/`](image/)     | Image loading & saving                          |
+| + [`input/`](input/)     | Human Interface Devices (HID) from `/dev/input` |
+| + [`network/`](network/) | Sockets, IPv4/IPv6, WebRTC/RTSP server          |
+| + [`python/`](python/)   | Python bindings and examples                    |
+| + [`threads/`](threads/) | Multithreading, locks, and events               |
+| + [`video/`](video/)     | Video streaming interfaces                      |
 
 ### Documentation
 
