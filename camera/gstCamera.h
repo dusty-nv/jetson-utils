@@ -23,11 +23,11 @@
 #ifndef __GSTREAMER_CAMERA_H__
 #define __GSTREAMER_CAMERA_H__
 
-#include <gst/gst.h>
-#include <string>
-
 #include "videoSource.h"
 #include "gstBufferManager.h"
+
+#include <string>
+#include <vector>
 
 
 // Forward declarations
@@ -213,8 +213,11 @@ private:
 	void checkBuffer();
 	
 	bool matchCaps( GstCaps* caps );
-	bool printCaps( GstCaps* caps );
-	bool parseCaps( GstStructure* caps, videoOptions::Codec* codec, imageFormat* format, uint32_t* width, uint32_t* height, float* frameRate );
+	bool printCaps( GstCaps* caps ) const;
+	bool parseCaps( GstStructure* caps, videoOptions::Codec* codec, imageFormat* format, uint32_t* width, uint32_t* height, float* frameRate ) const;
+	bool parseCaps( GstStructure* caps, videoOptions::Codec* codec, imageFormat* format, uint32_t* width, uint32_t* height, std::vector<float>& frameRates ) const;
+	
+	float findFramerate( const std::vector<float>& frameRates, float frameRate ) const;
 	
 	_GstBus*     mBus;
 	_GstAppSink* mAppSink;
