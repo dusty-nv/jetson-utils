@@ -160,10 +160,7 @@ static bool PyVideoOptions_FromDict( PyObject* dict, videoOptions& options )
 	PYDICT_GET_ENUM(dict, "codec", options.codec, videoOptions::CodecFromStr);
 	PYDICT_GET_ENUM(dict, "codecType", options.codecType, videoOptions::CodecTypeFromStr);
 	PYDICT_GET_ENUM(dict, "flipMethod", options.flipMethod, videoOptions::FlipMethodFromStr);
-	
-	printf("PyVideoOptions_fromDict\n");
-	options.Print();
-	
+
 	return true;
 }
 
