@@ -42,8 +42,8 @@ except:
 	sys.exit(0)
 
 # create video sources & outputs
-input = videoSource(args.input, argv=sys.argv)    # OPTIONAL:  options={'width': 1280, 'height': 720, 'framerate': 30}
-output = videoOutput(args.output, argv=sys.argv)  # OPTIONAL:  options={'codec': 'h264', 'bitrate': 2500000}
+input = videoSource(args.input, argv=sys.argv)    # default:  options={'width': 1280, 'height': 720, 'framerate': 30}
+output = videoOutput(args.output, argv=sys.argv)  # default:  options={'width': 1280, 'height': 720, 'framerate': 30}
 
 # capture frames until EOS or user exits
 numFrames = 0
