@@ -25,6 +25,7 @@
 #include <algorithm>
 #include <iostream>
 #include <stdio.h>
+#include <string.h>
 
 #include "filesystem.h"
 #include "logging.h"
@@ -57,7 +58,7 @@ URI::URI( const char* uri )
 // Parse
 bool URI::Parse( const char* uri )
 {
-	if( !uri )
+	if( !uri || strlen(uri) == 0 )
 		return false;
 
 	string    = uri;
