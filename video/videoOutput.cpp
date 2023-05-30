@@ -140,8 +140,8 @@ videoOutput* videoOutput::Create( const char* resource, const commandLine& cmdLi
 	
 	if( !output )
 	{
-		if( positionArg >= cmdLine.GetPositionArgs() )
-			return CreateNullOutput();
+		if( positionArg >= cmdLine.GetPositionArgs() && (resource == NULL || strlen(resource) == 0) )
+			return CreateNullOutput();  // only create a fake sink when the output was unspecified
 		else
 			return NULL;
 	}
