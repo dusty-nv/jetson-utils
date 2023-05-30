@@ -58,6 +58,33 @@ static PyObject* PyURI_ToDict( const URI& resource )
 	return dict;
 }
 
+// parse URI from Python string (TODO add dict)
+static bool PyURI_Parse( PyObject* obj, URI& uri )
+{
+	if( !obj || !PYSTRING_CHECK(obj) )
+	{
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "URI's should be set as a string");
+		return false;
+	}	
+
+	const char* str = PYSTRING_AS_STRING(obj);
+	
+	if( !str || strlen(str) == 0 )
+	{
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "URI was set with a NULL or empty string");
+		return false;
+	}
+	
+	if( !uri.Parse(str) )
+	{
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "failed to parse URI string");
+		return false;
+	}
+	
+	return true;
+}
+
+
 // PyVideoOptions_ToDict
 static PyObject* PyVideoOptions_ToDict( const videoOptions& options )
 {
@@ -66,11 +93,11 @@ static PyObject* PyVideoOptions_ToDict( const videoOptions& options )
 	PYDICT_SET_ITEM(dict, "resource", PyURI_ToDict(options.resource));
 	PYDICT_SET_UINT(dict, "width", options.width);
 	PYDICT_SET_UINT(dict, "height", options.height);
-	PYDICT_SET_FLOAT(dict, "frameRate", options.frameRate);
+	PYDICT_SET_FLOAT(dict, "framerate", options.frameRate);
 	PYDICT_SET_STRING(dict, "codec", videoOptions::CodecToStr(options.codec));
 	
 	if( options.ioType == videoOptions::OUTPUT )
-		PYDICT_SET_UINT(dict, "bitRate", options.bitRate);
+		PYDICT_SET_UINT(dict, "bitrate", options.bitRate);
 	
 	if( options.ioType == videoOptions::INPUT )
 	{
@@ -95,6 +122,49 @@ static PyObject* PyVideoOptions_ToDict( const videoOptions& options )
 	}
 	
 	return dict;
+}
+
+// PyVideoOptions_FromDict
+static bool PyVideoOptions_FromDict( PyObject* dict, videoOptions& options )
+{
+	if( !dict || !PyDict_Check(dict) )
+	{
+		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "options argument should be a dictionary");
+		return false;
+	}
+
+	PyObject* resource = PyDict_GetItemString(dict, "resource");
+	PyObject* save = PyDict_GetItemString(dict, "save");
+	
+	if( resource != NULL && !PyURI_Parse(resource, options.resource) )
+		return false;
+	
+	if( save != NULL && !PyURI_Parse(save, options.save) )
+		return false;
+	
+	PYDICT_GET_UINT(dict, "width", options.width);
+	PYDICT_GET_UINT(dict, "height", options.height);
+	PYDICT_GET_UINT(dict, "bitrate", options.bitRate);
+	PYDICT_GET_UINT(dict, "numBuffers", options.numBuffers);
+	
+	PYDICT_GET_INT(dict, "loop", options.loop);
+	PYDICT_GET_INT(dict, "latency", options.latency);
+	
+	PYDICT_GET_BOOL(dict, "zeroCopy", options.zeroCopy);
+	PYDICT_GET_FLOAT(dict, "framerate", options.frameRate);
+
+	PYDICT_GET_STRING(dict, "stunServer", options.stunServer);
+	PYDICT_GET_STRING(dict, "sslCert", options.sslCert);
+	PYDICT_GET_STRING(dict, "sslKey", options.sslKey);
+	
+	PYDICT_GET_ENUM(dict, "codec", options.codec, videoOptions::CodecFromStr);
+	PYDICT_GET_ENUM(dict, "codecType", options.codecType, videoOptions::CodecTypeFromStr);
+	PYDICT_GET_ENUM(dict, "flipMethod", options.flipMethod, videoOptions::FlipMethodFromStr);
+	
+	printf("PyVideoOptions_fromDict\n");
+	options.Print();
+	
+	return true;
 }
 
 //-------------------------------------------------------------------------------
@@ -123,12 +193,14 @@ static int PyVideoSource_Init( PyVideoSource_Object* self, PyObject *args, PyObj
 	
 	// parse arguments
 	const char* URI = NULL;
-	PyObject* argList = NULL;
 	int positionArg = -1;
 	
-	static char* kwlist[] = {"uri", "argv", "positionArg", NULL};
+	PyObject* argList = NULL;
+	PyObject* optionsDict = NULL;
+		
+	static char* kwlist[] = {"uri", "argv", "positionArg", "options", NULL};
 
-	if( !PyArg_ParseTupleAndKeywords(args, kwds, "|sOi", kwlist, &URI, &argList, &positionArg))
+	if( !PyArg_ParseTupleAndKeywords(args, kwds, "|sOiO", kwlist, &URI, &argList, &positionArg, &optionsDict))
 		return -1;
   
 	// parse argument list
@@ -154,33 +226,27 @@ static int PyVideoSource_Init( PyVideoSource_Object* self, PyObject *args, PyObj
 				PyObject* item = PyList_GetItem(argList, n);
 				
 				if( !PyArg_Parse(item, "s", &argv[n]) )
-				{
-					PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "videoSource.__init()__ failed to parse argv list");
 					return -1;
-				}
 
 				LogDebug(LOG_PY_UTILS "videSource.__init__() argv[%zu] = '%s'\n", n, argv[n]);
 			}
 		}
 	}
 
+	// parse video options
+	videoOptions options;
+	
+	if( optionsDict != NULL )
+	{
+		if( !PyVideoOptions_FromDict(optionsDict, options) )
+			return -1;
+	}
+
 	// create the video source
 	videoSource* source = NULL;
 	
 	Py_BEGIN_ALLOW_THREADS
-	
-	if( URI != NULL && strlen(URI) > 0 )
-	{
-		if( argc > 0 )
-			source = videoSource::Create(URI, argc, argv);
-		else
-			source = videoSource::Create(URI);
-	}
-	else
-	{
-		source = videoSource::Create(argc, argv, positionArg);
-	}
-	
+	source = videoSource::Create(URI, argc, argv, positionArg, options);
 	Py_END_ALLOW_THREADS
 
 	if( !source )
@@ -461,18 +527,19 @@ static int PyVideoOutput_Init( PyVideoOutput_Object* self, PyObject *args, PyObj
 	
 	// parse arguments
 	const char* URI = NULL;
-	PyObject* argList = NULL;
 	int positionArg = -1;
 	
+	PyObject* argList = NULL;
+	PyObject* optionsDict = NULL;
+		
 	static char* kwlist[] = {"uri", "argv", "positionArg", "options", NULL};
 
-	if( !PyArg_ParseTupleAndKeywords(args, kwds, "|sOiO", kwlist, &URI, &argList, &positionArg))
+	if( !PyArg_ParseTupleAndKeywords(args, kwds, "|sOiO", kwlist, &URI, &argList, &positionArg, &optionsDict))
 		return -1;
 
 	// parse argument list
 	size_t argc = 0;
 	char** argv = NULL;
-	bool   headless = false;
 
 	if( argList != NULL && PyList_Check(argList) && PyList_Size(argList) > 0 )
 	{
@@ -493,53 +560,36 @@ static int PyVideoOutput_Init( PyVideoOutput_Object* self, PyObject *args, PyObj
 				PyObject* item = PyList_GetItem(argList, n);
 				
 				if( !PyArg_Parse(item, "s", &argv[n]) )
-				{
-					PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "videoOutput.__init()__ failed to parse argv list");
 					return -1;
-				}
-
-				if( strcasecmp(argv[n], "--headless") == 0 )
-					headless = true;
 
 				LogDebug(LOG_PY_UTILS "videoSource.__init__() argv[%zu] = '%s'\n", n, argv[n]);
 			}
 		}
 	}
 
+	// parse video options
+	videoOptions options;
+	
+	if( optionsDict != NULL )
+	{
+		if( !PyVideoOptions_FromDict(optionsDict, options) )
+			return -1;
+	}
+	
 	// create the video source
-	videoOutput* source = NULL;
+	videoOutput* output = NULL;
 
 	Py_BEGIN_ALLOW_THREADS
-	
-	if( URI != NULL && strlen(URI) > 0 )
-		source = videoOutput::Create(URI, argc, argv);
-	else
-		source = videoOutput::Create(argc, argv, positionArg);
-
+	output = videoOutput::Create(URI, argc, argv, positionArg, options);
 	Py_END_ALLOW_THREADS
 	
-	if( !source )
+	if( !output )
 	{
 		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "failed to create videoOutput device");
 		return -1;
 	}
 
-	/*if( !source )
-	{
-		//if( headless )
-		//{
-			LogWarning(LOG_PY_UTILS "no output streams, creating fake null output\n");
-			source = videoOutput::CreateNullOutput();
-		//}
-			
-		if( !source )
-		{
-			PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "failed to create videoOutput device");
-			return -1;
-		}
-	}*/
-
-	self->output = source;
+	self->output = output;
 	return 0;
 }
 

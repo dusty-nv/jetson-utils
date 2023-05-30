@@ -109,31 +109,41 @@ void videoOptions::Print( const char* prefix ) const
 	LogInfo("------------------------------------------------\n");
 }
 
+#define VALID_STR(x) (x != NULL && strlen(x) > 0)
 
 // Parse
-bool videoOptions::Parse( const char* URI, const int argc, char** argv, videoOptions::IoType type, const char* extraFlag )
-{
-	commandLine cmdLine(argc, argv, extraFlag);
-
-	return Parse(URI, cmdLine, type);
-}
-
-
-// Parse
-bool videoOptions::Parse( const char* URI, const commandLine& cmdLine, videoOptions::IoType type )
+bool videoOptions::Parse( const char* URI, const commandLine& cmdLine, videoOptions::IoType type, int ioPositionArg )
 {
 	ioType = type;
 
 	// check for headless mode
 	const bool headless = cmdLine.GetFlag("no-display") | cmdLine.GetFlag("headless");
 
-	if( (URI == NULL || strlen(URI) == 0) && type == OUTPUT && !headless )
-		URI = "display://0";
-
-	// parse input/output URI
-	if( !resource.Parse(URI) )
+	// check for positional args
+	if( ioPositionArg >= 0 && ioPositionArg < cmdLine.GetPositionArgs() )
+		URI = cmdLine.GetPosition(ioPositionArg);
+	
+	// default URI's
+	if( !VALID_STR(URI) && !resource.valid() ) 
 	{
-		LogError(LOG_VIDEO "videoOptions -- failed to parse %s resource URI (%s)\n", IoTypeToStr(type), URI != NULL ? URI : "null");
+		if( type == INPUT )
+			URI = "csi://0";
+		else if( type == OUTPUT && !headless )
+			URI = "display://0";
+	}
+	
+	// parse input/output URI
+	if( VALID_STR(URI) )
+	{
+		if( !resource.Parse(URI) )
+		{
+			LogError(LOG_VIDEO "videoOptions -- failed to parse %s resource URI (%s)\n", IoTypeToStr(type), URI != NULL ? URI : "null");
+			return false;
+		}
+	}
+	else if( !resource.valid() )
+	{
+		LogError(LOG_VIDEO "videoOptions -- %s resource URI was not set with a valid string\n", IoTypeToStr(type));
 		return false;
 	}
 	
@@ -163,15 +173,15 @@ bool videoOptions::Parse( const char* URI, const commandLine& cmdLine, videoOpti
 	//zeroCopy = cmdLine.GetFlag("zero-copy");	// no default returned, so disable this for now
 
 	// width
-	width = (type == INPUT) ? cmdLine.GetUnsignedInt("input-width")
-					    : cmdLine.GetUnsignedInt("output-width");
+	width = (type == INPUT) ? cmdLine.GetUnsignedInt("input-width", width)
+					    : cmdLine.GetUnsignedInt("output-width", width);
 
 	if( width == 0 )
 		width = cmdLine.GetUnsignedInt("width");
 
 	// height
-	height = (type == INPUT) ? cmdLine.GetUnsignedInt("input-height")
-					     : cmdLine.GetUnsignedInt("output-height");
+	height = (type == INPUT) ? cmdLine.GetUnsignedInt("input-height", height)
+					     : cmdLine.GetUnsignedInt("output-height", height);
 
 	if( height == 0 )
 		height = cmdLine.GetUnsignedInt("height");
@@ -196,7 +206,8 @@ bool videoOptions::Parse( const char* URI, const commandLine& cmdLine, videoOpti
 			flipStr = cmdLine.GetString("flip-method");
 	}
 	
-	flipMethod = videoOptions::FlipMethodFromStr(flipStr);
+	if( flipStr != NULL )
+		flipMethod = videoOptions::FlipMethodFromStr(flipStr);
 
 	// codec
 	const char* codecStr = (type == INPUT) ? cmdLine.GetString("input-codec")
@@ -214,19 +225,14 @@ bool videoOptions::Parse( const char* URI, const commandLine& cmdLine, videoOpti
 									   
 	if( codecTypeStr != NULL )	
 		codecType = videoOptions::CodecTypeFromStr(codecTypeStr);
-	
+
 	// bitrate
 	if( type == OUTPUT )
 		bitRate = cmdLine.GetUnsignedInt("bitrate", bitRate);
 
 	// loop
 	if( type == INPUT )
-	{
-		loop = cmdLine.GetInt("input-loop", -999);
-		
-		if( loop == -999 )
-			loop = cmdLine.GetInt("loop");
-	}
+		loop = cmdLine.GetInt("input-loop", cmdLine.GetInt("loop", loop));
 
 	// latency
 	latency = (type == INPUT) ? cmdLine.GetUnsignedInt("input-latency", cmdLine.GetUnsignedInt("input-rtsp-latency", latency))
@@ -253,46 +259,24 @@ bool videoOptions::Parse( const char* URI, const commandLine& cmdLine, videoOpti
 
 
 // Parse
-bool videoOptions::Parse( const commandLine& cmdLine, videoOptions::IoType type, int ioPositionArg )
+bool videoOptions::Parse( const char* URI, const int argc, char** argv, videoOptions::IoType type, int ioPositionArg )
 {
-	// check for headless output
-	const bool headless = cmdLine.GetFlag("no-display") | cmdLine.GetFlag("headless");
-
-	// parse input/output URI
-	const char* resourceStr = NULL;
-
-	if( ioPositionArg >= 0 && ioPositionArg < cmdLine.GetPositionArgs() )
-		resourceStr = cmdLine.GetPosition(ioPositionArg);
-
-	if( !resourceStr )
-	{
-		if( type == INPUT )
-		{
-			resourceStr = cmdLine.GetString("camera", "csi://0");
-
-			//if( !resourceStr )
-			//	resourceStr = cmdLine.GetString("input", "csi://0");
-		}
-		else
-		{
-			//resourceStr = cmdLine.GetString("output", headless ? NULL : "display://0");	// BUG:  "output" will return flags with longer names, i.e. "output-blob"
-
-			if( !headless )
-				resourceStr = "display://0";
-		}
-	}
-
-	return Parse(resourceStr, cmdLine, type);
+	return Parse(URI, commandLine(argc, argv), type, ioPositionArg);
 }
 
 
 // Parse
 bool videoOptions::Parse( const int argc, char** argv, videoOptions::IoType type, int ioPositionArg )
 {
-	commandLine cmdLine(argc, argv);
-	return Parse(cmdLine, type, ioPositionArg);
+	return Parse(commandLine(argc, argv), type, ioPositionArg);
 }
 
+
+// Parse
+bool videoOptions::Parse( const commandLine& cmdLine, videoOptions::IoType type, int ioPositionArg )
+{
+	return Parse(NULL, cmdLine, type, ioPositionArg);
+}
 
 
 // IoTypeToStr

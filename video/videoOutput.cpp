@@ -93,6 +93,7 @@ static void applyDisplayFlags( videoOutput* output, const commandLine& cmdLine )
 videoOutput* videoOutput::Create( const videoOptions& options )
 {
 	videoOutput* output = NULL;
+	
 	const URI& uri = options.resource;
 	
 	if( uri.protocol == "file" )
@@ -123,49 +124,13 @@ videoOutput* videoOutput::Create( const videoOptions& options )
 	return output;
 }
 
+
 // Create
-videoOutput* videoOutput::Create( const char* resource, const videoOptions& options )
+videoOutput* videoOutput::Create( const char* resource, const commandLine& cmdLine, int positionArg, const videoOptions& options )
 {
 	videoOptions opt = options;
-	opt.resource = resource;
-	return Create(opt);
-}
 
-// Create
-videoOutput* videoOutput::Create( const char* resource, const commandLine& cmdLine )
-{
-	videoOptions opt;
-
-	if( !opt.Parse(resource, cmdLine, videoOptions::OUTPUT) )
-	{
-		LogError(LOG_VIDEO "videoOutput -- failed to parse command line options\n");
-		return NULL;
-	}
-
-	videoOutput* output = Create(opt);
-	
-	if( !output )
-		return NULL;
-	
-	output = createDisplaySubstream(output, opt, cmdLine);
-	applyDisplayFlags(output, cmdLine);
-	
-	return output;
-}
-
-// Create
-videoOutput* videoOutput::Create( const char* resource, const int argc, char** argv )
-{
-	commandLine cmdLine(argc, argv);
-	return Create(resource, cmdLine);
-}
-
-// Create
-videoOutput* videoOutput::Create( const commandLine& cmdLine, int positionArg )
-{
-	videoOptions opt;
-
-	if( !opt.Parse(cmdLine, videoOptions::OUTPUT, positionArg) )
+	if( !opt.Parse(resource, cmdLine, videoOptions::OUTPUT, positionArg) )
 	{
 		LogError(LOG_VIDEO "videoOutput -- failed to parse command line options\n");
 		return NULL;
@@ -188,10 +153,27 @@ videoOutput* videoOutput::Create( const commandLine& cmdLine, int positionArg )
 }
 
 // Create
+videoOutput* videoOutput::Create( const char* resource, const int argc, char** argv, int positionArg, const videoOptions& options )
+{
+	return Create(resource, commandLine(argc, argv), positionArg, options);
+}
+
+// Create
+videoOutput* videoOutput::Create( const commandLine& cmdLine, int positionArg )
+{
+	return Create(NULL, cmdLine, positionArg);
+}
+
+// Create
 videoOutput* videoOutput::Create( const int argc, char** argv, int positionArg )
 {
-	commandLine cmdLine(argc, argv);
-	return Create(cmdLine);
+	return Create(commandLine(argc, argv));
+}
+
+// Create
+videoOutput* videoOutput::Create( const char* resource, const videoOptions& options )
+{
+	return Create(resource, 0, NULL, -1, options);
 }
 
 // CreateNullOutput
