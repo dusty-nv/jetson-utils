@@ -361,7 +361,6 @@ bool gstCamera::parseCaps( GstStructure* caps, videoOptions::Codec* _codec, imag
 	}
 	else
 	{
-		// it's a list of framerates, pick the max
 		GValueArray* frameRateList = NULL;
 
 		if( gst_structure_get_list(caps, "framerate", &frameRateList) && frameRateList->n_values > 0 )
@@ -490,8 +489,17 @@ bool gstCamera::discover()
 	for( GList* n=deviceList; n; n = n->next )
 	{
 		GstDevice* d = GST_DEVICE(n->data);
-		LogVerbose(LOG_GSTREAMER "gstCamera -- found v4l2 device: %s\n", gst_device_get_display_name(d));
 		
+		const char* deviceName = gst_device_get_display_name(d);
+		
+		LogVerbose(LOG_GSTREAMER "gstCamera -- found v4l2 device: %s\n", deviceName);
+	
+	#if NV_TENSORRT_MAJOR > 8 || (NV_TENSORRT_MAJOR == 8 && NV_TENSORRT_MINOR >= 4)
+		// on JetPack >= 5.0.1, the newer Logitech C920's send a H264 stream that nvv4l2decoder has trouble decoding, so change it to MJPEG
+		if( strcmp(deviceName, "HD Pro Webcam C920") == 0 && mOptions.codecType == videoOptions::CODEC_V4L2 && mOptions.codec == videoOptions::CODEC_UNKNOWN )
+			mOptions.codec = videoOptions::CODEC_MJPEG;
+	#endif
+	
 		GstStructure* properties = gst_device_get_properties(d);
 		
 		if( properties != NULL )
