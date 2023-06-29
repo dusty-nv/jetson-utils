@@ -5,6 +5,10 @@ cmake_minimum_required(VERSION 2.8)
 # @ref https://cmake.org/cmake/help/latest/policy/CMP0048.html
 cmake_policy(SET CMP0048 NEW)
 
+# CMP0028: Double colon in target name means ALIAS or IMPORTED target
+# @ref https://cmake.org/cmake/help/latest/policy/CMP0028.html
+cmake_policy(SET CMP0028 NEW)
+
 # Set name of the project
 # @ref https://cmake.org/cmake/help/latest/command/project.html
 project(jetson-utils LANGUAGES CXX VERSION 1.0.0)
