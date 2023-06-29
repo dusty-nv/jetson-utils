@@ -137,7 +137,7 @@ target_link_libraries(${PROJECT_NAME}
 )
 
 if(NVBUF_UTILS_FOUND)
-    target_link_libraries(${PROJECT_NAME} JetsonUtils::NVBUF_UTILS)
+    target_link_libraries(${PROJECT_NAME} ${NVBUF_UTILS_LIBRARY})
 endif()
 
 target_include_directories(${PROJECT_NAME}
