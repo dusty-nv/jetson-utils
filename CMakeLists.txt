@@ -17,6 +17,9 @@ include(GNUInstallDirs)
 # @ref https://cmake.org/cmake/help/latest/module/CMakePackageConfigHelpers.html
 include(CMakePackageConfigHelpers)
 
+# Set CMake module path
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_LIST_DIR}/cmake)
+
 # Set install directory
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
   set(JU_INSTALL_DIR ${PROJECT_BINARY_DIR}/install/${CMAKE_SYSTEM_PROCESSOR} CACHE PATH "jetson-utils install directory")
@@ -39,11 +42,6 @@ message(STATUS "jetson-utils: distro ID       ${LSB_RELEASE_ID}")
 message(STATUS "jetson-utils: distro version  ${LSB_RELEASE_VERSION}")
 message(STATUS "jetson-utils: distro codename ${LSB_RELEASE_CODENAME}")
 
-if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64")
-    include_directories(/usr/src/jetson_multimedia_api/include)
-    link_directories(/usr/lib/aarch64-linux-gnu/tegra)
-endif()
-
 # Use C++11 standard if no standard defined
 if(NOT DEFINED CMAKE_CXX_STANDARD)
   set(CMAKE_CXX_STANDARD 11)
@@ -53,7 +51,6 @@ endif()
 message(STATUS "jetson-utils: using C++ standard ${CMAKE_CXX_STANDARD}")
 
 # Setup CUDA
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cuda")
 find_package(CUDA)
 message(STATUS "jetson-utils: CUDA version  ${CUDA_VERSION}")
 
@@ -75,17 +72,15 @@ if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64")
 endif()
 
 # Option for enabling/disabling NVMM memory in multimedia stack
-find_library(NVBUF_UTILS NAMES nvbuf_utils PATHS /usr/lib/aarch64-linux-gnu/tegra)
-message(STATUS "jetson-utils: nvbuf_utils  ${NVBUF_UTILS}")
-
-if(NVBUF_UTILS)
-    set(ENABLE_NVMM_DEFAULT ON)
+find_package(NVBUF_UTILS REQUIRED)
+if(NVBUF_UTILS_FOUND)
+  set(ENABLE_NVMM_DEFAULT ON)
 else()
-    set(ENABLE_NVMM_DEFAULT OFF)
+  set(ENABLE_NVMM_DEFAULT OFF)
 endif()
 
 option(ENABLE_NVMM "Enable use of NVMM zero-copy memory in video and camera streaming" ${ENABLE_NVMM_DEFAULT})
-message(STATUS "jetson-utils: NVMM zero-copy memory:  ENABLE_NVMM=${ENABLE_NVMM}")
+message(STATUS "jetson-utils: Enable NVMM zero-copy memory (ENABLE_NVMM): ${ENABLE_NVMM}")
 
 if(ENABLE_NVMM)
     add_definitions(-DENABLE_NVMM)
@@ -116,8 +111,15 @@ pkg_check_modules(SOUP REQUIRED IMPORTED_TARGET libsoup-2.4)
 file(GLOB jetsonUtilitySources *.cpp camera/*.cpp codec/*.cpp cuda/*.cu cuda/*.cpp display/*.cpp image/*.cpp input/*.cpp network/*.cpp threads/*.cpp video/*.cpp)
 file(GLOB jetsonUtilityIncludes *.h *.hpp camera/*.h codec/*.h cuda/*.h cuda/*.cuh display/*.h image/*.h image/*.inl input/*.h network/*.h threads/*.h threads/*.inl video/*.h)
 
+# Copy all headers to the include directory
+file(MAKE_DIRECTORY ${PROJECT_BINARY_DIR}/include/${PROJECT_NAME})
+foreach(include ${jetsonUtilityIncludes})
+    message(STATUS "Copying ${include}")
+    configure_file(${include} ${PROJECT_BINARY_DIR}/include/jetson-utils COPYONLY)
+endforeach()
+
 # Create the library
-cuda_add_library(${PROJECT_NAME} SHARED ${jetsonUtilitySources})
+cuda_add_library(${PROJECT_NAME} SHARED ${jetsonUtilitySources} ${jetsonUtilityIncludes})
 target_link_libraries(${PROJECT_NAME}
   GLEW::GLEW
   OpenGL::GL
@@ -134,10 +136,8 @@ target_link_libraries(${PROJECT_NAME}
   ${CUDA_nppicc_LIBRARY}
 )
 
-if(DEFINED NVBUF_UTILS)
-    add_library(nvbufutils SHARED IMPORTED)
-    set_target_properties(nvbufutils PROPERTIES IMPORTED_LOCATION ${NVBUF_UTILS})
-    target_link_libraries(${PROJECT_NAME} nvbufutils)
+if(NVBUF_UTILS_FOUND)
+    target_link_libraries(${PROJECT_NAME} JetsonUtils::NVBUF_UTILS)
 endif()
 
 target_include_directories(${PROJECT_NAME}
@@ -149,13 +149,6 @@ set_target_properties(${PROJECT_NAME}
   PROPERTIES
     PUBLIC_HEADER "${jetsonUtilityIncludes}"
 )
-
-# Copy all headers to the include directory
-file(MAKE_DIRECTORY ${PROJECT_BINARY_DIR}/include/${PROJECT_NAME})
-foreach(include ${jetsonUtilityIncludes})
-    message(STATUS "Copying ${include}")
-    configure_file(${include} ${PROJECT_BINARY_DIR}/include/jetson-utils COPYONLY)
-endforeach()
 
 # Install the library and headers while exporting the targets
 install(TARGETS ${PROJECT_NAME}
