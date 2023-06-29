@@ -1,5 +1,5 @@
 
-#print("jetson.utils.__init__.py")
+#print("Jetson.Utils.__init__.py")
 
 from jetson_utils_python import *
 
