@@ -405,7 +405,7 @@
 ###############################################################################
 
 # FindCUDA.cmake
-message("-- using patched FindCUDA.cmake")
+message(STATUS "jetson-utils: using patched FindCUDA.cmake")
 
 # This macro helps us find the location of helper files we will need the full path to
 macro(CUDA_FIND_HELPER_FILE _name _extension)
