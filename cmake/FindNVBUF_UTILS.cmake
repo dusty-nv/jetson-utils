@@ -13,7 +13,7 @@ find_path(
     nvbuf_utils.h
   PATHS
     /usr/src/jetson_multimedia_api/include
-    ${CMAKE_CURRENT_LIST_DIR}/codec
+    ${PROJECT_SOURCE_DIR}/codec
 )
 
 if(NVBUF_UTILS_FOUND)
