@@ -26,7 +26,7 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_LIST_DIR}/cmake)
 
 # Set install directory
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
-  set(JU_INSTALL_DIR ${PROJECT_BINARY_DIR}/install/${CMAKE_SYSTEM_PROCESSOR} CACHE PATH "jetson-utils install directory")
+  set(JU_INSTALL_DIR ${PROJECT_BINARY_DIR}/install CACHE PATH "jetson-utils install directory")
   set(CMAKE_INSTALL_PREFIX ${JU_INSTALL_DIR})
 endif()
 message(STATUS "jetson-utils: install directory  ${CMAKE_INSTALL_PREFIX}")
