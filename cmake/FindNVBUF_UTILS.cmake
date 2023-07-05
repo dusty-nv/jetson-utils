@@ -1,14 +1,19 @@
 # FindNVBUF_UTILS.cmake
 
 find_library(NVBUF_UTILS_LIBRARY
-  NAMES nvbuf_utils
-  PATHS /usr/lib/aarch64-linux-gnu/tegra
+  NAMES
+    nvbuf_utils
+  PATHS
+    /usr/lib/aarch64-linux-gnu/tegra
 )
 
 find_path(
   NVBUF_UTILS_INCLUDE_DIR
-  NAMES include/nvbuf_utils.h
-  PATHS /usr/src/jetson_multimedia_api
+  NAMES
+    nvbuf_utils.h
+  PATHS
+    /usr/src/jetson_multimedia_api/include
+    ${CMAKE_CURRENT_LIST_DIR}/codec
 )
 
 if(NVBUF_UTILS_FOUND)
