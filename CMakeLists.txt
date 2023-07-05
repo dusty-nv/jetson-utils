@@ -193,11 +193,44 @@ install(
     ${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}-${PROJECT_VERSION}
 )
 
-# build python bindings + samples
-#add_subdirectory(python)
-#add_subdirectory(video/video-viewer)
+# Enable/disable python bindings
+set(JU_ENABLE_PYTHON_BINDINGS OFF CACHE BOOL "Enable jetson-utils python bindings")
+if(${JU_ENABLE_PYTHON_BINDINGS})
+  add_subdirectory(python)
+endif()
 
-#add_subdirectory(camera/camera-viewer)
-#add_subdirectory(display/gl-display-test)
-#add_subdirectory(network/webrtc-server)
-#add_subdirectory(network/rtsp-server)
+# Enable/disable apps
+set(JU_ENABLE_CAMERA_VIEWER OFF CACHE BOOL "Enable jetson-utils camera viewer app")
+if(${JU_ENABLE_CAMERA_VIEWER})
+  add_subdirectory(camera/camera-viewer)
+endif()
+
+set(JU_ENABLE_V4L2_DISPLAY OFF CACHE BOOL "Enable jetson-utils v4l2 display app")
+if(${JU_ENABLE_V4L2_DISPLAY})
+  add_subdirectory(camera/v4l2-display)
+endif()
+
+set(JU_ENABLE_V4L2_CONSOLE OFF CACHE BOOL "Enable jetson-utils v4l2 console app")
+if(${JU_ENABLE_V4L2_CONSOLE})
+  add_subdirectory(camera/v4l2-console)
+endif()
+
+set(JU_ENABLE_VIDEO_VIEWER OFF CACHE BOOL "Enable jetson-utils video viewer app")
+if(${JU_ENABLE_VIDEO_VIEWER})
+  add_subdirectory(video/video-viewer)
+endif()
+
+set(JU_ENABLE_GL_DISPLAY_TEST OFF CACHE BOOL "Enable jetson-utils gl display test app")
+if(${JU_ENABLE_GL_DISPLAY_TEST})
+  add_subdirectory(display/gl-display-test)
+endif()
+
+set(JU_ENABLE_WEBRTC_SERVER OFF CACHE BOOL "Enable jetson-utils webrtc server app")
+if(${JU_ENABLE_WEBRTC_SERVER})
+  add_subdirectory(network/webrtc-server)
+endif()
+
+set(JU_ENABLE_RTSP_SERVER OFF CACHE BOOL "Enable jetson-utils rtsp server app")
+if(${JU_ENABLE_RTSP_SERVER})
+  add_subdirectory(network/rtsp-server)
+endif()

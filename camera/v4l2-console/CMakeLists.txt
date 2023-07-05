@@ -1,6 +1,27 @@
+# jetson-utils::v4l2-console -- CMakeLists.txt
+cmake_minimum_required(VERSION 2.8)
 
+# CMP0048: The project() command manages VERSION variables
+cmake_policy(SET CMP0048 NEW)
+
+# CMP0028: Double colon in target name means ALIAS or IMPORTED target
+cmake_policy(SET CMP0028 NEW)
+
+# Set name of the project
+project(v4l2-console LANGUAGES CXX VERSION 1.0.0)
+
+# Find source and header files
 file(GLOB v4l2ConsoleSources *.cpp)
 file(GLOB v4l2ConsoleIncludes *.h )
 
-add_executable(v4l2-console ${v4l2ConsoleSources})
-target_link_libraries(v4l2-console jetson-utils)
+# Create the executable
+add_executable(${PROJECT_NAME} ${v4l2ConsoleSources} ${v4l2ConsoleIncludes})
+target_link_libraries(${PROJECT_NAME}
+  jetson-utils
+)
+
+# Install the executable
+install(TARGETS ${PROJECT_NAME}
+  DESTINATION
+    ${CMAKE_INSTALL_BINDIR}
+)
