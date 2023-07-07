@@ -1,5 +1,5 @@
 # jetson-utils -- CMakeLists.txt
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 3.5)
 
 # CMP0048: The project() command manages VERSION variables
 # @ref https://cmake.org/cmake/help/latest/policy/CMP0048.html
