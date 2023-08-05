@@ -21,6 +21,23 @@ include(GNUInstallDirs)
 # @ref https://cmake.org/cmake/help/latest/module/CMakePackageConfigHelpers.html
 include(CMakePackageConfigHelpers)
 
+# Include "CheckCXXCompilerFlag" module which checks if the CXX compiler supports a given flag
+# @ref https://cmake.org/cmake/help/latest/module/CheckCXXCompilerFlag.html
+include(CheckCXXCompilerFlag)
+
+# Disable "ISO C++ forbids converting a string constant to ‘char*’" warnings
+# @ref https://stackoverflow.com/a/67299165
+check_cxx_compiler_flag(-Wwrite-strings HAVE_WRITE_STRINGS)
+
+# Define PROJECT_IS_TOP_LEVEL variable if necessary
+# @ref https://www.scivision.dev/cmake-project-is-top-level/
+if(CMAKE_VERSION VERSION_LESS 3.21)
+  get_property(not_top DIRECTORY PROPERTY PARENT_DIRECTORY)
+  if(NOT not_top)
+    set(PROJECT_IS_TOP_LEVEL true)
+  endif()
+endif()
+
 # Set CMake module path
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_LIST_DIR}/cmake)
 
@@ -72,13 +89,13 @@ if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64")
     set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS}; -gencode arch=compute_53,code=sm_53 -gencode arch=compute_62,code=sm_62)
 
     if(CUDA_VERSION_MAJOR GREATER 9)
-        message(STATUS "jetson-utils: CUDA ${CUDA_VERSION} detected (${CMAKE_SYSTEM_PROCESSOR}), enabling SM_72")
-        set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS}; -gencode arch=compute_72,code=sm_72)
+      message(STATUS "jetson-utils: CUDA ${CUDA_VERSION} detected (${CMAKE_SYSTEM_PROCESSOR}), enabling SM_72")
+      set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS}; -gencode arch=compute_72,code=sm_72)
     endif()
 
     if(CUDA_VERSION_MAJOR GREATER 10)
-        message(STATUS "jetson-utils: CUDA ${CUDA_VERSION} detected (${CMAKE_SYSTEM_PROCESSOR}), enabling SM_87")
-        set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS}; -gencode arch=compute_87,code=sm_87)
+      message(STATUS "jetson-utils: CUDA ${CUDA_VERSION} detected (${CMAKE_SYSTEM_PROCESSOR}), enabling SM_87")
+      set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS}; -gencode arch=compute_87,code=sm_87)
     endif()
 endif()
 
@@ -94,7 +111,7 @@ option(ENABLE_NVMM "Enable use of NVMM zero-copy memory in video and camera stre
 message(STATUS "jetson-utils: Enable NVMM zero-copy memory (ENABLE_NVMM): ${ENABLE_NVMM}")
 
 if(ENABLE_NVMM)
-    add_definitions(-DENABLE_NVMM)
+  add_definitions(-DENABLE_NVMM)
 endif()
 
 # Find OpenGL and related packages
