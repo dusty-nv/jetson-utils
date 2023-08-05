@@ -54,6 +54,13 @@ if(NOT DEFINED CMAKE_CXX_STANDARD)
 endif()
 message(STATUS "jetson-utils: using C++ standard ${CMAKE_CXX_STANDARD}")
 
+# CMP0072: FindOpenGL prefers GLVND by default when available
+# @ref https://cmake.org/cmake/help/latest/policy/CMP0072.html
+if(POLICY CMP0072)
+  # TODO: test it with "NEW"
+  cmake_policy(SET CMP0072 OLD)
+endif()
+
 # Setup CUDA
 find_package(CUDA)
 message(STATUS "jetson-utils: CUDA version  ${CUDA_VERSION}")
@@ -89,10 +96,6 @@ message(STATUS "jetson-utils: Enable NVMM zero-copy memory (ENABLE_NVMM): ${ENAB
 if(ENABLE_NVMM)
     add_definitions(-DENABLE_NVMM)
 endif()
-
-# CMP0072: FindOpenGL prefers GLVND by default when available
-# @ref https://cmake.org/cmake/help/latest/policy/CMP0072.html
-cmake_policy(SET CMP0072 OLD)  # TODO: test it with NEW
 
 # Find OpenGL and related packages
 find_package(OpenGL REQUIRED)
