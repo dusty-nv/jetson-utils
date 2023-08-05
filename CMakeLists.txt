@@ -239,3 +239,19 @@ set(JU_ENABLE_RTSP_SERVER OFF CACHE BOOL "Enable jetson-utils rtsp server app")
 if(${JU_ENABLE_RTSP_SERVER})
   add_subdirectory(network/rtsp-server)
 endif()
+
+# Add uninstall target only if this project is the topmost level
+# @ref https://gitlab.kitware.com/cmake/community/-/wikis/FAQ#can-i-do-make-uninstall-with-cmake
+if(PROJECT_IS_TOP_LEVEL)
+  if(NOT TARGET uninstall)
+    configure_file(
+      "${CMAKE_CURRENT_SOURCE_DIR}/cmake_uninstall.cmake.in"
+      "${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake"
+      IMMEDIATE @ONLY
+    )
+
+    add_custom_target(uninstall
+      COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake
+    )
+  endif()
+endif()
