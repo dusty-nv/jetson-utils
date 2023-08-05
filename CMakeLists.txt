@@ -216,7 +216,7 @@ install(
 )
 
 # Enable/disable python bindings
-set(JU_ENABLE_PYTHON_BINDINGS OFF CACHE BOOL "Enable jetson-utils python bindings")
+set(JU_ENABLE_PYTHON_BINDINGS ON CACHE BOOL "Enable jetson-utils python bindings")
 if(${JU_ENABLE_PYTHON_BINDINGS})
   add_subdirectory(python)
 endif()
