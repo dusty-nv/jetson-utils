@@ -80,6 +80,8 @@ set_target_properties(${PROJECT_NAME}-${PYTHON_VERSION_MAJOR}${PYTHON_VERSION_MI
     PREFIX ""
     OUTPUT_NAME "jetson_utils_python"
     LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/python/${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}
+    INSTALL_RPATH_USE_LINK_PATH TRUE
+    INSTALL_RPATH "$ORIGIN:$ORIGIN/../../"
 )
 
 # on x86, install under /opt/conda/lib/pythonX.X/site-packages
