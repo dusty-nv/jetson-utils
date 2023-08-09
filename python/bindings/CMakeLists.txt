@@ -58,7 +58,7 @@ file(GLOB pythonUtilsSources *.cpp)
 file(GLOB pythonUtilsIncludes *.h)
 
 # Build Python bindings
-cuda_add_library(${PROJECT_NAME}-${PYTHON_VERSION_MAJOR}${PYTHON_VERSION_MINOR} SHARED ${pythonUtilsSources} ${pythonUtilsIncludes})
+python_add_module(${PROJECT_NAME}-${PYTHON_VERSION_MAJOR}${PYTHON_VERSION_MINOR} ${pythonUtilsSources} ${pythonUtilsIncludes})
 
 if(HAVE_WRITE_STRINGS)
   target_compile_options(${PROJECT_NAME}-${PYTHON_VERSION_MAJOR}${PYTHON_VERSION_MINOR} PRIVATE -Wno-write-strings)
