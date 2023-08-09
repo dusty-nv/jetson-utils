@@ -19,6 +19,11 @@ add_executable(${PROJECT_NAME} ${v4l2ConsoleSources} ${v4l2ConsoleIncludes})
 target_link_libraries(${PROJECT_NAME}
   jetson-utils
 )
+set_target_properties(${PROJECT_NAME}
+  PROPERTIES
+    INSTALL_RPATH_USE_LINK_PATH TRUE
+    INSTALL_RPATH "$ORIGIN:$ORIGIN/../:$ORIGIN/../lib"
+)
 
 # Install the executable
 install(TARGETS ${PROJECT_NAME}
