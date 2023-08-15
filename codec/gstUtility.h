@@ -86,101 +86,26 @@ const char* gst_format_to_string( imageFormat format );
  */
 bool gst_build_filesink( const URI& uri, videoOptions::Codec codec, std::ostringstream& pipeline );
 
-
-#if defined(__aarch64__)
-#if NV_TENSORRT_MAJOR >= 8 && NV_TENSORRT_MINOR >= 4
-
 /**
- * Use nvv4l2 codecs for JetPack 5 and newer
+ * gst_select_decoder
  * @internal
  * @ingroup codec
  */
-#define GST_CODECS_V4L2
+const char* gst_select_decoder( videoOptions::Codec codec, videoOptions::CodecType& type );
 
-// Decoders for JetPack >= 5 and GStreamer >= 1.0
-#define GST_DECODER_H264  "nvv4l2decoder"
-#define GST_DECODER_H265  "nvv4l2decoder"
-#define GST_DECODER_VP8   "nvv4l2decoder"
-#define GST_DECODER_VP9   "nvv4l2decoder"
-#define GST_DECODER_MPEG2 "nvv4l2decoder"
-#define GST_DECODER_MPEG4 "nvv4l2decoder"
-#define GST_DECODER_MJPEG "nvjpegdec"
-
-// Encoders for JetPack >= 5 and GStreamer >= 1.0
-#define GST_ENCODER_H264  "nvv4l2h264enc"
-#define GST_ENCODER_H265  "nvv4l2h265enc"
-#define GST_ENCODER_VP8   "nvv4l2vp8enc"
-#define GST_ENCODER_VP9   "nvv4l2vp9enc"
-#define GST_ENCODER_MJPEG "nvjpegenc"
-
-#else
-	
 /**
- * Use OMX codecs for JetPack 4 and older
+ * gst_select_decoder
  * @internal
  * @ingroup codec
  */
-#define GST_CODECS_OMX
+const char* gst_select_encoder( videoOptions::Codec codec, videoOptions::CodecType& type );
 
-#if GST_CHECK_VERSION(1,0,0)
+/**
+ * gst_default_codec
+ * @internal
+ * @ingroup codec
+ */
+videoOptions::CodecType gst_default_codec();
 
-// Decoders for JetPack <= 4 and GStreamer >= 1.0
-#define GST_DECODER_H264  "omxh264dec"
-#define GST_DECODER_H265  "omxh265dec"
-#define GST_DECODER_VP8   "omxvp8dec"
-#define GST_DECODER_VP9   "omxvp9dec"
-#define GST_DECODER_MPEG2 "omxmpeg2videodec"
-#define GST_DECODER_MPEG4 "omxmpeg4videodec"
-#define GST_DECODER_MJPEG "nvjpegdec"
 
-// Encoders for JetPack <= 4 and GStreamer >= 1.0
-#define GST_ENCODER_H264  "omxh264enc"
-#define GST_ENCODER_H265  "omxh265enc"
-#define GST_ENCODER_VP8   "omxvp8enc"
-#define GST_ENCODER_VP9   "omxvp9enc"
-#define GST_ENCODER_MJPEG "nvjpegenc"
-
-#else
-	
-// Decoders for JetPack <= 4 and GStreamer < 1.0
-#define GST_DECODER_H264  "nv_omx_h264dec"
-#define GST_DECODER_H265  "nv_omx_h265dec"
-#define GST_DECODER_VP8   "nv_omx_vp8dec"
-#define GST_DECODER_VP9   "nv_omx_vp9dec"
-#define GST_DECODER_MPEG2 "nx_omx_mpeg2videodec"
-#define GST_DECODER_MPEG4 "nx_omx_mpeg4videodec"
-#define GST_DECODER_MJPEG "nvjpegdec"
-
-// Encoders for JetPack <= 4 and GStreamer < 1.0
-#define GST_ENCODER_H264  "nv_omx_h264enc"
-#define GST_ENCODER_H265  "nv_omx_h265enc"
-#define GST_ENCODER_VP8   "nv_omx_vp8enc"
-#define GST_ENCODER_VP9   "nv_omx_vp9enc"
-#define GST_ENCODER_MJPEG "nvjpegenc"
-
-#endif
-#endif
-
-#elif defined(__x86_64__) || defined(__amd64__)
-
-#if GST_CHECK_VERSION(1,0,0)
-
-// Decoders for x86 and GStreamer >= 1.0
-#define GST_DECODER_H264  "avdec_h264"
-#define GST_DECODER_H265  "avdec_h265"
-#define GST_DECODER_VP8   "vp8dec"
-#define GST_DECODER_VP9   "vp9dec"
-#define GST_DECODER_MPEG2 "avdec_mpeg2video"
-#define GST_DECODER_MPEG4 "avdec_mpeg4"
-#define GST_DECODER_MJPEG "jpegdec"
-
-// Encoders for x86 and GStreamer >= 1.0
-#define GST_ENCODER_H264  "x264enc"
-#define GST_ENCODER_H265  "x265enc"
-#define GST_ENCODER_VP8   "vp8enc"
-#define GST_ENCODER_VP9   "vp9enc"
-#define GST_ENCODER_MJPEG "jpegenc"
-
-#endif
-#endif
 #endif

@@ -147,7 +147,17 @@ public:
 	 * Assignment operator (parse URI string)
 	 */
 	inline void operator = (const std::string& uri ) 	{ Parse(uri.c_str()); }
+	
+	/**
+	 * Return true if it's been set to a well-formed URI string (this doesn't mean it actually exists)
+	 */
+	inline bool valid() const					{ return length() > 0; }
 
+	/**
+	 * Return the length (in characters) of the URI string
+	 */
+	inline size_t length() const					{ return string.length(); }
+	
 	/**
 	 * Full resource URI (what was originally parsed)
 	 */

@@ -31,68 +31,91 @@
 #include <sstream>
 
 
-
+// 'video': { width: { ideal: 1280 }, height: { ideal: 720 } }
 // HTML outgoing video viewer page template (for server->client)
 //  string params:
 //    1. websocket path
 //    2. websocket protocol (ws or wss)
 //    3. stun server
 //    4. body content
-const char* html_viewer = " \n \
+const char* html_template = " \n \
 <html> \n \
   <head> \n \
     <script type='text/javascript' src='https://webrtc.github.io/adapter/adapter-latest.js'></script> \n \
     <script type='text/javascript'> \n \
-      var videoElement; \n \
-      var websocketConnection; \n \
-      var webrtcPeerConnection; \n \
-      var webrtcConfiguration; \n \
-	 var bytesReceived; \n \
-      var reportError; \n \
+      var connections = {}; \n \
+	 var reportError; \n \
  \n \
+      function getLocalStream() { \n \
+        var constraints = {'audio': false, 'video': true}; \n \
+        if (navigator.mediaDevices.getUserMedia) { \n \
+          return navigator.mediaDevices.getUserMedia(constraints); \n \
+        } \n \
+      } \n \
  \n \
-      function onLocalDescription(desc) { \n \
-        console.log('Local description: ' + JSON.stringify(desc)); \n \
-        webrtcPeerConnection.setLocalDescription(desc).then(function() { \n \
-          websocketConnection.send(JSON.stringify({ type: 'sdp', 'data': webrtcPeerConnection.localDescription })); \n \
-        }).catch(reportError); \n \
+      function onIncomingSDP(url, sdp) { \n \
+        console.log('Incoming SDP: (%%s)' + JSON.stringify(sdp), url); \n \
+ \n \
+        function onLocalDescription(desc) { \n \
+          console.log('Local description (%%s)\\n' + JSON.stringify(desc), url); \n \
+          connections[url].webrtcPeer.setLocalDescription(desc).then(function() { \n \
+            connections[url].websocket.send(JSON.stringify({ type: 'sdp', 'data': connections[url].webrtcPeer.localDescription })); \n \
+          }).catch(reportError); \n \
+        } \n \
+ \n \
+        connections[url].webrtcPeer.setRemoteDescription(sdp).catch(reportError); \n \
+ \n \
+	   if( connections[url].type == 'inbound' ) { \n \
+	     connections[url].webrtcPeer.createAnswer().then(onLocalDescription).catch(reportError); \n \
+	   } \n \
+	   else if( connections[url].type == 'outbound' ) { \n \
+	     getLocalStream().then((stream) => { \n \
+            console.log('Adding local stream'); \n \
+            connections[url].webrtcPeer.addStream(stream); \n \
+		  connections[url].webrtcPeer.createAnswer().then(sdp => { \n \
+		    // https://stackoverflow.com/a/57674478 \n \
+              var arr = sdp.sdp.split('\\r\\n'); \n \
+              arr.forEach((str, i) => {  \n \
+                if (/^a=fmtp:\\d*/.test(str)) {  \n \
+                  arr[i] = str + ';x-google-max-bitrate=10000;x-google-min-bitrate=0;x-google-start-bitrate=6000';  \n \
+                } else if (/^a=mid:(1|video)/.test(str)) {  \n \
+                  arr[i] += '\\r\\nb=AS:10000';  \n \
+                }  \n \
+              }); \n \
+		    sdp = new RTCSessionDescription({ \n \
+                type: 'answer', \n \
+                sdp: arr.join('\\r\\n'), \n \
+              }); \n \
+		    onLocalDescription(sdp); \n \
+            }).catch(reportError); \n \
+	     }); \n \
+        } \n \
+ \n \
       } \n \
  \n \
  \n \
-      function onIncomingSDP(sdp) { \n \
-        console.log('Incoming SDP: ' + JSON.stringify(sdp)); \n \
-        webrtcPeerConnection.setRemoteDescription(sdp).catch(reportError); \n \
-        webrtcPeerConnection.createAnswer().then(onLocalDescription).catch(reportError); \n \
-      } \n \
- \n \
- \n \
-      function onIncomingICE(ice) { \n \
+      function onIncomingICE(url, ice) { \n \
         var candidate = new RTCIceCandidate(ice); \n \
-        console.log('Incoming ICE: ' + JSON.stringify(ice)); \n \
-        webrtcPeerConnection.addIceCandidate(candidate).catch(reportError); \n \
+        console.log('Incoming ICE (%%s)\\n' + JSON.stringify(ice), url); \n \
+        connections[url].webrtcPeer.addIceCandidate(candidate).catch(reportError); \n \
       } \n \
  \n \
  \n \
- 	 function onConnectionStateChange(event) { \n \
-	   console.log('WebRTC connection state:  ' + webrtcPeerConnection.connectionState); \n \
-        if( webrtcPeerConnection.connectionState == 'connected' ) \n \
-          setInterval(getConnectionStats, 1000, 'inbound-rtp'); \n \
-	 } \n \
- \n \
- \n \
-      function getConnectionStats(reportType) { \n \
+      function getConnectionStats(url, reportType) { \n \
         if( reportType == undefined ) \n \
           reportType = 'all'; \n \
  \n \
-        webrtcPeerConnection.getStats(null).then((stats) => { \n \
+        connections[url].webrtcPeer.getStats(null).then((stats) => { \n \
           let statsOutput = ''; \n \
  \n \
           stats.forEach((report) => { \n \
             if( reportType == 'inbound-rtp' && report.type === 'inbound-rtp' && report.kind === 'video') { \n \
-              if( bytesReceived != undefined ) \n \
-                statsOutput += `bitrate:          ${((report.bytesReceived - bytesReceived) / 125000).toFixed(3)} mbps\n`; \n \
+		    statsOutput += `# inbound-rtp\n`; \n \
+ \n \
+              if( connections[url].bytesReceived != undefined ) \n \
+                statsOutput += `bitrate:          ${((report.bytesReceived - connections[url].bytesReceived) / 125000).toFixed(3)} mbps\n`; \n \
 \n \
-              bytesReceived = report.bytesReceived; \n \
+              connections[url].bytesReceived = report.bytesReceived; \n \
 \n \
 		    statsOutput += `bytesReceived:    ${report.bytesReceived}\n`; \n \
               statsOutput += `packetsReceived:  ${report.packetsReceived}\n`; \n \
@@ -105,6 +128,23 @@ const char* html_viewer = " \n \
               statsOutput += `keyFramesDecoded: ${report.keyFramesDecoded}\n`; \n \
 		    statsOutput += `jitter:           ${report.jitter}\n`; \n \
             } \n \
+		  else if( reportType =='outbound-rtp' && report.type === 'outbound-rtp' && report.kind === 'video') { \n \
+              statsOutput += `# outbound-rtp\n`; \n \
+\n \
+              if( connections[url].bytesSent != undefined ) \n \
+                statsOutput += `bitrate:          ${((report.bytesSent - connections[url].bytesSent) / 125000).toFixed(3)} mbps\n`; \n \
+\n \
+              connections[url].bytesSent = report.bytesSent; \n \
+\n \
+		    statsOutput += `bytesSent:        ${report.bytesSent}\n`; \n \
+              statsOutput += `packetsSent:      ${report.packetsSent}\n`; \n \
+		    statsOutput += `packetsResent:    ${report.retransmittedPacketsSent}\n`; \n \
+              statsOutput += `framesSent:       ${report.framesSent}\n`; \n \
+              statsOutput += `frameWidth:       ${report.frameWidth}\n`; \n \
+              statsOutput += `frameHeight:      ${report.frameHeight}\n`; \n \
+              statsOutput += `framesPerSecond:  ${report.framesPerSecond}\n`; \n \
+              statsOutput += `keyFramesSent:    ${report.keyFramesEncoded}\n`; \n \
+		  } \n \
             else if( reportType == 'all' || reportType == report.type ) { \n \
               statsOutput += `<h2>Report: ${report.type}</h2>\n<strong>ID:</strong> ${report.id}<br>\n` + \n \
               `<strong>Timestamp:</strong> ${report.timestamp}\n`; \n \
@@ -116,29 +156,34 @@ const char* html_viewer = " \n \
             } \n \
           }); \n \
  \n \
-          document.getElementById('stats').innerHTML = statsOutput; \n \
+          var statsElement = (connections[url].type == 'inbound') ? 'stats-player' : 'stats-sender'; \n \
+          document.getElementById(statsElement).innerHTML = statsOutput; \n \
         }); \n \
       } \n \
  \n \
  \n \
       function onAddRemoteStream(event) { \n \
-	   console.log('Setting video element source to WebRTC stream'); \n \
-        videoElement.srcObject = event.streams[0]; \n \
-	   videoElement.play(); \n \
+	   var url = event.srcElement.url; \n \
+	   console.log('Adding remote stream to HTML video player (%%s)', url); \n \
+        connections[url].videoElement.srcObject = event.streams[0]; \n \
+	   connections[url].videoElement.play(); \n \
       } \n \
  \n \
  \n \
       function onIceCandidate(event) { \n \
+	   var url = event.srcElement.url; \n \
+ \n \
         if (event.candidate == null) \n \
           return; \n \
  \n \
-        console.log('Sending ICE candidate out: ' + JSON.stringify(event.candidate)); \n \
-        websocketConnection.send(JSON.stringify({'type': 'ice', 'data': event.candidate })); \n \
+        console.log('Sending ICE candidate out (%%s)\\n' + JSON.stringify(event.candidate), url); \n \
+        connections[url].websocket.send(JSON.stringify({'type': 'ice', 'data': event.candidate })); \n \
       } \n \
  \n \
  \n \
       function onServerMessage(event) { \n \
         var msg; \n \
+	   var url = event.srcElement.url; \n \
  \n \
         try { \n \
           msg = JSON.parse(event.data); \n \
@@ -146,16 +191,24 @@ const char* html_viewer = " \n \
           return; \n \
         } \n \
  \n \
-        if (!webrtcPeerConnection) { \n \
-          webrtcPeerConnection = new RTCPeerConnection(webrtcConfiguration); \n \
-		webrtcPeerConnection.onconnectionstatechange = onConnectionStateChange; \n \
-          webrtcPeerConnection.ontrack = onAddRemoteStream; \n \
-          webrtcPeerConnection.onicecandidate = onIceCandidate; \n \
+        if( !connections[url].webrtcPeer ) { \n \
+          connections[url].webrtcPeer = new RTCPeerConnection(connections[url].webrtcConfig); \n \
+		connections[url].webrtcPeer.url = url; \n \
+ \n \
+		connections[url].webrtcPeer.onconnectionstatechange = (ev) => { \n \
+	       console.log('WebRTC connection state (%%s) ' + connections[url].webrtcPeer.connectionState, url); \n \
+            if( connections[url].webrtcPeer.connectionState == 'connected' ) \n \
+              setInterval(getConnectionStats, 1000, url, connections[url].type == 'inbound' ? 'inbound-rtp' : 'outbound-rtp'); \n \
+	     } \n \
+ \n \
+          if( connections[url].type == 'inbound' ) \n \
+            connections[url].webrtcPeer.ontrack = onAddRemoteStream; \n \
+          connections[url].webrtcPeer.onicecandidate = onIceCandidate; \n \
         } \n \
  \n \
         switch (msg.type) { \n \
-          case 'sdp': onIncomingSDP(msg.data); break; \n \
-          case 'ice': onIncomingICE(msg.data); break; \n \
+          case 'sdp': onIncomingSDP(url, msg.data); break; \n \
+          case 'ice': onIncomingICE(url, msg.data); break; \n \
           default: break; \n \
         } \n \
       } \n \
@@ -163,157 +216,77 @@ const char* html_viewer = " \n \
  \n \
       function playStream(videoPlayer, hostname, port, path, configuration, reportErrorCB) { \n \
         var l = window.location;\n \
+        if( path == 'null' ) \n \
+	      return; \n \
+        var wsProt = (l.protocol == 'https:') ? 'wss://' : 'ws://'; \n \
         var wsHost = (hostname != undefined) ? hostname : l.hostname; \n \
         var wsPort = (port != undefined) ? port : l.port; \n \
-        var wsPath = (path != undefined) ? path : '%s'; \n \
+        var wsPath = (path != undefined) ? path : '/ws'; \n \
         if (wsPort) \n\
           wsPort = ':' + wsPort; \n\
-        var wsUrl = '%s://' + wsHost + wsPort + wsPath; \n \
+        var wsUrl = wsProt + wsHost + wsPort + wsPath; \n \
 	   console.log('Video server URL: ' + wsUrl); \n \
+	   var url = wsUrl; \n \
  \n \
-        videoElement = videoPlayer; \n \
-        webrtcConfiguration = configuration; \n \
+        connections[url] = {}; \n \
+ \n \
+        connections[url].type = 'inbound'; \n \
+        connections[url].videoElement = document.getElementById(videoPlayer); \n \
+        connections[url].webrtcConfig = configuration; \n \
         reportError = (reportErrorCB != undefined) ? reportErrorCB : function(text) {}; \n \
  \n \
-        websocketConnection = new WebSocket(wsUrl); \n \
-        websocketConnection.addEventListener('message', onServerMessage); \n \
+        connections[url].websocket = new WebSocket(wsUrl); \n \
+        connections[url].websocket.addEventListener('message', onServerMessage); \n \
+      } \n \
+ \n \
+      function sendStream(hostname, port, path, configuration, reportErrorCB) { \n \
+        var l = window.location; \n \
+        if( path == 'null' ) \n \
+	      return; \n \
+        if( l.protocol != 'https:' ) { \n \
+	      alert('Please use HTTPS to enable the use of your browser webcam'); \n \
+		 return; \n \
+	   } \n \
+        if( !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia ) { \n \
+	      alert('getUserMedia() not available (confirm HTTPS is being used)'); \n \
+		 return; \n \
+        } \n \
+	   var wsProt = (l.protocol == 'https:') ? 'wss://' : 'ws://'; \n \
+        var wsHost = (hostname != undefined) ? hostname : l.hostname; \n \
+        var wsPort = (port != undefined) ? port : l.port; \n \
+        var wsPath = (path != undefined) ? path : '/ws'; \n \
+        if (wsPort) \n\
+          wsPort = ':' + wsPort; \n\
+        var wsUrl = wsProt + wsHost + wsPort + wsPath; \n \
+        console.log('Video server URL: ' + wsUrl); \n \
+	   var url = wsUrl; \n \
+ \n \
+        connections[url] = {}; \n \
+ \n \
+        connections[url].type = 'outbound'; \n \
+        connections[url].webrtcConfig = configuration; \n \
+        reportError = (reportErrorCB != undefined) ? reportErrorCB : function(text) {}; \n \
+ \n \
+        connections[url].websocket = new WebSocket(wsUrl); \n \
+        connections[url].websocket.addEventListener('message', onServerMessage); \n \
       } \n \
  \n \
       window.onload = function() { \n \
-        var videoPlayer = document.getElementById('stream'); \n \
         var config = { 'iceServers': [{ 'urls': 'stun:%s' }] }; \n\
-        playStream(videoPlayer, null, null, null, config, function (errmsg) { console.error(errmsg); }); \n \
-      }; \n \
+        playStream('video-player', null, null, '%s', config, function (errmsg) { console.error(errmsg); }); \n \
+        sendStream(null, null, '%s', config, function (errmsg) { console.error(errmsg); }); \n \
+	 }; \n \
  \n \
     </script> \n \
   </head> \n \
  \n \
   <body style='background-color:#333333; color:#FFFFFF;'> \n \
     <div> \n \
-      <video id='stream' autoplay controls playsinline muted>Your browser does not support video</video> \n \
+      <video id='video-player' autoplay controls playsinline muted>Your browser does not support video</video> \n \
     </div> \n \
     <pre>%s</pre> \n \
-    <pre id='stats'></pre> \n \
-  </body> \n \
-</html> \n \
-";
-
-
-// HTML incoming video sender page template (for client->server)
-//  string params:
-//    1. websocket path
-//    2. websocket protocol (ws or wss)
-//    3. stun server
-//    4. body content
-const char* html_sender = " \n \
-<html> \n \
-  <head> \n \
-    <script type='text/javascript' src='https://webrtc.github.io/adapter/adapter-latest.js'></script> \n \
-    <script type='text/javascript'> \n \
-      var websocketConnection; \n \
-      var webrtcPeerConnection; \n \
-      var webrtcConfiguration; \n \
-      var reportError; \n \
- \n \
-      function getLocalStream() { \n \
-         var constraints = {'video':true,'audio':false}; \n \
-         if (navigator.mediaDevices.getUserMedia) { \n \
-             return navigator.mediaDevices.getUserMedia(constraints); \n \
-         } \n \
-     } \n \
- \n \
-      function onLocalDescription(desc) { \n \
-        console.log('Local description: ' + JSON.stringify(desc)); \n \
-        webrtcPeerConnection.setLocalDescription(desc).then(function() { \n \
-          websocketConnection.send(JSON.stringify({ type: 'sdp', 'data': webrtcPeerConnection.localDescription })); \n \
-        }).catch(reportError); \n \
-      } \n \
- \n \
- \n \
-      function onIncomingSDP(sdp) { \n \
-        console.log('Incoming SDP: ' + JSON.stringify(sdp)); \n \
-        webrtcPeerConnection.setRemoteDescription(sdp).catch(reportError); \n \
-        /* Send our video/audio to the other peer */ \n \
-        local_stream_promise = getLocalStream().then((stream) => { \n \
-           console.log('Adding local stream'); \n \
-           webrtcPeerConnection.addStream(stream); \n \
-           webrtcPeerConnection.createAnswer().then(onLocalDescription).catch(reportError); \n \
-        }); \n \
-      } \n \
- \n \
- \n \
-      function onIncomingICE(ice) { \n \
-        var candidate = new RTCIceCandidate(ice); \n \
-        console.log('Incoming ICE: ' + JSON.stringify(ice)); \n \
-        webrtcPeerConnection.addIceCandidate(candidate).catch(reportError); \n \
-      } \n \
- \n \
- \n \
-      function onIceCandidate(event) { \n \
-        if (event.candidate == null) \n \
-          return; \n \
- \n \
-        console.log('Sending ICE candidate out: ' + JSON.stringify(event.candidate)); \n \
-        websocketConnection.send(JSON.stringify({ 'type': 'ice', 'data': event.candidate })); \n \
-      } \n \
- \n \
- \n \
-      function onServerMessage(event) { \n \
-        var msg; \n \
- \n \
-        try { \n \
-          msg = JSON.parse(event.data); \n \
-        } catch (e) { \n \
-          return; \n \
-        } \n \
- \n \
-        if (!webrtcPeerConnection) { \n \
-          webrtcPeerConnection = new RTCPeerConnection(webrtcConfiguration); \n \
-          webrtcPeerConnection.onicecandidate = onIceCandidate; \n \
-        } \n \
- \n \
-        switch (msg.type) { \n \
-          case 'sdp': onIncomingSDP(msg.data); break; \n \
-          case 'ice': onIncomingICE(msg.data); break; \n \
-          default: break; \n \
-        } \n \
-      } \n \
- \n \
- \n \
-      function sendStream(hostname, port, path, configuration, reportErrorCB) { \n \
-        var l = window.location;\n \
-        var wsHost = (hostname != undefined) ? hostname : l.hostname; \n \
-        var wsPort = (port != undefined) ? port : l.port; \n \
-        var wsPath = (path != undefined) ? path : '%s'; \n \
-        if (wsPort) \n\
-          wsPort = ':' + wsPort; \n\
-        var wsUrl = '%s://' + wsHost + wsPort + wsPath; \n \
- \n \
-        webrtcConfiguration = configuration; \n \
-        reportError = (reportErrorCB != undefined) ? reportErrorCB : function(text) {}; \n \
- \n \
-        websocketConnection = new WebSocket(wsUrl); \n \
-        websocketConnection.addEventListener('message', onServerMessage); \n \
-      } \n \
- \n \
-      window.onload = function() { \n \
-	   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { \n \
-	      console.log('getUserMedia() not available -- confirm HTTPS connection is being used'); \n \
-		 document.write('getUserMedia() not available -- confirm HTTPS connection is being used'); \n \
-		 return; \n \
-	   } \n \
-        var config = { 'iceServers': [{ 'urls': 'stun:%s' }] }; \n\
-        sendStream(null, null, null, config, function (errmsg) { console.error(errmsg); }); \n \
-      }; \n \
- \n \
-    </script> \n \
-  </head> \n \
- \n \
-  <body> \n \
-    <div> \n \
-      <p>sending WebRTC stream</p> \n \
-    </div> \n \
-    %s \n \
+    <pre id='stats-player'></pre> \n \
+    <pre id='stats-sender'></pre> \n \
   </body> \n \
 </html> \n \
 ";
@@ -723,6 +696,8 @@ void WebRTCServer::onHttpDefault( SoupServer* soup_server, SoupMessage* message,
 		return;
 	}
 	
+	LogVerbose(LOG_WEBRTC "%s\n", path);
+	
 	// JSON REST API
 	if( strcmp(path, "/api/streams") == 0 )
 	{
@@ -769,7 +744,7 @@ void WebRTCServer::onHttpDefault( SoupServer* soup_server, SoupMessage* message,
 	}
 
 	// the HTML to serve will be rendered to this buffer
-	char html[8192];
+	char html[16384];
 
 	#define CHECK_SNPRINTF(x) \
 		const int chars_needed = x; \
@@ -788,8 +763,16 @@ void WebRTCServer::onHttpDefault( SoupServer* soup_server, SoupMessage* message,
 	if( query != NULL )
 		stream = (const char*)g_hash_table_lookup(query, "stream");
 
-	if( !stream && server->mWebsocketRoutes.size() > 0 )
-		stream = server->mWebsocketRoutes[0]->path.c_str();  // default to the first stream
+	if( !stream )
+	{
+		for( uint32_t n=0; n < server->mWebsocketRoutes.size(); n++ )
+		{
+			stream = server->mWebsocketRoutes[n]->path.c_str();
+			
+			if( (server->mWebsocketRoutes[n]->flags & WEBRTC_VIDEO) && (server->mWebsocketRoutes[n]->flags & WEBRTC_SEND) )
+				break; // if there are any playback streams, default to the first one
+		}
+	}
 	
 	if( stream != NULL )
 	{
@@ -805,26 +788,31 @@ void WebRTCServer::onHttpDefault( SoupServer* soup_server, SoupMessage* message,
 		{
 			const std::string stream_info = server->printRouteInfo(route);
 			
+			const char* send_path = "null";
+			const char* receive_path = "null";
+			
 			if( (route->flags & WEBRTC_VIDEO) && (route->flags & WEBRTC_SEND) )
 			{
-				CHECK_SNPRINTF(snprintf(html, sizeof(html), html_viewer, 
-								    route->path.c_str(), 
-								    server->HasHTTPS() ? "wss" : "ws", 
-								    server->GetSTUNServer(),
-								    stream_info.c_str()));
+				send_path = route->path.c_str();
+				
+				for( uint32_t n=0; n < server->mWebsocketRoutes.size(); n++ )
+				{
+					if( (server->mWebsocketRoutes[n]->flags & WEBRTC_VIDEO) && (server->mWebsocketRoutes[n]->flags & WEBRTC_RECEIVE) )
+					{
+						receive_path = server->mWebsocketRoutes[n]->path.c_str();
+						break;
+					}
+				}
 			}
 			else if( (route->flags & WEBRTC_VIDEO) && (route->flags & WEBRTC_RECEIVE) )
 			{
-				CHECK_SNPRINTF(snprintf(html, sizeof(html), html_sender, 
-								    route->path.c_str(), 
-								    server->HasHTTPS() ? "wss" : "ws", 
+				receive_path = route->path.c_str();
+			}
+			
+			CHECK_SNPRINTF(snprintf(html, sizeof(html), html_template, 
 								    server->GetSTUNServer(),
+								    send_path, receive_path,
 								    stream_info.c_str()));
-			}
-			else
-			{
-				CHECK_SNPRINTF(snprintf(html, sizeof(html), html_unable, route->path.c_str()));
-			}
 		}
 		else
 		{
@@ -835,7 +823,7 @@ void WebRTCServer::onHttpDefault( SoupServer* soup_server, SoupMessage* message,
 	{
 		strncpy(html, html_inactive, sizeof(html));	// no streams available
 	}
-	
+
 	// reply with the HTML content
 	SoupBuffer* soup_buffer = soup_buffer_new(SOUP_MEMORY_COPY, html, strlen(html)); // SOUP_MEMORY_STATIC
 
@@ -1018,7 +1006,10 @@ void* WebRTCServer::runThread( void* user_data )
 	LogVerbose(LOG_WEBRTC "WebRTC server thread running...\n");
 	
 	while( server->mRefCount > 0 )
+	{
+		//LogDebug(LOG_WEBRTC "WebRTC processing requests\n");
 		server->ProcessRequests(true);
+	}
 	
 	LogVerbose(LOG_WEBRTC "WebRTC server thread stopped\n");
 	return 0;

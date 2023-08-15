@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 #
-# Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
+# Copyright (c) 2023, NVIDIA CORPORATION. All rights reserved.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a
 # copy of this software and associated documentation files (the "Software"),
@@ -23,16 +23,16 @@
 
 import sys
 import argparse
-
 from jetson_utils import videoSource, videoOutput, Log
 
+
 # parse command line
-parser = argparse.ArgumentParser(description="View various types of video streams", 
+parser = argparse.ArgumentParser(description="Test various video streaming APIs", 
                                  formatter_class=argparse.RawTextHelpFormatter, 
                                  epilog=videoSource.Usage() + videoOutput.Usage() + Log.Usage())
 
-parser.add_argument("input", type=str, help="URI of the input stream")
-parser.add_argument("output", type=str, default="", nargs='?', help="URI of the output stream")
+parser.add_argument("input", type=str, default="/dev/video0", nargs='?', help="URI of the input stream")
+parser.add_argument("output", type=str, default="images/test/test_video.mp4", nargs='?', help="URI of the output stream")
 
 try:
 	args = parser.parse_known_args()[0]
@@ -40,11 +40,25 @@ except:
 	print("")
 	parser.print_help()
 	sys.exit(0)
-
-# create video sources & outputs
-input = videoSource(args.input, argv=sys.argv)    # default:  options={'width': 1280, 'height': 720, 'framerate': 30}
-output = videoOutput(args.output, argv=sys.argv)  # default:  options={'width': 1280, 'height': 720, 'framerate': 30}
-
+    
+    
+# create video source
+input = videoSource(args.input, 
+                    argv=sys.argv,
+                    options={
+                        'width': 1920,
+                        'height': 1080,
+                        'framerate': 30, 
+                    })
+           
+# output
+output = videoOutput(args.output,
+                     argv=sys.argv,
+                     options={
+                        'bitrate': 2500000,
+                        'codec': 'h264'
+                     })
+                     
 # capture frames until EOS or user exits
 numFrames = 0
 
@@ -56,7 +70,7 @@ while True:
         continue  
         
     if numFrames % 25 == 0 or numFrames < 15:
-        Log.Verbose(f"video-viewer:  captured {numFrames} frames ({img.width} x {img.height})")
+        Log.Verbose(f"test-video:  captured {numFrames} frames ({img.width} x {img.height})")
 	
     numFrames += 1
 	
@@ -64,7 +78,7 @@ while True:
     output.Render(img)
     
     # update the title bar
-    output.SetStatus("Video Viewer | {:d}x{:d} | {:.1f} FPS".format(img.width, img.height, output.GetFrameRate()))
+    output.SetStatus("Video Test | {:d}x{:d} | {:.1f} FPS".format(img.width, img.height, output.GetFrameRate()))
 	
     # exit on input/output EOS
     if not input.IsStreaming() or not output.IsStreaming():

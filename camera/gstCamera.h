@@ -23,11 +23,11 @@
 #ifndef __GSTREAMER_CAMERA_H__
 #define __GSTREAMER_CAMERA_H__
 
-#include <gst/gst.h>
-#include <string>
-
 #include "videoSource.h"
 #include "gstBufferManager.h"
+
+#include <string>
+#include <vector>
 
 
 // Forward declarations
@@ -135,13 +135,7 @@ public:
 	 * Capture the next image frame from the camera.
 	 * @see videoSource::Capture
 	 */
-	template<typename T> bool Capture( T** image, uint64_t timeout=DEFAULT_TIMEOUT )		{ return Capture((void**)image, imageFormatFromType<T>(), timeout); }
-	
-	/**
-	 * Capture the next image frame from the camera.
-	 * @see videoSource::Capture
-	 */
-	virtual bool Capture( void** image, imageFormat format, uint64_t timeout=DEFAULT_TIMEOUT );
+	virtual bool Capture( void** image, imageFormat format, uint64_t timeout=DEFAULT_TIMEOUT, int* status=NULL );
 
 	/**
 	 * Capture the next image frame from the camera and convert it to float4 RGBA format,
@@ -219,8 +213,11 @@ private:
 	void checkBuffer();
 	
 	bool matchCaps( GstCaps* caps );
-	bool printCaps( GstCaps* caps );
-	bool parseCaps( GstStructure* caps, videoOptions::Codec* codec, imageFormat* format, uint32_t* width, uint32_t* height, float* frameRate );
+	bool printCaps( GstCaps* caps ) const;
+	bool parseCaps( GstStructure* caps, videoOptions::Codec* codec, imageFormat* format, uint32_t* width, uint32_t* height, float* frameRate ) const;
+	bool parseCaps( GstStructure* caps, videoOptions::Codec* codec, imageFormat* format, uint32_t* width, uint32_t* height, std::vector<float>& frameRates ) const;
+	
+	float findFramerate( const std::vector<float>& frameRates, float frameRate ) const;
 	
 	_GstBus*     mBus;
 	_GstAppSink* mAppSink;

@@ -57,7 +57,7 @@ RingBuffer::~RingBuffer()
 // Alloc
 inline bool RingBuffer::Alloc( uint32_t numBuffers, size_t size, uint32_t flags )
 {
-	if( numBuffers == mNumBuffers && size == mBufferSize && (flags & ZeroCopy) == (mFlags & ZeroCopy) )
+	if( numBuffers == mNumBuffers && size <= mBufferSize && (flags & ZeroCopy) == (mFlags & ZeroCopy) )
 		return true;
 	
 	Free();
@@ -81,7 +81,7 @@ inline bool RingBuffer::Alloc( uint32_t numBuffers, size_t size, uint32_t flags 
 		{
 			if( !cudaAllocMapped(&mBuffers[n], size) )
 			{
-				LogError("RingBuffer -- failed to allocate zero-copy buffer of %zu bytes\n", size);
+				LogError(LOG_CUDA "RingBuffer -- failed to allocate zero-copy buffer of %zu bytes\n", size);
 				return false;
 			}
 		}
@@ -91,13 +91,13 @@ inline bool RingBuffer::Alloc( uint32_t numBuffers, size_t size, uint32_t flags 
 			
 			if( CUDA_FAILED(cudaMalloc(&mBuffers[n], size)) )
 			{
-				LogError("RingBuffer -- failed to allocate CUDA buffer of %zu bytes\n", size);
+				LogError(LOG_CUDA "RingBuffer -- failed to allocate CUDA buffer of %zu bytes\n", size);
 				return false;
 			}
 		}
 	}
 		
-	LogVerbose("RingBuffer -- allocated %u buffers (%zu bytes each, %zu bytes total)\n", numBuffers, size, size * numBuffers);
+	LogVerbose(LOG_CUDA "allocated %u ring buffers (%zu bytes each, %zu bytes total)\n", numBuffers, size, size * numBuffers);
 	
 	mNumBuffers = numBuffers;
 	mBufferSize = size;
@@ -132,7 +132,7 @@ inline void* RingBuffer::Peek( uint32_t flags )
 
 	if( !mBuffers || mNumBuffers == 0 )
 	{
-		LogError("RingBuffer::Peek() -- error, must call RingBuffer::Alloc() first\n");
+		LogError(LOG_CUDA "RingBuffer::Peek() -- error, must call RingBuffer::Alloc() first\n");
 		return NULL;
 	}
 
@@ -153,7 +153,7 @@ inline void* RingBuffer::Peek( uint32_t flags )
 
 	if( bufferIndex < 0 )
 	{
-		LogError("RingBuffer::Peek() -- error, invalid flags (must be Write or Read flags)\n");
+		LogError(LOG_CUDA "RingBuffer::Peek() -- error, invalid flags (must be Write or Read flags)\n");
 		return NULL;
 	}
 
@@ -168,7 +168,7 @@ inline void* RingBuffer::Next( uint32_t flags )
 
 	if( !mBuffers || mNumBuffers == 0 )
 	{
-		LogError("RingBuffer::Next() -- error, must call RingBuffer::Alloc() first\n");
+		LogError(LOG_CUDA "RingBuffer::Next() -- error, must call RingBuffer::Alloc() first\n");
 		return NULL;
 	}
 
@@ -208,7 +208,7 @@ inline void* RingBuffer::Next( uint32_t flags )
 
 	if( bufferIndex < 0 )
 	{
-		LogError("RingBuffer::Next() -- error, invalid flags (must be Write or Read flags)\n");
+		LogError(LOG_CUDA "RingBuffer::Next() -- error, invalid flags (must be Write or Read flags)\n");
 		return NULL;
 	}
 

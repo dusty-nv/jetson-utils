@@ -31,7 +31,7 @@ from jetson_utils import (loadImage, cudaAllocMapped, cudaConvertColor,
 parser = argparse.ArgumentParser(description='Convert an image from CUDA to OpenCV')
 
 parser.add_argument("file_in", type=str, default="images/jellyfish.jpg", nargs='?', help="filename of the input image to process")
-parser.add_argument("file_out", type=str, default="cuda-to-cv.jpg", nargs='?', help="filename of the output image to save")
+parser.add_argument("file_out", type=str, default="images/test/cuda-to-cv.jpg", nargs='?', help="filename of the output image to save")
 
 opt = parser.parse_args()
 
@@ -53,7 +53,7 @@ print('BGR image: ')
 print(bgr_img)
 
 # make sure the GPU is done work before we convert to cv2
-jetson.utils.cudaDeviceSynchronize()
+cudaDeviceSynchronize()
 
 # convert to cv2 image (cv2 images are numpy arrays)
 cv_img = cudaToNumpy(bgr_img)

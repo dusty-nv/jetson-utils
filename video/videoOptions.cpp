@@ -21,6 +21,7 @@
  */
  
 #include "videoOptions.h"
+#include "gstUtility.h"
 
 #include "logging.h"
 #include <strings.h>
@@ -42,6 +43,7 @@ videoOptions::videoOptions()
 	deviceType  = DEVICE_DEFAULT;
 	flipMethod  = FLIP_DEFAULT;
 	codec       = CODEC_UNKNOWN;
+	codecType   = gst_default_codec();
 }
 
 
@@ -65,7 +67,10 @@ void videoOptions::Print( const char* prefix ) const
 		LogInfo("  -- save:       %s\n", save.path.c_str());
 
 	if( deviceType != DEVICE_CSI && deviceType != DEVICE_DISPLAY )
+	{
 		LogInfo("  -- codec:      %s\n", CodecToStr(codec));
+		LogInfo("  -- codecType:  %s\n", CodecTypeToStr(codecType));
+	}
 	
 	if( width != 0 )
 		LogInfo("  -- width:      %u\n", width);
@@ -104,31 +109,41 @@ void videoOptions::Print( const char* prefix ) const
 	LogInfo("------------------------------------------------\n");
 }
 
+#define VALID_STR(x) (x != NULL && strlen(x) > 0)
 
 // Parse
-bool videoOptions::Parse( const char* URI, const int argc, char** argv, videoOptions::IoType type, const char* extraFlag )
-{
-	commandLine cmdLine(argc, argv, extraFlag);
-
-	return Parse(URI, cmdLine, type);
-}
-
-
-// Parse
-bool videoOptions::Parse( const char* URI, const commandLine& cmdLine, videoOptions::IoType type )
+bool videoOptions::Parse( const char* URI, const commandLine& cmdLine, videoOptions::IoType type, int ioPositionArg )
 {
 	ioType = type;
 
 	// check for headless mode
 	const bool headless = cmdLine.GetFlag("no-display") | cmdLine.GetFlag("headless");
 
-	if( (URI == NULL || strlen(URI) == 0) && type == OUTPUT && !headless )
-		URI = "display://0";
-
-	// parse input/output URI
-	if( !resource.Parse(URI) )
+	// check for positional args
+	if( ioPositionArg >= 0 && ioPositionArg < cmdLine.GetPositionArgs() )
+		URI = cmdLine.GetPosition(ioPositionArg);
+	
+	// default URI's
+	if( !VALID_STR(URI) && !resource.valid() ) 
 	{
-		LogError(LOG_VIDEO "videoOptions -- failed to parse %s resource URI (%s)\n", IoTypeToStr(type), URI != NULL ? URI : "null");
+		if( type == INPUT )
+			URI = "csi://0";
+		else if( type == OUTPUT && !headless )
+			URI = "display://0";
+	}
+	
+	// parse input/output URI
+	if( VALID_STR(URI) )
+	{
+		if( !resource.Parse(URI) )
+		{
+			LogError(LOG_VIDEO "videoOptions -- failed to parse %s resource URI (%s)\n", IoTypeToStr(type), URI != NULL ? URI : "null");
+			return false;
+		}
+	}
+	else if( !resource.valid() )
+	{
+		LogError(LOG_VIDEO "videoOptions -- %s resource URI was not set with a valid string\n", IoTypeToStr(type));
 		return false;
 	}
 	
@@ -158,15 +173,15 @@ bool videoOptions::Parse( const char* URI, const commandLine& cmdLine, videoOpti
 	//zeroCopy = cmdLine.GetFlag("zero-copy");	// no default returned, so disable this for now
 
 	// width
-	width = (type == INPUT) ? cmdLine.GetUnsignedInt("input-width")
-					    : cmdLine.GetUnsignedInt("output-width");
+	width = (type == INPUT) ? cmdLine.GetUnsignedInt("input-width", width)
+					    : cmdLine.GetUnsignedInt("output-width", width);
 
 	if( width == 0 )
 		width = cmdLine.GetUnsignedInt("width");
 
 	// height
-	height = (type == INPUT) ? cmdLine.GetUnsignedInt("input-height")
-					     : cmdLine.GetUnsignedInt("output-height");
+	height = (type == INPUT) ? cmdLine.GetUnsignedInt("input-height", height)
+					     : cmdLine.GetUnsignedInt("output-height", height);
 
 	if( height == 0 )
 		height = cmdLine.GetUnsignedInt("height");
@@ -191,7 +206,8 @@ bool videoOptions::Parse( const char* URI, const commandLine& cmdLine, videoOpti
 			flipStr = cmdLine.GetString("flip-method");
 	}
 	
-	flipMethod = videoOptions::FlipMethodFromStr(flipStr);
+	if( flipStr != NULL )
+		flipMethod = videoOptions::FlipMethodFromStr(flipStr);
 
 	// codec
 	const char* codecStr = (type == INPUT) ? cmdLine.GetString("input-codec")
@@ -203,18 +219,20 @@ bool videoOptions::Parse( const char* URI, const commandLine& cmdLine, videoOpti
 	if( codecStr != NULL )	
 		codec = videoOptions::CodecFromStr(codecStr);
 		
+	// codec type
+	const char* codecTypeStr = (type == INPUT) ? cmdLine.GetString("input-decoder")
+								        : cmdLine.GetString("output-encoder");
+									   
+	if( codecTypeStr != NULL )	
+		codecType = videoOptions::CodecTypeFromStr(codecTypeStr);
+
 	// bitrate
 	if( type == OUTPUT )
 		bitRate = cmdLine.GetUnsignedInt("bitrate", bitRate);
 
 	// loop
 	if( type == INPUT )
-	{
-		loop = cmdLine.GetInt("input-loop", -999);
-		
-		if( loop == -999 )
-			loop = cmdLine.GetInt("loop");
-	}
+		loop = cmdLine.GetInt("input-loop", cmdLine.GetInt("loop", loop));
 
 	// latency
 	latency = (type == INPUT) ? cmdLine.GetUnsignedInt("input-latency", cmdLine.GetUnsignedInt("input-rtsp-latency", latency))
@@ -227,60 +245,38 @@ bool videoOptions::Parse( const char* URI, const commandLine& cmdLine, videoOpti
 		stunServer = stunStr;
 
 	// SSL certificate/key
-	const char* certStr = cmdLine.GetString("ssl-cert", cmdLine.GetString("https-cert"));
-	const char* keyStr = cmdLine.GetString("ssl-key", cmdLine.GetString("https-key"));
-	
-	if( certStr )
-		sslCert = certStr;
+	const char* keyStr = cmdLine.GetString("ssl-key", getenv("SSL_KEY"));
+	const char* certStr = cmdLine.GetString("ssl-cert", getenv("SSL_CERT"));
 	
 	if( keyStr )
 		sslKey = keyStr;
+	
+	if( certStr )
+		sslCert = certStr;
 
 	return true;
 }
 
 
 // Parse
-bool videoOptions::Parse( const commandLine& cmdLine, videoOptions::IoType type, int ioPositionArg )
+bool videoOptions::Parse( const char* URI, const int argc, char** argv, videoOptions::IoType type, int ioPositionArg )
 {
-	// check for headless output
-	const bool headless = cmdLine.GetFlag("no-display") | cmdLine.GetFlag("headless");
-
-	// parse input/output URI
-	const char* resourceStr = NULL;
-
-	if( ioPositionArg >= 0 && ioPositionArg < cmdLine.GetPositionArgs() )
-		resourceStr = cmdLine.GetPosition(ioPositionArg);
-
-	if( !resourceStr )
-	{
-		if( type == INPUT )
-		{
-			resourceStr = cmdLine.GetString("camera", "csi://0");
-
-			//if( !resourceStr )
-			//	resourceStr = cmdLine.GetString("input", "csi://0");
-		}
-		else
-		{
-			//resourceStr = cmdLine.GetString("output", headless ? NULL : "display://0");	// BUG:  "output" will return flags with longer names, i.e. "output-blob"
-
-			if( !headless )
-				resourceStr = "display://0";
-		}
-	}
-
-	return Parse(resourceStr, cmdLine, type);
+	return Parse(URI, commandLine(argc, argv), type, ioPositionArg);
 }
 
 
 // Parse
 bool videoOptions::Parse( const int argc, char** argv, videoOptions::IoType type, int ioPositionArg )
 {
-	commandLine cmdLine(argc, argv);
-	return Parse(cmdLine, type, ioPositionArg);
+	return Parse(commandLine(argc, argv), type, ioPositionArg);
 }
 
+
+// Parse
+bool videoOptions::Parse( const commandLine& cmdLine, videoOptions::IoType type, int ioPositionArg )
+{
+	return Parse(NULL, cmdLine, type, ioPositionArg);
+}
 
 
 // IoTypeToStr
@@ -359,9 +355,9 @@ const char* videoOptions::FlipMethodToStr( videoOptions::FlipMethod flip )
 		case FLIP_COUNTERCLOCKWISE:		return "counterclockwise";
 		case FLIP_ROTATE_180:			return "rotate-180";
 		case FLIP_CLOCKWISE:			return "clockwise";
-		case FLIP_HORIZONTAL:			return "horizontal";
+		case FLIP_HORIZONTAL:			return "horizontal-flip";
 		case FLIP_UPPER_RIGHT_DIAGONAL:	return "upper-right-diagonal";
-		case FLIP_VERTICAL:				return "vertical";
+		case FLIP_VERTICAL:				return "vertical-flip";
 		case FLIP_UPPER_LEFT_DIAGONAL:	return "upper-left-diagonal";
 	}
 	return nullptr;
@@ -381,6 +377,11 @@ videoOptions::FlipMethod videoOptions::FlipMethodFromStr( const char* str )
 		if( strcasecmp(str, FlipMethodToStr(value)) == 0 )
 			return value;
 	}
+	
+	if( strcasecmp(str, "horizontal") == 0 )
+		return FLIP_HORIZONTAL;
+	else if( strcasecmp(str, "vertical") == 0 )
+		return FLIP_VERTICAL;
 
 	return FLIP_DEFAULT;
 }
@@ -401,6 +402,7 @@ const char* videoOptions::CodecToStr( videoOptions::Codec codec )
 		case CODEC_MPEG4:	return "MPEG4";
 		case CODEC_MJPEG:	return "MJPEG";
 	}
+	
 	return nullptr;
 }
 
@@ -418,9 +420,42 @@ videoOptions::Codec videoOptions::CodecFromStr( const char* str )
 		if( strcasecmp(str, CodecToStr(value)) == 0 )
 			return value;
 	}
+	
 	return CODEC_UNKNOWN;
 }
 
 
+// CodecTypeToStr
+const char* videoOptions::CodecTypeToStr( videoOptions::CodecType codec )
+{
+	switch(codec)
+	{
+		case CODEC_CPU:   return "cpu";
+		case CODEC_OMX:   return "omx";
+		case CODEC_V4L2:  return "v4l2";
+		case CODEC_NVENC: return "nvenc";
+		case CODEC_NVDEC: return "nvdec";
+	}
+	
+	return nullptr;
+}
+
+
+// CodecFromStr
+videoOptions::CodecType videoOptions::CodecTypeFromStr( const char* str )
+{
+	if( !str )
+		return gst_default_codec();
+
+	for( int n=0; n <= CODEC_NVDEC; n++ )
+	{
+		const CodecType value = (CodecType)n;
+
+		if( strcasecmp(str, CodecTypeToStr(value)) == 0 )
+			return value;
+	}
+	
+	return gst_default_codec();
+}
 
 

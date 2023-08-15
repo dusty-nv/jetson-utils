@@ -26,7 +26,6 @@
 #include "gstUtility.h"
 #include "imageFormat.h"
 #include "videoOptions.h"
-
 #include "Event.h"
 #include "Mutex.h"
 #include "RingBuffer.h"
@@ -37,14 +36,13 @@
 	#undef ENABLE_NVMM	// NVMM is only enabled for GStreamer 1.0 and newer
 #endif
 
-#ifdef GST_CODECS_V4L2
-	#undef ENABLE_NVMM  // NVMM code having some issues on JetPack 5.x
+#include "NvInfer.h"
+#if NV_TENSORRT_MAJOR > 8 || (NV_TENSORRT_MAJOR == 8 && NV_TENSORRT_MINOR >= 4)
+	#undef ENABLE_NVMM  // debug NVMM under JetPack 5
 #endif
 #endif
 
-//#ifdef ENABLE_NVMM
 #define GST_CAPS_FEATURE_MEMORY_NVMM "memory:NVMM"
-//#endif
 
 
 /**
@@ -79,9 +77,9 @@ public:
 	bool Enqueue( GstBuffer* buffer, GstCaps* caps );
 	
 	/**
-	 * Dequeue the next frame.
+	 * Dequeue the next frame.  Returns 1 on success, 0 on timeout, -1 on error.
 	 */
-	bool Dequeue( void** output, imageFormat format, uint64_t timeout=UINT64_MAX );
+	int Dequeue( void** output, imageFormat format, uint64_t timeout=UINT64_MAX );
 
 	/**
 	 * Get timestamp of the latest dequeued frame.

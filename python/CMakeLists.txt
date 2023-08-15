@@ -21,7 +21,7 @@ endforeach()
 #
 # install Python examples
 #
-file(GLOB pyUtilExamples examples/*.py)
+file(GLOB pyUtilExamples examples/*.py examples/*.sh)
 
 foreach(pyExample ${pyUtilExamples})
 	message("-- Copying ${pyExample}")

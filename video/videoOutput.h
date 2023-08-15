@@ -36,7 +36,7 @@
  * @ingroup video
  */
 #define VIDEO_OUTPUT_USAGE_STRING  "videoOutput arguments: \n" 							\
-		  "    output_URI           resource URI of the output stream, for example:\n"		\
+		  "    output               resource URI of the output stream, for example:\n"		\
 		  "                             * file://my_image.jpg       (image file)\n"		\
 		  "                             * file://my_video.mp4       (video file)\n"		\
 		  "                             * file://my_directory/      (directory of images)\n"	\
@@ -49,6 +49,10 @@
 		  "                            * vp8, vp9\n"									\
 		  "                            * mpeg2, mpeg4\n"								\
 		  "                            * mjpeg\n"        								\
+		  "  --output-encoder=TYPE  the encoder engine to use, one of these:\n"              \
+		  "                            * cpu\n"                                              \
+		  "                            * omx  (aarch64/JetPack4 only)\n"                     \
+		  "                            * v4l2 (aarch64/JetPack5 only)\n"                     \
 		  "  --output-save=FILE     path to a video file for saving the compressed stream\n" \
 		  "                         to disk, in addition to the primary output above\n"      \
 		  "  --bitrate=BITRATE      desired target VBR bitrate for compressed streams,\n"    \
@@ -107,30 +111,9 @@ public:
 	static videoOutput* Create( const videoOptions& options );
 
 	/**
-	 * Create videoOutput interface from a resource URI string and optional videoOptions.
-	 * @see the documentation above and the URI struct for more info about resource URI's.
-	 */
-	static videoOutput* Create( const char* URI, const videoOptions& options=videoOptions() );
-
-	/**
-	 * Create videoOutput interface from a resource URI string and parsing command line arguments.
-	 * @see videoOptions for valid command-line arguments to be parsed.
-	 * @see the documentation above and the URI struct for more info about resource URI's.
-	 */
-	static videoOutput* Create( const char* URI, const commandLine& cmdLine );
-	
-	/**
-	 * Create videoOutput interface from a resource URI string and parsing command line arguments.
-	 * @see videoOptions for valid command-line arguments to be parsed.
-	 * @see the documentation above and the URI struct for more info about resource URI's.
-	 */
-	static videoOutput* Create( const char* URI, const int argc, char** argv );
-
-	/**
 	 * Create videoOutput interface by parsing command line arguments, including the resource URI.
 	 * @param positionArg indicates the positional argument number in the command line of
-	 *                    the resource URI (or `-1` if a positional argument isn't used,
-	 *                    and should instead be parsed from the `--input=` option). 
+	 *                    the resource URI (or `-1` if a positional argument isn't used). 
 	 * @see videoOptions for valid command-line arguments to be parsed.
 	 * @see the documentation above and the URI struct for more info about resource URI's.
 	 */
@@ -139,13 +122,36 @@ public:
 	/**
 	 * Create videoOutput interface by parsing command line arguments, including the resource URI.
 	 * @param positionArg indicates the positional argument number in the command line of
-	 *                    the resource URI (or `-1` if a positional argument isn't used,
-	 *                    and should instead be parsed from the `--input=` option). 
+	 *                    the resource URI (or `-1` if a positional argument isn't used). 
 	 * @see videoOptions for valid command-line arguments to be parsed.
 	 * @see the documentation above and the URI struct for more info about resource URI's.
 	 */
 	static videoOutput* Create( const commandLine& cmdLine, int positionArg=-1 );
+
+	/**
+	 * Create videoOutput interface from a resource URI string and optional videoOptions.
+	 * @see the documentation above and the URI struct for more info about resource URI's.
+	 */
+	static videoOutput* Create( const char* URI, const videoOptions& options=videoOptions() );
+
+	/**
+	 * Create videoOutput interface from a resource URI string and parsing command line arguments.
+	 * @param positionArg indicates the positional argument number in the command line of
+	 *                    the resource URI (or `-1` if a positional argument isn't used). 
+	 * @see videoOptions for valid command-line arguments to be parsed.
+	 * @see the documentation above and the URI struct for more info about resource URI's.
+	 */
+	static videoOutput* Create( const char* URI, const commandLine& cmdLine, int positionArg=-1, const videoOptions& options=videoOptions() );
 	
+	/**
+	 * Create videoOutput interface from a resource URI string and parsing command line arguments.
+	 * @param positionArg indicates the positional argument number in the command line of
+	 *                    the resource URI (or `-1` if a positional argument isn't used). 
+	 * @see videoOptions for valid command-line arguments to be parsed.
+	 * @see the documentation above and the URI struct for more info about resource URI's.
+	 */
+	static videoOutput* Create( const char* URI, const int argc, char** argv, int positionArg=-1, const videoOptions& options=videoOptions() );
+
 	/**
 	 * Create videoOutput interface that acts as a NULL output and does nothing with incoming frames.
 	 * CreateNullOutput() can be used when there are no other outputs created and programs expect one to run.

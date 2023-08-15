@@ -66,18 +66,12 @@ public:
 	 * Destructor
 	 */
 	~gstDecoder();
-	
+
 	/**
 	 * Capture the next decoded frame.
 	 * @see videoSource::Capture()
 	 */
-	template<typename T> bool Capture( T** image, uint64_t timeout=UINT64_MAX )		{ return Capture((void**)image, imageFormatFromType<T>(), timeout); }
-	
-	/**
-	 * Capture the next decoded frame.
-	 * @see videoSource::Capture()
-	 */
-	virtual bool Capture( void** image, imageFormat format, uint64_t timeout=UINT64_MAX );
+	virtual bool Capture( void** image, imageFormat format, uint64_t timeout=DEFAULT_TIMEOUT, int* status=NULL );
 
 	/**
 	 * Open the stream.
@@ -136,9 +130,11 @@ protected:
 	void checkMsgBus();
 	void checkBuffer();
 	bool buildLaunchStr();
+	bool discover();
 	
 	bool init();
-	bool discover();
+	bool initPipeline();
+	void destroyPipeline();
 	
 	inline bool isLooping() const { return (mOptions.loop < 0) || ((mOptions.loop > 0) && (mLoopCount < mOptions.loop)); }
 

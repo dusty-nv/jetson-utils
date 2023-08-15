@@ -77,9 +77,9 @@ int main( int argc, char** argv )
 	/*
 	 * create input video stream
 	 */
-	videoSource* inputStream = videoSource::Create(cmdLine, ARG_POSITION(0));
+	videoSource* input = videoSource::Create(cmdLine, ARG_POSITION(0));
 
-	if( !inputStream )
+	if( !input )
 	{
 		LogError("video-viewer:  failed to create input stream\n");
 		return 0;
@@ -89,9 +89,9 @@ int main( int argc, char** argv )
 	/*
 	 * create output video stream
 	 */
-	videoOutput* outputStream = videoOutput::Create(cmdLine, ARG_POSITION(1));
+	videoOutput* output = videoOutput::Create(cmdLine, ARG_POSITION(1));
 	
-	if( !outputStream )
+	if( !output )
 	{
 		LogError("video-viewer:  failed to create output stream\n");
 		return 0;
@@ -105,35 +105,34 @@ int main( int argc, char** argv )
 
 	while( !signal_recieved )
 	{
-		uchar3* nextFrame = NULL;
-
-		if( !inputStream->Capture(&nextFrame, 1000) )
+		uchar3* image = NULL;
+		int status = 0;
+		
+		if( !input->Capture(&image, &status) )
 		{
-			LogError("video-viewer:  failed to capture video frame\n");
-
-			if( !inputStream->IsStreaming() )
-				signal_recieved = true;
-
-			continue;
+			if( status == videoSource::TIMEOUT )
+				continue;
+			
+			break; // EOS
 		}
 
 		if( numFrames % 25 == 0 || numFrames < 15 )
-			LogVerbose("video-viewer:  captured %u frames (%ux%u)\n", numFrames, inputStream->GetWidth(), inputStream->GetHeight());
+			LogVerbose("video-viewer:  captured %u frames (%ux%u)\n", numFrames, input->GetWidth(), input->GetHeight());
 		
 		numFrames++;
 		
-		if( outputStream != NULL )
+		if( output != NULL )
 		{
-			outputStream->Render(nextFrame, inputStream->GetWidth(), inputStream->GetHeight());
+			output->Render(image, input->GetWidth(), input->GetHeight());
 
 			// update status bar
 			char str[256];
-			sprintf(str, "Video Viewer (%ux%u) | %.1f FPS", inputStream->GetWidth(), inputStream->GetHeight(), outputStream->GetFrameRate());
-			outputStream->SetStatus(str);	
+			sprintf(str, "Video Viewer (%ux%u) | %.1f FPS", input->GetWidth(), input->GetHeight(), output->GetFrameRate());
+			output->SetStatus(str);	
 
 			// check if the user quit
-			if( !outputStream->IsStreaming() )
-				signal_recieved = true;
+			if( !output->IsStreaming() )
+				break;
 		}
 	}
 
@@ -143,8 +142,8 @@ int main( int argc, char** argv )
 	 */
 	printf("video-viewer:  shutting down...\n");
 	
-	SAFE_DELETE(inputStream);
-	SAFE_DELETE(outputStream);
+	SAFE_DELETE(input);
+	SAFE_DELETE(output);
 
 	printf("video-viewer:  shutdown complete\n");
 }

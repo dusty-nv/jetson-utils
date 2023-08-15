@@ -48,6 +48,7 @@ videoSource::~videoSource()
 videoSource* videoSource::Create( const videoOptions& options )
 {
 	videoSource* src = NULL;
+	
 	const URI& uri = options.resource;
 
 	if( uri.protocol == "file" )
@@ -79,26 +80,11 @@ videoSource* videoSource::Create( const videoOptions& options )
 }
 
 // Create
-videoSource* videoSource::Create( const char* resource, const videoOptions& options )
+videoSource* videoSource::Create( const char* resource, const commandLine& cmdLine, int positionArg, const videoOptions& options )
 {
 	videoOptions opt = options;
-	opt.resource = resource;
-	return Create(opt);
-}
 
-// Create
-videoSource* videoSource::Create( const char* resource, const int argc, char** argv )
-{
-	commandLine cmdLine(argc, argv);
-	return Create(resource, cmdLine);
-}
-
-// Create
-videoSource* videoSource::Create( const char* resource, const commandLine& cmdLine )
-{
-	videoOptions opt;
-
-	if( !opt.Parse(resource, cmdLine, videoOptions::INPUT) )
+	if( !opt.Parse(resource, cmdLine, videoOptions::INPUT, positionArg) )
 	{
 		LogError(LOG_VIDEO "videoSource -- failed to parse command line options\n");
 		return NULL;
@@ -108,27 +94,27 @@ videoSource* videoSource::Create( const char* resource, const commandLine& cmdLi
 }
 
 // Create
-videoSource* videoSource::Create( const int argc, char** argv, int positionArg )
+videoSource* videoSource::Create( const char* resource, const int argc, char** argv, int positionArg, const videoOptions& options )
 {
-	/*if( argc < 0 || !argv )
-		return NULL;*/
-
-	commandLine cmdLine(argc, argv);
-	return Create(cmdLine, positionArg);
+	return Create(resource, commandLine(argc, argv), positionArg, options);
 }
 
 // Create
 videoSource* videoSource::Create( const commandLine& cmdLine, int positionArg )
 {
-	videoOptions opt;
+	return Create(NULL, cmdLine, positionArg);
+}
 
-	if( !opt.Parse(cmdLine, videoOptions::INPUT, positionArg) )
-	{
-		LogError(LOG_VIDEO "videoSource -- failed to parse command line options\n");
-		return NULL;
-	}
+// Create
+videoSource* videoSource::Create( const int argc, char** argv, int positionArg )
+{
+	return Create(commandLine(argc, argv), positionArg);
+}
 
-	return Create(opt);
+// Create
+videoSource* videoSource::Create( const char* resource, const videoOptions& options )
+{
+	return Create(resource, 0, NULL, -1, options);
 }
 
 // Open

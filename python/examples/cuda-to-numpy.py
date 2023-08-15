@@ -22,9 +22,9 @@
 #
 
 import argparse
-import numpy
+import numpy as np
 
-from jetson_utils import cudaAllocMapped, cudaToNumpy
+from jetson_utils import cudaImage, cudaToNumpy
 
 # parse the command line
 parser = argparse.ArgumentParser('Map CUDA to memory to numpy ndarray')
@@ -32,26 +32,31 @@ parser = argparse.ArgumentParser('Map CUDA to memory to numpy ndarray')
 parser.add_argument("--width", type=int, default=4, help="width of the array (in float elements)")
 parser.add_argument("--height", type=int, default=2, help="height of the array (in float elements)")
 
-opt = parser.parse_args()
+args = parser.parse_args()
 
 # allocate cuda memory
-cuda_img = cudaAllocMapped(width=opt.width, height=opt.height, format='rgb32f')
+cuda_img = cudaImage(width=args.width, height=args.height, format='rgb32f')
+
 print(cuda_img)
 
-# create a numpy ndarray that references the CUDA memory
-# it won't be copied, but uses the same memory underneath
-array = cudaToNumpy(cuda_img)
+# create a numpy array and do some ops with it
+array = np.ones(cuda_img.shape, np.float32)
+
+# since cudaImage supports __array__ interface, we can do numpy ops on it directly
+print(np.add(cuda_img, array)) 
+
+# explicitly create a numpy array that references the same CUDA memory (it won't be copied)
+# (this typically isn't necessary to use anymore with cudaImage's __array__ interface)
+mapped_array = cudaToNumpy(cuda_img)
 
 print("\ncudaToNumpy() array:")
-print(type(array))
-print(array.dtype)
-print(array.shape)	# numpy dims will be in (height, width, depth) order
-print(array)
-
-# create another ndarray and do some ops with it
-array2 = numpy.ones(array.shape, numpy.float32)
+print(type(mapped_array))
+print(f"   -- ptr:   {hex(mapped_array.ctypes.data)}")
+print(f"   -- type:  {mapped_array.dtype}")
+print(f"   -- shape: {mapped_array.shape}\n") # numpy dims will be in (height, width, depth) order
+print(mapped_array)                           # this should print out one's
 
 print("\nadding arrays...\n")
-print(array + array2)
+print(array + mapped_array)  # this should print out ones's
 
 

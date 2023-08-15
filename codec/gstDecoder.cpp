@@ -119,6 +119,15 @@ gstDecoder::~gstDecoder()
 		mWebRTCServer = NULL;
 	}
 	
+	destroyPipeline();
+	
+	SAFE_DELETE(mBufferManager);
+}
+
+
+// destroyPipeline
+void gstDecoder::destroyPipeline()
+{
 	if( mAppSink != NULL )
 	{
 		gst_object_unref(mAppSink);
@@ -133,11 +142,14 @@ gstDecoder::~gstDecoder()
 
 	if( mPipeline != NULL )
 	{
+		gst_element_set_state(mPipeline, GST_STATE_NULL);
 		gst_object_unref(mPipeline);
 		mPipeline = NULL;
 	}
 	
-	SAFE_DELETE(mBufferManager);
+	mEOS = false;
+	mStreaming = false;
+	mWebRTCConnected = false;
 }
 
 
@@ -175,8 +187,6 @@ gstDecoder* gstDecoder::Create( const URI& resource, videoOptions::Codec codec )
 // init
 bool gstDecoder::init()
 {
-	GError* err  = NULL;
-	
 	if( !gstreamerInit() )
 	{
 		LogError(LOG_GSTREAMER "failed to initialize gstreamer API\n");
@@ -233,6 +243,33 @@ bool gstDecoder::init()
 	}
 
 	// create pipeline
+	if( !initPipeline() )
+	{
+		LogError(LOG_GSTREAMER "failed to create decoder pipeline\n");
+		return false;
+	}
+	
+	// create server for WebRTC streams
+	if( mOptions.resource.protocol == "webrtc" )
+	{
+		// create WebRTC server
+		mWebRTCServer = WebRTCServer::Create(mOptions.resource.port, mOptions.stunServer.c_str(),
+									  mOptions.sslCert.c_str(), mOptions.sslKey.c_str());
+		
+		if( !mWebRTCServer )
+			return false;
+		
+		mWebRTCServer->AddRoute(mOptions.resource.path.c_str(), onWebsocketMessage, this, WEBRTC_VIDEO|WEBRTC_RECEIVE|WEBRTC_PUBLIC);
+	}	
+	
+	return true;
+}
+
+
+// initPipeline
+bool gstDecoder::initPipeline()
+{
+	GError* err = NULL;
 	mPipeline = gst_parse_launch(mLaunchStr.c_str(), &err);
 
 	if( err != NULL )
@@ -252,7 +289,7 @@ bool gstDecoder::init()
 	}	
 
 	// retrieve pipeline bus
-	/*GstBus**/ mBus = gst_pipeline_get_bus(pipeline);
+	mBus = gst_pipeline_get_bus(pipeline);
 
 	if( !mBus )
 	{
@@ -288,24 +325,10 @@ bool gstDecoder::init()
 #endif
 	
 	gst_app_sink_set_callbacks(mAppSink, &cb, (void*)this, NULL);
-	
-	// create server for WebRTC streams
-	if( mOptions.resource.protocol == "webrtc" )
-	{
-		// create WebRTC server
-		mWebRTCServer = WebRTCServer::Create(mOptions.resource.port, mOptions.stunServer.c_str(),
-									  mOptions.sslCert.c_str(), mOptions.sslKey.c_str());
-		
-		if( !mWebRTCServer )
-			return false;
-		
-		mWebRTCServer->AddRoute(mOptions.resource.path.c_str(), onWebsocketMessage, this, WEBRTC_VIDEO|WEBRTC_RECEIVE|WEBRTC_PUBLIC);
-	}	
-	
 	return true;
 }
 
-
+	
 // findVideoStreamInfo
 static GstDiscovererVideoInfo* findVideoStreamInfo( GstDiscovererStreamInfo* info )
 {
@@ -480,11 +503,49 @@ bool gstDecoder::buildLaunchStr()
 {
 	std::ostringstream ss;
 
+	#if defined(ENABLE_NVMM)
+		const bool enable_nvmm = true;
+	#else
+		const bool enable_nvmm = false;
+	#endif
+	
+	// select the decoder
+	const char* decoder = gst_select_decoder(mOptions.codec, mOptions.codecType);
+	
+	if( !decoder )
+	{
+		LogError(LOG_GSTREAMER "gstDecoder -- unsupported codec requested (%s)\n", videoOptions::CodecToStr(mOptions.codec));
+		LogError(LOG_GSTREAMER "              supported decoder codecs are:\n");
+		LogError(LOG_GSTREAMER "                 * h264\n");
+		LogError(LOG_GSTREAMER "                 * h265\n");
+		LogError(LOG_GSTREAMER "                 * vp8\n");
+		LogError(LOG_GSTREAMER "                 * vp9\n");
+		LogError(LOG_GSTREAMER "                 * mpeg2\n");
+		LogError(LOG_GSTREAMER "                 * mpeg4\n");
+		LogError(LOG_GSTREAMER "                 * mjpeg\n");
+		
+		return false;
+	}
+	
+	// select the parser (if needed)
+	const char* parser = "";
+
+	if( mOptions.codec == videoOptions::CODEC_H264 )
+		parser = "h264parse ! ";
+	else if( mOptions.codec == videoOptions::CODEC_H265 )
+		parser = "h265parse ! ";
+	else if( mOptions.codec == videoOptions::CODEC_MPEG2 )
+		parser = "mpegvideoparse ! ";
+	else if( mOptions.codec == videoOptions::CODEC_MPEG4 )
+		parser = "mpeg4videoparse ! ";
+
 	// determine the requested protocol to use
 	const URI& uri = GetResource();
 
 	if( uri.protocol == "file" )
 	{
+		mOptions.deviceType = videoOptions::DEVICE_FILE;
+		
 		ss << "filesrc location=" << mOptions.resource.location << " ! ";
 
 		if( uri.extension == "mkv" || uri.extension == "webm" )
@@ -508,21 +569,12 @@ bool gstDecoder::buildLaunchStr()
 			return false;
 		}
 
-		ss << "queue ! ";
-		
-		if( mOptions.codec == videoOptions::CODEC_H264 )
-			ss << "h264parse ! ";
-		else if( mOptions.codec == videoOptions::CODEC_H265 )
-			ss << "h265parse ! ";
-		else if( mOptions.codec == videoOptions::CODEC_MPEG2 )
-			ss << "mpegvideoparse ! ";
-		else if( mOptions.codec == videoOptions::CODEC_MPEG4 )
-			ss << "mpeg4videoparse ! ";
-
-		mOptions.deviceType = videoOptions::DEVICE_FILE;
+		ss << "queue ! " << parser;
 	}
 	else if( uri.protocol == "rtp" )
 	{
+		mOptions.deviceType = videoOptions::DEVICE_IP;
+				
 		if( uri.port <= 0 )
 		{
 			LogError(LOG_GSTREAMER "gstDecoder -- invalid RTP port (%i)\n", uri.port);
@@ -535,9 +587,9 @@ bool gstDecoder::buildLaunchStr()
 		ss << " caps=\"" << "application/x-rtp,media=(string)video,clock-rate=(int)90000,encoding-name=(string)";
 		
 		if( mOptions.codec == videoOptions::CODEC_H264 )
-			ss << "H264\" ! rtph264depay ! h264parse ! ";
+			ss << "H264\" ! rtph264depay ! ";
 		else if( mOptions.codec == videoOptions::CODEC_H265 )
-			ss << "H265\" ! rtph265depay ! h265parse ! ";
+			ss << "H265\" ! rtph265depay ! ";
 		else if( mOptions.codec == videoOptions::CODEC_VP8 )
 			ss << "VP8\" ! rtpvp8depay ! ";
 		else if( mOptions.codec == videoOptions::CODEC_VP9 )
@@ -549,10 +601,13 @@ bool gstDecoder::buildLaunchStr()
 		else if( mOptions.codec == videoOptions::CODEC_MJPEG )
 			ss << "JPEG\" ! rtpjpegdepay ! ";
 
-		mOptions.deviceType = videoOptions::DEVICE_IP;
+		if( mOptions.codecType != videoOptions::CODEC_V4L2 )
+			ss << parser;
 	}
 	else if( uri.protocol == "rtsp" || uri.protocol == "webrtc" )
 	{
+		mOptions.deviceType = videoOptions::DEVICE_IP;
+		
 		if( uri.protocol == "rtsp" )
 		{
 			ss << "rtspsrc location=" << uri.string;
@@ -567,9 +622,9 @@ bool gstDecoder::buildLaunchStr()
 		}
 		
 		if( mOptions.codec == videoOptions::CODEC_H264 )
-			ss << "rtph264depay ! h264parse ! ";
+			ss << "rtph264depay ! ";
 		else if( mOptions.codec == videoOptions::CODEC_H265 )
-			ss << "rtph265depay ! h265parse ! ";
+			ss << "rtph265depay ! ";
 		else if( mOptions.codec == videoOptions::CODEC_VP8 )
 			ss << "rtpvp8depay ! ";
 		else if( mOptions.codec == videoOptions::CODEC_VP9 )
@@ -581,7 +636,8 @@ bool gstDecoder::buildLaunchStr()
 		else if( mOptions.codec == videoOptions::CODEC_MJPEG )
 			ss << "rtpjpegdepay ! ";
 
-		mOptions.deviceType = videoOptions::DEVICE_IP;
+		if( mOptions.codecType != videoOptions::CODEC_V4L2 )
+			ss << parser;
 	}
 	else
 	{
@@ -590,6 +646,7 @@ bool gstDecoder::buildLaunchStr()
 		LogError(LOG_GSTREAMER "                 * file://\n");
 		LogError(LOG_GSTREAMER "                 * rtp://\n");
 		LogError(LOG_GSTREAMER "                 * rtsp://\n");
+		LogError(LOG_GSTREAMER "                 * webrtc://\n");
 
 		return false;
 	}
@@ -604,42 +661,19 @@ bool gstDecoder::buildLaunchStr()
 		ss << "savetee. ! queue ! ";
 	}
 		
-	// select the decoder
-	if( mOptions.codec == videoOptions::CODEC_H264 )
-		ss << GST_DECODER_H264 << " ! ";
-	else if( mOptions.codec == videoOptions::CODEC_H265 )
-		ss << GST_DECODER_H265 << " ! ";
-	else if( mOptions.codec == videoOptions::CODEC_VP8 )
-		ss << GST_DECODER_VP8 << " ! ";
-	else if( mOptions.codec == videoOptions::CODEC_VP9 )
-		ss << GST_DECODER_VP9 << " ! ";
-	else if( mOptions.codec == videoOptions::CODEC_MPEG2 )
-		ss << GST_DECODER_MPEG2 << " ! ";
-	else if( mOptions.codec == videoOptions::CODEC_MPEG4 )
-		ss << GST_DECODER_MPEG4 << " ! ";
-	else if( mOptions.codec == videoOptions::CODEC_MJPEG )
-		ss << GST_DECODER_MJPEG << " ! ";
-
-	else
-	{
-		LogError(LOG_GSTREAMER "gstDecoder -- unsupported codec requested (%s)\n", videoOptions::CodecToStr(mOptions.codec));
-		LogError(LOG_GSTREAMER "              supported decoder codecs are:\n");
-		LogError(LOG_GSTREAMER "                 * h264\n");
-		LogError(LOG_GSTREAMER "                 * h265\n");
-		LogError(LOG_GSTREAMER "                 * vp8\n");
-		LogError(LOG_GSTREAMER "                 * vp9\n");
-		LogError(LOG_GSTREAMER "                 * mpeg2\n");
-		LogError(LOG_GSTREAMER "                 * mpeg4\n");
-		LogError(LOG_GSTREAMER "                 * mjpeg\n");
-
-		return false;
-	}
-
+	// add the decoder
+	ss << decoder << " name=decoder ";
+	
+	if( mOptions.codecType == videoOptions::CODEC_V4L2 && mOptions.codec != videoOptions::CODEC_MJPEG )
+		ss << "enable-max-performance=1 ";
+	
+	ss << "! ";
+	
 	// resize if requested
 	if( mCustomSize || mOptions.flipMethod != videoOptions::FLIP_NONE )
 	{
 	#if defined(__aarch64__)
-		ss << "nvvidconv";
+		ss << "nvvidconv name=vidconv";
 
 		if( mOptions.flipMethod != videoOptions::FLIP_NONE )
 			ss << " flip-method=" << (int)mOptions.flipMethod;
@@ -656,10 +690,9 @@ bool gstDecoder::buildLaunchStr()
 		ss << "video/x-raw";
 	#endif
 
-	#ifdef ENABLE_NVMM
-		ss << "(" << GST_CAPS_FEATURE_MEMORY_NVMM << ")";
-	#endif
-	
+		if( enable_nvmm )
+			ss << "(" << GST_CAPS_FEATURE_MEMORY_NVMM << ")";
+
 		if( mOptions.width != 0 && mOptions.height != 0 )
 			ss << ", width=(int)" << mOptions.width << ", height=(int)" << mOptions.height << ", format=(string)NV12";
 
@@ -669,16 +702,17 @@ bool gstDecoder::buildLaunchStr()
 	{
 		ss << "video/x-raw";
 		
-	#if defined(ENABLE_NVMM) || defined(GST_CODECS_V4L2)
-		// add NVMM caps when requested, or if using V4L2 codecs
-		ss << "(" << GST_CAPS_FEATURE_MEMORY_NVMM << ")";
-	#ifndef ENABLE_NVMM
-		// V4L2 codecs only output NVMM memory
-		// so if NVMM is disabled, put it through nvvidconv first
-		ss << " ! nvvidconv ! video/x-raw";
-	#endif
-	#endif
-	
+		if( enable_nvmm || mOptions.codecType == videoOptions::CODEC_V4L2 )
+		{
+			// add NVMM caps when requested, or if using V4L2 codecs
+			ss << "(" << GST_CAPS_FEATURE_MEMORY_NVMM << ")";
+			
+			// V4L2 codecs only output NVMM memory
+			// so if NVMM is disabled, put it through nvvidconv first
+			if( !enable_nvmm )
+				ss << " ! nvvidconv name=vidconv ! video/x-raw";
+		}
+
 		ss << " ! ";
 	}
 
@@ -687,7 +721,10 @@ bool gstDecoder::buildLaunchStr()
 		ss << "videorate drop-only=true max-rate=" << (int)mOptions.frameRate << " ! ";
 
 	// add the app sink
-	ss << "appsink name=mysink"; // wait-on-eos=false;
+	ss << "appsink name=mysink";
+
+	if( uri.protocol != "file" )
+		ss << " sync=false"; // wait-on-eos=false;   // this can improve realtime network streaming, but also causes videos to playback as fast as possible
 
 	mLaunchStr = ss.str();
 
@@ -818,6 +855,9 @@ void gstDecoder::checkBuffer()
 	}
 #endif
 	
+	const uint32_t width = mOptions.width;
+	const uint32_t height = mOptions.height;
+	
 	// enqueue the buffer for color conversion
 	if( !mBufferManager->Enqueue(gstBuffer, gstCaps) )
 	{
@@ -825,13 +865,31 @@ void gstDecoder::checkBuffer()
 		release_return;
 	}
 	
+	if( (width > 0 && width != mOptions.width) || (height > 0 && height != mOptions.height) )
+	{
+		LogWarning(LOG_GSTREAMER "gstDecoder -- resolution changing from (%ux%u) to (%ux%u)\n", width, height, mOptions.width, mOptions.height);
+		
+		// nvbufsurface: NvBufSurfaceCopy: buffer param mismatch
+		GstElement* vidconv = gst_bin_get_by_name(GST_BIN(mPipeline), "vidconv");
+		
+		if( vidconv != NULL )
+		{
+			gst_element_set_state(vidconv, GST_STATE_NULL);
+			gst_element_set_state(vidconv, GST_STATE_PLAYING);
+			gst_object_unref(vidconv);
+		}
+	}
+	
 	mOptions.frameCount++;
 	release_return;
 }
 
 
+#define RETURN_STATUS(code)  { if( status != NULL ) { *status=(code); } return ((code) == videoSource::OK ? true : false); }
+
+
 // Capture
-bool gstDecoder::Capture( void** output, imageFormat format, uint64_t timeout )
+bool gstDecoder::Capture( void** output, imageFormat format, uint64_t timeout, int* status )
 {
 	// update the webrtc server if needed
 	if( mWebRTCServer != NULL && !mWebRTCServer->IsThreaded() )
@@ -839,26 +897,33 @@ bool gstDecoder::Capture( void** output, imageFormat format, uint64_t timeout )
 	
 	// verify the output pointer exists
 	if( !output )
-		return false;
+		RETURN_STATUS(ERROR);
 
 	// confirm the stream is open
 	if( !mStreaming || mEOS )
 	{
 		if( !Open() )
-			return false;
+			RETURN_STATUS(mEOS ? EOS : ERROR);
 	}
 
 	// wait until a new frame is recieved
-	if( !mBufferManager->Dequeue(output, format, timeout) )
-	{
-		LogError(LOG_GSTREAMER "gstDecoder -- failed to retrieve next image buffer\n");
-		return false;
-	}
+	const int result = mBufferManager->Dequeue(output, format, timeout);
 	
+	if( result < 0 )
+	{
+		LogError(LOG_GSTREAMER "gstDecoder::Capture() -- an error occurred retrieving the next image buffer\n");
+		RETURN_STATUS(ERROR);
+	}
+	else if( result == 0 )
+	{
+		LogWarning(LOG_GSTREAMER "gstDecoder::Capture() -- a timeout occurred waiting for the next image buffer\n");
+		RETURN_STATUS(TIMEOUT);
+	}
+		
 	mLastTimestamp = mBufferManager->GetLastTimestamp();
 	mRawFormat = mBufferManager->GetRawFormat();
 	
-	return true;
+	RETURN_STATUS(OK);
 }
 
 #if 0
@@ -1065,7 +1130,8 @@ void gstDecoder::onWebsocketMessage( WebRTCPeer* peer, const char* message, size
 	else if( peer->flags & WEBRTC_PEER_CLOSED )
 	{
 		LogVerbose(LOG_WEBRTC "WebRTC peer disconnected (%s, peer_id=%u)\n", peer->ip_address.c_str(), peer->ID);
-		
+
+		// release the webrtc peer context
 		if( peer_context != NULL )
 		{
 			if( peer_context->webrtcbin != NULL )
@@ -1075,7 +1141,15 @@ void gstDecoder::onWebsocketMessage( WebRTCPeer* peer, const char* message, size
 			peer->user_data = NULL;
 		}
 
-		decoder->mWebRTCConnected = false;		
+		// close and re-init the pipeline, as webrtcbin doesn't like to reconnect in rx mode...
+		decoder->destroyPipeline();
+		
+		if( !decoder->initPipeline() )
+		{
+			LogError(LOG_GSTREAMER "failed to re-initialize decoder pipeline\n");
+			return;
+		}
+		
 		return;
 	}
 	
