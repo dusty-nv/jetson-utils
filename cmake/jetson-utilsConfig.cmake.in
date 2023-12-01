@@ -1,0 +1,12 @@
+# jetson-utils -- jetson-utilsConfig.cmake.in
+@PACKAGE_INIT@
+
+# Find dependencies
+include(CMakeFindDependencyMacro)
+#find_dependency(XYZ)
+
+# Include targets
+include(${CMAKE_CURRENT_LIST_DIR}/jetson-utilsTargets.cmake)
+
+# Check required components
+check_required_components(jetson-utils)
