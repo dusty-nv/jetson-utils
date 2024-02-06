@@ -64,6 +64,8 @@ imageFormat gst_parse_format( GstStructure* caps )
 		return IMAGE_BAYER_GRBG;
 	else if( strcasecmp(format, "rggb") == 0 )
 		return IMAGE_BAYER_RGGB;
+	else if( strcasecmp(format, "gray8") == 0 )
+		return IMAGE_GRAY8;
 	
 	return IMAGE_UNKNOWN;
 }
@@ -83,6 +85,7 @@ const char* gst_format_to_string( imageFormat format )
 		case IMAGE_BAYER_GBRG:	return "gbrg";
 		case IMAGE_BAYER_GRBG:	return "grbg";
 		case IMAGE_BAYER_RGGB:	return "rggb";
+		case IMAGE_GRAY8:	return "gray8";
 	}
 	
 	return " ";
