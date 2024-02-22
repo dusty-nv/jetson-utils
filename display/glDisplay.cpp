@@ -210,6 +210,9 @@ glDisplay* glDisplay::Create( const videoOptions& options )
 		return NULL;
 	}
 	
+	// release the GL context in case a different thread is used for rendering
+	GL(glXMakeCurrent(vp->mDisplayX, None, NULL));
+	
 	vp->mID = gDisplays.size();
 	gDisplays.push_back(vp);
 
