@@ -512,13 +512,14 @@ bool gstEncoder::encodeYUV( void* buffer, size_t size )
 	}
 
 	// check to see if data can be accepted
-	if( !mNeedData )
+	// 20240307 - disabling this because with WebRTC sometimes it gets stuck in 'pipeline full' state
+	/*if( !mNeedData )
 	{
 		if( mOptions.frameCount % 25 == 0 )
 			LogVerbose(LOG_GSTREAMER "gstEncoder -- pipeline full, skipping frame %zu (%ux%u, %zu bytes)\n", mOptions.frameCount, mOptions.width, mOptions.height, size);
 		
 		return true;
-	}
+	}*/
 
 	// construct the buffer caps for this size image
 	if( !mBufferCaps )
