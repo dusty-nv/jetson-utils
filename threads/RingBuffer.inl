@@ -87,8 +87,6 @@ inline bool RingBuffer::Alloc( uint32_t numBuffers, size_t size, uint32_t flags 
 		}
 		else
 		{
-			mBuffers[n] = malloc(size);
-			
 			if( CUDA_FAILED(cudaMalloc(&mBuffers[n], size)) )
 			{
 				LogError(LOG_CUDA "RingBuffer -- failed to allocate CUDA buffer of %zu bytes\n", size);

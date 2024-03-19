@@ -52,10 +52,12 @@ void videoOptions::Print( const char* prefix ) const
 {
 	LogInfo("------------------------------------------------\n");
 
-	if( prefix != NULL )
+	if( prefix != NULL ) {
 		LogInfo("%s video options:\n", prefix);
-	else
+  }
+	else {
 		LogInfo("video options:\n");
+  }
 
 	LogInfo("------------------------------------------------\n");
 	resource.Print("  ");
@@ -457,5 +459,4 @@ videoOptions::CodecType videoOptions::CodecTypeFromStr( const char* str )
 	
 	return gst_default_codec();
 }
-
 
