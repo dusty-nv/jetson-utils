@@ -9,7 +9,9 @@ if(hasParent)
 	message("-- jetson-utils:  building as submodule, ${hasParent}")
 else()
 	message("-- jetson-utils:  building as standalone")
-	
+	# set build type to debug 
+	set(CMAKE_BUILD_TYPE Debug)
+	# add_definitions(-DDEBUG)
 	# standalone project
 	project(jetson-utils)
   
@@ -103,7 +105,7 @@ cuda_add_library(jetson-utils SHARED ${jetsonUtilitySources})
 target_link_libraries(jetson-utils GL GLU GLEW gstreamer-1.0 gstapp-1.0 gstpbutils-1.0 gstwebrtc-1.0 gstsdp-1.0 gstrtspserver-1.0 json-glib-1.0 soup-2.4 ${CUDA_nppicc_LIBRARY})	
 
 if(NVBUF_UTILS)
-	target_link_libraries(jetson-utils ${NVBUF_UTILS})
+	target_link_libraries(jetson-utils ${NVBUF_UTILS} nvbufsurftransform)
 endif()
 
 # transfer all headers to the include directory 

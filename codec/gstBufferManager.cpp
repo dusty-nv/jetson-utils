@@ -33,6 +33,7 @@
 
 #if NV_TENSORRT_MAJOR > 8 || (NV_TENSORRT_MAJOR == 8 && NV_TENSORRT_MINOR >= 4)
 #include <nvbufsurface.h>   // JetPack 5
+#include <nvbufsurftransform.h>
 #endif
 #endif
 
@@ -166,7 +167,7 @@ bool gstBufferManager::Enqueue( GstBuffer* gstBuffer, GstCaps* gstCaps )
 			LogVerbose(LOG_GSTREAMER "gstBufferManager -- recieved NVMM memory\n");
 	
 	#if NV_TENSORRT_MAJOR > 8 || (NV_TENSORRT_MAJOR == 8 && NV_TENSORRT_MINOR >= 4)
-		NvBufSurface* surf = (NvBufSurface*)map.data;
+		surf = (NvBufSurface*)map.data;
 		nvmmFD = surf->surfaceList[0].bufferDesc;
 	#else
 		if( ExtractFdFromNvBuffer(map.data, &nvmmFD) != 0 )
@@ -174,8 +175,6 @@ bool gstBufferManager::Enqueue( GstBuffer* gstBuffer, GstCaps* gstCaps )
 			LogError(LOG_GSTREAMER "gstBufferManager -- failed to get FD from NVMM memory\n");
 			return false;
 		}
-	#endif
-	
 		NvBufferParams nvmmParams;
 	
 		if( NvBufferGetParams(nvmmFD, &nvmmParams) != 0 )
@@ -183,7 +182,7 @@ bool gstBufferManager::Enqueue( GstBuffer* gstBuffer, GstCaps* gstCaps )
 			LogError(LOG_GSTREAMER "gstBufferManager -- failed to get NVMM buffer params\n");
 			return false;
 		}
-	
+	#endif
 	#ifdef DEBUG
 		LogVerbose(LOG_GSTREAMER "gstBufferManager -- NVMM buffer payload type:  %s\n", nvmmParams.payloadType == NvBufferPayload_MemHandle ? "MemHandle" : "SurfArray");
 		LogVerbose(LOG_GSTREAMER "gstBufferManager -- NVMM buffer planes:  %u   format=%u\n", nvmmParams.num_planes, (uint32_t)nvmmParams.pixel_format);
@@ -191,15 +190,35 @@ bool gstBufferManager::Enqueue( GstBuffer* gstBuffer, GstCaps* gstCaps )
 		for( uint32_t n=0; n < nvmmParams.num_planes; n++ )
 			LogVerbose(LOG_GSTREAMER "gstBufferManager -- NVMM buffer plane %u:  %ux%u\n", n, nvmmParams.width[n], nvmmParams.height[n]);
 	#endif
+	#if NV_TENSORRT_MAJOR > 8 || (NV_TENSORRT_MAJOR == 8 && NV_TENSORRT_MINOR >= 4)
+		NvBufSurfaceCreateParams params;
+		params.gpuId = 0;
+		params.width = surf->surfaceList[0].width;
+		params.height = surf->surfaceList[0].height;
+		params.size = surf->surfaceList[0].dataSize;
+		params.colorFormat = surf->surfaceList[0].colorFormat;
+		params.layout = NVBUF_LAYOUT_BLOCK_LINEAR;
+		// Surface type not supported for transformation NVBUF_MEM_CUDA_UNIFIED
+		params.memType = NVBUF_MEM_SURFACE_ARRAY; //NVBUF_MEM_CUDA_UNIFIED 
 
+		NvBufSurfaceCreate(&surf_conv, 1, &params);
+
+		NvBufSurfTransformParams transform_params;
+		memset(&transform_params, 0, sizeof(transform_params));
+
+		NvBufSurfTransform(surf, surf_conv, &transform_params);
+
+		NvBufSurfaceMapEglImage(surf_conv, 0);
+		// This function returns the created EGLImage by storing its address at surf->surfaceList>mappedAddr->eglImage
+		EGLImageKHR eglImage = surf_conv->surfaceList[0].mappedAddr.eglImage;
+	#else
 		EGLImageKHR eglImage = NvEGLImageFromFd(NULL, nvmmFD);
-		
-		if( !eglImage )
+	#endif
+				if( !eglImage )
 		{
 			LogError(LOG_GSTREAMER "gstBufferManager -- failed to map EGLImage from NVMM buffer\n");
 			return false;
 		}
-		
 		// nvfilter memory comes from nvvidconv, which handles NvReleaseFd() internally
 		GstMemory* gstMemory = gst_buffer_peek_memory(gstBuffer, 0);
 		
@@ -213,19 +232,29 @@ bool gstBufferManager::Enqueue( GstBuffer* gstBuffer, GstCaps* gstCaps )
 		
 		// update latest frame so capture thread can grab it
 		mNvmmMutex.Lock();
-		
+
 		if( mNvmmEGL != NULL )
-		{
+		{		
+		#if NV_TENSORRT_MAJOR > 8 || (NV_TENSORRT_MAJOR == 8 && NV_TENSORRT_MINOR >= 4)
+		// TODO:
+			NvBufSurfaceUnMapEglImage(surf, 0);
+			// NvBufSurfaceUnMapEglImage(surf_conv, 0);
+		#else
 			NvDestroyEGLImage(NULL, mNvmmEGL);
-			
-			if( mNvmmReleaseFD )
-				NvReleaseFd(mNvmmFD);
+		#endif
+		if( mNvmmReleaseFD )
+		#if NV_TENSORRT_MAJOR > 8 || (NV_TENSORRT_MAJOR == 8 && NV_TENSORRT_MINOR >= 4)
+			// TODO: check memory leaks / find alternative to this:
+			// NvBufSurfaceUnMap(mNvmmFD);
+			;
+		#else
+			NvReleaseFd(mNvmmFD);
+		#endif
 		}
 		
 		mNvmmFD = nvmmFD;
 		mNvmmEGL = eglImage;
 		mNvmmReleaseFD = nvmmReleaseFD;
-		
 		mNvmmMutex.Unlock();
 	}
 	else
@@ -395,10 +424,14 @@ int gstBufferManager::Dequeue( void** output, imageFormat format, uint64_t timeo
 		latestYUV = mNvmmCUDA;
 		
 		CUDA(cudaGraphicsUnregisterResource(eglResource));
+		#if NV_TENSORRT_MAJOR > 8 || (NV_TENSORRT_MAJOR == 8 && NV_TENSORRT_MINOR >= 4)
+		// TODO: check memory leaks
+		NvBufSurfaceUnMapEglImage(surf_conv, 0);
+		#else
 		NvDestroyEGLImage(NULL, eglImage);
-		
 		if( nvmmReleaseFD )
 			NvReleaseFd(nvmmFD);
+		#endif
 	}
 #endif
 
