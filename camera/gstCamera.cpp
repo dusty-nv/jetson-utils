@@ -169,16 +169,31 @@ bool gstCamera::buildLaunchStr()
 	}
 	else
 	{
-		ss << "v4l2src device=" << mOptions.resource.location << " do-timestamp=true ! ";
-		
 		if( mOptions.codec != videoOptions::CODEC_UNKNOWN )
 		{
+			std::string camerasrc;
+			#if defined(__x86_64__) || defined(__amd64__)
+				camerasrc = "v4l2src";
+				ss << "v4l2src device=" << mOptions.resource.location << " do-timestamp=true ! ";
+			#else 
+				if( mOptions.codec == videoOptions::CODEC_RAW && enable_nvmm )
+				camerasrc = "nvv4l2camerasrc";
+				else
+				camerasrc = "v4l2src";
+			#endif
+			ss << camerasrc << " device=" << mOptions.resource.location << " do-timestamp=true ! ";
+
 			ss << gst_codec_to_string(mOptions.codec) << ", ";
 			
 			if( mOptions.codec == videoOptions::CODEC_RAW )
 				ss << "format=(string)" << gst_format_to_string(mFormatYUV) << ", ";
 			
 			ss << "width=(int)" << GetWidth() << ", height=(int)" << GetHeight() << ", framerate=" << (int)mOptions.frameRate << "/1 ! "; 
+			
+		}
+		else 
+		{
+			ss << "v4l2src device=" << mOptions.resource.location << " do-timestamp=true ! ";
 		}
 		
 		//ss << "queue max-size-buffers=16 ! ";
