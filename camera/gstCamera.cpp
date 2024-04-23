@@ -168,9 +168,9 @@ bool gstCamera::buildLaunchStr()
 		ss << "appsink name=mysink";
 	}
 	else
-	{
+	{		
 		if( mOptions.codec != videoOptions::CODEC_UNKNOWN )
-		{
+		{		
 			std::string camerasrc;
 			#if defined(__x86_64__) || defined(__amd64__)
 				camerasrc = "v4l2src";
@@ -258,7 +258,7 @@ bool gstCamera::buildLaunchStr()
 		// V4L2 decoders can only output NVMM memory, if we aren't using NVMM have nvvidconv convert it 
 		if( mOptions.flipMethod != videoOptions::FLIP_NONE || (mOptions.codecType == videoOptions::CODEC_V4L2 && !enable_nvmm) )
 		{
-			if( (enable_nvmm && mOptions.codecType != videoOptions::CODEC_CPU) || mOptions.codecType == videoOptions::CODEC_V4L2 )
+			if( enable_nvmm || mOptions.codecType == videoOptions::CODEC_V4L2 )
 				ss << "nvvidconv flip-method=" << mOptions.flipMethod << " ! " << (enable_nvmm ? "video/x-raw(memory:NVMM) ! " : "video/x-raw ! ");
 			else
 				ss << "videoflip method=" << videoOptions::FlipMethodToStr(mOptions.flipMethod) << " ! ";  // the videoflip enum varies slightly, but the strings are the same
