@@ -191,26 +191,35 @@ bool gstBufferManager::Enqueue( GstBuffer* gstBuffer, GstCaps* gstCaps )
 			LogVerbose(LOG_GSTREAMER "gstBufferManager -- NVMM buffer plane %u:  %ux%u\n", n, nvmmParams.width[n], nvmmParams.height[n]);
 	#endif
 	#if NV_TENSORRT_MAJOR > 8 || (NV_TENSORRT_MAJOR == 8 && NV_TENSORRT_MINOR >= 4)
-		NvBufSurfaceCreateParams params;
-		params.gpuId = 0;
-		params.width = surf->surfaceList[0].width;
-		params.height = surf->surfaceList[0].height;
-		params.size = surf->surfaceList[0].dataSize;
-		params.colorFormat = surf->surfaceList[0].colorFormat;
-		params.layout = NVBUF_LAYOUT_BLOCK_LINEAR;
-		// Surface type not supported for transformation NVBUF_MEM_CUDA_UNIFIED
-		params.memType = NVBUF_MEM_SURFACE_ARRAY; //NVBUF_MEM_CUDA_UNIFIED 
+	
+	EGLImageKHR eglImage = NULL;
+	// check if layout matches. if not, transform it
+	if (surf->surfaceList[0].layout != NVBUF_LAYOUT_BLOCK_LINEAR)
+	{
+		if (surf_conv == NULL)
+		{
+			NvBufSurfaceCreateParams params;
+			params.gpuId = 0;
+			params.width = surf->surfaceList[0].width;
+			params.height = surf->surfaceList[0].height;
+			params.size = surf->surfaceList[0].dataSize;
+			params.colorFormat = surf->surfaceList[0].colorFormat;
+			params.layout = NVBUF_LAYOUT_BLOCK_LINEAR;
+			params.memType = NVBUF_MEM_SURFACE_ARRAY;
+			NvBufSurfaceCreate(&surf_conv, 1, &params);
 
-		NvBufSurfaceCreate(&surf_conv, 1, &params);
-
-		NvBufSurfTransformParams transform_params;
-		memset(&transform_params, 0, sizeof(transform_params));
+			memset(&transform_params, 0, sizeof(transform_params));
+		}
 
 		NvBufSurfTransform(surf, surf_conv, &transform_params);
-
 		NvBufSurfaceMapEglImage(surf_conv, 0);
-		// This function returns the created EGLImage by storing its address at surf->surfaceList>mappedAddr->eglImage
-		EGLImageKHR eglImage = surf_conv->surfaceList[0].mappedAddr.eglImage;
+		eglImage = surf_conv->surfaceList[0].mappedAddr.eglImage;
+	}
+	else
+	{
+		NvBufSurfaceMapEglImage(surf, 0);
+		eglImage = surf->surfaceList[0].mappedAddr.eglImage;
+	}
 	#else
 		EGLImageKHR eglImage = NvEGLImageFromFd(NULL, nvmmFD);
 	#endif
@@ -237,7 +246,8 @@ bool gstBufferManager::Enqueue( GstBuffer* gstBuffer, GstCaps* gstCaps )
 		{		
 		#if NV_TENSORRT_MAJOR > 8 || (NV_TENSORRT_MAJOR == 8 && NV_TENSORRT_MINOR >= 4)
 		// TODO:
-			NvBufSurfaceUnMapEglImage(surf, 0);
+			// NvBufSurfaceUnMapEglImage(surf, -1);
+			// NvBufSurfaceUnMap(surf, -1, -1);
 			// NvBufSurfaceUnMapEglImage(surf_conv, 0);
 		#else
 			NvDestroyEGLImage(NULL, mNvmmEGL);
@@ -361,8 +371,9 @@ int gstBufferManager::Dequeue( void** output, imageFormat format, uint64_t timeo
 		if( CUDA_FAILED(cudaGraphicsResourceGetMappedEglFrame(&eglFrame, eglResource, 0, 0)) )
 			return -1;
 
-		if( eglFrame.planeCount != 2 )
-			LogWarning(LOG_GSTREAMER "gstBufferManager -- unexpected number of planes in NVMM buffer (%u vs 2 expected)\n", eglFrame.planeCount);
+		// TODO: disabled for now, as this seems to be the case for nvv4l2camerasrc
+		// if( eglFrame.planeCount != 2 )
+		// 	LogWarning(LOG_GSTREAMER "gstBufferManager -- unexpected number of planes in NVMM buffer (%u vs 2 expected)\n", eglFrame.planeCount);
 
 		if( eglFrame.planeDesc[0].width != mOptions->width || eglFrame.planeDesc[0].height != mOptions->height )
 		{
@@ -426,7 +437,8 @@ int gstBufferManager::Dequeue( void** output, imageFormat format, uint64_t timeo
 		CUDA(cudaGraphicsUnregisterResource(eglResource));
 		#if NV_TENSORRT_MAJOR > 8 || (NV_TENSORRT_MAJOR == 8 && NV_TENSORRT_MINOR >= 4)
 		// TODO: check memory leaks
-		NvBufSurfaceUnMapEglImage(surf_conv, 0);
+		// NvBufSurfaceUnMapEglImage(surf, -1);
+		// NvBufSurfaceUnMap(surf, -1, -1);
 		#else
 		NvDestroyEGLImage(NULL, eglImage);
 		if( nvmmReleaseFD )
