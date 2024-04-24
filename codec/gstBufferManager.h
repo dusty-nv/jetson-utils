@@ -31,7 +31,6 @@
 #include "RingBuffer.h"
 #if NV_TENSORRT_MAJOR > 8 || (NV_TENSORRT_MAJOR == 8 && NV_TENSORRT_MINOR >= 4)
 #include <nvbufsurface.h>   // JetPack 5
-#include <nvbufsurftransform.h>
 #endif 
 
 #ifdef ENABLE_NVMM
@@ -120,9 +119,8 @@ protected:
 	size_t mNvmmSize;
 	bool   mNvmmReleaseFD;
 	#if NV_TENSORRT_MAJOR > 8 || (NV_TENSORRT_MAJOR == 8 && NV_TENSORRT_MINOR >= 4)
-	NvBufSurface* surf = NULL;
-	NvBufSurface *surf_conv = NULL;
-	NvBufSurfTransformParams transform_params;
+		// JetPack 5 nvbufsurface
+		NvBufSurface *mSurfConv = NULL;
 	#endif
 #endif
 };

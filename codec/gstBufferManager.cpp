@@ -62,7 +62,7 @@ gstBufferManager::gstBufferManager( videoOptions* options )
 // destructor
 gstBufferManager::~gstBufferManager()
 {
-	
+	NvBufSurfaceUnMap(mSurfConv, -1, -1);
 }
 
 
@@ -167,7 +167,7 @@ bool gstBufferManager::Enqueue( GstBuffer* gstBuffer, GstCaps* gstCaps )
 			LogVerbose(LOG_GSTREAMER "gstBufferManager -- recieved NVMM memory\n");
 	
 	#if NV_TENSORRT_MAJOR > 8 || (NV_TENSORRT_MAJOR == 8 && NV_TENSORRT_MINOR >= 4)
-		surf = (NvBufSurface*)map.data;
+		NvBufSurface* surf = (NvBufSurface*)map.data;
 		nvmmFD = surf->surfaceList[0].bufferDesc;
 	#else
 		if( ExtractFdFromNvBuffer(map.data, &nvmmFD) != 0 )
@@ -192,38 +192,38 @@ bool gstBufferManager::Enqueue( GstBuffer* gstBuffer, GstCaps* gstCaps )
 	#endif
 	#if NV_TENSORRT_MAJOR > 8 || (NV_TENSORRT_MAJOR == 8 && NV_TENSORRT_MINOR >= 4)
 	
-	EGLImageKHR eglImage = NULL;
-	// check if layout matches. if not, transform it
-	if (surf->surfaceList[0].layout != NVBUF_LAYOUT_BLOCK_LINEAR)
-	{
-		if (surf_conv == NULL)
+		EGLImageKHR eglImage = NULL;
+		// check if layout matches. if not, transform it
+		if (surf->surfaceList[0].layout != NVBUF_LAYOUT_BLOCK_LINEAR)
 		{
-			NvBufSurfaceCreateParams params;
-			params.gpuId = 0;
-			params.width = surf->surfaceList[0].width;
-			params.height = surf->surfaceList[0].height;
-			params.size = surf->surfaceList[0].dataSize;
-			params.colorFormat = surf->surfaceList[0].colorFormat;
-			params.layout = NVBUF_LAYOUT_BLOCK_LINEAR;
-			params.memType = NVBUF_MEM_SURFACE_ARRAY;
-			NvBufSurfaceCreate(&surf_conv, 1, &params);
+			if (mSurfConv == NULL)
+			{
+				NvBufSurfaceCreateParams params;
+				params.gpuId = 0;
+				params.width = surf->surfaceList[0].width;
+				params.height = surf->surfaceList[0].height;
+				params.size = surf->surfaceList[0].dataSize;
+				params.colorFormat = surf->surfaceList[0].colorFormat;
+				params.layout = NVBUF_LAYOUT_BLOCK_LINEAR;
+				params.memType = NVBUF_MEM_SURFACE_ARRAY;
+				NvBufSurfaceCreate(&mSurfConv, 1, &params);
 
-			memset(&transform_params, 0, sizeof(transform_params));
+			}
+			NvBufSurfTransformParams transformParams;
+			memset(&transformParams, 0, sizeof(transformParams));
+			NvBufSurfTransform(surf, mSurfConv, &transformParams);
+			NvBufSurfaceMapEglImage(mSurfConv, 0);
+			eglImage = mSurfConv->surfaceList[0].mappedAddr.eglImage;
 		}
-
-		NvBufSurfTransform(surf, surf_conv, &transform_params);
-		NvBufSurfaceMapEglImage(surf_conv, 0);
-		eglImage = surf_conv->surfaceList[0].mappedAddr.eglImage;
-	}
-	else
-	{
-		NvBufSurfaceMapEglImage(surf, 0);
-		eglImage = surf->surfaceList[0].mappedAddr.eglImage;
-	}
+		else
+		{
+			NvBufSurfaceMapEglImage(surf, 0);
+			eglImage = surf->surfaceList[0].mappedAddr.eglImage;
+		}
 	#else
 		EGLImageKHR eglImage = NvEGLImageFromFd(NULL, nvmmFD);
 	#endif
-				if( !eglImage )
+		if( !eglImage )
 		{
 			LogError(LOG_GSTREAMER "gstBufferManager -- failed to map EGLImage from NVMM buffer\n");
 			return false;
@@ -242,26 +242,15 @@ bool gstBufferManager::Enqueue( GstBuffer* gstBuffer, GstCaps* gstCaps )
 		// update latest frame so capture thread can grab it
 		mNvmmMutex.Lock();
 
+		#if NV_TENSORRT_MAJOR < 8 || (NV_TENSORRT_MAJOR == 8 && NV_TENSORRT_MINOR < 4)
 		if( mNvmmEGL != NULL )
 		{		
-		#if NV_TENSORRT_MAJOR > 8 || (NV_TENSORRT_MAJOR == 8 && NV_TENSORRT_MINOR >= 4)
-		// TODO:
-			// NvBufSurfaceUnMapEglImage(surf, -1);
-			// NvBufSurfaceUnMap(surf, -1, -1);
-			// NvBufSurfaceUnMapEglImage(surf_conv, 0);
-		#else
 			NvDestroyEGLImage(NULL, mNvmmEGL);
-		#endif
 		if( mNvmmReleaseFD )
-		#if NV_TENSORRT_MAJOR > 8 || (NV_TENSORRT_MAJOR == 8 && NV_TENSORRT_MINOR >= 4)
-			// TODO: check memory leaks / find alternative to this:
-			// NvBufSurfaceUnMap(mNvmmFD);
-			;
-		#else
 			NvReleaseFd(mNvmmFD);
-		#endif
 		}
-		
+		#endif
+
 		mNvmmFD = nvmmFD;
 		mNvmmEGL = eglImage;
 		mNvmmReleaseFD = nvmmReleaseFD;
@@ -380,7 +369,7 @@ int gstBufferManager::Dequeue( void** output, imageFormat format, uint64_t timeo
 			LogError(LOG_GSTREAMER "gstBufferManager -- NVMM EGLImage dimensions mismatch (%ux%u when expected %ux%u)", eglFrame.planeDesc[0].width, eglFrame.planeDesc[0].height, mOptions->width, mOptions->height);
 			return -1;
 		}
-		
+		// TODO: we could remove the transform in Enqueue if we could handle cudaEglFrameTypePitch here
 		if( eglFrame.frameType != cudaEglFrameTypeArray )  // cudaEglFrameTypePitch
 		{
 			LogError(LOG_GSTREAMER "gstBufferManager -- NVMM had unexpected frame type (was pitched pointer, expected CUDA array)\n");
@@ -435,11 +424,7 @@ int gstBufferManager::Dequeue( void** output, imageFormat format, uint64_t timeo
 		latestYUV = mNvmmCUDA;
 		
 		CUDA(cudaGraphicsUnregisterResource(eglResource));
-		#if NV_TENSORRT_MAJOR > 8 || (NV_TENSORRT_MAJOR == 8 && NV_TENSORRT_MINOR >= 4)
-		// TODO: check memory leaks
-		// NvBufSurfaceUnMapEglImage(surf, -1);
-		// NvBufSurfaceUnMap(surf, -1, -1);
-		#else
+		#if NV_TENSORRT_MAJOR < 8 || (NV_TENSORRT_MAJOR == 8 && NV_TENSORRT_MINOR < 4)
 		NvDestroyEGLImage(NULL, eglImage);
 		if( nvmmReleaseFD )
 			NvReleaseFd(nvmmFD);
