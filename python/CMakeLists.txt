@@ -5,39 +5,32 @@
 #
 # If you want to support another version of Python, add it here.
 #
-
-# Option to use Python from a Conda environment
-option(USE_CONDA "Use Python from the activated Conda environment" OFF)
-
-if(LSB_RELEASE_CODENAME MATCHES "noble")
-	set(PYTHON_BINDING_VERSIONS 3.12)
-elseif(LSB_RELEASE_CODENAME MATCHES "jammy")
-	set(PYTHON_BINDING_VERSIONS 3.10)
-elseif(LSB_RELEASE_CODENAME MATCHES "focal")
-	set(PYTHON_BINDING_VERSIONS 3.8)
-else()
-	set(PYTHON_BINDING_VERSIONS 2.7 3.6 3.7)
-endif()
-
-message("-- trying to build Python bindings for Python versions:  ${PYTHON_BINDING_VERSIONS}")
-
-# Check if user wants to use Conda and if a Conda environment is activated
 if(USE_CONDA AND DEFINED ENV{CONDA_PREFIX})
+    # Attempt to find Python in the Conda environment without specifying version
+    find_package(PythonInterp REQUIRED)
+    find_package(PythonLibs REQUIRED)
+
     message("-- Using Python from Conda environment: $ENV{CONDA_PREFIX}")
-    foreach(PYTHON_BINDING_VERSION ${PYTHON_BINDING_VERSIONS})
-        # Explicitly setting Python executable to the one in the Conda environment
-        set(PYTHON_EXECUTABLE "$ENV{CONDA_PREFIX}/bin/python${PYTHON_BINDING_VERSION}")
-        find_package(PythonInterp ${PYTHON_BINDING_VERSION} REQUIRED)
-        find_package(PythonLibs ${PYTHON_BINDING_VERSION} REQUIRED)
-        message("-- Configuring bindings with Python ${PYTHON_BINDING_VERSION} from Conda.")
-        add_subdirectory(bindings bindings_python_${PYTHON_BINDING_VERSION})
-    endforeach()
+    message("-- Found Python executable: ${PYTHON_EXECUTABLE}")
+    message("-- Found Python libraries: ${PYTHON_LIBRARIES}")
 else()
-    message("-- No Conda environment detected or Conda option not selected, using system Python.")
-    foreach(PYTHON_BINDING_VERSION ${PYTHON_BINDING_VERSIONS})
+    # Set Python versions based on the distribution codename
+    if(LSB_RELEASE_CODENAME MATCHES "noble")
+        set(PYTHON_BINDING_VERSIONS 3.12)
+    elseif(LSB_RELEASE_CODENAME MATCHES "jammy")
+        set(PYTHON_BINDING_VERSIONS 3.10)
+    elseif(LSB_RELEASE_CODENAME MATCHES "focal")
+        set(PYTHON_BINDING_VERSIONS 3.8)
+    else()
+        set(PYTHON_BINDING_VERSIONS 2.7 3.6 3.7)
+    endif()
+
+    message("-- Trying to build Python bindings for Python versions: ${PYTHON_BINDING_VERSIONS}")
+
+    foreach(PYTHON_BINDING_VERSION IN LISTS PYTHON_BINDING_VERSIONS)
         find_package(PythonInterp ${PYTHON_BINDING_VERSION} REQUIRED)
         find_package(PythonLibs ${PYTHON_BINDING_VERSION} REQUIRED)
-        add_subdirectory(bindings bindings_python_${PYTHON_BINDING_VERSION})
+        message("-- Configuring bindings with Python ${PYTHON_BINDING_VERSION} from system.")
     endforeach()
 endif()
 
