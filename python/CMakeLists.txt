@@ -10,6 +10,7 @@ if(USE_CONDA AND DEFINED ENV{CONDA_PREFIX})
     # find_package(PythonInterp REQUIRED)
     # find_package(PythonLibs REQUIRED)
     find_package(Python COMPONENTS Interpreter Development REQUIRED)
+    print("---: ${USE_CONDA}")
 
     message("-- Using Python from Conda environment: $ENV{CONDA_PREFIX}")
     message("-- Found Python executable: ${Python_EXECUTABLE}")
