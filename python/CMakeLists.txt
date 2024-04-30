@@ -9,8 +9,6 @@ if(USE_CONDA AND DEFINED ENV{CONDA_PREFIX})
     # Attempt to find Python in the Conda environment without specifying version
     find_package(PythonInterp REQUIRED)
     find_package(PythonLibs REQUIRED)
-    # find_package(Python COMPONENTS Interpreter Development REQUIRED)
-    message("---: ${USE_CONDA}")
 
     message("-- Using Python from Conda environment: $ENV{CONDA_PREFIX}")
     message("-- Found Python executable: ${Python_EXECUTABLE}")
