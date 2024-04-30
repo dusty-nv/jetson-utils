@@ -20,18 +20,17 @@ unset(PYTHONLIBS_VERSION_STRING CACHE)
 
 # locate requested python version
 message("-- detecting Python ${PYTHON_BINDING_VERSION}...")
-
 find_package(PythonInterp ${PYTHON_BINDING_VERSION} QUIET)
 find_package(PythonLibs ${PYTHON_BINDING_VERSION} QUIET)
-
-if(NOT ${PYTHONLIBS_FOUND})
+if(NOT PYTHONLIBS_FOUND)
 	message("-- Python ${PYTHON_BINDING_VERSION} wasn't found")
 	return()
 endif()
 
-message("-- found Python version:  ${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR} (${PYTHONLIBS_VERSION_STRING})")
-message("-- found Python include:  ${PYTHON_INCLUDE_DIRS}")
-message("-- found Python library:  ${PYTHON_LIBRARIES}") 
+message(STATUS "Using Python executable: ${PYTHON_EXECUTABLE}")
+message(STATUS "Using Python version: ${PYTHON_VERSION_STRING}")
+message(STATUS "Using Python include dir: ${PYTHON_INCLUDE_DIRS}")
+message(STATUS "Using Python library: ${PYTHON_LIBRARIES}")
 
 include_directories(${PYTHON_INCLUDE_DIRS})
 
@@ -70,10 +69,21 @@ set_target_properties(jetson-utils-python-${PYTHON_VERSION_MAJOR}${PYTHON_VERSIO
 
 # on x86, install under /opt/conda/lib/pythonX.X/site-packages
 # otherwise, install under /usr/lib/pythonX.X/dist-packages
-if(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64")
-	set(PYTHON_BINDING_INSTALL_DIR /opt/conda/lib/python${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}/site-packages)
+if(USE_CONDA AND DEFINED ENV{CONDA_PREFIX})
+	# For Conda environment, always use the Conda library path
+	message("----${PYTHON_VERSION_MAJOR}")
+	message("----${PYTHON_VERSION_MINOR}")
+	message("----HOLA")
+	set(PYTHON_BINDING_INSTALL_DIR $ENV{CONDA_PREFIX}/lib/python${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}/site-packages)
+	message("-- Installing Python bindings to Conda environment directory: ${PYTHON_BINDING_INSTALL_DIR}")
 else()
-	set(PYTHON_BINDING_INSTALL_DIR /usr/lib/python${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}/dist-packages)
+	# Check system processor for default installation path
+	if(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64")
+		set(PYTHON_BINDING_INSTALL_DIR /opt/conda/lib/python${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}/site-packages)
+	else()
+		set(PYTHON_BINDING_INSTALL_DIR /usr/lib/python${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}/dist-packages)
+	endif()
+	message("-- Installing Python bindings to system directory: ${PYTHON_BINDING_INSTALL_DIR}")
 endif()
 
 install(TARGETS jetson-utils-python-${PYTHON_VERSION_MAJOR}${PYTHON_VERSION_MINOR} DESTINATION ${PYTHON_BINDING_INSTALL_DIR})
