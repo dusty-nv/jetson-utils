@@ -272,7 +272,7 @@ const char* html_template = " \n \
       } \n \
  \n \
       window.onload = function() { \n \
-        var config = { 'iceServers': [{ 'urls': 'stun:%s' }] }; \n\
+        var config = { 'iceServers': [%s] }; \n\
         playStream('video-player', null, null, '%s', config, function (errmsg) { console.error(errmsg); }); \n \
         sendStream(null, null, '%s', config, function (errmsg) { console.error(errmsg); }); \n \
 	 }; \n \
@@ -418,9 +418,15 @@ WebRTCServer* WebRTCServer::Create( uint16_t port, const char* stun_server, cons
 	}
 	
 	// assign a default STUN server if needed
-	if( !stun_server || strlen(stun_server) == 0 )
+	if( !stun_server || strlen(stun_server) == 0 ) 
+	{
 		stun_server = WEBRTC_DEFAULT_STUN_SERVER;
-	
+    }
+	else if( strcasecmp(stun_server, "disable") == 0 || strcasecmp(stun_server, "disabled") == 0 || strcasecmp(stun_server, "off") == 0 ) 
+	{
+	    stun_server = NULL;
+	}
+	    
 	// create a new server
 	WebRTCServer* server = new WebRTCServer(port, stun_server, ssl_cert_file, ssl_key_file, threaded);
 
@@ -809,9 +815,16 @@ void WebRTCServer::onHttpDefault( SoupServer* soup_server, SoupMessage* message,
 				receive_path = route->path.c_str();
 			}
 			
+			char stun_str[1024];
+			stun_str[0] = '\0';
+			
+			const char* stun_server = server->GetSTUNServer();
+			
+			if( stun_server != NULL && strlen(stun_server) > 0 )
+			    snprintf(stun_str, sizeof(stun_str), "{ 'urls': 'stun:%s' }", stun_server);
+               
 			CHECK_SNPRINTF(snprintf(html, sizeof(html), html_template, 
-								    server->GetSTUNServer(),
-								    send_path, receive_path,
+								    stun_str, send_path, receive_path,
 								    stream_info.c_str()));
 		}
 		else
