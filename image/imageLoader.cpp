@@ -135,7 +135,7 @@ imageLoader* imageLoader::Create( const char* resource, const videoOptions& opti
 
 
 // Capture
-bool imageLoader::Capture( void** output, imageFormat format, uint64_t timeout, int* status )
+bool imageLoader::Capture( void** output, imageFormat format, uint64_t timeout, int* status, cudaStream_t stream )
 {
 	// verify the output pointer exists
 	if( !output )
@@ -181,7 +181,7 @@ bool imageLoader::Capture( void** output, imageFormat format, uint64_t timeout, 
 	if( !loadImage(mFiles[currFile].c_str(), &imgPtr, &imgWidth, &imgHeight, format) )
 	{
 		LogError(LOG_IMAGE "imageLoader -- failed to load '%s'\n", mFiles[currFile].c_str());
-		return Capture(output, format, timeout);
+		return Capture(output, format, timeout, status, stream);
 	}
 
 	// set outputs

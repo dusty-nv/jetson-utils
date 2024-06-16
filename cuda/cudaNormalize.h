@@ -36,8 +36,9 @@
  * @ingroup normalization
  */
 cudaError_t cudaNormalize( float* input,  const float2& input_range,
-					  float* output, const float2& output_range,
-					  size_t width,  size_t height );
+                           float* output, const float2& output_range,
+                           size_t width,  size_t height, 
+                           cudaStream_t stream=0 );
 
 /**
  * Normalize the pixel intensities of a float3 RGB/BGR image between two scales.
@@ -47,8 +48,9 @@ cudaError_t cudaNormalize( float* input,  const float2& input_range,
  * @ingroup normalization
  */
 cudaError_t cudaNormalize( float3* input,  const float2& input_range,
-					  float3* output, const float2& output_range,
-					  size_t  width,  size_t height );
+                           float3* output, const float2& output_range,
+                           size_t  width,  size_t height,
+                           cudaStream_t stream=0 );
 
 /**
  * Normalize the pixel intensities of a float4 RGBA/BGRA image between two scales.
@@ -58,8 +60,9 @@ cudaError_t cudaNormalize( float3* input,  const float2& input_range,
  * @ingroup normalization
  */
 cudaError_t cudaNormalize( float4* input,  const float2& input_range,
-					  float4* output, const float2& output_range,
-					  size_t  width,  size_t height );
+                           float4* output, const float2& output_range,
+                           size_t  width,  size_t height,
+                           cudaStream_t stream=0 );
 
 /**
  * Normalize the pixel intensities of an image between two scales.
@@ -70,8 +73,9 @@ cudaError_t cudaNormalize( float4* input,  const float2& input_range,
  * @ingroup normalization
  */
 cudaError_t cudaNormalize( void* input,  const float2& input_range,
-					  void* output, const float2& output_range,
-					  size_t width, size_t height, imageFormat format );
+                           void* output, const float2& output_range,
+                           size_t width, size_t height, imageFormat format,
+                           cudaStream_t stream=0 );
 
 
 #endif

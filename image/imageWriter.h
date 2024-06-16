@@ -69,13 +69,13 @@ public:
 	 * Save the next frame.
 	 * @see videoOutput::Render()
 	 */
-	template<typename T> bool Render( T* image, uint32_t width, uint32_t height )		{ return Render((void**)image, width, height, imageFormatFromType<T>()); }
+	template<typename T> bool Render( T* image, uint32_t width, uint32_t height, cudaStream_t stream=0 )		{ return Render((void**)image, width, height, imageFormatFromType<T>(), stream); }
 	
 	/**
 	 * Save the next frame.
 	 * @see videoOutput::Render()
 	 */
-	virtual bool Render( void* image, uint32_t width, uint32_t height, imageFormat format );
+	virtual bool Render( void* image, uint32_t width, uint32_t height, imageFormat format, cudaStream_t stream=0 );
 
 	/**
 	 * Return the interface type (imageWriter::Type)

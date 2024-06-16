@@ -31,10 +31,12 @@ PyObject* PyImageIO_Load( PyObject* self, PyObject* args, PyObject* kwds )
 {
 	const char* filename  = NULL;
 	const char* formatStr = "rgb8";
-	static char* kwlist[] = {"filename", "format", "timestamp", NULL};
 	long long timestamp = 0;
+	cudaStream_t stream = 0;
 
-	if( !PyArg_ParseTupleAndKeywords(args, kwds, "s|sL", kwlist, &filename, &formatStr, &timestamp))
+	static char* kwlist[] = {"filename", "format", "timestamp", "stream", NULL};
+
+	if( !PyArg_ParseTupleAndKeywords(args, kwds, "s|sLK", kwlist, &filename, &formatStr, &timestamp, &stream))
 		return NULL;
 
 	const imageFormat format = imageFormatFromStr(formatStr);
@@ -55,16 +57,18 @@ PyObject* PyImageIO_Load( PyObject* self, PyObject* args, PyObject* kwds )
 	void* imgPtr = NULL;
 	int   width  = 0;
 	int   height = 0;
-
+    bool  result = false;
+    
 	Py_BEGIN_ALLOW_THREADS
-	
-	if( !loadImage(filename, &imgPtr, &width, &height, format) )
+	result = loadImage(filename, &imgPtr, &width, &height, format, stream);
+	Py_END_ALLOW_THREADS
+    
+    if( !result )
 	{
-		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "loadImage() failed to load image");
+		PyErr_Format(PyExc_Exception, LOG_PY_UTILS "loadImage() failed to load image %s", filename);
 		return NULL;
 	}
-		
-	Py_END_ALLOW_THREADS
+    
 	return PyCUDA_RegisterImage(imgPtr, width, height, format, timestamp, true);
 }
 
@@ -74,10 +78,12 @@ PyObject* PyImageIO_LoadRGBA( PyObject* self, PyObject* args, PyObject* kwds )
 {
 	const char* filename  = NULL;
 	const char* formatStr = "rgba32f";
-	static char* kwlist[] = {"filename", "format", "timestamp", NULL};
 	long long timestamp = 0;
+	cudaStream_t stream = 0;
 
-	if( !PyArg_ParseTupleAndKeywords(args, kwds, "s|sL", kwlist, &filename, &formatStr, &timestamp))
+    static char* kwlist[] = {"filename", "format", "timestamp", "stream", NULL};
+    
+	if( !PyArg_ParseTupleAndKeywords(args, kwds, "s|sLK", kwlist, &filename, &formatStr, &timestamp, &stream))
 		return NULL;
 		
 	const imageFormat format = imageFormatFromStr(formatStr);
@@ -98,17 +104,18 @@ PyObject* PyImageIO_LoadRGBA( PyObject* self, PyObject* args, PyObject* kwds )
 	void* imgPtr = NULL;
 	int   width  = 0;
 	int   height = 0;
-
+    bool  result = false;
+    
 	Py_BEGIN_ALLOW_THREADS
-	
-	if( !loadImage(filename, &imgPtr, &width, &height, format) )
+	result = loadImage(filename, &imgPtr, &width, &height, format, stream);
+	Py_END_ALLOW_THREADS
+		
+    if( !result )
 	{
-		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "loadImageRGBA() failed to load image");
+		PyErr_Format(PyExc_Exception, LOG_PY_UTILS "loadImageRGBA() failed to load image %s", filename);
 		return NULL;
 	}
 	
-	Py_END_ALLOW_THREADS
-		
 	// register memory container
 	PyObject* capsule = PyCUDA_RegisterImage(imgPtr, width, height, format, timestamp, true);
 
@@ -137,10 +144,12 @@ PyObject* PyImageIO_Save( PyObject* self, PyObject* args, PyObject* kwds )
 	// parse arguments
 	const char* filename = NULL;
 	PyObject* capsule = NULL;
-	int quality = 95;
-	static char* kwlist[] = {"filename", "image", "quality", NULL};
+	int quality = IMAGE_DEFAULT_SAVE_QUALITY;
+	cudaStream_t stream = 0;
+	
+	static char* kwlist[] = {"filename", "image", "quality", "stream", NULL};
 
-	if( !PyArg_ParseTupleAndKeywords(args, kwds, "sO|i", kwlist, &filename, &capsule, &quality))
+	if( !PyArg_ParseTupleAndKeywords(args, kwds, "sO|iK", kwlist, &filename, &capsule, &quality, &stream))
 		return NULL;
 
 	// get pointer to image data
@@ -159,15 +168,17 @@ PyObject* PyImageIO_Save( PyObject* self, PyObject* args, PyObject* kwds )
 	}
 
 	// save the image
+    bool result = false;
 	Py_BEGIN_ALLOW_THREADS
-	
-	if( !saveImage(filename, img->base.ptr, img->width, img->height, img->format, quality) )
-	{
-		PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "saveImage() failed to save the image");
-		return NULL;
-	}
-
+	result = saveImage(filename, img->base.ptr, img->width, img->height, img->format, quality, stream);
 	Py_END_ALLOW_THREADS
+    
+    if( !result )
+    {
+        PyErr_Format(PyExc_Exception, LOG_PY_UTILS "saveImage() failed to save %ix%i image to %s", img->width, img->height, filename);
+        return NULL;
+    }
+
 	Py_RETURN_NONE;
 }
 
@@ -180,18 +191,20 @@ PyObject* PyImageIO_SaveRGBA( PyObject* self, PyObject* args, PyObject* kwds )
 
 	int width  = 0;
 	int height = 0;
-	int quality = 95;
+	int quality = IMAGE_DEFAULT_SAVE_QUALITY;
 
 	float max_pixel = 255.0f;
+    cudaStream_t stream = 0;
+    
+	static char* kwlist[] = {"filename", "image", "width", "height", "max_pixel", "quality", "stream", NULL};
 
-	static char* kwlist[] = {"filename", "image", "width", "height", "max_pixel", "quality", NULL};
-
-	if( !PyArg_ParseTupleAndKeywords(args, kwds, "sO|iifi", kwlist, &filename, &capsule, &width, &height, &max_pixel, &quality))
+	if( !PyArg_ParseTupleAndKeywords(args, kwds, "sO|iifi", kwlist, &filename, &capsule, &width, &height, &max_pixel, &quality, &stream))
 		return NULL;
 
 	// get pointer to image data
 	PyCudaImage* img = PyCUDA_GetImage(capsule);
-
+    bool save_result = false;
+    
 	if( img != NULL )
 	{
 		if( !img->base.mapped )
@@ -200,11 +213,9 @@ PyObject* PyImageIO_SaveRGBA( PyObject* self, PyObject* args, PyObject* kwds )
 			return NULL;
 		}
 
-		if( !saveImage(filename, img->base.ptr, img->width, img->height, img->format, quality, make_float2(0,max_pixel)) )
-		{
-			PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "saveImageRGBA() failed to save the image");
-			return NULL;
-		}
+        Py_BEGIN_ALLOW_THREADS
+		save_result = saveImage(filename, img->base.ptr, img->width, img->height, img->format, quality, make_float2(0,max_pixel), true, stream);
+		Py_END_ALLOW_THREADS
 	}
 	else
 	{
@@ -223,17 +234,16 @@ PyObject* PyImageIO_SaveRGBA( PyObject* self, PyObject* args, PyObject* kwds )
 		}
 
 		Py_BEGIN_ALLOW_THREADS
-		
-		if( !saveImageRGBA(filename, (float4*)mem->ptr, width, height, max_pixel, quality) )
-		{
-			PyErr_SetString(PyExc_Exception, LOG_PY_UTILS "saveImageRGBA() failed to save the image");
-			return NULL;
-		}
-		
+		save_result = saveImageRGBA(filename, (float4*)mem->ptr, width, height, max_pixel, quality, stream);
 		Py_END_ALLOW_THREADS
 	}
 
-	// return void
+    if( !save_result )
+    {
+        PyErr_Format(PyExc_Exception, LOG_PY_UTILS "saveImage() failed to save %ix%i image to %s", width, height, filename);
+        return NULL;
+    }
+
 	Py_RETURN_NONE;
 }
 

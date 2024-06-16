@@ -194,13 +194,13 @@ public:
 	 *          CUDA device pointer to buffer if GL_MAP_CUDA was specified,
 	 *          or NULL if an error occurred mapping the buffer.                  
 	 */
-	void* Map( uint32_t device, uint32_t flags );
+	void* Map( uint32_t device, uint32_t flags, cudaStream_t stream=0 );
 
 	/**
 	 * Unmap the buffer from CPU/CUDA access.
 	 * @note the buffer will be unbound after calling Unmap()
 	 */
-	void Unmap();
+	void Unmap( cudaStream_t stream=0 );
 
 	/**
 	 * Copy entire contents of the buffer to/from CPU or CUDA memory.
@@ -219,7 +219,7 @@ public:
 	 *
 	 * @returns true on success, false on failure
 	 */
-	bool Copy( void* ptr, uint32_t flags );
+	bool Copy( void* ptr, uint32_t flags, cudaStream_t stream=0 );
 
 	/**
 	 * Copy contents of the buffer to/from CPU or CUDA memory.
@@ -237,7 +237,7 @@ public:
 	 *
 	 * @returns true on success, false on failure
 	 */
-	bool Copy( void* ptr, uint32_t size, uint32_t flags );
+	bool Copy( void* ptr, uint32_t size, uint32_t flags, cudaStream_t stream=0 );
 
 	/**
 	 * Copy contents of the buffer to/from CPU or CUDA memory.
@@ -259,7 +259,7 @@ public:
 	 *
 	 * @returns true on success, false on failure
 	 */
-	bool Copy( void* ptr, uint32_t offset, uint32_t size, uint32_t flags );
+	bool Copy( void* ptr, uint32_t offset, uint32_t size, uint32_t flags, cudaStream_t stream=0 );
 
 private:
 	glBuffer();

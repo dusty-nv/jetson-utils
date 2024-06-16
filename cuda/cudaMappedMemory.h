@@ -30,33 +30,44 @@
 
 
 /**
- * Allocate ZeroCopy mapped memory, shared between CUDA and CPU.
+ * Allocate mapped memory that shares the same physical memory between CPU and GPU,
+ * as is the case on Jetson devices with unified memory.  This eliminates the need
+ * for memory copies (Zero Copy), although synchronization is still required so that
+ * both processors are not accessing the same memory simultaneously.
  *
- * @note although two pointers are returned, one for CPU and GPU, they both resolve to the same physical memory.
- *
- * @param[out] cpuPtr Returned CPU pointer to the shared memory.
- * @param[out] gpuPtr Returned GPU pointer to the shared memory.
+ * @param[out] ptr Returned pointer to the shared memory, can be accessed from both the CPU
+ *                 and in CUDA kernels This memory should be released with cudaFreeHost()
  * @param[in] size Size (in bytes) of the shared memory to allocate.
+ * @param[in] clear If `true` (the default), the memory contents will be filled with zeros.
  *
- * @returns `true` if the allocation succeeded, `false` otherwise.
+ * @note This function is the same as cudaAllocMapped(), but returns cudaError_t instead of bool.
+ * @returns cudaSuccess on success, cudaError_t on failure.
  * @ingroup cudaMemory
  */
-inline bool cudaAllocMapped( void** cpuPtr, void** gpuPtr, size_t size )
+inline cudaError_t cudaMallocMapped( void** ptr, size_t size, bool clear=true )
 {
-	if( !cpuPtr || !gpuPtr || size == 0 )
-		return false;
+	void* cpu = NULL;
+	void* gpu = NULL;
 
-	//CUDA(cudaSetDeviceFlags(cudaDeviceMapHost));
+	if( !ptr || size == 0 )
+		return cudaErrorInvalidValue;
 
-	if( CUDA_FAILED(cudaHostAlloc(cpuPtr, size, cudaHostAllocMapped)) )
-		return false;
+	//CUDA_ASSERT(cudaSetDeviceFlags(cudaDeviceMapHost));
 
-	if( CUDA_FAILED(cudaHostGetDevicePointer(gpuPtr, *cpuPtr, 0)) )
-		return false;
+    CUDA_ASSERT(cudaHostAlloc(&cpu, size, cudaHostAllocMapped));
+    CUDA_ASSERT(cudaHostGetDevicePointer(&gpu, cpu, 0));
 
-	memset(*cpuPtr, 0, size);
-	LogDebug(LOG_CUDA "cudaAllocMapped %zu bytes, CPU %p GPU %p\n", size, *cpuPtr, *gpuPtr);
-	return true;
+    if( cpu != gpu )
+    {
+        LogError(LOG_CUDA "cudaMallocMapped() - addresses of CPU and GPU pointers don't match (CPU=%p GPU=%p)\n", cpu, gpu);
+        return cudaErrorInvalidDevicePointer;
+    }
+    
+    if( clear )
+	    memset(cpu, 0, size);
+
+    *ptr = cpu;
+	return cudaSuccess;
 }
 
 
@@ -68,29 +79,14 @@ inline bool cudaAllocMapped( void** cpuPtr, void** gpuPtr, size_t size )
  *
  * @param[out] ptr Returned pointer to the shared CPU/GPU memory.
  * @param[in] size Size (in bytes) of the shared memory to allocate.
+ * @param[in] clear If `true` (default), the memory contents will be filled with zeros.
  *
  * @returns `true` if the allocation succeeded, `false` otherwise.
  * @ingroup cudaMemory
  */
-inline bool cudaAllocMapped( void** ptr, size_t size )
+inline bool cudaAllocMapped( void** ptr, size_t size, bool clear=true )
 {
-	void* cpuPtr = NULL;
-	void* gpuPtr = NULL;
-
-	if( !ptr || size == 0 )
-		return false;
-
-	if( !cudaAllocMapped(&cpuPtr, &gpuPtr, size) )
-		return false;
-
-	if( cpuPtr != gpuPtr )
-	{
-		LogError(LOG_CUDA "cudaAllocMapped() - addresses of CPU and GPU pointers don't match\n");
-		return false;
-	}
-
-	*ptr = gpuPtr;
-	return true;
+    return CUDA_SUCCESS(cudaMallocMapped(ptr, size, clear));
 }
 
 /**
@@ -104,13 +100,14 @@ inline bool cudaAllocMapped( void** ptr, size_t size )
  * @param[in] width Width (in pixels) to allocate.
  * @param[in] height Height (in pixels) to allocate. 
  * @param[in] format Format of the image.
+ * @param[in] clear If `true` (default), the memory contents will be filled with zeros.
  *
  * @returns `true` if the allocation succeeded, `false` otherwise.
  * @ingroup cudaMemory
  */
-inline bool cudaAllocMapped( void** ptr, size_t width, size_t height, imageFormat format )
+inline bool cudaAllocMapped( void** ptr, size_t width, size_t height, imageFormat format, bool clear=true )
 {
-	return cudaAllocMapped(ptr, imageFormatSize(format, width, height));
+	return cudaAllocMapped(ptr, imageFormatSize(format, width, height), clear);
 }
 
 
@@ -124,13 +121,14 @@ inline bool cudaAllocMapped( void** ptr, size_t width, size_t height, imageForma
  * @param[out] ptr Returned pointer to the shared CPU/GPU memory.
  * @param[in] dims `int2` vector where `width=dims.x` and `height=dims.y`
  * @param[in] format Format of the image.
+ * @param[in] clear If `true` (default), the memory contents will be filled with zeros.
  *
  * @returns `true` if the allocation succeeded, `false` otherwise.
  * @ingroup cudaMemory
  */
-inline bool cudaAllocMapped( void** ptr, const int2& dims, imageFormat format )
+inline bool cudaAllocMapped( void** ptr, const int2& dims, imageFormat format, bool clear=true )
 {
-	return cudaAllocMapped(ptr, imageFormatSize(format, dims.x, dims.y));
+	return cudaAllocMapped(ptr, imageFormatSize(format, dims.x, dims.y), clear);
 }
 
 
@@ -144,13 +142,14 @@ inline bool cudaAllocMapped( void** ptr, const int2& dims, imageFormat format )
  * @param[out] ptr Returned pointer to the shared CPU/GPU memory.
  * @param[in] width Width (in pixels) to allocate.
  * @param[in] height Height (in pixels) to allocate. 
+ * @param[in] clear If `true` (default), the memory contents will be filled with zeros.
  *
  * @returns `true` if the allocation succeeded, `false` otherwise.
  * @ingroup cudaMemory
  */
-template<typename T> inline bool cudaAllocMapped( T** ptr, size_t width, size_t height )
+template<typename T> inline bool cudaAllocMapped( T** ptr, size_t width, size_t height, bool clear=true )
 {
-	return cudaAllocMapped((void**)ptr, width * height * sizeof(T));
+	return cudaAllocMapped((void**)ptr, width * height * sizeof(T), clear);
 }
 
 
@@ -163,13 +162,14 @@ template<typename T> inline bool cudaAllocMapped( T** ptr, size_t width, size_t 
  *
  * @param[out] ptr Returned pointer to the shared CPU/GPU memory.
  * @param[in] dims `int2` vector where `width=dims.x` and `height=dims.y`
+ * @param[in] clear If `true` (default), the memory contents will be filled with zeros.
  *
  * @returns `true` if the allocation succeeded, `false` otherwise.
  * @ingroup cudaMemory
  */
-template<typename T> inline bool cudaAllocMapped( T** ptr, const int2& dims )
+template<typename T> inline bool cudaAllocMapped( T** ptr, const int2& dims, bool clear=true )
 {
-	return cudaAllocMapped((void**)ptr, dims.x * dims.y * sizeof(T));
+	return cudaAllocMapped((void**)ptr, dims.x * dims.y * sizeof(T), clear);
 }
 
 
@@ -182,13 +182,48 @@ template<typename T> inline bool cudaAllocMapped( T** ptr, const int2& dims )
  *
  * @param[out] ptr Returned pointer to the shared CPU/GPU memory.
  * @param[in] size size of the allocation, in bytes.
+ * @param[in] clear If `true` (default), the memory contents will be filled with zeros.
  *
  * @returns `true` if the allocation succeeded, `false` otherwise.
  * @ingroup cudaMemory
  */
-template<typename T> inline bool cudaAllocMapped( T** ptr, size_t size )
+template<typename T> inline bool cudaAllocMapped( T** ptr, size_t size, bool clear=true )
 {
-	return cudaAllocMapped((void**)ptr, size);
+	return cudaAllocMapped((void**)ptr, size, clear);
+}
+
+
+/**
+ * Allocate ZeroCopy mapped memory, shared between CUDA and CPU.
+ *
+ * @note although two pointers are returned, one for CPU and GPU, they both resolve to the same physical memory.
+ *
+ * @param[out] cpuPtr Returned CPU pointer to the shared memory.
+ * @param[out] gpuPtr Returned GPU pointer to the shared memory.
+ * @param[in] size Size (in bytes) of the shared memory to allocate.
+ * @param[in] clear If `true` (the default), the memory contents will be filled with zeros.
+ *
+ * @returns `true` if the allocation succeeded, `false` otherwise.
+ * @ingroup cudaMemory
+ */
+inline bool cudaAllocMapped( void** cpuPtr, void** gpuPtr, size_t size, bool clear=true )
+{
+	if( !cpuPtr || !gpuPtr || size == 0 )
+		return false;
+
+	//CUDA(cudaSetDeviceFlags(cudaDeviceMapHost));
+
+	if( CUDA_FAILED(cudaHostAlloc(cpuPtr, size, cudaHostAllocMapped)) )
+		return false;
+
+	if( CUDA_FAILED(cudaHostGetDevicePointer(gpuPtr, *cpuPtr, 0)) )
+		return false;
+
+    if( clear )
+	    memset(*cpuPtr, 0, size);
+	    
+	LogDebug(LOG_CUDA "cudaAllocMapped %zu bytes, CPU %p GPU %p\n", size, *cpuPtr, *gpuPtr);
+	return true;
 }
 
 #endif

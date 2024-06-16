@@ -54,13 +54,44 @@
  *                    `[0,1]` and `[-1,1]`, and these pixel values would be re-scaled for `[0,255]` output.
  *                    Note that this parameter is only used for float-to-uchar conversions where the data
  *                    is downcast (for example, `IMAGE_RGB32F` to `IMAGE_RGB8`).
+ * @param stream the optional CUDA stream to enqueue the kernel on.
  * @ingroup colorspace
  */
 cudaError_t cudaConvertColor( void* input, imageFormat inputFormat,
-					     void* output, imageFormat outputFormat,
-					     size_t width, size_t height,
-						const float2& pixel_range=make_float2(0,255));
+                              void* output, imageFormat outputFormat,
+                              size_t width, size_t height,
+                              const float2& pixel_range=make_float2(0,255),
+                              cudaStream_t stream=0 );
 
+/**
+ * Convert between two image formats using the GPU.
+ *
+ * This function supports various conversions between RGB/RGBA, BGR/BGRA, Bayer, grayscale, and YUV.
+ * In addition to converting between the previously listed colorspaces, you can also change the 
+ * number of channels or data format (for example, `IMAGE_RGB8` to `IMAGE_RGBA32F`).
+ *
+ * For the list of image formats available, @see imageFormat enum.
+ *
+ * Limitations and unsupported conversions include:
+ *
+ *     - The YUV formats don't support BGR/BGRA or grayscale (RGB/RGBA only)
+ *     - YUV NV12, YUYV, YVYU, and UYVY can only be converted to RGB/RGBA (not from)
+ *     - Bayer formats can only be converted to RGB8 (`uchar3`) and RGBA8 (`uchar4`)
+ *
+ * @param input CUDA device pointer to the input image
+ * @param inputFormat format enum of the input image
+ * @param output CUDA device pointer to the input image
+ * @param outputFormat format enum of the output image
+ * @param width width of the input and output images (in pixels)
+ * @param height height of the input and output images (in pixels)
+ * @param stream the CUDA stream to enqueue the kernel on.
+ * @ingroup colorspace
+ */
+cudaError_t cudaConvertColor( void* input, imageFormat inputFormat,
+                              void* output, imageFormat outputFormat,
+                              size_t width, size_t height,
+                              cudaStream_t stream );
+                              
 /**
  * Convert between to image formats using the GPU.
  *
@@ -80,15 +111,17 @@ cudaError_t cudaConvertColor( void* input, imageFormat inputFormat,
  *                    `[0,1]` and `[-1,1]`, and these pixel values would be re-scaled for `[0,255]` output.
  *                    Note that this parameter is only used for float-to-uchar conversions where the data
  *                    is downcast (for example, `IMAGE_RGB32F` to `IMAGE_RGB8`).
+ * @param stream the optional CUDA stream to enqueue the kernel on.
  *
  * @ingroup colorspace
  */
 template<typename T_in, typename T_out> 
 cudaError_t cudaConvertColor( T_in* input, T_out* output,
-					     size_t width, size_t height,
-						const float2& pixel_range=make_float2(0,255))	
+                              size_t width, size_t height,
+                              const float2& pixel_range=make_float2(0,255),
+                              cudaStream_t stream=0)	
 { 
-	return cudaConvertColor(input, imageFormatFromType<T_in>(), output, imageFormatFromType<T_out>(), width, height, pixel_range); 
+	return cudaConvertColor(input, imageFormatFromType<T_in>(), output, imageFormatFromType<T_out>(), width, height, pixel_range, stream); 
 }
 	
 

@@ -25,7 +25,7 @@
 
 // cudaFisheye
 template<typename T>
-__global__ void cudaFisheye( T* input, T* output, int width, int height, float focus)
+__global__ void cudaFisheye( T* input, T* output, int width, int height, float focus )
 {
 	const int2 uv_out = make_int2(blockDim.x * blockIdx.x + threadIdx.x,
 				               blockDim.y * blockIdx.y + threadIdx.y);
@@ -61,7 +61,7 @@ __global__ void cudaFisheye( T* input, T* output, int width, int height, float f
 
 
 // cudaWarpFisheye
-cudaError_t cudaWarpFisheye( uchar4* input, uchar4* output, uint32_t width, uint32_t height, float focus )
+cudaError_t cudaWarpFisheye( uchar4* input, uchar4* output, uint32_t width, uint32_t height, float focus, cudaStream_t stream )
 {
 	if( !input || !output )
 		return cudaErrorInvalidDevicePointer;
@@ -73,14 +73,14 @@ cudaError_t cudaWarpFisheye( uchar4* input, uchar4* output, uint32_t width, uint
 	const dim3 blockDim(8, 8);
 	const dim3 gridDim(iDivUp(width,blockDim.x), iDivUp(height,blockDim.y));
 
-	cudaFisheye<<<gridDim, blockDim>>>(input, output, width, height, focus);
+	cudaFisheye<<<gridDim, blockDim, 0, stream>>>(input, output, width, height, focus);
 
 	return CUDA(cudaGetLastError());
 }
 
 
 // cudaWarpFisheye
-cudaError_t cudaWarpFisheye( float4* input, float4* output, uint32_t width, uint32_t height, float focus )
+cudaError_t cudaWarpFisheye( float4* input, float4* output, uint32_t width, uint32_t height, float focus, cudaStream_t stream )
 {
 	if( !input || !output )
 		return cudaErrorInvalidDevicePointer;
@@ -92,7 +92,7 @@ cudaError_t cudaWarpFisheye( float4* input, float4* output, uint32_t width, uint
 	const dim3 blockDim(8, 8);
 	const dim3 gridDim(iDivUp(width,blockDim.x), iDivUp(height,blockDim.y));
 
-	cudaFisheye<<<gridDim, blockDim>>>(input, output, width, height, focus);
+	cudaFisheye<<<gridDim, blockDim, 0, stream>>>(input, output, width, height, focus);
 
 	return CUDA(cudaGetLastError());
 }

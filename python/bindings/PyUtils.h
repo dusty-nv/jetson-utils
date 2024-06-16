@@ -44,7 +44,8 @@
 	#define PYLONG_FROM_LONG(x)				PyLong_FromLong(x)
 	#define PYLONG_FROM_UNSIGNED_LONG(x)		PyLong_FromUnsignedLong(x)
 	#define PYLONG_FROM_UNSIGNED_LONG_LONG(x) 	PyLong_FromUnsignedLongLong(x)
-
+    #define PYLONG_FROM_PTR(x)                  PyLong_FromUnsignedLongLong((uint64_t)x)
+    
 	#define PYSTRING_CHECK					PyUnicode_Check
 	#define PYSTRING_AS_STRING				PyUnicode_AsUTF8
 	#define PYSTRING_FROM_STRING				PyUnicode_FromString

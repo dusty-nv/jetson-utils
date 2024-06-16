@@ -554,7 +554,7 @@ void glDisplay::Render( glTexture* texture, float x, float y )
 
 
 // RenderImage
-void glDisplay::RenderImage( void* img, uint32_t width, uint32_t height, imageFormat format, float x, float y, bool normalize )
+void glDisplay::RenderImage( void* img, uint32_t width, uint32_t height, imageFormat format, float x, float y, bool normalize, cudaStream_t stream )
 {
 	if( !img || width == 0 || height == 0 )
 		return;
@@ -589,7 +589,7 @@ void glDisplay::RenderImage( void* img, uint32_t width, uint32_t height, imageFo
 		// rescale image pixel intensities for display
 		if( CUDA_FAILED(cudaNormalize(img, make_float2(0.0f, 255.0f), 
 							  mNormalizedCUDA, make_float2(0.0f, 1.0f), 
-	 						  width, height, format)) )
+	 						  width, height, format, stream)) )
 		{
 			LogError(LOG_GL "glDisplay.Render() failed to normalize image\n");
 			return;
@@ -599,13 +599,13 @@ void glDisplay::RenderImage( void* img, uint32_t width, uint32_t height, imageFo
 	}
 
 	// map from CUDA to openGL using GL interop
-	void* tex_map = interopTex->Map(GL_MAP_CUDA, GL_WRITE_DISCARD); //interopTex->MapCUDA();
+	void* tex_map = interopTex->Map(GL_MAP_CUDA, GL_WRITE_DISCARD, stream);
 
-	if( tex_map != NULL )
+    if( tex_map != NULL )
 	{
-		CUDA(cudaMemcpy(tex_map, img, interopTex->GetSize(), cudaMemcpyDeviceToDevice));
-		//CUDA(cudaDeviceSynchronize());
-		interopTex->Unmap();
+		CUDA(cudaMemcpyAsync(tex_map, img, interopTex->GetSize(), cudaMemcpyDeviceToDevice, stream));
+		//CUDA(cudaStreamSynchronize(stream));
+		interopTex->Unmap(stream);
 	}
 
 	// draw the texture
@@ -614,30 +614,30 @@ void glDisplay::RenderImage( void* img, uint32_t width, uint32_t height, imageFo
 
 
 // Render
-void glDisplay::Render( float* img, uint32_t width, uint32_t height, float x, float y, bool normalize )
+void glDisplay::Render( float* img, uint32_t width, uint32_t height, float x, float y, bool normalize, cudaStream_t stream )
 {
-	RenderImage((void*)img, width, height, IMAGE_RGBA32F, x, y, normalize);
+	RenderImage((void*)img, width, height, IMAGE_RGBA32F, x, y, normalize, stream);
 }
 
 
 // RenderOnce
-void glDisplay::RenderOnce( void* img, uint32_t width, uint32_t height, imageFormat format, float x, float y, bool normalize )
+void glDisplay::RenderOnce( void* img, uint32_t width, uint32_t height, imageFormat format, float x, float y, bool normalize, cudaStream_t stream )
 {
 	BeginRender();
-	RenderImage(img, width, height, format, x, y, normalize);
+	RenderImage(img, width, height, format, x, y, normalize, stream);
 	EndRender();
 }
 
 
 // RenderOnce
-void glDisplay::RenderOnce( float* img, uint32_t width, uint32_t height, float x, float y, bool normalize )
+void glDisplay::RenderOnce( float* img, uint32_t width, uint32_t height, float x, float y, bool normalize, cudaStream_t stream )
 {
-	RenderOnce((void*)img, width, height, IMAGE_RGBA32F, x, y, normalize);
+	RenderOnce((void*)img, width, height, IMAGE_RGBA32F, x, y, normalize, stream);
 }
 
 
 // Render
-bool glDisplay::Render( void* image, uint32_t width, uint32_t height, imageFormat format )
+bool glDisplay::Render( void* image, uint32_t width, uint32_t height, imageFormat format, cudaStream_t stream )
 {
 	if( !image )
 		return false;
@@ -656,7 +656,7 @@ bool glDisplay::Render( void* image, uint32_t width, uint32_t height, imageForma
 		}
 
 		// render and present the frame
-		RenderOnce(image, width, height, format, 0, 0);
+		RenderOnce(image, width, height, format, 0, 0, true, stream);
 	}
 	else
 	{
@@ -671,7 +671,7 @@ bool glDisplay::Render( void* image, uint32_t width, uint32_t height, imageForma
 	}
 
 	// render sub-streams
-	const bool substreams_success = videoOutput::Render(image, width, height, format);
+	const bool substreams_success = videoOutput::Render(image, width, height, format, stream);
 	return display_success & substreams_success;
 }
 

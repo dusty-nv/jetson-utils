@@ -40,8 +40,8 @@ __global__ void gpuResize( T* input, int inputWidth, int inputHeight, T* output,
 // launchResize
 template<typename T>
 static cudaError_t launchResize( T* input, size_t inputWidth, size_t inputHeight,
-				             T* output, size_t outputWidth, size_t outputHeight,
-						   cudaFilterMode filter )
+                                 T* output, size_t outputWidth, size_t outputHeight,
+                                 cudaFilterMode filter, cudaStream_t stream )
 {
 	if( !input || !output )
 		return cudaErrorInvalidDevicePointer;
@@ -57,7 +57,7 @@ static cudaError_t launchResize( T* input, size_t inputWidth, size_t inputHeight
 	const dim3 gridDim(iDivUp(outputWidth,blockDim.x), iDivUp(outputHeight,blockDim.y));
 
 	#define launch_resize(filterMode)	\
-		gpuResize<T, filterMode><<<gridDim, blockDim>>>(input, inputWidth, inputHeight, output, outputWidth, outputHeight)
+		gpuResize<T, filterMode><<<gridDim, blockDim, 0, stream>>>(input, inputWidth, inputHeight, output, outputWidth, outputHeight)
 	
 	if( filter == FILTER_POINT )
 		launch_resize(FILTER_POINT);
@@ -68,58 +68,58 @@ static cudaError_t launchResize( T* input, size_t inputWidth, size_t inputHeight
 }
 
 // cudaResize (uint8 grayscale)
-cudaError_t cudaResize( uint8_t* input, size_t inputWidth, size_t inputHeight, uint8_t* output, size_t outputWidth, size_t outputHeight, cudaFilterMode filter )
+cudaError_t cudaResize( uint8_t* input, size_t inputWidth, size_t inputHeight, uint8_t* output, size_t outputWidth, size_t outputHeight, cudaFilterMode filter, cudaStream_t stream )
 {
-	return launchResize<uint8_t>(input, inputWidth, inputHeight, output, outputWidth, outputHeight, filter);
+	return launchResize<uint8_t>(input, inputWidth, inputHeight, output, outputWidth, outputHeight, filter, stream);
 }
 
 // cudaResize (float grayscale)
-cudaError_t cudaResize( float* input, size_t inputWidth, size_t inputHeight, float* output, size_t outputWidth, size_t outputHeight, cudaFilterMode filter )
+cudaError_t cudaResize( float* input, size_t inputWidth, size_t inputHeight, float* output, size_t outputWidth, size_t outputHeight, cudaFilterMode filter, cudaStream_t stream )
 {
-	return launchResize<float>(input, inputWidth, inputHeight, output, outputWidth, outputHeight, filter);
+	return launchResize<float>(input, inputWidth, inputHeight, output, outputWidth, outputHeight, filter, stream);
 }
 
 // cudaResize (uchar3)
-cudaError_t cudaResize( uchar3* input, size_t inputWidth, size_t inputHeight, uchar3* output, size_t outputWidth, size_t outputHeight, cudaFilterMode filter )
+cudaError_t cudaResize( uchar3* input, size_t inputWidth, size_t inputHeight, uchar3* output, size_t outputWidth, size_t outputHeight, cudaFilterMode filter, cudaStream_t stream )
 {
-	return launchResize<uchar3>(input, inputWidth, inputHeight, output, outputWidth, outputHeight, filter);
+	return launchResize<uchar3>(input, inputWidth, inputHeight, output, outputWidth, outputHeight, filter, stream);
 }
 
 // cudaResize (uchar4)
-cudaError_t cudaResize( uchar4* input, size_t inputWidth, size_t inputHeight, uchar4* output, size_t outputWidth, size_t outputHeight, cudaFilterMode filter )
+cudaError_t cudaResize( uchar4* input, size_t inputWidth, size_t inputHeight, uchar4* output, size_t outputWidth, size_t outputHeight, cudaFilterMode filter, cudaStream_t stream )
 {
-	return launchResize<uchar4>(input, inputWidth, inputHeight, output, outputWidth, outputHeight, filter);
+	return launchResize<uchar4>(input, inputWidth, inputHeight, output, outputWidth, outputHeight, filter, stream);
 }
 
 // cudaResize (float3)
-cudaError_t cudaResize( float3* input, size_t inputWidth, size_t inputHeight, float3* output, size_t outputWidth, size_t outputHeight, cudaFilterMode filter )
+cudaError_t cudaResize( float3* input, size_t inputWidth, size_t inputHeight, float3* output, size_t outputWidth, size_t outputHeight, cudaFilterMode filter, cudaStream_t stream )
 {
-	return launchResize<float3>(input, inputWidth, inputHeight, output, outputWidth, outputHeight, filter);
+	return launchResize<float3>(input, inputWidth, inputHeight, output, outputWidth, outputHeight, filter, stream);
 }
 
 // cudaResize (float4)
-cudaError_t cudaResize( float4* input, size_t inputWidth, size_t inputHeight, float4* output, size_t outputWidth, size_t outputHeight, cudaFilterMode filter )
+cudaError_t cudaResize( float4* input, size_t inputWidth, size_t inputHeight, float4* output, size_t outputWidth, size_t outputHeight, cudaFilterMode filter, cudaStream_t stream )
 {
-	return launchResize<float4>(input, inputWidth, inputHeight, output, outputWidth, outputHeight, filter);
+	return launchResize<float4>(input, inputWidth, inputHeight, output, outputWidth, outputHeight, filter, stream);
 }
 
 //-----------------------------------------------------------------------------------
 cudaError_t cudaResize( void* input,  size_t inputWidth,  size_t inputHeight,
-				    void* output, size_t outputWidth, size_t outputHeight, 
-				    imageFormat format, cudaFilterMode filter )
+                        void* output, size_t outputWidth, size_t outputHeight, 
+                        imageFormat format, cudaFilterMode filter, cudaStream_t stream )
 {
 	if( format == IMAGE_RGB8 || format == IMAGE_BGR8 )
-		return cudaResize((uchar3*)input, inputWidth, inputHeight, (uchar3*)output, outputWidth, outputHeight, filter);
+		return cudaResize((uchar3*)input, inputWidth, inputHeight, (uchar3*)output, outputWidth, outputHeight, filter, stream);
 	else if( format == IMAGE_RGBA8 || format == IMAGE_BGRA8 )
-		return cudaResize((uchar4*)input, inputWidth, inputHeight, (uchar4*)output, outputWidth, outputHeight, filter);
+		return cudaResize((uchar4*)input, inputWidth, inputHeight, (uchar4*)output, outputWidth, outputHeight, filter, stream);
 	else if( format == IMAGE_RGB32F || format == IMAGE_BGR32F )
-		return cudaResize((float3*)input, inputWidth, inputHeight, (float3*)output, outputWidth, outputHeight, filter);
+		return cudaResize((float3*)input, inputWidth, inputHeight, (float3*)output, outputWidth, outputHeight, filter, stream);
 	else if( format == IMAGE_RGBA32F || format == IMAGE_BGRA32F )
-		return cudaResize((float4*)input, inputWidth, inputHeight, (float4*)output, outputWidth, outputHeight, filter);
+		return cudaResize((float4*)input, inputWidth, inputHeight, (float4*)output, outputWidth, outputHeight, filter, stream);
 	else if( format == IMAGE_GRAY8 )
-		return cudaResize((uint8_t*)input, inputWidth, inputHeight, (uint8_t*)output, outputWidth, outputHeight, filter);
+		return cudaResize((uint8_t*)input, inputWidth, inputHeight, (uint8_t*)output, outputWidth, outputHeight, filter, stream);
 	else if( format == IMAGE_GRAY32F )
-		return cudaResize((float*)input, inputWidth, inputHeight, (float*)output, outputWidth, outputHeight, filter);
+		return cudaResize((float*)input, inputWidth, inputHeight, (float*)output, outputWidth, outputHeight, filter, stream);
 
 	LogError(LOG_CUDA "cudaResize() -- invalid image format '%s'\n", imageFormatToStr(format));
 	LogError(LOG_CUDA "                supported formats are:\n");

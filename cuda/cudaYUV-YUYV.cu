@@ -146,7 +146,7 @@ __global__ void YUYVToRGBA( uchar4* src, T* dst, int halfWidth, int height )
 } 
 
 template<typename T, imageFormat format>
-static cudaError_t launchYUYVToRGB( void* input, T* output, size_t width, size_t height)
+static cudaError_t launchYUYVToRGB( void* input, T* output, size_t width, size_t height, cudaStream_t stream)
 {
 	if( !input || !output || !width || !height )
 		return cudaErrorInvalidValue;
@@ -155,85 +155,85 @@ static cudaError_t launchYUYVToRGB( void* input, T* output, size_t width, size_t
 	const dim3 blockDim(8,8);
 	const dim3 gridDim(iDivUp(halfWidth, blockDim.x), iDivUp(height, blockDim.y));
 
-	YUYVToRGBA<T, format><<<gridDim, blockDim>>>((uchar4*)input, output, halfWidth, height);
+	YUYVToRGBA<T, format><<<gridDim, blockDim, 0, stream>>>((uchar4*)input, output, halfWidth, height);
 
 	return CUDA(cudaGetLastError());
 }
 
 
 // cudaYUYVToRGB (uchar3)
-cudaError_t cudaYUYVToRGB( void* input, uchar3* output, size_t width, size_t height )
+cudaError_t cudaYUYVToRGB( void* input, uchar3* output, size_t width, size_t height, cudaStream_t stream )
 {
-	return launchYUYVToRGB<uchar6, IMAGE_YUYV>(input, (uchar6*)output, width, height);
+	return launchYUYVToRGB<uchar6, IMAGE_YUYV>(input, (uchar6*)output, width, height, stream);
 }
 
 // cudaYUYVToRGB (float3)
-cudaError_t cudaYUYVToRGB( void* input, float3* output, size_t width, size_t height )
+cudaError_t cudaYUYVToRGB( void* input, float3* output, size_t width, size_t height, cudaStream_t stream )
 {
-	return launchYUYVToRGB<float6, IMAGE_YUYV>(input, (float6*)output, width, height);
+	return launchYUYVToRGB<float6, IMAGE_YUYV>(input, (float6*)output, width, height, stream);
 }
 
 // cudaYUYVToRGBA (uchar4)
-cudaError_t cudaYUYVToRGBA( void* input, uchar4* output, size_t width, size_t height )
+cudaError_t cudaYUYVToRGBA( void* input, uchar4* output, size_t width, size_t height, cudaStream_t stream )
 {
-	return launchYUYVToRGB<uchar8, IMAGE_YUYV>(input, (uchar8*)output, width, height);
+	return launchYUYVToRGB<uchar8, IMAGE_YUYV>(input, (uchar8*)output, width, height, stream);
 }
 
 // cudaYUYVToRGBA (float4)
-cudaError_t cudaYUYVToRGBA( void* input, float4* output, size_t width, size_t height )
+cudaError_t cudaYUYVToRGBA( void* input, float4* output, size_t width, size_t height, cudaStream_t stream )
 {
-	return launchYUYVToRGB<float8, IMAGE_YUYV>(input, (float8*)output, width, height);
+	return launchYUYVToRGB<float8, IMAGE_YUYV>(input, (float8*)output, width, height, stream);
 }
 
 //-----------------------------------------------------------------------------------
 
 // cudaUYVYToRGB (uchar3)
-cudaError_t cudaUYVYToRGB( void* input, uchar3* output, size_t width, size_t height )
+cudaError_t cudaUYVYToRGB( void* input, uchar3* output, size_t width, size_t height, cudaStream_t stream )
 {
-	return launchYUYVToRGB<uchar6, IMAGE_UYVY>(input, (uchar6*)output, width, height);
+	return launchYUYVToRGB<uchar6, IMAGE_UYVY>(input, (uchar6*)output, width, height, stream);
 }
 
 // cudaUYVYToRGB (float3)
-cudaError_t cudaUYVYToRGB( void* input, float3* output, size_t width, size_t height )
+cudaError_t cudaUYVYToRGB( void* input, float3* output, size_t width, size_t height, cudaStream_t stream )
 {
-	return launchYUYVToRGB<float6, IMAGE_UYVY>(input, (float6*)output, width, height);
+	return launchYUYVToRGB<float6, IMAGE_UYVY>(input, (float6*)output, width, height, stream);
 }
 
 // cudaUYVYToRGBA (uchar4)
-cudaError_t cudaUYVYToRGBA( void* input, uchar4* output, size_t width, size_t height )
+cudaError_t cudaUYVYToRGBA( void* input, uchar4* output, size_t width, size_t height, cudaStream_t stream )
 {
-	return launchYUYVToRGB<uchar8, IMAGE_UYVY>(input, (uchar8*)output, width, height);
+	return launchYUYVToRGB<uchar8, IMAGE_UYVY>(input, (uchar8*)output, width, height, stream);
 }
 
 // cudaUYVYToRGBA (float4)
-cudaError_t cudaUYVYToRGBA( void* input, float4* output, size_t width, size_t height )
+cudaError_t cudaUYVYToRGBA( void* input, float4* output, size_t width, size_t height, cudaStream_t stream )
 {
-	return launchYUYVToRGB<float8, IMAGE_UYVY>(input, (float8*)output, width, height);
+	return launchYUYVToRGB<float8, IMAGE_UYVY>(input, (float8*)output, width, height, stream);
 }
 
 //-----------------------------------------------------------------------------------
 
 // cudaYVYUToRGB (uchar3)
-cudaError_t cudaYVYUToRGB( void* input, uchar3* output, size_t width, size_t height )
+cudaError_t cudaYVYUToRGB( void* input, uchar3* output, size_t width, size_t height, cudaStream_t stream )
 {
-	return launchYUYVToRGB<uchar6, IMAGE_YVYU>(input, (uchar6*)output, width, height);
+	return launchYUYVToRGB<uchar6, IMAGE_YVYU>(input, (uchar6*)output, width, height, stream);
 }
 
 // cudaYUYVToRGB (float3)
-cudaError_t cudaYVYUToRGB( void* input, float3* output, size_t width, size_t height )
+cudaError_t cudaYVYUToRGB( void* input, float3* output, size_t width, size_t height, cudaStream_t stream )
 {
-	return launchYUYVToRGB<float6, IMAGE_YVYU>(input, (float6*)output, width, height);
+	return launchYUYVToRGB<float6, IMAGE_YVYU>(input, (float6*)output, width, height, stream);
 }
 
 // cudaYUYVToRGBA (uchar4)
-cudaError_t cudaYVYUToRGBA( void* input, uchar4* output, size_t width, size_t height )
+cudaError_t cudaYVYUToRGBA( void* input, uchar4* output, size_t width, size_t height, cudaStream_t stream )
 {
-	return launchYUYVToRGB<uchar8, IMAGE_YVYU>(input, (uchar8*)output, width, height);
+	return launchYUYVToRGB<uchar8, IMAGE_YVYU>(input, (uchar8*)output, width, height, stream);
 }
 
 // cudaYUYVToRGBA (float4)
-cudaError_t cudaYVYUToRGBA( void* input, float4* output, size_t width, size_t height )
+cudaError_t cudaYVYUToRGBA( void* input, float4* output, size_t width, size_t height, cudaStream_t stream )
 {
-	return launchYUYVToRGB<float8, IMAGE_YVYU>(input, (float8*)output, width, height);
+	return launchYUYVToRGB<float8, IMAGE_YVYU>(input, (float8*)output, width, height, stream);
 }
 

@@ -712,7 +712,7 @@ void gstCamera::checkBuffer()
 
 
 // Capture
-bool gstCamera::Capture( void** output, imageFormat format, uint64_t timeout, int* status )
+bool gstCamera::Capture( void** output, imageFormat format, uint64_t timeout, int* status, cudaStream_t stream )
 {
 	// verify the output pointer exists
 	if( !output )
@@ -726,7 +726,7 @@ bool gstCamera::Capture( void** output, imageFormat format, uint64_t timeout, in
 	}
 
 	// wait until a new frame is recieved
-	const int result = mBufferManager->Dequeue(output, format, timeout);
+	const int result = mBufferManager->Dequeue(output, format, timeout, stream);
 	
 	if( result < 0 )
 	{
@@ -746,10 +746,10 @@ bool gstCamera::Capture( void** output, imageFormat format, uint64_t timeout, in
 }
 
 // CaptureRGBA
-bool gstCamera::CaptureRGBA( float** output, unsigned long timeout, bool zeroCopy )
+bool gstCamera::CaptureRGBA( float** output, unsigned long timeout, bool zeroCopy, cudaStream_t stream )
 {
 	mOptions.zeroCopy = zeroCopy;
-	return Capture((void**)output, IMAGE_RGBA32F, timeout);
+	return Capture((void**)output, IMAGE_RGBA32F, timeout, NULL, stream);
 }
 
 
