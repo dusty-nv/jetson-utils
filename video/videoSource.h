@@ -210,7 +210,7 @@ public:
 	 *
 	 * @returns `true` if a frame was captured, `false` if there was an error or a timeout occurred.
 	 */
-	template<typename T> bool Capture( T** image, int* status, cudaStream_t stream=0 )										{ return Capture((void**)image, imageFormatFromType<T>(), DEFAULT_TIMEOUT, status, stream); }
+	template<typename T> bool Capture( T** image, int* status, cudaStream_t stream=0 )										    { return Capture((void**)image, imageFormatFromType<T>(), DEFAULT_TIMEOUT, status, stream); }
 	
 	/**
 	 * Capture the next image from the video stream.
@@ -239,7 +239,7 @@ public:
 	 *
 	 * @returns `true` if a frame was captured, `false` if there was an error or a timeout occurred.
 	 */
-	template<typename T> bool Capture( T** image, uint64_t timeout=DEFAULT_TIMEOUT, int* status=NULL, cudaStream_t stream=0 )		{ return Capture((void**)image, imageFormatFromType<T>(), timeout, stream); }
+	template<typename T> bool Capture( T** image, uint64_t timeout=DEFAULT_TIMEOUT, int* status=NULL, cudaStream_t stream=0 )		{ return Capture((void**)image, imageFormatFromType<T>(), timeout, status, stream); }
 	
 	/**
 	 * Capture the next image from the video stream.
