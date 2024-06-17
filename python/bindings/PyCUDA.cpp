@@ -1457,6 +1457,59 @@ PyObject* PyCUDA_EventRecord( PyObject* self, PyObject* args, PyObject* kwds )
 }
 
 
+// PyCUDA_EventQuery
+PyObject* PyCUDA_EventQuery( PyObject* self, PyObject* args )
+{
+	cudaEvent_t event = 0;
+
+	if( !PyArg_ParseTuple(args, "K", &event) )
+		return NULL;
+		
+    const cudaError_t retval = cudaEventQuery(event);
+    
+    if( retval == cudaSuccess )
+    {
+        Py_RETURN_TRUE;
+    }
+    else if( retval == cudaErrorNotReady )
+    {
+        Py_RETURN_FALSE;
+    }
+    else
+    {
+        PyErr_Format(PyExc_Exception, "CUDA error (%u) - %s\n  File \"%s\", line %i\n    cudaEventQuery(event);", retval, cudaGetErrorString(retval), __FILE__, __LINE__);
+        return NULL;
+    }
+}
+
+
+// PyCUDA_EventElapsedTime
+PyObject* PyCUDA_EventElapsedTime( PyObject* self, PyObject* args )
+{
+    cudaEvent_t start, end = 0;
+    float ms = 0.0f;
+    
+	if( !PyArg_ParseTuple(args, "KK", &start, &end) )
+		return NULL;
+		
+    const cudaError_t retval = cudaEventElapsedTime(&ms, start, end);
+    
+    if( retval == cudaSuccess )
+    {
+        return PyFloat_FromDouble(ms);
+    }
+    else if( retval == cudaErrorNotReady )
+    {
+        return PyFloat_FromDouble(-1.0);
+    }
+    else
+    {
+        PyErr_Format(PyExc_Exception, "CUDA error (%u) - %s\n  File \"%s\", line %i\n    cudaEventElapsedTime(&ms, start, end)", retval, cudaGetErrorString(retval), __FILE__, __LINE__);
+        return NULL;
+    }	
+}
+
+
 // PyCUDA_EventSynchronize
 PyObject* PyCUDA_EventSynchronize( PyObject* self, PyObject* args )
 {
@@ -2339,6 +2392,8 @@ static PyMethodDef pyCUDA_Functions[] =
 	{ "cudaEventCreate", (PyCFunction)PyCUDA_EventCreate, METH_NOARGS, "Create a new CUDA event" },
 	{ "cudaEventDestroy", (PyCFunction)PyCUDA_EventDestroy, METH_VARARGS, "Destroy the given CUDA event" },
 	{ "cudaEventRecord", (PyCFunction)PyCUDA_EventRecord, METH_VARARGS|METH_KEYWORDS, "Record the event to the CUDA stream (if the event isn't provided, it will be created first and then returned)" },
+	{ "cudaEventQuery", (PyCFunction)PyCUDA_EventQuery, METH_VARARGS, "Return True if the event has completed execution, otherwise False" },
+	{ "cudaEventElapsedTime", (PyCFunction)PyCUDA_EventElapsedTime, METH_VARARGS, "Return the elapsed time between two events in milliseconds, or -1 if either event hasn't completed execution yet." },
 	{ "cudaEventSynchronize", (PyCFunction)PyCUDA_EventSynchronize, METH_VARARGS, "Wait on the CPU for the event to be finished" },
 	{ "cudaDeviceSynchronize", (PyCFunction)PyCUDA_DeviceSynchronize, METH_NOARGS, "Wait for the GPU to complete all work" },
 	{ "cudaConvertColor", (PyCFunction)PyCUDA_ConvertColor, METH_VARARGS|METH_KEYWORDS, "Perform colorspace conversion on the GPU" },
