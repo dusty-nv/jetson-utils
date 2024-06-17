@@ -65,10 +65,15 @@ static void PyCudaMemory_Dealloc( PyCudaMemory* self )
 	//LogDebug(LOG_PY_UTILS "PyCudaMemory_Dealloc()\n");
 	
 	Py_BEGIN_ALLOW_THREADS
+
+	self->stream = NULL;
 	
 	if( self->event )
+	{
 	    CUDA(cudaEventDestroy(self->event));
-	    
+	    self->event = NULL;
+	}
+	   
 	if( self->freeOnDelete && self->ptr != NULL )
 	{
 		if( self->mapped )
@@ -314,7 +319,9 @@ static PyObject* PyCudaImage_New( PyTypeObject *type, PyObject *args, PyObject *
 	self->base.size = 0;
 	self->base.mapped = false;
 	self->base.freeOnDelete = true;
-	
+	self->base.stream = NULL;
+    self->base.event = NULL;
+    
 	self->width = 0;
 	self->height = 0;
 	
@@ -335,7 +342,9 @@ static void PyCudaImage_Config( PyCudaImage* self, void* ptr, uint32_t width, ui
 	self->base.size = imageFormatSize(format, width, height);
 	self->base.mapped = mapped;
 	self->base.freeOnDelete = freeOnDelete;
-
+    self->base.stream = NULL;
+    self->base.event = NULL;
+    
 	const size_t bitDepth = imageFormatDepth(format);
 	
 	self->width = width;
@@ -995,7 +1004,9 @@ PyObject* PyCUDA_RegisterMemory( void* gpuPtr, size_t size, bool mapped, bool fr
 	mem->size = size;
 	mem->mapped = mapped;
 	mem->freeOnDelete = freeOnDelete;
-
+    mem->stream = NULL;
+    mem->event = NULL;
+    
 	return (PyObject*)mem;
 }
 
@@ -1354,16 +1365,16 @@ PyObject* PyCUDA_Memcpy( PyObject* self, PyObject* args, PyObject* kwds )
 // PyCUDA_StreamCreate
 PyObject* PyCUDA_StreamCreate( PyObject* self, PyObject* args, PyObject* kwds )
 {
-	int blocking = 0;
+	int nonblocking = 0;
 	int priority = 0;
 	
-	static char* kwlist[]  = {"blocking", "priority", NULL};
+	static char* kwlist[]  = {"nonblocking", "priority", NULL};
 
-	if( !PyArg_ParseTupleAndKeywords(args, kwds, "|pi", kwlist, &blocking, &priority) )
+	if( !PyArg_ParseTupleAndKeywords(args, kwds, "|pi", kwlist, &nonblocking, &priority) )
 		return NULL;
 		
     cudaStream_t stream = 0;
-    const uint32_t flags = blocking ? cudaStreamDefault : cudaStreamNonBlocking;
+    const uint32_t flags = nonblocking ? cudaStreamNonBlocking : cudaStreamDefault;
 
     PYCUDA_ASSERT_NOGIL(cudaStreamCreateWithPriority(&stream, flags, priority));
 
@@ -2170,7 +2181,7 @@ static PyObject* PyFont_OverlayText( PyFont_Object* self, PyObject* args, PyObje
     
 	static char* kwlist[] = {"image", "width", "height", "text", "x", "y", "color", "background", "format", "padding", "stream", NULL};
 
-	if( !PyArg_ParseTupleAndKeywords(args, kwds, "O|iisiiOOsK", kwlist, &input, &width, &height, &text, &x, &y, &color, &bg, &format_str, &padding, &stream))
+	if( !PyArg_ParseTupleAndKeywords(args, kwds, "O|iisiiOOsiK", kwlist, &input, &width, &height, &text, &x, &y, &color, &bg, &format_str, &padding, &stream))
 		return NULL;
 
 	// make sure that text exists

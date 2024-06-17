@@ -28,8 +28,8 @@ except:
 	sys.exit(0)
 
 
-stream = cudaStreamCreate()
-stream_blocking = cudaStreamCreate(blocking=True)
+stream = cudaStreamCreate(nonblocking=True)
+stream_blocking = cudaStreamCreate()
 
 print('cuda stream (non-blocking)', stream)
 print('cuda stream (blocking)    ', stream_blocking)
