@@ -1757,7 +1757,7 @@ PyObject* PyCUDA_Overlay( PyObject* self, PyObject* args, PyObject* kwds )
     
 	static char* kwlist[] = {"input", "output", "x", "y", "stream", NULL};
 
-	if( !PyArg_ParseTupleAndKeywords(args, kwds, "OO|ff", kwlist, &pyInput, &pyOutput, &x, &y, &stream))
+	if( !PyArg_ParseTupleAndKeywords(args, kwds, "OO|ffK", kwlist, &pyInput, &pyOutput, &x, &y, &stream))
 		return NULL;
 
 	// get pointers to image data
