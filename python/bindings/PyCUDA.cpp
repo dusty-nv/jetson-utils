@@ -1419,7 +1419,7 @@ PyObject* PyCUDA_StreamWaitEvent( PyObject* self, PyObject* args )
 	if( !PyArg_ParseTuple(args, "KK", &stream, &event) )
 		return NULL;
 		
-    PYCUDA_ASSERT(cudaStreamWaitEvent(stream, event));
+    PYCUDA_ASSERT(cudaStreamWaitEvent(stream, event, 0));
     
     Py_RETURN_NONE;
 }
