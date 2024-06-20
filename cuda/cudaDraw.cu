@@ -65,7 +65,7 @@ __global__ void gpuDrawCircle( T* img, int imgWidth, int imgHeight, int offset_x
 }
 
 // cudaDrawCircle
-cudaError_t cudaDrawCircle( void* input, void* output, size_t width, size_t height, imageFormat format, int cx, int cy, float radius, const float4& color )
+cudaError_t cudaDrawCircle( void* input, void* output, size_t width, size_t height, imageFormat format, int cx, int cy, float radius, const float4& color, cudaStream_t stream )
 {
 	if( !input || !output || width == 0 || height == 0 || radius <= 0 )
 		return cudaErrorInvalidValue;
@@ -73,7 +73,7 @@ cudaError_t cudaDrawCircle( void* input, void* output, size_t width, size_t heig
 	// if the input and output images are different, copy the input to the output
 	// this is because we only launch the kernel in the approximate area of the circle
 	if( input != output )
-		CUDA(cudaMemcpy(output, input, imageFormatSize(format, width, height), cudaMemcpyDeviceToDevice));
+		CUDA(cudaMemcpyAsync(output, input, imageFormatSize(format, width, height), cudaMemcpyDeviceToDevice, stream));
 		
 	// find a box around the circle
 	const int diameter = ceilf(radius * 2.0f);
@@ -85,7 +85,7 @@ cudaError_t cudaDrawCircle( void* input, void* output, size_t width, size_t heig
 	const dim3 gridDim(iDivUp(diameter,blockDim.x), iDivUp(diameter,blockDim.y));
 
 	#define LAUNCH_DRAW_CIRCLE(type) \
-		gpuDrawCircle<type><<<gridDim, blockDim>>>((type*)output, width, height, offset_x, offset_y, cx, cy, radius*radius, color)
+		gpuDrawCircle<type><<<gridDim, blockDim, 0, stream>>>((type*)output, width, height, offset_x, offset_y, cx, cy, radius*radius, color)
 	
 	if( format == IMAGE_RGB8 )
 		LAUNCH_DRAW_CIRCLE(uchar3);
@@ -135,7 +135,7 @@ __global__ void gpuDrawLine( T* img, int imgWidth, int imgHeight, int offset_x, 
 }
 
 // cudaDrawLine
-cudaError_t cudaDrawLine( void* input, void* output, size_t width, size_t height, imageFormat format, int x1, int y1, int x2, int y2, const float4& color, float line_width )
+cudaError_t cudaDrawLine( void* input, void* output, size_t width, size_t height, imageFormat format, int x1, int y1, int x2, int y2, const float4& color, float line_width, cudaStream_t stream )
 {
 	if( !input || !output || width == 0 || height == 0 || line_width <= 0 )
 		return cudaErrorInvalidValue;
@@ -150,7 +150,7 @@ cudaError_t cudaDrawLine( void* input, void* output, size_t width, size_t height
 	// if the input and output images are different, copy the input to the output
 	// this is because we only launch the kernel in the approximate area of the circle
 	if( input != output )
-		CUDA(cudaMemcpy(output, input, imageFormatSize(format, width, height), cudaMemcpyDeviceToDevice));
+		CUDA(cudaMemcpyAsync(output, input, imageFormatSize(format, width, height), cudaMemcpyDeviceToDevice, stream));
 		
 	// find a box around the line
 	const int left = MIN(x1,x2) - line_width;
@@ -163,7 +163,7 @@ cudaError_t cudaDrawLine( void* input, void* output, size_t width, size_t height
 	const dim3 gridDim(iDivUp(right - left, blockDim.x), iDivUp(bottom - top, blockDim.y));
 
 	#define LAUNCH_DRAW_LINE(type) \
-		gpuDrawLine<type><<<gridDim, blockDim>>>((type*)output, width, height, left, top, x1, y1, x2, y2, color, line_width * line_width)
+		gpuDrawLine<type><<<gridDim, blockDim, 0, stream>>>((type*)output, width, height, left, top, x1, y1, x2, y2, color, line_width * line_width)
 	
 	if( format == IMAGE_RGB8 )
 		LAUNCH_DRAW_LINE(uchar3);
@@ -208,7 +208,7 @@ __global__ void gpuDrawRect( T* img, int imgWidth, int imgHeight, int x0, int y0
 
 
 // cudaDrawRect
-cudaError_t cudaDrawRect( void* input, void* output, size_t width, size_t height, imageFormat format, int left, int top, int right, int bottom, const float4& color, const float4& line_color, float line_width )
+cudaError_t cudaDrawRect( void* input, void* output, size_t width, size_t height, imageFormat format, int left, int top, int right, int bottom, const float4& color, const float4& line_color, float line_width, cudaStream_t stream )
 {
 	if( !input || !output || width == 0 || height == 0 )
 		return cudaErrorInvalidValue;
@@ -216,7 +216,7 @@ cudaError_t cudaDrawRect( void* input, void* output, size_t width, size_t height
 	// if the input and output images are different, copy the input to the output
 	// this is because we only launch the kernel in the approximate area of the circle
 	if( input != output )
-		CUDA(cudaMemcpy(output, input, imageFormatSize(format, width, height), cudaMemcpyDeviceToDevice));
+		CUDA(cudaMemcpyAsync(output, input, imageFormatSize(format, width, height), cudaMemcpyDeviceToDevice, stream));
 		
 	// make sure the coordinates are ordered
 	if( left > right )
@@ -249,7 +249,7 @@ cudaError_t cudaDrawRect( void* input, void* output, size_t width, size_t height
 		const dim3 gridDim(iDivUp(boxWidth,blockDim.x), iDivUp(boxHeight,blockDim.y));
 				
 		#define LAUNCH_DRAW_RECT(type) \
-			gpuDrawRect<type><<<gridDim, blockDim>>>((type*)output, width, height, left, top, boxWidth, boxHeight, color)
+			gpuDrawRect<type><<<gridDim, blockDim, 0, stream>>>((type*)output, width, height, left, top, boxWidth, boxHeight, color)
 		
 		if( format == IMAGE_RGB8 )
 			LAUNCH_DRAW_RECT(uchar3);
@@ -277,7 +277,7 @@ cudaError_t cudaDrawRect( void* input, void* output, size_t width, size_t height
 		};
 		
 		for( uint32_t n=0; n < 4; n++ )
-			CUDA(cudaDrawLine(output, width, height, format, lines[n][0], lines[n][1], lines[n][2], lines[n][3], line_color, line_width));
+			CUDA(cudaDrawLine(output, width, height, format, lines[n][0], lines[n][1], lines[n][2], lines[n][3], line_color, line_width, stream));
 	}
 	
 	return cudaGetLastError();

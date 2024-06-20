@@ -88,7 +88,7 @@ cudaError_t cudaColormap( float* input, T* output,
 					 const float2& input_range=make_float2(0,255),
 					 cudaDataFormat input_format=FORMAT_DEFAULT,
 					 cudaColormapType colormap=COLORMAP_DEFAULT,
-					 cudaStream_t stream=NULL)					{ return cudaColormap(input, (void*)output, width, height, input_range, input_format, imageFormatFromType<T>(), colormap, stream); }
+					 cudaStream_t stream=0 )					{ return cudaColormap(input, (void*)output, width, height, input_range, input_format, imageFormatFromType<T>(), colormap, stream); }
 					 
 /**
  * Apply a colormap from an input image or vector field to RGB/RGBA.
@@ -104,8 +104,8 @@ cudaError_t cudaColormap( float* input, void* output,
 					 const float2& input_range=make_float2(0,255),
 					 cudaDataFormat input_format=FORMAT_DEFAULT,
 					 imageFormat output_format=IMAGE_UNKNOWN,
-                          cudaColormapType colormap=COLORMAP_DEFAULT,
-					 cudaStream_t stream=NULL);
+                     cudaColormapType colormap=COLORMAP_DEFAULT,
+					 cudaStream_t stream=0 );
 
 /**
  * Apply a colormap from an input image or vector field to RGB/RGBA.
@@ -124,7 +124,7 @@ cudaError_t cudaColormap( float* input, size_t input_width, size_t input_height,
 					 cudaDataFormat input_format=FORMAT_DEFAULT,
                           cudaColormapType colormap=COLORMAP_DEFAULT,
 					 cudaFilterMode filter=FILTER_LINEAR,
-					 cudaStream_t stream=NULL )					{ return cudaColormap(input, input_width, input_height, output, output_width, output_height, input_range, input_format, imageFormatFromType<T>(), colormap, filter, stream); }
+					 cudaStream_t stream=0 )					{ return cudaColormap(input, input_width, input_height, output, output_width, output_height, input_range, input_format, imageFormatFromType<T>(), colormap, filter, stream); }
 					 
 /**
  * Apply a colormap from an input image or vector field to RGB/RGBA.
@@ -143,7 +143,7 @@ cudaError_t cudaColormap( float* input, size_t input_width, size_t input_height,
 					 imageFormat output_format=IMAGE_UNKNOWN,
                           cudaColormapType colormap=COLORMAP_DEFAULT,
 					 cudaFilterMode filter=FILTER_LINEAR,
-					 cudaStream_t stream=NULL );
+					 cudaStream_t stream=0 );
 
 /**
  * Initialize the colormap palettes by allocating them in CUDA memory.

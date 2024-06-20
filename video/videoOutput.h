@@ -57,6 +57,7 @@
 		  "                         to disk, in addition to the primary output above\n"      \
 		  "  --bitrate=BITRATE      desired target VBR bitrate for compressed streams,\n"    \
 		  "                         in bits per second. The default is 4000000 (4 Mbps)\n"	\
+		  "  --stun-server=URL      WebRTC connection STUN server (set to 'disabled' for LAN)\n" \
 		  "  --headless             don't create a default OpenGL GUI window\n\n"
 
 
@@ -183,9 +184,11 @@ public:
 	 * @param image CUDA pointer containing the image to output.
 	 * @param width width of the image, in pixels.
 	 * @param height height of the image, in pixels.
+	 * @param stream the optional CUDA stream to queue operations on.
+	 *
 	 * @returns `true` on success, `false` on error.
 	 */
-	template<typename T> bool Render( T* image, uint32_t width, uint32_t height )		{ return Render((void**)image, width, height, imageFormatFromType<T>()); }
+	template<typename T> bool Render( T* image, uint32_t width, uint32_t height, cudaStream_t stream=0 )		{ return Render((void**)image, width, height, imageFormatFromType<T>(), stream); }
 	
 	/**
 	 * Render and output the next frame to the stream.
@@ -197,9 +200,11 @@ public:
 	 * @param width width of the image, in pixels.
 	 * @param height height of the image, in pixels.
 	 * @param format format of the image (@see imageFormat)
+	 * @param stream the optional CUDA stream to queue operations on.
+	 *
 	 * @returns `true` on success, `false` on error.
 	 */
-	virtual bool Render( void* image, uint32_t width, uint32_t height, imageFormat format );
+	virtual bool Render( void* image, uint32_t width, uint32_t height, imageFormat format, cudaStream_t stream=0 );
 
 	/**
 	 * Begin streaming the device.

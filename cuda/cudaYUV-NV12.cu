@@ -135,7 +135,7 @@ __global__ void NV12ToRGB(uint32_t* srcImage, size_t nSourcePitch,
 
 
 template<typename T> 
-static cudaError_t launchNV12ToRGB( void* srcDev, T* dstDev, size_t width, size_t height )
+static cudaError_t launchNV12ToRGB( void* srcDev, T* dstDev, size_t width, size_t height, cudaStream_t stream )
 {
 	if( !srcDev || !dstDev )
 		return cudaErrorInvalidDevicePointer;
@@ -149,33 +149,33 @@ static cudaError_t launchNV12ToRGB( void* srcDev, T* dstDev, size_t width, size_
 	const dim3 blockDim(32,8,1);
 	const dim3 gridDim(iDivUp(width,blockDim.x), iDivUp(height, blockDim.y), 1);
 
-	NV12ToRGB<T><<<gridDim, blockDim>>>( (uint32_t*)srcDev, srcPitch, dstDev, dstPitch, width, height );
+	NV12ToRGB<T><<<gridDim, blockDim, 0, stream>>>( (uint32_t*)srcDev, srcPitch, dstDev, dstPitch, width, height );
 	
 	return CUDA(cudaGetLastError());
 }
 
 // cudaNV12ToRGB (uchar3)
-cudaError_t cudaNV12ToRGB( void* srcDev, uchar3* destDev, size_t width, size_t height )
+cudaError_t cudaNV12ToRGB( void* srcDev, uchar3* destDev, size_t width, size_t height, cudaStream_t stream )
 {
-	return launchNV12ToRGB<uchar3>(srcDev, destDev, width, height);
+	return launchNV12ToRGB<uchar3>(srcDev, destDev, width, height, stream);
 }
 
 // cudaNV12ToRGB (float3)
-cudaError_t cudaNV12ToRGB( void* srcDev, float3* destDev, size_t width, size_t height )
+cudaError_t cudaNV12ToRGB( void* srcDev, float3* destDev, size_t width, size_t height, cudaStream_t stream )
 {
-	return launchNV12ToRGB<float3>(srcDev, destDev, width, height);
+	return launchNV12ToRGB<float3>(srcDev, destDev, width, height, stream);
 }
 
 // cudaNV12ToRGBA (uchar4)
-cudaError_t cudaNV12ToRGBA( void* srcDev, uchar4* destDev, size_t width, size_t height )
+cudaError_t cudaNV12ToRGBA( void* srcDev, uchar4* destDev, size_t width, size_t height, cudaStream_t stream )
 {
-	return launchNV12ToRGB<uchar4>(srcDev, destDev, width, height);
+	return launchNV12ToRGB<uchar4>(srcDev, destDev, width, height, stream);
 }
 
 // cudaNV12ToRGBA (float4)
-cudaError_t cudaNV12ToRGBA( void* srcDev, float4* destDev, size_t width, size_t height )
+cudaError_t cudaNV12ToRGBA( void* srcDev, float4* destDev, size_t width, size_t height, cudaStream_t stream )
 {
-	return launchNV12ToRGB<float4>(srcDev, destDev, width, height);
+	return launchNV12ToRGB<float4>(srcDev, destDev, width, height, stream);
 }
 
 

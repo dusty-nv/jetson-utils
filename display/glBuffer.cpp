@@ -154,7 +154,7 @@ cudaGraphicsRegisterFlags cudaGraphicsRegisterFlagsFromGL( uint32_t flags )
 
 
 // Map
-void* glBuffer::Map( uint32_t device, uint32_t flags )
+void* glBuffer::Map( uint32_t device, uint32_t flags, cudaStream_t stream )
 {
 	if( mMapDevice != 0 )
 	{
@@ -206,7 +206,7 @@ void* glBuffer::Map( uint32_t device, uint32_t flags )
 		if( mMapFlags != 0 && mMapFlags != flags )
 			CUDA(cudaGraphicsResourceSetMapFlags(mInteropCUDA, cudaGraphicsRegisterFlagsFromGL(flags)));
 
-		if( CUDA_FAILED(cudaGraphicsMapResources(1, &mInteropCUDA)) )
+		if( CUDA_FAILED(cudaGraphicsMapResources(1, &mInteropCUDA, stream)) )
 			return NULL;
 
 		// map CUDA device pointer
@@ -215,7 +215,7 @@ void* glBuffer::Map( uint32_t device, uint32_t flags )
 
 		if( CUDA_FAILED(cudaGraphicsResourceGetMappedPointer(&devPtr, &mappedSize, mInteropCUDA)) )
 		{
-			CUDA(cudaGraphicsUnmapResources(1, &mInteropCUDA));
+			CUDA(cudaGraphicsUnmapResources(1, &mInteropCUDA, stream));
 			return NULL;
 		}
 		
@@ -234,7 +234,7 @@ void* glBuffer::Map( uint32_t device, uint32_t flags )
 
 
 // Unmap
-void glBuffer::Unmap()
+void glBuffer::Unmap( cudaStream_t stream )
 {
 	if( mMapDevice != GL_MAP_CPU && mMapDevice != GL_MAP_CUDA )
 		return;
@@ -251,7 +251,7 @@ void glBuffer::Unmap()
 		if( !mInteropCUDA )
 			return;
 
-		CUDA(cudaGraphicsUnmapResources(1, &mInteropCUDA));
+		CUDA(cudaGraphicsUnmapResources(1, &mInteropCUDA, stream));
 	}
 
 	mMapDevice = 0;
@@ -260,7 +260,7 @@ void glBuffer::Unmap()
 
 
 // Copy
-bool glBuffer::Copy( void* ptr, uint32_t offset, uint32_t size, uint32_t flags )
+bool glBuffer::Copy( void* ptr, uint32_t offset, uint32_t size, uint32_t flags, cudaStream_t stream )
 {
 	if( !ptr || size == 0 || size >= mSize || offset >= mSize || offset > (mSize - size) )
 		return false;
@@ -278,7 +278,7 @@ bool glBuffer::Copy( void* ptr, uint32_t offset, uint32_t size, uint32_t flags )
 	if( flags == GL_FROM_CPU )
 	{
 		// TODO for faster CPU path, see http://hacksoflife.blogspot.com/2015/06/glmapbuffer-no-longer-cool.html
-		void* dst = Map(GL_MAP_CPU, mapFlags);
+		void* dst = Map(GL_MAP_CPU, mapFlags, stream);
 
 		if( !dst )
 			return false;
@@ -287,20 +287,20 @@ bool glBuffer::Copy( void* ptr, uint32_t offset, uint32_t size, uint32_t flags )
 	}
 	else if( flags == GL_FROM_CUDA )
 	{
-		void* dst = Map(GL_MAP_CUDA, mapFlags);
+		void* dst = Map(GL_MAP_CUDA, mapFlags, stream);
 
 		if( !dst )
 			return false;
 
-		if( CUDA_FAILED(cudaMemcpy((uint8_t*)dst + offset, ptr, size, cudaMemcpyDeviceToDevice)) )
+		if( CUDA_FAILED(cudaMemcpyAsync((uint8_t*)dst + offset, ptr, size, cudaMemcpyDeviceToDevice, stream)) )
 		{
-			Unmap();
+			Unmap(stream);
 			return false;
 		}
 	}
 	else if( flags == GL_TO_CPU )
 	{
-		void* src = Map(GL_MAP_CPU, mapFlags);
+		void* src = Map(GL_MAP_CPU, mapFlags, stream);
 
 		if( !src )
 			return false;
@@ -309,32 +309,32 @@ bool glBuffer::Copy( void* ptr, uint32_t offset, uint32_t size, uint32_t flags )
 	}
 	else if( flags == GL_TO_CUDA )
 	{
-		void* src = Map(GL_MAP_CUDA, mapFlags);
+		void* src = Map(GL_MAP_CUDA, mapFlags, stream);
 
 		if( !src )
 			return false;
 	
-		if( CUDA_FAILED(cudaMemcpy(ptr, (uint8_t*)src + offset, size, cudaMemcpyDeviceToDevice)) )
+		if( CUDA_FAILED(cudaMemcpyAsync(ptr, (uint8_t*)src + offset, size, cudaMemcpyDeviceToDevice, stream)) )
 		{
-			Unmap();
+			Unmap(stream);
 			return false;
 		}
 	}
 
-	Unmap();
+	Unmap(stream);
 	return true;
 }
 
 // Copy
-bool glBuffer::Copy( void* ptr, uint32_t size, uint32_t flags )
+bool glBuffer::Copy( void* ptr, uint32_t size, uint32_t flags, cudaStream_t stream )
 {
-	return Copy(ptr, 0, mSize, flags);
+	return Copy(ptr, 0, size, flags, stream);
 }
 
 // Copy
-bool glBuffer::Copy( void* ptr, uint32_t flags )
+bool glBuffer::Copy( void* ptr, uint32_t flags, cudaStream_t stream )
 {
-	return Copy(ptr, 0, mSize, flags);
+	return Copy(ptr, 0, mSize, flags, stream);
 }
 
 

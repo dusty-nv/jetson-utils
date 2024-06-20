@@ -445,7 +445,7 @@ static inline uint32_t dmaTypeFromFlags( uint32_t flags )
 
 
 // Map
-void* glTexture::Map( uint32_t device, uint32_t flags )
+void* glTexture::Map( uint32_t device, uint32_t flags, cudaStream_t stream )
 {
 	if( mMapDevice != 0 )
 	{
@@ -521,7 +521,7 @@ void* glTexture::Map( uint32_t device, uint32_t flags )
 		if( mMapFlags != 0 && mMapFlags != flags )	// TODO two buffers, but one set of flags
 			CUDA(cudaGraphicsResourceSetMapFlags(interop, cudaGraphicsRegisterFlagsFromGL(flags)));
 
-		if( CUDA_FAILED(cudaGraphicsMapResources(1, &interop)) )
+		if( CUDA_FAILED(cudaGraphicsMapResources(1, &interop, stream)) )
 			return NULL;
 
 		// map CUDA device pointer
@@ -529,7 +529,7 @@ void* glTexture::Map( uint32_t device, uint32_t flags )
 
 		if( CUDA_FAILED(cudaGraphicsResourceGetMappedPointer(&dmaPtr, &mappedSize, interop)) )
 		{
-			CUDA(cudaGraphicsUnmapResources(1, &interop));
+			CUDA(cudaGraphicsUnmapResources(1, &interop, stream));
 			return NULL;
 		}
 		
@@ -545,7 +545,7 @@ void* glTexture::Map( uint32_t device, uint32_t flags )
 
 
 // Unmap
-void glTexture::Unmap()
+void glTexture::Unmap( cudaStream_t stream )
 {
 	if( mMapDevice != GL_MAP_CPU && mMapDevice != GL_MAP_CUDA )
 		return;
@@ -571,7 +571,7 @@ void glTexture::Unmap()
 		if( !interop )
 			return;
 
-		CUDA(cudaGraphicsUnmapResources(1, &interop));
+		CUDA(cudaGraphicsUnmapResources(1, &interop, stream));
 
 		if( mMapFlags != GL_READ_ONLY )
 		{
@@ -587,7 +587,7 @@ void glTexture::Unmap()
 
 
 // Copy
-bool glTexture::Copy( void* ptr, uint32_t offset, uint32_t size, uint32_t flags )
+bool glTexture::Copy( void* ptr, uint32_t offset, uint32_t size, uint32_t flags, cudaStream_t stream )
 {
 	if( !ptr || size == 0 || size >= mSize || offset >= mSize || offset > (mSize - size) )
 		return false;
@@ -605,7 +605,7 @@ bool glTexture::Copy( void* ptr, uint32_t offset, uint32_t size, uint32_t flags 
 	if( flags == GL_FROM_CPU )
 	{
 		// TODO for faster CPU path, see http://hacksoflife.blogspot.com/2015/06/glmapbuffer-no-longer-cool.html
-		void* dst = Map(GL_MAP_CPU, mapFlags);
+		void* dst = Map(GL_MAP_CPU, mapFlags, stream);
 
 		if( !dst )
 			return false;
@@ -614,20 +614,20 @@ bool glTexture::Copy( void* ptr, uint32_t offset, uint32_t size, uint32_t flags 
 	}
 	else if( flags == GL_FROM_CUDA )
 	{
-		void* dst = Map(GL_MAP_CUDA, mapFlags);
+		void* dst = Map(GL_MAP_CUDA, mapFlags, stream);
 
 		if( !dst )
 			return false;
 
-		if( CUDA_FAILED(cudaMemcpy((uint8_t*)dst + offset, ptr, size, cudaMemcpyDeviceToDevice)) )
+		if( CUDA_FAILED(cudaMemcpyAsync((uint8_t*)dst + offset, ptr, size, cudaMemcpyDeviceToDevice, stream)) )
 		{
-			Unmap();
+			Unmap(stream);
 			return false;
 		}
 	}
 	else if( flags == GL_TO_CPU )
 	{
-		void* src = Map(GL_MAP_CPU, mapFlags);
+		void* src = Map(GL_MAP_CPU, mapFlags, stream);
 
 		if( !src )
 			return false;
@@ -636,32 +636,32 @@ bool glTexture::Copy( void* ptr, uint32_t offset, uint32_t size, uint32_t flags 
 	}
 	else if( flags == GL_TO_CUDA )
 	{
-		void* src = Map(GL_MAP_CUDA, mapFlags);
+		void* src = Map(GL_MAP_CUDA, mapFlags, stream);
 
 		if( !src )
 			return false;
 	
-		if( CUDA_FAILED(cudaMemcpy(ptr, (uint8_t*)src + offset, size, cudaMemcpyDeviceToDevice)) )
+		if( CUDA_FAILED(cudaMemcpyAsync(ptr, (uint8_t*)src + offset, size, cudaMemcpyDeviceToDevice, stream)) )
 		{
-			Unmap();
+			Unmap(stream);
 			return false;
 		}
 	}
 
-	Unmap();
+	Unmap(stream);
 	return true;
 }
 
 // Copy
-bool glTexture::Copy( void* ptr, uint32_t size, uint32_t flags )
+bool glTexture::Copy( void* ptr, uint32_t size, uint32_t flags, cudaStream_t stream )
 {
-	return Copy(ptr, 0, mSize, flags);
+	return Copy(ptr, 0, size, flags);
 }
 
 // Copy
-bool glTexture::Copy( void* ptr, uint32_t flags )
+bool glTexture::Copy( void* ptr, uint32_t flags, cudaStream_t stream )
 {
-	return Copy(ptr, 0, mSize, flags);
+	return Copy(ptr, 0, mSize, flags, stream);
 }
 
 #if 0

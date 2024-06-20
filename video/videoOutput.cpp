@@ -208,14 +208,14 @@ void videoOutput::Close()
 
 
 // Render
-bool videoOutput::Render( void* image, uint32_t width, uint32_t height, imageFormat format )
+bool videoOutput::Render( void* image, uint32_t width, uint32_t height, imageFormat format, cudaStream_t stream )
 {	
 	const uint32_t numOutputs = mOutputs.size();
 	bool result = true;
 
 	for( uint32_t n=0; n < numOutputs; n++ )
 	{
-		if( !mOutputs[n]->Render(image, width, height, format) )
+		if( !mOutputs[n]->Render(image, width, height, format, stream) )
 			result = false;
 	}
 

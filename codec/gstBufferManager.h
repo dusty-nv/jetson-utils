@@ -79,7 +79,7 @@ public:
 	/**
 	 * Dequeue the next frame.  Returns 1 on success, 0 on timeout, -1 on error.
 	 */
-	int Dequeue( void** output, imageFormat format, uint64_t timeout=UINT64_MAX );
+	int Dequeue( void** output, imageFormat format, uint64_t timeout=UINT64_MAX, cudaStream_t stream=0 );
 
 	/**
 	 * Get timestamp of the latest dequeued frame.

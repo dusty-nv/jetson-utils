@@ -59,6 +59,12 @@
 #define CUDA_VERIFY(x)			if(CUDA_FAILED(x))	return false;
 
 /**
+ * Return on CUDA errors, continue on cudaSuccess.
+ * @ingroup cudaError
+ */
+#define CUDA_ASSERT(x)          { const cudaError_t _retval = CUDA(x); if(_retval != cudaSuccess) return _retval; }
+
+/**
  * LOG_CUDA string.
  * @ingroup cudaError
  */
@@ -78,27 +84,17 @@
  */
 inline cudaError_t cudaCheckError(cudaError_t retval, const char* txt, const char* file, int line )
 {
-#if !defined(CUDA_TRACE)
-	if( retval == cudaSuccess)
-		return cudaSuccess;
-#endif
-
-	//int activeDevice = -1;
-	//cudaGetDevice(&activeDevice);
-
-	//Log("[cuda]   device %i  -  %s\n", activeDevice, txt);
-	
 	if( retval == cudaSuccess )
 	{
+	#if !defined(CUDA_TRACE)
+		return cudaSuccess;
+	#else
 		LogDebug(LOG_CUDA "%s\n", txt);
+	#endif
 	}
 	else
 	{
 		LogError(LOG_CUDA "%s\n", txt);
-	}
-	
-	if( retval != cudaSuccess )
-	{
 		LogError(LOG_CUDA "   %s (error %u) (hex 0x%02X)\n", cudaGetErrorString(retval), retval, retval);
 		LogError(LOG_CUDA "   %s:%i\n", file, line);	
 	}

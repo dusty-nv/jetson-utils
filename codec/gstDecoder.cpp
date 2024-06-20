@@ -889,7 +889,7 @@ void gstDecoder::checkBuffer()
 
 
 // Capture
-bool gstDecoder::Capture( void** output, imageFormat format, uint64_t timeout, int* status )
+bool gstDecoder::Capture( void** output, imageFormat format, uint64_t timeout, int* status, cudaStream_t stream )
 {
 	// update the webrtc server if needed
 	if( mWebRTCServer != NULL && !mWebRTCServer->IsThreaded() )
@@ -907,7 +907,7 @@ bool gstDecoder::Capture( void** output, imageFormat format, uint64_t timeout, i
 	}
 
 	// wait until a new frame is recieved
-	const int result = mBufferManager->Dequeue(output, format, timeout);
+	const int result = mBufferManager->Dequeue(output, format, timeout, stream);
 	
 	if( result < 0 )
 	{

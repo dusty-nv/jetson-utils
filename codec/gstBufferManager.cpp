@@ -257,32 +257,32 @@ bool gstBufferManager::Enqueue( GstBuffer* gstBuffer, GstCaps* gstCaps )
 		mBufferYUV.Next(RingBuffer::Write);
 	}
 
-		// handle timestamps in either case (CPU or NVMM path)
-		size_t timestamp_size = sizeof(uint64_t);
+	// handle timestamps in either case (CPU or NVMM path)
+	size_t timestamp_size = sizeof(uint64_t);
 
-		// allocate timestamp ringbuffer (GPU only if not ZeroCopy)
-		if( !mTimestamps.Alloc(mOptions->numBuffers, timestamp_size, RingBuffer::ZeroCopy) )
-		{
-			LogError(LOG_GSTREAMER "gstBufferManager -- failed to allocate %u timestamp buffers (%zu bytes each)\n", mOptions->numBuffers, timestamp_size);
-			return false;
-		}
+	// allocate timestamp ringbuffer (GPU only if not ZeroCopy)
+	if( !mTimestamps.Alloc(mOptions->numBuffers, timestamp_size, RingBuffer::ZeroCopy) )
+	{
+		LogError(LOG_GSTREAMER "gstBufferManager -- failed to allocate %u timestamp buffers (%zu bytes each)\n", mOptions->numBuffers, timestamp_size);
+		return false;
+	}
 
-		// copy to next timestamp ringbuffer
-		void* nextTimestamp = mTimestamps.Peek(RingBuffer::Write);
+	// copy to next timestamp ringbuffer
+	void* nextTimestamp = mTimestamps.Peek(RingBuffer::Write);
 
-		if( !nextTimestamp )
-		{
-			LogError(LOG_GSTREAMER "gstBufferManager -- failed to retrieve next timestamp ringbuffer for writing\n");
-			return false;
-		}
+	if( !nextTimestamp )
+	{
+		LogError(LOG_GSTREAMER "gstBufferManager -- failed to retrieve next timestamp ringbuffer for writing\n");
+		return false;
+	}
 
-		if (GST_BUFFER_DTS_IS_VALID(gstBuffer) || GST_BUFFER_PTS_IS_VALID(gstBuffer))
-		{
-			timestamp = GST_BUFFER_DTS_OR_PTS(gstBuffer);
-		}
+	if( GST_BUFFER_DTS_IS_VALID(gstBuffer) || GST_BUFFER_PTS_IS_VALID(gstBuffer) )
+	{
+		timestamp = GST_BUFFER_DTS_OR_PTS(gstBuffer);
+	}
 
-		memcpy(nextTimestamp, (void*)&timestamp, timestamp_size);
-		mTimestamps.Next(RingBuffer::Write);
+	memcpy(nextTimestamp, (void*)&timestamp, timestamp_size);
+	mTimestamps.Next(RingBuffer::Write);
 
 	mWaitEvent.Wake();
 	mFrameCount++;
@@ -296,7 +296,7 @@ bool gstBufferManager::Enqueue( GstBuffer* gstBuffer, GstCaps* gstCaps )
 
 
 // Dequeue
-int gstBufferManager::Dequeue( void** output, imageFormat format, uint64_t timeout )
+int gstBufferManager::Dequeue( void** output, imageFormat format, uint64_t timeout, cudaStream_t stream )
 {
 	// wait until a new frame is recieved
 	if( !mWaitEvent.Wait(timeout) )
@@ -442,7 +442,7 @@ int gstBufferManager::Dequeue( void** output, imageFormat format, uint64_t timeo
 	// perform colorspace conversion
 	void* nextRGB = mBufferRGB.Next(RingBuffer::Write);
 
-	if( CUDA_FAILED(cudaConvertColor(latestYUV, mFormatYUV, nextRGB, format, mOptions->width, mOptions->height)) )
+	if( CUDA_FAILED(cudaConvertColor(latestYUV, mFormatYUV, nextRGB, format, mOptions->width, mOptions->height, stream)) )
 	{
 		LogError(LOG_GSTREAMER "gstBufferManager -- unsupported image format (%s)\n", imageFormatToStr(format));
 		LogError(LOG_GSTREAMER "                    supported formats are:\n");

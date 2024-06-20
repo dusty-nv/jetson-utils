@@ -39,7 +39,7 @@
  * Convert uint8 grayscale image into float grayscale.
  * @ingroup colorspace
  */
-cudaError_t cudaGray8ToGray32( uint8_t* input, float* output, size_t width, size_t height );
+cudaError_t cudaGray8ToGray32( uint8_t* input, float* output, size_t width, size_t height, cudaStream_t stream=0 );
 
 /**
  * Convert float grayscale image into uint8 grayscale.
@@ -52,7 +52,7 @@ cudaError_t cudaGray8ToGray32( uint8_t* input, float* output, size_t width, size
  * @ingroup colorspace
  */
 cudaError_t cudaGray32ToGray8( float* input, uint8_t* output, size_t width, size_t height, 
-						 const float2& pixelRange=make_float2(0,255) );
+                               const float2& pixelRange=make_float2(0,255), cudaStream_t stream=0 );
 
 ///@}
 
@@ -73,7 +73,7 @@ cudaError_t cudaGray32ToGray8( float* input, uint8_t* output, size_t width, size
  *
  * @ingroup colorspace
  */
-cudaError_t cudaRGB8ToGray8( uchar3* input, uint8_t* output, size_t width, size_t height, bool swapRedBlue=false );
+cudaError_t cudaRGB8ToGray8( uchar3* input, uint8_t* output, size_t width, size_t height, bool swapRedBlue=false, cudaStream_t stream=0 );
 
 /**
  * Convert uchar4 RGBA/BGRA image into uint8 grayscale.
@@ -83,7 +83,7 @@ cudaError_t cudaRGB8ToGray8( uchar3* input, uint8_t* output, size_t width, size_
  *
  * @ingroup colorspace
  */
-cudaError_t cudaRGBA8ToGray8( uchar4* input, uint8_t* output, size_t width, size_t height, bool swapRedBlue=false );
+cudaError_t cudaRGBA8ToGray8( uchar4* input, uint8_t* output, size_t width, size_t height, bool swapRedBlue=false, cudaStream_t stream=0 );
 
 /**
  * Convert float3 RGB/BGR image into uint8 grayscale.
@@ -99,7 +99,8 @@ cudaError_t cudaRGBA8ToGray8( uchar4* input, uint8_t* output, size_t width, size
  * @ingroup colorspace
  */
 cudaError_t cudaRGB32ToGray8( float3* input, uint8_t* output, size_t width, size_t height, 
-							  bool swapRedBlue=false, const float2& pixelRange=make_float2(0,255) );
+							  bool swapRedBlue=false, const float2& pixelRange=make_float2(0,255),
+							  cudaStream_t stream=0 );
 						
 /**
  * Convert float4 RGBA/BGRA image into uint8 grayscale.
@@ -115,7 +116,8 @@ cudaError_t cudaRGB32ToGray8( float3* input, uint8_t* output, size_t width, size
  * @ingroup colorspace
  */
 cudaError_t cudaRGBA32ToGray8( float4* input, uint8_t* output, size_t width, size_t height, 
-							   bool swapRedBlue=false, const float2& pixelRange=make_float2(0,255) );
+							   bool swapRedBlue=false, const float2& pixelRange=make_float2(0,255),
+							   cudaStream_t stream=0 );
 							   
 ///@}
 
@@ -136,7 +138,7 @@ cudaError_t cudaRGBA32ToGray8( float4* input, uint8_t* output, size_t width, siz
  *
  * @ingroup colorspace
  */
-cudaError_t cudaRGB8ToGray32( uchar3* input, float* output, size_t width, size_t height, bool swapRedBlue=false );
+cudaError_t cudaRGB8ToGray32( uchar3* input, float* output, size_t width, size_t height, bool swapRedBlue=false, cudaStream_t stream=0 );
 
 /**
  * Convert uchar4 RGBA/BGRA image into float grayscale.
@@ -146,7 +148,7 @@ cudaError_t cudaRGB8ToGray32( uchar3* input, float* output, size_t width, size_t
  *
  * @ingroup colorspace
  */
-cudaError_t cudaRGBA8ToGray32( uchar4* input, float* output, size_t width, size_t height, bool swapRedBlue=false );
+cudaError_t cudaRGBA8ToGray32( uchar4* input, float* output, size_t width, size_t height, bool swapRedBlue=false, cudaStream_t stream=0 );
 
 /**
  * Convert float3 RGB/BGR image into float grayscale.
@@ -156,7 +158,7 @@ cudaError_t cudaRGBA8ToGray32( uchar4* input, float* output, size_t width, size_
  *
  * @ingroup colorspace
  */
-cudaError_t cudaRGB32ToGray32( float3* input, float* output, size_t width, size_t height, bool swapRedBlue=false );
+cudaError_t cudaRGB32ToGray32( float3* input, float* output, size_t width, size_t height, bool swapRedBlue=false, cudaStream_t stream=0 );
 
 /**
  * Convert float4 RGB/BGR image into float grayscale.
@@ -166,7 +168,7 @@ cudaError_t cudaRGB32ToGray32( float3* input, float* output, size_t width, size_
  *
  * @ingroup colorspace
  */
-cudaError_t cudaRGBA32ToGray32( float4* input, float* output, size_t width, size_t height, bool swapRedBlue=false );
+cudaError_t cudaRGBA32ToGray32( float4* input, float* output, size_t width, size_t height, bool swapRedBlue=false, cudaStream_t stream=0 );
 
 ///@}
 
@@ -183,25 +185,25 @@ cudaError_t cudaRGBA32ToGray32( float4* input, float* output, size_t width, size
  * Convert uint8 grayscale image into uchar3 RGB/BGR.
  * @ingroup colorspace
  */
-cudaError_t cudaGray8ToRGB8( uint8_t* input, uchar3* output, size_t width, size_t height );
+cudaError_t cudaGray8ToRGB8( uint8_t* input, uchar3* output, size_t width, size_t height, cudaStream_t stream=0 );
 
 /**
  * Convert uint8 grayscale image into uchar4 RGB/BGR.
  * @ingroup colorspace
  */
-cudaError_t cudaGray8ToRGBA8( uint8_t* input, uchar4* output, size_t width, size_t height );
+cudaError_t cudaGray8ToRGBA8( uint8_t* input, uchar4* output, size_t width, size_t height, cudaStream_t stream=0 );
 
 /**
  * Convert uint8 grayscale image into float3 RGB/BGR.
  * @ingroup colorspace
  */
-cudaError_t cudaGray8ToRGB32( uint8_t* input, float3* output, size_t width, size_t height );
+cudaError_t cudaGray8ToRGB32( uint8_t* input, float3* output, size_t width, size_t height, cudaStream_t stream=0 );
 
 /**
  * Convert uint8 grayscale image into float4 RGB/BGR.
  * @ingroup colorspace
  */
-cudaError_t cudaGray8ToRGBA32( uint8_t* input, float4* output, size_t width, size_t height );
+cudaError_t cudaGray8ToRGBA32( uint8_t* input, float4* output, size_t width, size_t height, cudaStream_t stream=0 );
 
 ///@}
 
@@ -226,7 +228,7 @@ cudaError_t cudaGray8ToRGBA32( uint8_t* input, float4* output, size_t width, siz
  * @ingroup colorspace
  */
 cudaError_t cudaGray32ToRGB8( float* input, uchar3* output, size_t width, size_t height, 
-						const float2& pixelRange=make_float2(0,255) );
+                              const float2& pixelRange=make_float2(0,255), cudaStream_t stream=0 );
 
 /**
  * Convert float grayscale image into uchar4 RGB/BGR.
@@ -239,19 +241,19 @@ cudaError_t cudaGray32ToRGB8( float* input, uchar3* output, size_t width, size_t
  * @ingroup colorspace
  */
 cudaError_t cudaGray32ToRGBA8( float* input, uchar4* output, size_t width, size_t height, 
-						 const float2& pixelRange=make_float2(0,255) );
+						       const float2& pixelRange=make_float2(0,255), cudaStream_t stream=0 );
 
 /**
  * Convert float grayscale image into float3 RGB/BGR.
  * @ingroup colorspace
  */
-cudaError_t cudaGray32ToRGB32( float* input, float3* output, size_t width, size_t height );
+cudaError_t cudaGray32ToRGB32( float* input, float3* output, size_t width, size_t height, cudaStream_t stream=0 );
 
 /**
  * Convert float grayscale image into float4 RGB/BGR.
  * @ingroup colorspace
  */
-cudaError_t cudaGray32ToRGBA32( float* input, float4* output, size_t width, size_t height );
+cudaError_t cudaGray32ToRGBA32( float* input, float4* output, size_t width, size_t height, cudaStream_t stream=0 );
 
 ///@}
 

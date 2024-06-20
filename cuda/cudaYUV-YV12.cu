@@ -99,7 +99,7 @@ __global__ void I420ToRGB(uint8_t* srcImage, int srcPitch,
 }
 
 template <typename T, bool formatYV12>
-static cudaError_t launch420ToRGB(void* srcDev, T* dstDev, size_t width, size_t height) 
+static cudaError_t launch420ToRGB(void* srcDev, T* dstDev, size_t width, size_t height, cudaStream_t stream) 
 {
 	if( !srcDev || !dstDev )
 		return cudaErrorInvalidDevicePointer;
@@ -114,60 +114,60 @@ static cudaError_t launch420ToRGB(void* srcDev, T* dstDev, size_t width, size_t 
 	//const dim3 gridDim((width+(2*blockDim.x-1))/(2*blockDim.x), (height+(blockDim.y-1))/blockDim.y, 1);
 	const dim3 gridDim(iDivUp(width,blockDim.x), iDivUp(height, blockDim.y));
 
-	I420ToRGB<T, formatYV12><<<gridDim, blockDim>>>( (uint8_t*)srcDev, srcPitch, dstDev, dstPitch, width, height );
+	I420ToRGB<T, formatYV12><<<gridDim, blockDim, 0, stream>>>( (uint8_t*)srcDev, srcPitch, dstDev, dstPitch, width, height );
 
 	return CUDA(cudaGetLastError());
 }
 
 
 // cudaI420ToRGB (uchar3)
-cudaError_t cudaI420ToRGB(void* input, uchar3* output, size_t width, size_t height) 
+cudaError_t cudaI420ToRGB(void* input, uchar3* output, size_t width, size_t height, cudaStream_t stream) 
 {
-    return launch420ToRGB<uchar3, false>(input, output, width, height);
+    return launch420ToRGB<uchar3, false>(input, output, width, height, stream);
 }
 
 // cudaI420ToRGB (float3)
-cudaError_t cudaI420ToRGB(void* input, float3* output, size_t width, size_t height) 
+cudaError_t cudaI420ToRGB(void* input, float3* output, size_t width, size_t height, cudaStream_t stream) 
 {
-    return launch420ToRGB<float3, false>(input, output, width, height);
+    return launch420ToRGB<float3, false>(input, output, width, height, stream);
 }
 
 // cudaI420ToRGBA (uchar4)
-cudaError_t cudaI420ToRGBA(void* input, uchar4* output, size_t width, size_t height) 
+cudaError_t cudaI420ToRGBA(void* input, uchar4* output, size_t width, size_t height, cudaStream_t stream) 
 {
-    return launch420ToRGB<uchar4, false>(input, output, width, height);
+    return launch420ToRGB<uchar4, false>(input, output, width, height, stream);
 }
 
 // cudaI420ToRGBA (float4)
-cudaError_t cudaI420ToRGBA(void* input, float4* output, size_t width, size_t height) 
+cudaError_t cudaI420ToRGBA(void* input, float4* output, size_t width, size_t height, cudaStream_t stream) 
 {
-    return launch420ToRGB<float4, false>(input, output, width, height);
+    return launch420ToRGB<float4, false>(input, output, width, height, stream);
 }
 
 //-----------------------------------------------------------------------------------
 
 // cudaYV12ToRGB (uchar3)
-cudaError_t cudaYV12ToRGB(void* input, uchar3* output, size_t width, size_t height) 
+cudaError_t cudaYV12ToRGB(void* input, uchar3* output, size_t width, size_t height, cudaStream_t stream) 
 {
-    return launch420ToRGB<uchar3, true>(input, output, width, height);
+    return launch420ToRGB<uchar3, true>(input, output, width, height, stream);
 }
 
 // cudaYV12ToRGB (float3)
-cudaError_t cudaYV12ToRGB(void* input, float3* output, size_t width, size_t height) 
+cudaError_t cudaYV12ToRGB(void* input, float3* output, size_t width, size_t height, cudaStream_t stream) 
 {
-    return launch420ToRGB<float3, true>(input, output, width, height);
+    return launch420ToRGB<float3, true>(input, output, width, height, stream);
 }
 
 // cudaYV12ToRGBA (uchar4)
-cudaError_t cudaYV12ToRGBA(void* input, uchar4* output, size_t width, size_t height) 
+cudaError_t cudaYV12ToRGBA(void* input, uchar4* output, size_t width, size_t height, cudaStream_t stream) 
 {
-    return launch420ToRGB<uchar4, true>(input, output, width, height);
+    return launch420ToRGB<uchar4, true>(input, output, width, height, stream);
 }
 
 // cudaYV12ToRGBA (float4)
-cudaError_t cudaYV12ToRGBA(void* input, float4* output, size_t width, size_t height) 
+cudaError_t cudaYV12ToRGBA(void* input, float4* output, size_t width, size_t height, cudaStream_t stream) 
 {
-    return launch420ToRGB<float4, true>(input, output, width, height);
+    return launch420ToRGB<float4, true>(input, output, width, height, stream);
 }
 
 
@@ -242,7 +242,7 @@ __global__ void RGBToYV12( T* src, int srcAlignedWidth, uint8_t* dst, int dstPit
 } 
 
 template<typename T, bool formatYV12>
-static cudaError_t launchRGBTo420( T* input, size_t inputPitch, void* output, size_t outputPitch, size_t width, size_t height)
+static cudaError_t launchRGBTo420( T* input, size_t inputPitch, void* output, size_t outputPitch, size_t width, size_t height, cudaStream_t stream)
 {
 	if( !input || !inputPitch || !output || !outputPitch || !width || !height )
 		return cudaErrorInvalidValue;
@@ -252,108 +252,108 @@ static cudaError_t launchRGBTo420( T* input, size_t inputPitch, void* output, si
 
 	const int inputAlignedWidth = inputPitch / sizeof(T);
 
-	RGBToYV12<T, formatYV12><<<grid, block>>>(input, inputAlignedWidth, (uint8_t*)output, outputPitch, width, height);
+	RGBToYV12<T, formatYV12><<<grid, block, 0, stream>>>(input, inputAlignedWidth, (uint8_t*)output, outputPitch, width, height);
 
 	return CUDA(cudaGetLastError());
 }
 
 
 // cudaRGBToI420 (uchar3)
-cudaError_t cudaRGBToI420( uchar3* input, size_t inputPitch, void* output, size_t outputPitch, size_t width, size_t height )
+cudaError_t cudaRGBToI420( uchar3* input, size_t inputPitch, void* output, size_t outputPitch, size_t width, size_t height, cudaStream_t stream )
 {
-	return launchRGBTo420<uchar3,true>( input, inputPitch, output, outputPitch, width, height );
+	return launchRGBTo420<uchar3,true>( input, inputPitch, output, outputPitch, width, height, stream );
 }
 
 // cudaRGBToI420 (uchar3)
-cudaError_t cudaRGBToI420( uchar3* input, void* output, size_t width, size_t height )
+cudaError_t cudaRGBToI420( uchar3* input, void* output, size_t width, size_t height, cudaStream_t stream )
 {
-	return cudaRGBToI420( input, width * sizeof(uchar3), output, width * sizeof(uint8_t), width, height );
+	return cudaRGBToI420( input, width * sizeof(uchar3), output, width * sizeof(uint8_t), width, height, stream );
 }
 
 // cudaRGBToI420 (float3)
-cudaError_t cudaRGBToI420( float3* input, size_t inputPitch, void* output, size_t outputPitch, size_t width, size_t height )
+cudaError_t cudaRGBToI420( float3* input, size_t inputPitch, void* output, size_t outputPitch, size_t width, size_t height, cudaStream_t stream )
 {
-	return launchRGBTo420<float3,true>( input, inputPitch, output, outputPitch, width, height );
+	return launchRGBTo420<float3,true>( input, inputPitch, output, outputPitch, width, height, stream );
 }
 
 // cudaRGBAToI420 (float3)
-cudaError_t cudaRGBToI420( float3* input, void* output, size_t width, size_t height )
+cudaError_t cudaRGBToI420( float3* input, void* output, size_t width, size_t height, cudaStream_t stream )
 {
-	return cudaRGBToI420( input, width * sizeof(float3), output, width * sizeof(uint8_t), width, height );
+	return cudaRGBToI420( input, width * sizeof(float3), output, width * sizeof(uint8_t), width, height, stream );
 }
 
 // cudaRGBAToI420 (uchar4)
-cudaError_t cudaRGBAToI420( uchar4* input, size_t inputPitch, void* output, size_t outputPitch, size_t width, size_t height )
+cudaError_t cudaRGBAToI420( uchar4* input, size_t inputPitch, void* output, size_t outputPitch, size_t width, size_t height, cudaStream_t stream )
 {
-	return launchRGBTo420<uchar4,true>( input, inputPitch, output, outputPitch, width, height );
+	return launchRGBTo420<uchar4,true>( input, inputPitch, output, outputPitch, width, height, stream );
 }
 
 // cudaRGBAToI420 (uchar4)
-cudaError_t cudaRGBAToI420( uchar4* input, void* output, size_t width, size_t height )
+cudaError_t cudaRGBAToI420( uchar4* input, void* output, size_t width, size_t height, cudaStream_t stream )
 {
-	return cudaRGBAToI420( input, width * sizeof(uchar4), output, width * sizeof(uint8_t), width, height );
+	return cudaRGBAToI420( input, width * sizeof(uchar4), output, width * sizeof(uint8_t), width, height, stream );
 }
 
 // cudaRGBAToI420 (float4)
-cudaError_t cudaRGBAToI420( float4* input, size_t inputPitch, void* output, size_t outputPitch, size_t width, size_t height )
+cudaError_t cudaRGBAToI420( float4* input, size_t inputPitch, void* output, size_t outputPitch, size_t width, size_t height, cudaStream_t stream )
 {
-	return launchRGBTo420<float4,true>( input, inputPitch, output, outputPitch, width, height );
+	return launchRGBTo420<float4,true>( input, inputPitch, output, outputPitch, width, height, stream );
 }
 
 // cudaRGBAToI420 (float4)
-cudaError_t cudaRGBAToI420( float4* input, void* output, size_t width, size_t height )
+cudaError_t cudaRGBAToI420( float4* input, void* output, size_t width, size_t height, cudaStream_t stream )
 {
-	return cudaRGBAToI420( input, width * sizeof(float4), output, width * sizeof(uint8_t), width, height );
+	return cudaRGBAToI420( input, width * sizeof(float4), output, width * sizeof(uint8_t), width, height, stream );
 }
 
 //-----------------------------------------------------------------------------------
 
 // cudaRGBToYV12 (uchar3)
-cudaError_t cudaRGBToYV12( uchar3* input, size_t inputPitch, void* output, size_t outputPitch, size_t width, size_t height )
+cudaError_t cudaRGBToYV12( uchar3* input, size_t inputPitch, void* output, size_t outputPitch, size_t width, size_t height, cudaStream_t stream )
 {
-	return launchRGBTo420<uchar3,false>( input, inputPitch, output, outputPitch, width, height );
+	return launchRGBTo420<uchar3,false>( input, inputPitch, output, outputPitch, width, height, stream );
 }
 
 // cudaRGBToYV12 (uchar3)
-cudaError_t cudaRGBToYV12( uchar3* input, void* output, size_t width, size_t height )
+cudaError_t cudaRGBToYV12( uchar3* input, void* output, size_t width, size_t height, cudaStream_t stream )
 {
-	return cudaRGBToYV12( input, width * sizeof(uchar3), output, width * sizeof(uint8_t), width, height );
+	return cudaRGBToYV12( input, width * sizeof(uchar3), output, width * sizeof(uint8_t), width, height, stream );
 }
 
 // cudaRGBToYV12 (float3)
-cudaError_t cudaRGBToYV12( float3* input, size_t inputPitch, void* output, size_t outputPitch, size_t width, size_t height )
+cudaError_t cudaRGBToYV12( float3* input, size_t inputPitch, void* output, size_t outputPitch, size_t width, size_t height, cudaStream_t stream )
 {
-	return launchRGBTo420<float3,false>( input, inputPitch, output, outputPitch, width, height );
+	return launchRGBTo420<float3,false>( input, inputPitch, output, outputPitch, width, height, stream );
 }
 
 // cudaRGBToYV12 (float3)
-cudaError_t cudaRGBToYV12( float3* input, void* output, size_t width, size_t height )
+cudaError_t cudaRGBToYV12( float3* input, void* output, size_t width, size_t height, cudaStream_t stream )
 {
-	return cudaRGBToYV12( input, width * sizeof(float3), output, width * sizeof(uint8_t), width, height );
+	return cudaRGBToYV12( input, width * sizeof(float3), output, width * sizeof(uint8_t), width, height, stream );
 }
 
 // cudaRGBAToYV12 (uchar4)
-cudaError_t cudaRGBAToYV12( uchar4* input, size_t inputPitch, void* output, size_t outputPitch, size_t width, size_t height )
+cudaError_t cudaRGBAToYV12( uchar4* input, size_t inputPitch, void* output, size_t outputPitch, size_t width, size_t height, cudaStream_t stream )
 {
-	return launchRGBTo420<uchar4,false>( input, inputPitch, output, outputPitch, width, height );
+	return launchRGBTo420<uchar4,false>( input, inputPitch, output, outputPitch, width, height, stream );
 }
 
 // cudaRGBAToYV12 (uchar4)
-cudaError_t cudaRGBAToYV12( uchar4* input, void* output, size_t width, size_t height )
+cudaError_t cudaRGBAToYV12( uchar4* input, void* output, size_t width, size_t height, cudaStream_t stream )
 {
-	return cudaRGBAToYV12( input, width * sizeof(uchar4), output, width * sizeof(uint8_t), width, height );
+	return cudaRGBAToYV12( input, width * sizeof(uchar4), output, width * sizeof(uint8_t), width, height, stream );
 }
 
 // cudaRGBAToYV12 (float4)
-cudaError_t cudaRGBAToYV12( float4* input, size_t inputPitch, void* output, size_t outputPitch, size_t width, size_t height )
+cudaError_t cudaRGBAToYV12( float4* input, size_t inputPitch, void* output, size_t outputPitch, size_t width, size_t height, cudaStream_t stream )
 {
-	return launchRGBTo420<float4,false>( input, inputPitch, output, outputPitch, width, height );
+	return launchRGBTo420<float4,false>( input, inputPitch, output, outputPitch, width, height, stream );
 }
 
 // cudaRGBAToYV12 (float4)
-cudaError_t cudaRGBAToYV12( float4* input, void* output, size_t width, size_t height )
+cudaError_t cudaRGBAToYV12( float4* input, void* output, size_t width, size_t height, cudaStream_t stream )
 {
-	return cudaRGBAToYV12( input, width * sizeof(float4), output, width * sizeof(uint8_t), width, height );
+	return cudaRGBAToYV12( input, width * sizeof(float4), output, width * sizeof(uint8_t), width, height, stream );
 }
 
 

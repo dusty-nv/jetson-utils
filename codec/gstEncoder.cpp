@@ -625,7 +625,7 @@ bool gstEncoder::encodeYUV( void* buffer, size_t size )
 
 
 // Render
-bool gstEncoder::Render( void* image, uint32_t width, uint32_t height, imageFormat format )
+bool gstEncoder::Render( void* image, uint32_t width, uint32_t height, imageFormat format, cudaStream_t stream )
 {	
 	// update the webrtc server if needed
 	if( mWebRTCServer != NULL && !mWebRTCServer->IsThreaded() )
@@ -701,7 +701,7 @@ bool gstEncoder::Render( void* image, uint32_t width, uint32_t height, imageForm
 	// perform colorspace conversion
 	void* nextYUV = mBufferYUV.Next(RingBuffer::Write);
 
-	if( CUDA_FAILED(cudaConvertColor(image, format, nextYUV, IMAGE_I420, width, height)) )
+	if( CUDA_FAILED(cudaConvertColor(image, format, nextYUV, IMAGE_I420, width, height, stream)) )
 	{
 		LogError(LOG_GSTREAMER "gstEncoder::Render() -- unsupported image format (%s)\n", imageFormatToStr(format));
 		LogError(LOG_GSTREAMER "                        supported formats are:\n");
@@ -714,7 +714,10 @@ bool gstEncoder::Render( void* image, uint32_t width, uint32_t height, imageForm
 		render_end();
 	}
 
-	CUDA(cudaDeviceSynchronize());	// TODO replace with cudaStream?
+    if( stream != 0 )
+        CUDA(cudaStreamSynchronize(stream));
+    else
+	    CUDA(cudaDeviceSynchronize());
 	
 	// encode YUV buffer
 	enc_success = encodeYUV(nextYUV, i420Size);
@@ -847,8 +850,14 @@ void gstEncoder::onWebsocketMessage( WebRTCPeer* peer, const char* message, size
 		g_free(tmp);
 		
 		// set webrtcbin properties
-		std::string stun_server = std::string("stun://") + peer->server->GetSTUNServer();
-		g_object_set(peer_context->webrtcbin, "stun-server", stun_server.c_str(), NULL);
+		const char* stun_server = peer->server->GetSTUNServer();
+		
+		if( stun_server != NULL && strlen(stun_server) > 0 )
+		{
+		    std::string stun_url = std::string("stun://") + stun_server;
+		    g_object_set(peer_context->webrtcbin, "stun-server", stun_url.c_str(), NULL);
+		}
+		
 		g_object_set(peer_context->webrtcbin, "latency", encoder->mOptions.latency, NULL);   // this doesn't seem to have an impact?
 	
 		// set latency on the rtpbin (https://github.com/centricular/gstwebrtc-demos/issues/102#issuecomment-575157321)

@@ -93,7 +93,7 @@ imageWriter* imageWriter::Create( const char* resource, const videoOptions& opti
 
 
 // Render
-bool imageWriter::Render( void* image, uint32_t width, uint32_t height, imageFormat format )
+bool imageWriter::Render( void* image, uint32_t width, uint32_t height, imageFormat format, cudaStream_t stream )
 {
 	const bool substreams_success = videoOutput::Render(image, width, height, format);
 
@@ -118,7 +118,7 @@ bool imageWriter::Render( void* image, uint32_t width, uint32_t height, imageFor
 	//CUDA(cudaDeviceSynchronize());   // now done in saveImage()
 	
 	// save the image
-	if( !saveImage(mFileOut, image, width, height, format) )
+	if( !saveImage(mFileOut, image, width, height, format, IMAGE_DEFAULT_SAVE_QUALITY, stream) )
 	{
 		LogError(LOG_IMAGE "imageWriter -- failed to save '%s'\n", mFileOut);
 		return false;

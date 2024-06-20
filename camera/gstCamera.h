@@ -135,7 +135,7 @@ public:
 	 * Capture the next image frame from the camera.
 	 * @see videoSource::Capture
 	 */
-	virtual bool Capture( void** image, imageFormat format, uint64_t timeout=DEFAULT_TIMEOUT, int* status=NULL );
+	virtual bool Capture( void** image, imageFormat format, uint64_t timeout=DEFAULT_TIMEOUT, int* status=NULL, cudaStream_t stream=0 );
 
 	/**
 	 * Capture the next image frame from the camera and convert it to float4 RGBA format,
@@ -170,7 +170,7 @@ public:
 	 * @returns `true` if a frame was successfully captured, otherwise `false` if a timeout
 	 *               or error occurred, or if timeout was 0 and a frame wasn't ready.
 	 */
-	bool CaptureRGBA( float** image, uint64_t timeout=DEFAULT_TIMEOUT, bool zeroCopy=false );
+	bool CaptureRGBA( float** image, uint64_t timeout=DEFAULT_TIMEOUT, bool zeroCopy=false, cudaStream_t stream=0 );
 
 	/**
 	 * Set whether converted RGB(A) images should use ZeroCopy buffer allocation.

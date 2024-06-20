@@ -38,22 +38,22 @@
 /**
  * Convert a YUV I420 planar image to RGB uchar3.
  */
-cudaError_t cudaI420ToRGB(void* input, uchar3* output, size_t width, size_t height);
+cudaError_t cudaI420ToRGB(void* input, uchar3* output, size_t width, size_t height, cudaStream_t stream=0);
 
 /**
  * Convert a YUV I420 planar image to RGB float3.
  */
-cudaError_t cudaI420ToRGB(void* input, float3* output, size_t width, size_t height);
+cudaError_t cudaI420ToRGB(void* input, float3* output, size_t width, size_t height, cudaStream_t stream=0);
 
 /**
  * Convert a YUV I420 planar image to RGBA uchar4.
  */
-cudaError_t cudaI420ToRGBA(void* input, uchar4* output, size_t width, size_t height);
+cudaError_t cudaI420ToRGBA(void* input, uchar4* output, size_t width, size_t height, cudaStream_t stream=0);
 
 /**
  * Convert a YUV I420 planar image to RGB float4.
  */
-cudaError_t cudaI420ToRGBA(void* input, float4* output, size_t width, size_t height);
+cudaError_t cudaI420ToRGBA(void* input, float4* output, size_t width, size_t height, cudaStream_t stream=0);
 
 ///@}
 
@@ -69,22 +69,22 @@ cudaError_t cudaI420ToRGBA(void* input, float4* output, size_t width, size_t hei
 /**
  * Convert a YUV YV12 planar image to RGB uchar3.
  */
-cudaError_t cudaYV12ToRGB(void* input, uchar3* output, size_t width, size_t height);
+cudaError_t cudaYV12ToRGB(void* input, uchar3* output, size_t width, size_t height, cudaStream_t stream=0);
 
 /**
  * Convert a YUV YV12 planar image to RGB float3.
  */
-cudaError_t cudaYV12ToRGB(void* input, float3* output, size_t width, size_t height);
+cudaError_t cudaYV12ToRGB(void* input, float3* output, size_t width, size_t height, cudaStream_t stream=0);
 
 /**
  * Convert a YUV YV12 planar image to RGBA uchar4.
  */
-cudaError_t cudaYV12ToRGBA(void* input, uchar4* output, size_t width, size_t height);
+cudaError_t cudaYV12ToRGBA(void* input, uchar4* output, size_t width, size_t height, cudaStream_t stream=0);
 
 /**
  * Convert a YUV YV12 planar image to RGB float4.
  */
-cudaError_t cudaYV12ToRGBA(void* input, float4* output, size_t width, size_t height);
+cudaError_t cudaYV12ToRGBA(void* input, float4* output, size_t width, size_t height, cudaStream_t stream=0);
 
 ///@}
 
@@ -100,22 +100,22 @@ cudaError_t cudaYV12ToRGBA(void* input, float4* output, size_t width, size_t hei
 /**
  * Convert an RGB uchar3 buffer into YUV I420 planar.
  */
-cudaError_t cudaRGBToI420( uchar3* input, void* output, size_t width, size_t height );
+cudaError_t cudaRGBToI420( uchar3* input, void* output, size_t width, size_t height, cudaStream_t stream=0 );
 
 /**
  * Convert an RGB float3 buffer into YUV I420 planar.
  */
-cudaError_t cudaRGBToI420( float3* input, void* output, size_t width, size_t height );
+cudaError_t cudaRGBToI420( float3* input, void* output, size_t width, size_t height, cudaStream_t stream=0 );
 
 /**
  * Convert an RGBA uchar4 buffer into YUV I420 planar.
  */
-cudaError_t cudaRGBAToI420( uchar4* input, void* output, size_t width, size_t height );
+cudaError_t cudaRGBAToI420( uchar4* input, void* output, size_t width, size_t height, cudaStream_t stream=0 );
 
 /**
  * Convert an RGBA float4 buffer into YUV I420 planar.
  */
-cudaError_t cudaRGBAToI420( float4* input, void* output, size_t width, size_t height );
+cudaError_t cudaRGBAToI420( float4* input, void* output, size_t width, size_t height, cudaStream_t stream=0 );
 
 ///@}
 
@@ -131,22 +131,22 @@ cudaError_t cudaRGBAToI420( float4* input, void* output, size_t width, size_t he
 /**
  * Convert an RGB uchar3 buffer into YUV YV12 planar.
  */
-cudaError_t cudaRGBToYV12( uchar3* input, void* output, size_t width, size_t height );
+cudaError_t cudaRGBToYV12( uchar3* input, void* output, size_t width, size_t height, cudaStream_t stream=0 );
 
 /**
  * Convert an RGB float3 buffer into YUV YV12 planar.
  */
-cudaError_t cudaRGBToYV12( float3* input, void* output, size_t width, size_t height );
+cudaError_t cudaRGBToYV12( float3* input, void* output, size_t width, size_t height, cudaStream_t stream=0 );
 
 /**
  * Convert an RGBA uchar4 buffer into YUV YV12 planar.
  */
-cudaError_t cudaRGBAToYV12( uchar4* input, void* output, size_t width, size_t height );
+cudaError_t cudaRGBAToYV12( uchar4* input, void* output, size_t width, size_t height, cudaStream_t stream=0 );
 
 /**
  * Convert an RGBA float4 buffer into YUV YV12 planar.
  */
-cudaError_t cudaRGBAToYV12( float4* input, void* output, size_t width, size_t height );
+cudaError_t cudaRGBAToYV12( float4* input, void* output, size_t width, size_t height, cudaStream_t stream=0 );
 
 ///@}
 
@@ -162,22 +162,22 @@ cudaError_t cudaRGBAToYV12( float4* input, void* output, size_t width, size_t he
 /**
  * Convert a YUYV 422 packed image into RGB uchar3.
  */
-cudaError_t cudaYUYVToRGB( void* input, uchar3* output, size_t width, size_t height );
+cudaError_t cudaYUYVToRGB( void* input, uchar3* output, size_t width, size_t height, cudaStream_t stream=0 );
 
 /**
  * Convert a YUYV 422 packed image into RGB float3.
  */
-cudaError_t cudaYUYVToRGB( void* input, float3* output, size_t width, size_t height );
+cudaError_t cudaYUYVToRGB( void* input, float3* output, size_t width, size_t height, cudaStream_t stream=0 );
 
 /**
  * Convert a YUYV 422 packed image into RGBA uchar4.
  */
-cudaError_t cudaYUYVToRGBA( void* input, uchar4* output, size_t width, size_t height );
+cudaError_t cudaYUYVToRGBA( void* input, uchar4* output, size_t width, size_t height, cudaStream_t stream=0 );
 
 /**
  * Convert a YUYV 422 packed image into RGBA float4.
  */
-cudaError_t cudaYUYVToRGBA( void* input, float4* output, size_t width, size_t height );
+cudaError_t cudaYUYVToRGBA( void* input, float4* output, size_t width, size_t height, cudaStream_t stream=0 );
 
 ///@}
 
@@ -193,22 +193,22 @@ cudaError_t cudaYUYVToRGBA( void* input, float4* output, size_t width, size_t he
 /**
  * Convert a YVYU 422 packed image into RGB uchar3.
  */
-cudaError_t cudaYVYUToRGB( void* input, uchar3* output, size_t width, size_t height );
+cudaError_t cudaYVYUToRGB( void* input, uchar3* output, size_t width, size_t height, cudaStream_t stream=0 );
 
 /**
  * Convert a YVYU 422 packed image into RGB float3.
  */
-cudaError_t cudaYVYUToRGB( void* input, float3* output, size_t width, size_t height );
+cudaError_t cudaYVYUToRGB( void* input, float3* output, size_t width, size_t height, cudaStream_t stream=0 );
 
 /**
  * Convert a YVYU 422 packed image into RGBA uchar4.
  */
-cudaError_t cudaYVYUToRGBA( void* input, uchar4* output, size_t width, size_t height );
+cudaError_t cudaYVYUToRGBA( void* input, uchar4* output, size_t width, size_t height, cudaStream_t stream=0 );
 
 /**
  * Convert a YVYU 422 packed image into RGBA float4.
  */
-cudaError_t cudaYVYUToRGBA( void* input, float4* output, size_t width, size_t height );
+cudaError_t cudaYVYUToRGBA( void* input, float4* output, size_t width, size_t height, cudaStream_t stream=0 );
 
 ///@}
 
@@ -224,22 +224,22 @@ cudaError_t cudaYVYUToRGBA( void* input, float4* output, size_t width, size_t he
 /**
  * Convert a UYVY 422 packed image into RGB uchar3.
  */
-cudaError_t cudaUYVYToRGB( void* input, uchar3* output, size_t width, size_t height );
+cudaError_t cudaUYVYToRGB( void* input, uchar3* output, size_t width, size_t height, cudaStream_t stream=0 );
 
 /**
  * Convert a UYVY 422 packed image into RGB float3.
  */
-cudaError_t cudaUYVYToRGB( void* input, float3* output, size_t width, size_t height );
+cudaError_t cudaUYVYToRGB( void* input, float3* output, size_t width, size_t height, cudaStream_t stream=0 );
 
 /**
  * Convert a UYVY 422 packed image into RGBA uchar4.
  */
-cudaError_t cudaUYVYToRGBA( void* input, uchar4* output, size_t width, size_t height );
+cudaError_t cudaUYVYToRGBA( void* input, uchar4* output, size_t width, size_t height, cudaStream_t stream=0 );
 
 /**
  * Convert a UYVY 422 packed image into RGBA float4.
  */
-cudaError_t cudaUYVYToRGBA( void* input, float4* output, size_t width, size_t height );
+cudaError_t cudaUYVYToRGBA( void* input, float4* output, size_t width, size_t height, cudaStream_t stream=0 );
 
 ///@}
 
@@ -256,25 +256,25 @@ cudaError_t cudaUYVYToRGBA( void* input, float4* output, size_t width, size_t he
  * Convert an NV12 texture (semi-planar 4:2:0) to RGB uchar3 format.
  * NV12 = 8-bit Y plane followed by an interleaved U/V plane with 2x2 subsampling.
  */
-cudaError_t cudaNV12ToRGB( void* input, uchar3* output, size_t width, size_t height );
+cudaError_t cudaNV12ToRGB( void* input, uchar3* output, size_t width, size_t height, cudaStream_t stream=0 );
 
 /**
  * Convert an NV12 texture (semi-planar 4:2:0) to RGB float3 format.
  * NV12 = 8-bit Y plane followed by an interleaved U/V plane with 2x2 subsampling.
  */
-cudaError_t cudaNV12ToRGB( void* input, float3* output, size_t width, size_t height );
+cudaError_t cudaNV12ToRGB( void* input, float3* output, size_t width, size_t height, cudaStream_t stream=0 );
 
 /**
  * Convert an NV12 texture (semi-planar 4:2:0) to RGBA uchar4 format.
  * NV12 = 8-bit Y plane followed by an interleaved U/V plane with 2x2 subsampling.
  */
-cudaError_t cudaNV12ToRGBA( void* input, uchar4* output, size_t width, size_t height );
+cudaError_t cudaNV12ToRGBA( void* input, uchar4* output, size_t width, size_t height, cudaStream_t stream=0 );
 
 /**
  * Convert an NV12 texture (semi-planar 4:2:0) to RGBA float4 format.
  * NV12 = 8-bit Y plane followed by an interleaved U/V plane with 2x2 subsampling.
  */
-cudaError_t cudaNV12ToRGBA( void* input, float4* output, size_t width, size_t height );
+cudaError_t cudaNV12ToRGBA( void* input, float4* output, size_t width, size_t height, cudaStream_t stream=0 );
 
 ///@}
 

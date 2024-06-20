@@ -150,21 +150,21 @@ public:
 	 * If normalize is false, the image's pixel values are assumed to already be in the range of [0-1]
 	 * Note that if normalization is selected to be performed, it will be done in-place on the image
 	 */
-	void Render( float* image, uint32_t width, uint32_t height, float x=0.0f, float y=30.0f, bool normalize=true );
+	void Render( float* image, uint32_t width, uint32_t height, float x=0.0f, float y=30.0f, bool normalize=true, cudaStream_t stream=0 );
 
 	/**
 	 * Render a CUDA image (uchar3, uchar4, float3, float4) using OpenGL interop.
 	 * This is similar to RenderOnce(), in that it will begin/end the frame also.
 	 * @see videoOutput::Render
 	 */
-	template<typename T> bool Render( T* image, uint32_t width, uint32_t height )		{ return Render((void**)image, width, height, imageFormatFromType<T>()); }
+	template<typename T> bool Render( T* image, uint32_t width, uint32_t height, cudaStream_t stream=0 )		{ return Render((void**)image, width, height, imageFormatFromType<T>(), stream); }
 	
 	/**
 	 * Render a CUDA image (uchar3, uchar4, float3, float4) using OpenGL interop.
 	 * This is similar to RenderOnce(), in that it will begin/end the frame also.
 	 * @see videoOutput::Render
 	 */
-	virtual bool Render( void* image, uint32_t width, uint32_t height, imageFormat format );
+	virtual bool Render( void* image, uint32_t width, uint32_t height, imageFormat format, cudaStream_t stream=0 );
 
 	/**
 	 * Render a CUDA image (uchar3, uchar4, float3, float4) using OpenGL interop.
@@ -172,7 +172,7 @@ public:
 	 * If normalize is false, the image's pixel values are assumed to already be in the range of [0-1]
 	 * Note that if normalization is selected to be performed, it will be done in-place on the image
 	 */
-	void RenderImage( void* image, uint32_t width, uint32_t height, imageFormat format, float x=0.0f, float y=30.0f, bool normalize=true );
+	void RenderImage( void* image, uint32_t width, uint32_t height, imageFormat format, float x=0.0f, float y=30.0f, bool normalize=true, cudaStream_t stream=0 );
 
 	/**
 	 * Begin the frame, render one CUDA image using OpenGL interop, and end the frame.
@@ -181,7 +181,7 @@ public:
 	 * If normalize is false, the image's pixel values are assumed to already be in the range of [0-1]
 	 * Note that if normalization is selected to be performed, it will be done in-place on the image
 	 */
-	void RenderOnce( void* image, uint32_t width, uint32_t height, imageFormat format, float x=5.0f, float y=30.0f, bool normalize=true );
+	void RenderOnce( void* image, uint32_t width, uint32_t height, imageFormat format, float x=5.0f, float y=30.0f, bool normalize=true, cudaStream_t stream=0 );
 
 	/**
 	 * Begin the frame, render one CUDA float4 image using OpenGL interop, and end the frame.
@@ -190,7 +190,7 @@ public:
 	 * If normalize is false, the image's pixel values are assumed to already be in the range of [0-1]
 	 * Note that if normalization is selected to be performed, it will be done in-place on the image
 	 */
-	void RenderOnce( float* image, uint32_t width, uint32_t height, float x=5.0f, float y=30.0f, bool normalize=true );
+	void RenderOnce( float* image, uint32_t width, uint32_t height, float x=5.0f, float y=30.0f, bool normalize=true, cudaStream_t stream=0 );
 
 	///@}
 

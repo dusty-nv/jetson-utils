@@ -71,7 +71,7 @@ public:
 	 * Capture the next decoded frame.
 	 * @see videoSource::Capture()
 	 */
-	virtual bool Capture( void** image, imageFormat format, uint64_t timeout=DEFAULT_TIMEOUT, int* status=NULL );
+	virtual bool Capture( void** image, imageFormat format, uint64_t timeout=DEFAULT_TIMEOUT, int* status=NULL, cudaStream_t stream=0 );
 
 	/**
 	 * Open the stream.

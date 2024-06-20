@@ -325,9 +325,11 @@ static PyObject* PyVideoSource_Capture( PyVideoSource_Object* self, PyObject* ar
 	// parse arguments
 	const char* pyFormat = "rgb8";
 	int pyTimeout = videoSource::DEFAULT_TIMEOUT;
-	static char* kwlist[] = {"format", "timeout", NULL};
+	cudaStream_t stream = 0;
+	
+	static char* kwlist[] = {"format", "timeout", "stream", NULL};
 
-	if( !PyArg_ParseTupleAndKeywords(args, kwds, "|si", kwlist, &pyFormat, &pyTimeout))
+	if( !PyArg_ParseTupleAndKeywords(args, kwds, "|siK", kwlist, &pyFormat, &pyTimeout, &stream) )
 		return NULL;
 
 	// convert signed timeout to unsigned long
@@ -347,7 +349,7 @@ static PyObject* PyVideoSource_Capture( PyVideoSource_Object* self, PyObject* ar
 	bool result = false;
 	
 	Py_BEGIN_ALLOW_THREADS
-	result = self->source->Capture(&ptr, format, timeout, &status);
+	result = self->source->Capture(&ptr, format, timeout, &status, stream);
 	Py_END_ALLOW_THREADS
 	
 	if( !result )
@@ -473,11 +475,11 @@ static bool PyVideoSource_RegisterType( PyObject* module )
 {
 	pyVideoSource_Type.tp_name 	  = PY_UTILS_MODULE_NAME ".videoSource";
 	pyVideoSource_Type.tp_basicsize = sizeof(PyVideoSource_Object);
-	pyVideoSource_Type.tp_flags 	  = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE;
-	pyVideoSource_Type.tp_methods   = pyVideoSource_Methods;
+	pyVideoSource_Type.tp_flags   = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE;
+	pyVideoSource_Type.tp_methods = pyVideoSource_Methods;
 	pyVideoSource_Type.tp_new 	  = PyVideoSource_New;
 	pyVideoSource_Type.tp_init	  = (initproc)PyVideoSource_Init;
-	pyVideoSource_Type.tp_dealloc	  = (destructor)PyVideoSource_Dealloc;
+	pyVideoSource_Type.tp_dealloc = (destructor)PyVideoSource_Dealloc;
 	pyVideoSource_Type.tp_doc  	  = "videoSource interface for cameras, video streams, and images";
 	 
 	if( PyType_Ready(&pyVideoSource_Type) < 0 )
@@ -661,9 +663,10 @@ static PyObject* PyVideoOutput_Render( PyVideoOutput_Object* self, PyObject* arg
 
 	// parse arguments
 	PyObject* capsule = NULL;
-	static char* kwlist[] = {"image", NULL};
+	cudaStream_t stream = 0;
+	static char* kwlist[] = {"image", "stream", NULL};
 
-	if( !PyArg_ParseTupleAndKeywords(args, kwds, "O", kwlist, &capsule))
+	if( !PyArg_ParseTupleAndKeywords(args, kwds, "O|K", kwlist, &capsule, &stream))
 		return NULL;
 
 	// get pointer to image data
@@ -678,7 +681,7 @@ static PyObject* PyVideoOutput_Render( PyVideoOutput_Object* self, PyObject* arg
 	// render the image
 	bool result = false;
 	Py_BEGIN_ALLOW_THREADS
-	result = self->output->Render(img->base.ptr, img->width, img->height, img->format);
+	result = self->output->Render(img->base.ptr, img->width, img->height, img->format, stream);
 	Py_END_ALLOW_THREADS
 	
 	if( !result )

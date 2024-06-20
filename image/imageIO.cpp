@@ -134,7 +134,7 @@ static StbBuffer loadImageIO( const char* filename, int* width, int* height, int
 
 
 // loadImage
-bool loadImage( const char* filename, void** output, int* width, int* height, imageFormat format )
+bool loadImage( const char* filename, void** output, int* width, int* height, imageFormat format, cudaStream_t stream )
 {
 	// validate parameters
 	if( !filename || !output || !width || !height )
@@ -191,7 +191,7 @@ bool loadImage( const char* filename, void** output, int* width, int* height, im
 
 		memcpy(inputImgGPU, img.get(), imageFormatSize(inputFormat, imgWidth, imgHeight));
 
-		if( CUDA_FAILED(cudaConvertColor(inputImgGPU, inputFormat, *output, format, imgWidth, imgHeight)) )
+		if( CUDA_FAILED(cudaConvertColor(inputImgGPU, inputFormat, *output, format, imgWidth, imgHeight, stream)) )
 		{
 			printf(LOG_IMAGE "loadImage() -- failed to convert image from %s to %s ('%s')\n", imageFormatToStr(inputFormat), imageFormatToStr(format), filename);
 			return false;
@@ -213,15 +213,15 @@ bool loadImage( const char* filename, void** output, int* width, int* height, im
 
 
 // loadImageRGBA
-bool loadImageRGBA( const char* filename, float4** output, int* width, int* height )
+bool loadImageRGBA( const char* filename, float4** output, int* width, int* height, cudaStream_t stream )
 {
-	return loadImage(filename, (void**)output, width, height, IMAGE_RGBA32F);
+	return loadImage(filename, (void**)output, width, height, IMAGE_RGBA32F, stream);
 }
 
 // loadImageRGBA
-bool loadImageRGBA( const char* filename, float4** cpu, float4** gpu, int* width, int* height )
+bool loadImageRGBA( const char* filename, float4** cpu, float4** gpu, int* width, int* height, cudaStream_t stream )
 {
-	const bool result = loadImageRGBA(filename, gpu, width, height);
+	const bool result = loadImageRGBA(filename, gpu, width, height, stream);
 
 	if( !result )
 		return false;
@@ -247,7 +247,7 @@ bool loadImageRGBA( const char* filename, float4** cpu, float4** gpu, int* width
 
 
 // saveImage
-bool saveImage( const char* filename, void* ptr, int width, int height, imageFormat format, int quality, const float2& pixel_range, bool sync )
+bool saveImage( const char* filename, void* ptr, int width, int height, imageFormat format, int quality, const float2& pixel_range, bool sync, cudaStream_t stream )
 {
 	// validate parameters
 	if( !filename || !ptr || width <= 0 || height <= 0 )
@@ -303,7 +303,7 @@ bool saveImage( const char* filename, void* ptr, int width, int height, imageFor
 			return false;
 		}
 
-		if( CUDA_FAILED(cudaConvertColor(ptr, format, img, outputFormat, width, height, pixel_range)) )  // TODO limit pixel
+		if( CUDA_FAILED(cudaConvertColor(ptr, format, img, outputFormat, width, height, pixel_range, stream)) )  // TODO limit pixel
 		{
 			LogError(LOG_IMAGE "saveImage() -- failed to convert image from %s to %s ('%s')\n", imageFormatToStr(format), imageFormatToStr(outputFormat), filename);
 			return false;
@@ -313,7 +313,12 @@ bool saveImage( const char* filename, void* ptr, int width, int height, imageFor
 	}
 	
 	if( sync )
-		CUDA(cudaDeviceSynchronize());
+	{
+        if( stream != 0 )
+            CUDA(cudaStreamSynchronize(stream));
+        else
+            CUDA(cudaDeviceSynchronize());
+	}
 	
 	#define release_return(x) 	\
 		if( baseType == IMAGE_FLOAT ) \
@@ -386,8 +391,15 @@ bool saveImage( const char* filename, void* ptr, int width, int height, imageFor
 }
 
 
+// saveImage
+bool saveImage( const char* filename, void* ptr, int width, int height, imageFormat format, int quality, cudaStream_t stream )      
+{ 
+    return saveImage(filename, ptr, width, height, format, quality, make_float2(0,255), true, stream);
+}
+
+
 // saveImageRGBA
-bool saveImageRGBA( const char* filename, float4* ptr, int width, int height, float max_pixel, int quality )
+bool saveImageRGBA( const char* filename, float4* ptr, int width, int height, float max_pixel, int quality, cudaStream_t stream )
 {
-	return saveImage(filename, ptr, width, height, IMAGE_RGBA32F, quality, make_float2(0, max_pixel));
+	return saveImage(filename, ptr, width, height, IMAGE_RGBA32F, quality, make_float2(0, max_pixel), stream);
 }
