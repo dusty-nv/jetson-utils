@@ -14,3 +14,5 @@ python3 cuda-array-interface.py
 
 python3 cuda-to-pytorch.py
 python3 cuda-from-pytorch.py
+
+python3 cuda-streams.py

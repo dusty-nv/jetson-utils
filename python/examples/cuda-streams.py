@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Test multithreaded CUDA streams
+# Test multiple CUDA streams
 import sys
 import argparse
 
@@ -8,8 +8,6 @@ from jetson_utils import (videoSource, videoOutput, loadImage, saveImage, Log,
                           cudaStreamWaitEvent, cudaMemcpy, cudaMalloc, cudaMallocMapped,
                           cudaEventCreate, cudaEventDestroy, cudaEventRecord, cudaResize)
 
-
-# parse command line
 parser = argparse.ArgumentParser(description="View various types of video streams", 
                                  formatter_class=argparse.RawTextHelpFormatter, 
                                  epilog=videoSource.Usage() + videoOutput.Usage() + Log.Usage())
@@ -28,15 +26,19 @@ except:
 	sys.exit(0)
 
 
+# 
+# load an image and test some operations on the stream
+#
 stream = cudaStreamCreate(nonblocking=True)
 stream_blocking = cudaStreamCreate()
 
 print('cuda stream (non-blocking)', stream)
 print('cuda stream (blocking)    ', stream_blocking)
 
+
 img_in = loadImage(args.image_in, stream=stream)
 
-print('INPUT\n', img_in)
+print('input image\n', img_in)
 
 print('cudaMalloc()\n', cudaMalloc(like=img_in))
 print('cudaMemcpy()\n', cudaMemcpy(img_in, stream=stream))
@@ -53,14 +55,17 @@ cudaResize(img_in, img_out, stream=stream)
 
 saveImage(args.image_out, img_out, stream=stream)
 
+
+# 
+# run an optional video test, where the input and outputs
+# operate on different CUDA streams with synchronization
+#
 if not args.video_input or not args.video_output:
     print("--video-input and --video-output not specified, skipping test of video streams")
     sys.exit(0)
     
-
-# create video sources & outputs
-input = videoSource(args.video_input, argv=sys.argv)    # default:  options={'width': 1280, 'height': 720, 'framerate': 30}
-output = videoOutput(args.video_output, argv=sys.argv)  # default:  options={'width': 1280, 'height': 720, 'framerate': 30}
+input = videoSource(args.video_input, argv=sys.argv)
+output = videoOutput(args.video_output, argv=sys.argv)
 
 input_stream = cudaStreamCreate()
 output_stream = cudaStreamCreate()
@@ -86,6 +91,7 @@ while True:
     # render the image
     cudaStreamWaitEvent(output_stream, img.event)
     output.Render(img, stream=output_stream)
+    
     img.stream = None
     img.event = None # cudaEventDestroy()
     
