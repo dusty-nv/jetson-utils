@@ -29,16 +29,18 @@
 #include "Event.h"
 #include "Mutex.h"
 #include "RingBuffer.h"
-
+#if NV_TENSORRT_MAJOR > 8 || (NV_TENSORRT_MAJOR == 8 && NV_TENSORRT_MINOR >= 4)
+#include <nvbufsurface.h>   // JetPack 5
+#endif 
 
 #ifdef ENABLE_NVMM
 #if !GST_CHECK_VERSION(1,0,0)
-	#undef ENABLE_NVMM	// NVMM is only enabled for GStreamer 1.0 and newer
+	// #undef ENABLE_NVMM	// NVMM is only enabled for GStreamer 1.0 and newer
 #endif
 
 #include "NvInfer.h"
 #if NV_TENSORRT_MAJOR > 8 || (NV_TENSORRT_MAJOR == 8 && NV_TENSORRT_MINOR >= 4)
-	#undef ENABLE_NVMM  // debug NVMM under JetPack 5
+	// #undef ENABLE_NVMM  // debug NVMM under JetPack 5
 #endif
 #endif
 
@@ -116,6 +118,10 @@ protected:
 	void*  mNvmmCUDA;
 	size_t mNvmmSize;
 	bool   mNvmmReleaseFD;
+	#if NV_TENSORRT_MAJOR > 8 || (NV_TENSORRT_MAJOR == 8 && NV_TENSORRT_MINOR >= 4)
+		// JetPack 5 nvbufsurface
+		NvBufSurface *mSurfConv = NULL;
+	#endif
 #endif
 };
   

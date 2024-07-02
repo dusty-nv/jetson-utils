@@ -139,7 +139,12 @@ const char* gst_codec_to_string( videoOptions::Codec codec )
 {
 	switch(codec)
 	{
-		case videoOptions::CODEC_RAW: 	return "video/x-raw";
+		case videoOptions::CODEC_RAW: 	
+		#if defined(ENABLE_NVMM)
+			return "video/x-raw(memory:NVMM)";
+		#else
+			return "video/x-raw";
+		#endif
 		case videoOptions::CODEC_H264:	return "video/x-h264";
 		case videoOptions::CODEC_H265:	return "video/x-h265";
 		case videoOptions::CODEC_VP8:	return "video/x-vp8";

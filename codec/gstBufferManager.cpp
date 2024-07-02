@@ -33,6 +33,7 @@
 
 #if NV_TENSORRT_MAJOR > 8 || (NV_TENSORRT_MAJOR == 8 && NV_TENSORRT_MINOR >= 4)
 #include <nvbufsurface.h>   // JetPack 5
+#include <nvbufsurftransform.h>
 #endif
 #endif
 
@@ -61,7 +62,7 @@ gstBufferManager::gstBufferManager( videoOptions* options )
 // destructor
 gstBufferManager::~gstBufferManager()
 {
-	
+	NvBufSurfaceUnMap(mSurfConv, -1, -1);
 }
 
 
@@ -174,8 +175,6 @@ bool gstBufferManager::Enqueue( GstBuffer* gstBuffer, GstCaps* gstCaps )
 			LogError(LOG_GSTREAMER "gstBufferManager -- failed to get FD from NVMM memory\n");
 			return false;
 		}
-	#endif
-	
 		NvBufferParams nvmmParams;
 	
 		if( NvBufferGetParams(nvmmFD, &nvmmParams) != 0 )
@@ -183,7 +182,7 @@ bool gstBufferManager::Enqueue( GstBuffer* gstBuffer, GstCaps* gstCaps )
 			LogError(LOG_GSTREAMER "gstBufferManager -- failed to get NVMM buffer params\n");
 			return false;
 		}
-	
+	#endif
 	#ifdef DEBUG
 		LogVerbose(LOG_GSTREAMER "gstBufferManager -- NVMM buffer payload type:  %s\n", nvmmParams.payloadType == NvBufferPayload_MemHandle ? "MemHandle" : "SurfArray");
 		LogVerbose(LOG_GSTREAMER "gstBufferManager -- NVMM buffer planes:  %u   format=%u\n", nvmmParams.num_planes, (uint32_t)nvmmParams.pixel_format);
@@ -191,15 +190,44 @@ bool gstBufferManager::Enqueue( GstBuffer* gstBuffer, GstCaps* gstCaps )
 		for( uint32_t n=0; n < nvmmParams.num_planes; n++ )
 			LogVerbose(LOG_GSTREAMER "gstBufferManager -- NVMM buffer plane %u:  %ux%u\n", n, nvmmParams.width[n], nvmmParams.height[n]);
 	#endif
+	#if NV_TENSORRT_MAJOR > 8 || (NV_TENSORRT_MAJOR == 8 && NV_TENSORRT_MINOR >= 4)
+	
+		EGLImageKHR eglImage = NULL;
+		// check if layout matches. if not, transform it
+		if (surf->surfaceList[0].layout != NVBUF_LAYOUT_BLOCK_LINEAR)
+		{
+			if (mSurfConv == NULL)
+			{
+				NvBufSurfaceCreateParams params;
+				params.gpuId = 0;
+				params.width = surf->surfaceList[0].width;
+				params.height = surf->surfaceList[0].height;
+				params.size = surf->surfaceList[0].dataSize;
+				params.colorFormat = surf->surfaceList[0].colorFormat;
+				params.layout = NVBUF_LAYOUT_BLOCK_LINEAR;
+				params.memType = NVBUF_MEM_SURFACE_ARRAY;
+				NvBufSurfaceCreate(&mSurfConv, 1, &params);
 
+			}
+			NvBufSurfTransformParams transformParams;
+			memset(&transformParams, 0, sizeof(transformParams));
+			NvBufSurfTransform(surf, mSurfConv, &transformParams);
+			NvBufSurfaceMapEglImage(mSurfConv, 0);
+			eglImage = mSurfConv->surfaceList[0].mappedAddr.eglImage;
+		}
+		else
+		{
+			NvBufSurfaceMapEglImage(surf, 0);
+			eglImage = surf->surfaceList[0].mappedAddr.eglImage;
+		}
+	#else
 		EGLImageKHR eglImage = NvEGLImageFromFd(NULL, nvmmFD);
-		
+	#endif
 		if( !eglImage )
 		{
 			LogError(LOG_GSTREAMER "gstBufferManager -- failed to map EGLImage from NVMM buffer\n");
 			return false;
 		}
-		
 		// nvfilter memory comes from nvvidconv, which handles NvReleaseFd() internally
 		GstMemory* gstMemory = gst_buffer_peek_memory(gstBuffer, 0);
 		
@@ -213,19 +241,19 @@ bool gstBufferManager::Enqueue( GstBuffer* gstBuffer, GstCaps* gstCaps )
 		
 		// update latest frame so capture thread can grab it
 		mNvmmMutex.Lock();
-		
+
+		#if NV_TENSORRT_MAJOR < 8 || (NV_TENSORRT_MAJOR == 8 && NV_TENSORRT_MINOR < 4)
 		if( mNvmmEGL != NULL )
-		{
+		{		
 			NvDestroyEGLImage(NULL, mNvmmEGL);
-			
-			if( mNvmmReleaseFD )
-				NvReleaseFd(mNvmmFD);
+		if( mNvmmReleaseFD )
+			NvReleaseFd(mNvmmFD);
 		}
-		
+		#endif
+
 		mNvmmFD = nvmmFD;
 		mNvmmEGL = eglImage;
 		mNvmmReleaseFD = nvmmReleaseFD;
-		
 		mNvmmMutex.Unlock();
 	}
 	else
@@ -332,15 +360,16 @@ int gstBufferManager::Dequeue( void** output, imageFormat format, uint64_t timeo
 		if( CUDA_FAILED(cudaGraphicsResourceGetMappedEglFrame(&eglFrame, eglResource, 0, 0)) )
 			return -1;
 
-		if( eglFrame.planeCount != 2 )
-			LogWarning(LOG_GSTREAMER "gstBufferManager -- unexpected number of planes in NVMM buffer (%u vs 2 expected)\n", eglFrame.planeCount);
+		// TODO: disabled for now, as this seems to be the case for nvv4l2camerasrc
+		// if( eglFrame.planeCount != 2 )
+		// 	LogWarning(LOG_GSTREAMER "gstBufferManager -- unexpected number of planes in NVMM buffer (%u vs 2 expected)\n", eglFrame.planeCount);
 
 		if( eglFrame.planeDesc[0].width != mOptions->width || eglFrame.planeDesc[0].height != mOptions->height )
 		{
 			LogError(LOG_GSTREAMER "gstBufferManager -- NVMM EGLImage dimensions mismatch (%ux%u when expected %ux%u)", eglFrame.planeDesc[0].width, eglFrame.planeDesc[0].height, mOptions->width, mOptions->height);
 			return -1;
 		}
-		
+		// TODO: we could remove the transform in Enqueue if we could handle cudaEglFrameTypePitch here
 		if( eglFrame.frameType != cudaEglFrameTypeArray )  // cudaEglFrameTypePitch
 		{
 			LogError(LOG_GSTREAMER "gstBufferManager -- NVMM had unexpected frame type (was pitched pointer, expected CUDA array)\n");
@@ -395,10 +424,11 @@ int gstBufferManager::Dequeue( void** output, imageFormat format, uint64_t timeo
 		latestYUV = mNvmmCUDA;
 		
 		CUDA(cudaGraphicsUnregisterResource(eglResource));
+		#if NV_TENSORRT_MAJOR < 8 || (NV_TENSORRT_MAJOR == 8 && NV_TENSORRT_MINOR < 4)
 		NvDestroyEGLImage(NULL, eglImage);
-		
 		if( nvmmReleaseFD )
 			NvReleaseFd(nvmmFD);
+		#endif
 	}
 #endif
 
