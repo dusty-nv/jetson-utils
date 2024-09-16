@@ -1,0 +1,16 @@
+cff-version: 1.2.0
+title: >-
+  Jetson Utils(C++/CUDA/Python multimedia utilities for
+  NVIDIA Jetson)
+message: >-
+  If you use this software, please cite it using the
+  metadata from this file.
+type: software
+authors:
+  - given-names: Dustin
+    family-names: Franklin
+    affiliation: Nvidia
+repository-code: 'https://github.com/dusty-nv/jetson-utils'
+url: 'https://www.jetson-ai-lab.com/'
+abstract: C++/CUDA/Python multimedia utilities for NVIDIA Jetson
+license: MIT
