@@ -782,29 +782,36 @@ set (CUDA_NVCC_INCLUDE_DIRS_USER "")
 set (CUDA_INCLUDE_DIRS ${CUDA_TOOLKIT_INCLUDE})
 
 macro(cuda_find_library_local_first_with_path_ext _var _names _doc _path_ext )
-  if(CMAKE_SIZEOF_VOID_P EQUAL 8)
-    # CUDA 3.2+ on Windows moved the library directories, so we need the new
-    # and old paths.
-    set(_cuda_64bit_lib_dir "${_path_ext}lib/x64" "${_path_ext}lib64" "${_path_ext}libx64" )
-  endif()
-  # CUDA 3.2+ on Windows moved the library directories, so we need to new
-  # (lib/Win32) and the old path (lib).
-  find_library(${_var}
-    NAMES ${_names}
-    PATHS "${CUDA_TOOLKIT_TARGET_DIR}"
-    ENV CUDA_PATH
-    ENV CUDA_LIB_PATH
-    PATH_SUFFIXES ${_cuda_64bit_lib_dir} "${_path_ext}lib/Win32" "${_path_ext}lib" "${_path_ext}libWin32"
-    DOC ${_doc}
-    NO_DEFAULT_PATH
-    )
-  if (NOT CMAKE_CROSSCOMPILING)
-    # Search default search paths, after we search our own set of paths.
-    find_library(${_var}
-      NAMES ${_names}
-      PATHS "/usr/lib/nvidia-current"
-      DOC ${_doc}
-      )
+  if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64")
+    if( EXISTS "/usr/local/cuda/lib64/lib${_names}.so" )
+        set(${_var} "/usr/local/cuda/lib64/lib${_names}.so")
+    endif()
+  else()
+      message("-- cuda_find_library_local_first ${_var} ${_names} ${_path_ext}  ${CUDA_TOOLKIT_TARGET_DIR}")
+      if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+        # CUDA 3.2+ on Windows moved the library directories, so we need the new
+        # and old paths.
+        set(_cuda_64bit_lib_dir "${_path_ext}lib/x64" "${_path_ext}lib64" "${_path_ext}libx64" )
+      endif()
+      # CUDA 3.2+ on Windows moved the library directories, so we need to new
+      # (lib/Win32) and the old path (lib).
+      find_library(${_var}
+        NAMES ${_names}
+        PATHS "${CUDA_TOOLKIT_TARGET_DIR}"
+        ENV CUDA_PATH
+        ENV CUDA_LIB_PATH
+        PATH_SUFFIXES ${_cuda_64bit_lib_dir} "${_path_ext}lib/Win32" "${_path_ext}lib" "${_path_ext}libWin32"
+        DOC ${_doc}
+        NO_DEFAULT_PATH
+        )
+      if (NOT CMAKE_CROSSCOMPILING)
+        # Search default search paths, after we search our own set of paths.
+        find_library(${_var}
+          NAMES ${_names}
+          PATHS "/usr/lib/nvidia-current"
+          DOC ${_doc}
+          )
+      endif()
   endif()
 endmacro()
 
