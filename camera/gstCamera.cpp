@@ -168,17 +168,32 @@ bool gstCamera::buildLaunchStr()
 		ss << "appsink name=mysink";
 	}
 	else
-	{
-		ss << "v4l2src device=" << mOptions.resource.location << " do-timestamp=true ! ";
-		
+	{		
 		if( mOptions.codec != videoOptions::CODEC_UNKNOWN )
-		{
+		{		
+			std::string camerasrc;
+			#if defined(__x86_64__) || defined(__amd64__)
+				camerasrc = "v4l2src";
+				ss << "v4l2src device=" << mOptions.resource.location << " do-timestamp=true ! ";
+			#else 
+				if( mOptions.codec == videoOptions::CODEC_RAW && enable_nvmm )
+				camerasrc = "nvv4l2camerasrc";
+				else
+				camerasrc = "v4l2src";
+			#endif
+			ss << camerasrc << " device=" << mOptions.resource.location << " do-timestamp=true ! ";
+
 			ss << gst_codec_to_string(mOptions.codec) << ", ";
 			
 			if( mOptions.codec == videoOptions::CODEC_RAW )
 				ss << "format=(string)" << gst_format_to_string(mFormatYUV) << ", ";
 			
 			ss << "width=(int)" << GetWidth() << ", height=(int)" << GetHeight() << ", framerate=" << (int)mOptions.frameRate << "/1 ! "; 
+			
+		}
+		else 
+		{
+			ss << "v4l2src device=" << mOptions.resource.location << " do-timestamp=true ! ";
 		}
 		
 		//ss << "queue max-size-buffers=16 ! ";
@@ -243,7 +258,7 @@ bool gstCamera::buildLaunchStr()
 		// V4L2 decoders can only output NVMM memory, if we aren't using NVMM have nvvidconv convert it 
 		if( mOptions.flipMethod != videoOptions::FLIP_NONE || (mOptions.codecType == videoOptions::CODEC_V4L2 && !enable_nvmm) )
 		{
-			if( (enable_nvmm && mOptions.codecType != videoOptions::CODEC_CPU) || mOptions.codecType == videoOptions::CODEC_V4L2 )
+			if( enable_nvmm || mOptions.codecType == videoOptions::CODEC_V4L2 )
 				ss << "nvvidconv flip-method=" << mOptions.flipMethod << " ! " << (enable_nvmm ? "video/x-raw(memory:NVMM) ! " : "video/x-raw ! ");
 			else
 				ss << "videoflip method=" << videoOptions::FlipMethodToStr(mOptions.flipMethod) << " ! ";  // the videoflip enum varies slightly, but the strings are the same
