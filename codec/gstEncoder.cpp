@@ -919,8 +919,12 @@ void gstEncoder::onWebsocketMessage( WebRTCPeer* peer, const char* message, size
 		LogVerbose(LOG_WEBRTC "WebRTC peer disconnected (%s, peer_id=%u)\n", peer->ip_address.c_str(), peer->ID);
 		
 		// remove webrtcbin from pipeline
+		GstBus * bus = gst_pipeline_get_bus(GST_PIPELINE(encoder->mPipeline));
+		gst_bus_set_flushing(bus, true);
 		gst_bin_remove(GST_BIN(encoder->mPipeline), peer_context->webrtcbin);
 		gst_element_set_state(peer_context->webrtcbin, GST_STATE_NULL);
+		gst_bus_set_flushing(bus, false);
+		gst_object_unref(bus);
 		gst_object_unref(peer_context->webrtcbin);
 
 		// disconnect queue pads
