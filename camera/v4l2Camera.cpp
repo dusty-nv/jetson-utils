@@ -387,6 +387,18 @@ bool v4l2Camera::init()
 	return true;
 }
 
+// uninitDevice
+bool v4l2Camera::uninitDevice()
+{
+	// uninitialize buffers, otherwise opening the device again will not work properly!
+	for (int i = 0; i < mBufferCountMMap; ++i) {
+		if (-1 == munmap(mBuffersMMap[i].ptr, mBuffersMMap[i].buf.length))
+            printf("v4l2 -- could not unmap buffers properly\n");
+			return false;
+	}
+	free(mBuffersMMap);
+	return true;
+}
 
 // Open
 bool v4l2Camera::Open()
@@ -411,6 +423,11 @@ bool v4l2Camera::Open()
 // Close
 bool v4l2Camera::Close()
 {
+	// unitialize the buffers before closing the device
+	if (!uninitDevice()) {
+		printf("v4l2 -- could not uninitialize device\n");
+	}
+	
 	// stop streaming
 	enum v4l2_buf_type type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
 
