@@ -30,6 +30,7 @@ jetson-utils is typically built as a submodule of [jetson-inference](https://git
 
 ``` bash
 git clone https://github.com/dusty-nv/jetson-utils
+cd jetson-utils
 mkdir build
 cd build
 cmake ../
