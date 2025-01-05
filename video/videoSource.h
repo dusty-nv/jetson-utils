@@ -28,6 +28,7 @@
 #include "imageFormat.h"		
 #include "commandLine.h"
 
+#include <cstdint>
 
 /**
  * Standard command-line options able to be passed to videoSource::Create()
@@ -105,7 +106,7 @@
  *        You can leave off the `file://` protocol identifier and it will be deduced from the path.
  *        It can be a relative or absolute path.  If a directory is specified that contains images,
  *        those images will be loaded in sequence (sorted alphanumerically).  The path can also
- *        contain wildcard characters, for example `"images/*.jpg"` - however when using wildcards
+ *        contain wildcard characters, for example `"images/ *.jpg"` - however when using wildcards
  *        from the command line, enclose the string in quotes otherwise the OS will pre-expand them.
  *        Supported video formats for loading include MKV, MP4, AVI, and FLV. Supported codecs for 
  *        decoding include H.264, H.265, VP8, VP9, MPEG-2, MPEG-4, and MJPEG. Supported image formats
@@ -333,6 +334,13 @@ public:
 	inline const videoOptions& GetOptions() const	{ return mOptions; }
 
 	/**
+	 * Return true if the extension is in the list of SupportedExtensions.
+	 * @param ext string containing the extension to be checked (should not contain leading dot)
+	 * @see SupportedExtensions for the list of supported video file extensions.
+	 */
+	static bool IsSupportedExtension( const char* ext );
+
+	/**
 	 * Return the interface type of the stream.
 	 * This could be one of the following values:
 	 *
@@ -365,7 +373,7 @@ public:
 	/**
 	 * Convert a class type to a string.
 	 */
-	static const char* TypeToStr( uint32_t type );
+	virtual const char* TypeToStr( uint32_t type ) const;
 	
 	/**
 	 * The default Capture timeout (1000ms)

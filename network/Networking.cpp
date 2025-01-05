@@ -106,7 +106,7 @@ uint32_t getHostByName( const char* name, void* ipAddress, uint32_t size, uint32
 		return 0;
 	}
 	
-	if( ent->h_length > size )
+	if( ent->h_length > (size_t)size )
 	{
 		LogError(LOG_NETWORK "getHostByName() returned IP address longer than the available buffer length (%i vs %u bytes) for host '%s'\n", ent->h_length, size, name);
 		return 0;
