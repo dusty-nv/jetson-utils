@@ -30,12 +30,14 @@
 #include "timespec.h"
 #include "logging.h"
 
+
 #include "cudaColorspace.h"
 
 #define GST_USE_UNSTABLE_API
 #include <gst/webrtc/webrtc.h>
 #include <gst/app/gstappsrc.h>
 
+#include <cassert>
 #include <sstream>
 #include <string.h>
 #include <strings.h>

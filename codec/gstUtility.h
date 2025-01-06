@@ -100,12 +100,5 @@ const char* gst_select_decoder( videoOptions::Codec codec, videoOptions::CodecTy
  */
 const char* gst_select_encoder( videoOptions::Codec codec, videoOptions::CodecType& type );
 
-/**
- * gst_default_codec
- * @internal
- * @ingroup codec
- */
-videoOptions::CodecType gst_default_codec();
-
 
 #endif

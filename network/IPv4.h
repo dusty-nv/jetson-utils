@@ -23,6 +23,7 @@
 #ifndef __NETWORK_IPV4_H_
 #define __NETWORK_IPV4_H_
 
+#include <cstdint>
 #include <string>
 
 

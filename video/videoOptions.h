@@ -28,6 +28,8 @@
 
 #include "URI.h"	
 
+#include <string>
+#include <unordered_set>
 
 /**
  * The videoOptions struct contains common settings that are used
@@ -267,6 +269,12 @@ public:
 	 */
 	std::string sslKey;
 	
+	static inline std::unordered_set<std::string> supported_extensions{
+		"mkv", "mp4", "qt", 
+		"flv", "avi", "h264", 
+		"h265", "mov", "webm"
+	};
+
 	/**
 	 * Log the video settings, with an optional prefix label.
 	 */
@@ -343,6 +351,7 @@ public:
 	static CodecType CodecTypeFromStr( const char* str );
 };
 
+videoOptions::CodecType gst_default_codec();
 
 /**
  * @ingroup video

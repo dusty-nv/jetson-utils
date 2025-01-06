@@ -104,6 +104,8 @@ public:
 	 */
 	static const uint32_t Type = (1 << 1);
 
+	const char* TypeToStr( uint32_t type ) const override;
+
 	/**
 	 * String array of supported video file extensions, terminated
 	 * with a NULL sentinel value.  The supported extension are:
@@ -122,7 +124,7 @@ public:
 	 * @param ext string containing the extension to be checked (should not contain leading dot)
 	 * @see SupportedExtensions for the list of supported video file extensions.
 	 */
-	static bool IsSupportedExtension( const char* ext );
+	// static bool IsSupportedExtension( const char* ext );
 
 protected:
 	gstDecoder( const videoOptions& options );
@@ -136,7 +138,7 @@ protected:
 	bool initPipeline();
 	void destroyPipeline();
 	
-	inline bool isLooping() const { return (mOptions.loop < 0) || ((mOptions.loop > 0) && (mLoopCount < mOptions.loop)); }
+	inline bool isLooping() const { return (mOptions.loop < 0) || ((mOptions.loop > 0) && (mLoopCount < (size_t)mOptions.loop)); }
 
 	// appsink callbacks
 	static void onEOS(_GstAppSink* sink, void* user_data);

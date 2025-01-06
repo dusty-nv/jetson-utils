@@ -60,7 +60,7 @@
  *        You can leave off the `file://` protocol identifier and it will be deduced from the path.
  *        It can be a relative or absolute path.  If a directory is specified that contains images,
  *        those images will be loaded in sequence (sorted alphanumerically).  The path can also
- *        contain wildcard characters, for example `"images/*.jpg"` - however when using wildcards
+ *        contain wildcard characters, for example `"images/ *.jpg"` - however when using wildcards
  *        from the command line, enclose the string in quotes otherwise the OS will pre-expand them.
  *        Supported video formats for loading include MKV, MP4, AVI, and FLV. Supported codecs for 
  *        decoding include H.264, H.265, VP8, VP9, MPEG-2, MPEG-4, and MJPEG. Supported image formats

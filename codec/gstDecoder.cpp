@@ -62,34 +62,6 @@
 //  > rtsp://admin:power@127.0.0.1:8554/test
 //
 
-
-// supported image file extensions
-const char* gstDecoder::SupportedExtensions[] = { "mkv", "mp4", "qt", 
-										"flv", "avi", "h264", 
-										"h265", "mov", "webm", NULL };
-
-bool gstDecoder::IsSupportedExtension( const char* ext )
-{
-	if( !ext )
-		return false;
-
-	uint32_t extCount = 0;
-
-	while(true)
-	{
-		if( !SupportedExtensions[extCount] )
-			break;
-
-		if( strcasecmp(SupportedExtensions[extCount], ext) == 0 )
-			return true;
-
-		extCount++;
-	}
-
-	return false;
-}
-
-
 // constructor
 gstDecoder::gstDecoder( const videoOptions& options ) : videoSource(options)
 {	
@@ -951,7 +923,7 @@ bool gstDecoder::Open()
 		if( isLooping() )
 		{
 			// seek stream back to the beginning
-			GstEvent *seek_event = NULL;
+			// GstEvent *seek_event = NULL;
 
 			const bool seek = gst_element_seek(mPipeline, 1.0, GST_FORMAT_TIME,
 						                    (GstSeekFlags)(GST_SEEK_FLAG_FLUSH | GST_SEEK_FLAG_KEY_UNIT),
@@ -1156,3 +1128,9 @@ void gstDecoder::onWebsocketMessage( WebRTCPeer* peer, const char* message, size
 	gstWebRTC::onWebsocketMessage(peer, message, message_size, user_data);
 }
 
+// TypeToStr
+const char *gstDecoder::TypeToStr(uint32_t type) const {
+  if (type == gstDecoder::Type)
+    return "gstDecoder";
+  return videoSource::TypeToStr(type);
+}

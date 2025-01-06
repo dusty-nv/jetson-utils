@@ -21,10 +21,11 @@
  */
  
 #include "videoOptions.h"
-#include "gstUtility.h"
 
 #include "logging.h"
+
 #include <strings.h>
+#include <cassert>
 
 
 // constructor
@@ -459,4 +460,19 @@ videoOptions::CodecType videoOptions::CodecTypeFromStr( const char* str )
 	
 	return gst_default_codec();
 }
+
+videoOptions::CodecType gst_default_codec()
+{
+#if defined(__aarch64__)
+#if NV_TENSORRT_MAJOR > 8 || (NV_TENSORRT_MAJOR == 8 && NV_TENSORRT_MINOR >= 4)
+	return videoOptions::CODEC_V4L2;	// JetPack 5
+#else
+	return videoOptions::CODEC_OMX;	// JetPack 4
+#endif
+#elif defined(__x86_64__) || defined(__amd64__)
+	return videoOptions::CODEC_CPU;	// x86
+#endif
+}
+
+
 

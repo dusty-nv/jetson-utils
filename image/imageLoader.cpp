@@ -19,7 +19,6 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  */
- 
 #include "imageLoader.h"
 #include "imageIO.h"
 
@@ -216,3 +215,10 @@ void imageLoader::Close()
 }
 
 
+// TypeToStr
+const char *imageLoader::TypeToStr(uint32_t type) const {
+  if (type == imageLoader::Type)
+    return "imageLoader";
+
+  return videoSource::TypeToStr(type);
+}

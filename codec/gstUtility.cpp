@@ -618,18 +618,3 @@ const char* gst_select_encoder( videoOptions::Codec codec, videoOptions::CodecTy
 	return NULL;
 }
 
-
-// gst_default_codec_type
-videoOptions::CodecType gst_default_codec()
-{
-#if defined(__aarch64__)
-#if NV_TENSORRT_MAJOR > 8 || (NV_TENSORRT_MAJOR == 8 && NV_TENSORRT_MINOR >= 4)
-	return videoOptions::CODEC_V4L2;	// JetPack 5
-#else
-	return videoOptions::CODEC_OMX;	// JetPack 4
-#endif
-#elif defined(__x86_64__) || defined(__amd64__)
-	return videoOptions::CODEC_CPU;	// x86
-#endif
-}
-
