@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "jetson-utils"
+version = "2.0.0"
+authors = [{name="Dustin Franklin", email="dustinf@nvidia.com" }]
+description = "C++/CUDA/Python multimedia utilities for NVIDIA Jetson"
+readme = "README.md"
+requires-python = ">=3.6"
+dependencies = [
+  "termcolor",
+  "tabulate",
+  "docker",
+]
+
+[tool.setuptools.packages.find]
+where = ["python"]
+include = ["jetson_utils"]
+namespaces = false
+
+[project.urls]
+"Homepage" = "https://github.com/dusty-nv/jetson-utils"
+"Bug Tracker" = "https://github.com/dusty-nv/jetson-utils/issues"

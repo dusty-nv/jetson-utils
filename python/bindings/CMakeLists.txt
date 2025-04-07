@@ -55,7 +55,6 @@ endif()
 file(GLOB pythonUtilsSources *.cpp)
 
 cuda_add_library(jetson-utils-python-${PYTHON_VERSION_MAJOR}${PYTHON_VERSION_MINOR} SHARED ${pythonUtilsSources})
-
 target_link_libraries(jetson-utils-python-${PYTHON_VERSION_MAJOR}${PYTHON_VERSION_MINOR} jetson-utils ${PYTHON_LIBRARIES})
 
 if(${NUMPY_FOUND})
@@ -77,7 +76,4 @@ else()
 endif()
 
 install(TARGETS jetson-utils-python-${PYTHON_VERSION_MAJOR}${PYTHON_VERSION_MINOR} DESTINATION ${PYTHON_BINDING_INSTALL_DIR})
-
-install(DIRECTORY ../python/Jetson DESTINATION ${PYTHON_BINDING_INSTALL_DIR})
-install(DIRECTORY ../python/jetson DESTINATION ${PYTHON_BINDING_INSTALL_DIR})
-install(DIRECTORY ../python/jetson_utils DESTINATION ${PYTHON_BINDING_INSTALL_DIR})
+install(DIRECTORY ../jetson_utils DESTINATION ${PYTHON_BINDING_INSTALL_DIR})

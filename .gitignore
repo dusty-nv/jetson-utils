@@ -1,2 +1,4 @@
 build/
+venv/
 *.pyc
+*.egg-info

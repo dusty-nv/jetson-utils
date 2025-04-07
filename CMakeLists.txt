@@ -63,14 +63,13 @@ else()
 	message("-- distro version:  ${LSB_RELEASE_VERSION}")
 	message("-- distro codename: ${LSB_RELEASE_CODENAME}")
 
-	# build C/C++ interface
+	# enable includes like <jetson_utils/xyz.h>
 	include_directories(${PROJECT_INCLUDE_DIR})
-	#include_directories(/usr/include/gstreamer-1.0 /usr/lib/aarch64-linux-gnu/gstreamer-1.0/include /usr/include/glib-2.0 /usr/include/libxml2 /usr/lib/aarch64-linux-gnu/glib-2.0/include/)
 
 endif()
 
 # option for enabling/disabling NVMM memory in multimedia stack
-find_library(NVBUF_UTILS NAMES nvbuf_utils PATHS /usr/lib/aarch64-linux-gnu/tegra)
+find_library(NVBUF_UTILS NAMES nvbuf_utils PATHS /usr/lib/${CMAKE_SYSTEM_PROCESSOR}-linux-gnu/tegra)
 message("-- nvbuf_utils:  ${NVBUF_UTILS}")
 
 if(NVBUF_UTILS)
@@ -88,7 +87,14 @@ endif()
 
 # additional paths for includes and libraries
 include_directories(${PROJECT_INCLUDE_DIR}/jetson-utils)
-include_directories(/usr/include/gstreamer-1.0 /usr/include/glib-2.0 /usr/include/libxml2 /usr/include/json-glib-1.0 /usr/include/libsoup-2.4 /usr/lib/${CMAKE_SYSTEM_PROCESSOR}-linux-gnu/gstreamer-1.0/include /usr/lib/${CMAKE_SYSTEM_PROCESSOR}-linux-gnu/glib-2.0/include/)
+
+include_directories(
+	/usr/include/gstreamer-1.0 
+	/usr/include/libxml2  /usr/include/libsoup-2.4 
+	/usr/include/glib-2.0 /usr/include/json-glib-1.0
+	/usr/lib/${CMAKE_SYSTEM_PROCESSOR}-linux-gnu/gstreamer-1.0/include 
+	/usr/lib/${CMAKE_SYSTEM_PROCESSOR}-linux-gnu/glib-2.0/include/
+)
 
 if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64")
 	include_directories(/usr/src/jetson_multimedia_api/include)
@@ -96,11 +102,17 @@ if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64")
 endif()
 
 # build library
-file(GLOB jetsonUtilitySources *.cpp camera/*.cpp codec/*.cpp cuda/*.cu cuda/*.cpp display/*.cpp image/*.cpp input/*.cpp network/*.cpp threads/*.cpp video/*.cpp)
-file(GLOB jetsonUtilityIncludes *.h *.hpp camera/*.h codec/*.h cuda/*.h cuda/*.cuh display/*.h image/*.h image/*.inl input/*.h network/*.h threads/*.h threads/*.inl video/*.h)
+file(GLOB jetsonUtilsCpp cpp/*/*.cpp cuda/*.cpp cuda/*.cu)
+file(GLOB jetsonUtilsInc cpp/*/*.h cpp/*/*.hpp cuda/*.h cuda/*.cuh)
 
-cuda_add_library(jetson-utils SHARED ${jetsonUtilitySources})
-target_link_libraries(jetson-utils GL GLU GLEW gstreamer-1.0 gstapp-1.0 gstpbutils-1.0 gstwebrtc-1.0 gstsdp-1.0 gstrtspserver-1.0 json-glib-1.0 soup-2.4 ${CUDA_nppicc_LIBRARY})	
+cuda_add_library(jetson-utils SHARED ${jetsonUtilsSrc})
+
+target_link_libraries( jetson-utils 
+	GL GLU GLEW ${CUDA_nppicc_LIBRARY}
+	gstreamer-1.0 gstapp-1.0 gstpbutils-1.0 
+	gstwebrtc-1.0 gstsdp-1.0 gstrtspserver-1.0 
+	json-glib-1.0 soup-2.4
+)	
 
 if(NVBUF_UTILS)
 	target_link_libraries(jetson-utils nvbuf_utils)
@@ -109,13 +121,13 @@ endif()
 # transfer all headers to the include directory 
 file(MAKE_DIRECTORY ${PROJECT_INCLUDE_DIR}/jetson-utils)
 
-foreach(include ${jetsonUtilityIncludes})
+foreach(include ${jetsonUtilsInc})
 	message("-- Copying ${include}")
 	configure_file(${include} ${PROJECT_INCLUDE_DIR}/jetson-utils COPYONLY)
 endforeach()
 	
 # install headers
-foreach(include ${jetsonUtilityIncludes})
+foreach(include ${jetsonUtilsInc})
 	install(FILES "${include}" DESTINATION include/jetson-utils)
 endforeach()
 
@@ -125,9 +137,11 @@ install(TARGETS jetson-utils DESTINATION lib EXPORT jetson-utilsConfig)
 # install the cmake project, for importing
 install(EXPORT jetson-utilsConfig DESTINATION share/jetson-utils/cmake)
 
-# build python bindings + samples
+# build python bindings
 add_subdirectory(python)
-add_subdirectory(video/video-viewer)
+
+# build sample apps
+add_subdirectory(cpp/video/video-viewer)
 
 #add_subdirectory(camera/camera-viewer)
 #add_subdirectory(display/gl-display-test)
