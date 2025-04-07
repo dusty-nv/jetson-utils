@@ -3,7 +3,6 @@ C++/CUDA/Python multimedia utilities for NVIDIA Jetson:
 
 |                        |                                                 |
 |------------------------|-------------------------------------------------|
-
 | [`camera/`](cpp/camera/)   | GStreamer-based camera capture (V4L2, MIPI CSI) |
 | [`codec/`](cpp/codec/)     | GStreamer-based hardware video encoder/decoder  |
 | [`cuda/`](cuda/)       | CUDA image processing functions                 |
