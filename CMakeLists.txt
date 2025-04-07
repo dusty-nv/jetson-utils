@@ -102,8 +102,8 @@ if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64")
 endif()
 
 # build library
-file(GLOB jetsonUtilsCpp cpp/*/*.cpp cuda/*.cpp cuda/*.cu)
-file(GLOB jetsonUtilsInc cpp/*/*.h cpp/*/*.hpp cuda/*.h cuda/*.cuh)
+file(GLOB jetsonUtilsSrc cpp/*/*.cpp cuda/*.cpp cuda/*.cu)
+file(GLOB jetsonUtilsInc cpp/*/*.h cpp/*/*.hpp cpp/*/*.inl cuda/*.h cuda/*.cuh)
 
 cuda_add_library(jetson-utils SHARED ${jetsonUtilsSrc})
 
