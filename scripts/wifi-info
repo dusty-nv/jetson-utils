@@ -1,0 +1,118 @@
+#!/usr/bin/env bash
+# Retrieves wifi device info or watches network stats.
+#
+#   wifi-info --device wlan0 --watch 1  # loops over stats about the interface
+#   wifi-info --device wlan0 --verbose  # print all info about wifi device 'wlan0'
+#
+#   wifi-info -w                        # shorthand for above (default interval is 1 second)
+#   wifi-info -v                        # shorthand for above (default device is 'wlan0')
+#
+#   wifi-info --device --ssid MY_SSID   # returns device name connected to that SSID
+#   wifi-info -d -s MY_SSID             # shorthand for above
+#
+# Dependencies:  sudo apt-get install network-manager iw
+set -e
+
+ARGS=()
+FLAGS=()
+
+while (( "$#" )); do
+  case "$1" in
+    -s|--ssid)
+      if [ -n "$2" ] && [ ${2:0:1} != "-" ]; then
+        SSID=$2
+        shift 2
+      else
+        FLAGS+=("ssid")
+      fi
+      ;;
+    -d|--device|-i|--iface)
+      if [ -n "$2" ] && [ ${2:0:1} != "-" ]; then
+        DEVICE=$2
+        shift 2
+      else
+        FLAGS+=("device")
+        shift
+      fi
+      ;;
+    -w|--watch)
+      if [ -n "$2" ] && [ ${2:0:1} != "-" ]; then
+        WATCH=$2
+        shift 2
+      else
+        WATCH=1
+        shift
+      fi
+      ;;
+    -v|--verbose)
+      VERBOSE=1
+      shift
+      ;;
+    -*|--*=) # unsupported flags
+      echo "Error: Unsupported flag $1" >&2
+      exit 1
+      ;;
+    *) # preserve positional arguments
+      ARGS+=("$1")
+      shift
+      ;;
+  esac
+done
+
+if [ ${#FLAGS[@]} == 0 ]; then
+  if [ "$VERBOSE" == 1 ]; then
+    FLAGS+=("ifconfig")
+  fi
+  FLAGS+=("iwconfig")
+fi
+
+function get_wifi_device() {
+  # lookup wifi device interface name (optionally by a specific SSID)
+  if [ -n "$SSID" ]; then
+    DEVICE=$(iwconfig 2>&1 | grep $SSID | awk '{print $1}' | head -n 1) 
+
+    if [ -z "$DEVICE" ]; then
+      echo "Error: could not find network device connected to SSID $SSID" >&2
+      exit 1
+    fi
+  else
+    DEVICE=$(iwconfig 2>&1 | grep ESSID | awk '{print $1}' | head -n 1) 
+
+    if [ -z "$DEVICE" ]; then
+      echo "Error: unable to find any wireless devices in the system" >&2
+      exit 1
+    fi
+  fi
+}
+
+function get_wifi_info() {
+  for i in "${!FLAGS[@]}"
+  do
+    local flag=${FLAGS[$i]}
+
+    if [ $flag == "device" ]; then
+      if [ "$VERBOSE" == 1 ]; then
+        echo "Device: $DEVICE"
+      else
+        echo "$DEVICE"
+      fi  
+    elif [ $flag == "iwconfig" ]; then
+      iwconfig $DEVICE
+    elif [ $flag == "iwconfig" ]; then
+      ifconfig $DEVICE
+    fi
+  done
+}
+
+get_wifi_device
+
+if [ "$WATCH" -gt 0 ]; then
+  while true
+  do
+    date
+    get_wifi_info
+    sleep $WATCH
+  done
+else
+  get_wifi_info
+fi

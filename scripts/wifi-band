@@ -1,0 +1,72 @@
+#!/usr/bin/env bash
+# Changes wifi between 2.4GHz, 5Ghz, auto (self-organizing network)
+#
+#   sudo wifi-band --ssid MY_SSID auto  # dynamically switch between 2.4/5GHz
+#   sudo wifi-band --ssid MY_SSID 2.4   # connect to 2.4GHz AP
+#   sudo wifi-band --ssid MY_SSID 5.0   # connect to 5.0GHz AP
+#
+# Dependencies:  sudo apt-get install network-manager iw
+set -e
+
+while (( "$#" )); do
+  case "$1" in
+    -s|--ssid)
+      if [ -n "$2" ] && [ ${2:0:1} != "-" ]; then
+        SSID=$2
+        shift 2
+      else
+        echo "Error: Argument for $1 is missing" >&2
+        exit 1
+      fi
+      ;;
+    -*|--*=) # unsupported flags
+      echo "Error: Unsupported flag $1" >&2
+      exit 1
+      ;;
+    *) # preserve positional arguments
+      BAND="$1"
+      shift
+      ;;
+  esac
+done
+
+if [[ "$BAND" == "2.4" || "$BAND" == "bg" ]]; then
+	BAND="bg"
+	TYPE="2.4GHz"
+elif [[ "$BAND" == "5.0" || "$BAND" == "5" || "$BAND" == "a" ]]; then
+	BAND="a"
+	TYPE="5.0GHz"
+elif [[ "$BAND" = "auto" ]]; then
+  BAND=""
+  TYPE="2.4GHz/5.0GHz"
+else
+  echo "Error: first positional argument should have been set to desired band (was: $BAND)" >&2
+  echo "Valid options are:  2.4, 5.0, auto" >&2
+  exit 1
+fi
+
+if [[ -z "$SSID" ]]; then
+  echo "Error: SSID should be set with --ssid" >&2
+  exit 1
+fi
+
+# https://unix.stackexchange.com/q/278520
+DEVICE=$(iwconfig 2>&1 | grep $SSID | awk '{print $1}' | head -n 1)  
+
+if [[ -z "$DEVICE" ]]; then
+  DEVICE=$(iwconfig 2>&1 | grep ESSID | awk '{print $1}' | head -n 1) 
+  echo "Connecting $DEVICE to $SSID ($TYPE)"
+fi
+
+echo "Connecting $DEVICE to $SSID ($TYPE)"
+
+nmcli connection modify "$SSID" 802-11-wireless.band "$BAND"
+
+nmcli connection down "$SSID"
+nmcli connection up "$SSID"
+
+iwconfig "$DEVICE"
+ifconfig "$DEVICE"
+
+ping -c 3 google.com
+#speedtest-cli
