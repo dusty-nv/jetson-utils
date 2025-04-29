@@ -14,7 +14,7 @@ C++/CUDA/Python multimedia utilities for NVIDIA Jetson:
 | &nbsp;&nbsp;&nbsp; [`threads/`](cpp/threads/) | Multithreading, locks, and events               |
 | &nbsp;&nbsp;&nbsp; [`video/`](cpp/video/)     | Video streaming interfaces                      |
 | [`cuda/`](cuda/)       | CUDA image processing functions                 |
-| [`docs/`](docs/)       | Collection of Linux recipies and commands       |
+| [`docs/`](docs/)       | Collection of Linux commands and links          |
 | [`python/`](python/)   | Python utilities, examples, and C++ bindings    |
 | [`scripts/`](scripts/) | Standalone shell scripts in Bash or Python      |
 
@@ -27,11 +27,11 @@ Documentation for jetson-utils can be found here:
 * [Camera Streaming and Multimedia](https://github.com/dusty-nv/jetson-inference/blob/master/docs/aux-streaming.md)
 * [Image Manipulation with CUDA](https://github.com/dusty-nv/jetson-inference/blob/master/docs/aux-image.md)
 
-Assorted tips-and-tricks for Linux are kept under [`docs/`](docs/)
+Assorted links and tips-and-tricks for Linux are kept under [`docs/`](docs/)
 
 ### Building from Source (C++/CUDA)
 
-This will build and install the C++/CUDA library (`libjetson-utils.so`) along with the Python C extension module:
+This will build and install the C++/CUDA library (`libjetson-utils.so`) along with the Python extension module:
 
 ``` bash
 git clone https://github.com/dusty-nv/jetson-utils
@@ -48,7 +48,7 @@ If you're missing dependencies, run the [`jetson-inference/CMakePreBuild.sh`](ht
 
 ### Install with Pip (Python only)
 
-This will install the Python-native modules from [`python/jetson_utils`](/python/jetson_utils) which do not use the C++ extension bindings and get installed on top:
+This will install the Python-native modules from [`python/jetson_utils`](/python/jetson_utils) which do not depend on the C++ extension bindings and get installed on top:
 
 ```
 pip3 install -e /path/to/your/jetson-utils
