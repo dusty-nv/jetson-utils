@@ -1,7 +1,8 @@
 import ctypes
 import logging
 
-from jetson_utils import NamedDict, getenv, cuInit, assert_cuda, CUDA_SUCCESS
+from jetson_utils import NamedDict, getenv
+from . import assert_cuda, cuInit, cudaDeviceFamily, cudaCoresPerSM, CUDA_SUCCESS
 
 
 log = logging.getLogger(__name__)

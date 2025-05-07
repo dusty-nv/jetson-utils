@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 import argparse
+import pprint
 
-from jetson_utils import getLogger, Env, String
+from jetson_utils import getLogger, Env, String, as_dtype, cudaDeviceQuery
 
 log = getLogger(__name__)
 
@@ -13,7 +14,9 @@ class Test:
         return dict(
             logging = Test.logging,
             env = Test.env,
-            table = Test.table
+            table = Test.table,
+            dtypes = Test.dtypes,
+            cuda = Test.cuda,
         )
 
     @staticmethod
@@ -44,6 +47,15 @@ class Test:
     @staticmethod
     def table(**kwargs):
         print(String.table(Env))
+
+    @staticmethod
+    def dtypes(**kwargs):
+        print(as_dtype('float16', to='np'))
+        print(as_dtype('int8', to='np'))
+
+    @staticmethod
+    def cuda(**kwargs):
+        pprint.pprint(cudaDeviceQuery(), indent=2)
 
 if __name__ == '__main__':
     Test.all()

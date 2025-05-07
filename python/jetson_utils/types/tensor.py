@@ -1,7 +1,7 @@
 import numpy as np
 import ctypes as C
 
-from jetson_utils import as_dtype
+from . import as_dtype
 
 
 def as_tensor(tensor, to='np', device=None, dtype=None, **kwargs):

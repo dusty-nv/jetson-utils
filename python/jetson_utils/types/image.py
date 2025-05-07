@@ -18,7 +18,7 @@ try: # check for torchvision
     import torchvision.transforms.functional as F
     ImageTypes = (*ImageTypes, torch.Tensor)
     HAS_TORCHVISION=True
-else:
+except:
     HAS_TORCHVISION=False
 
 

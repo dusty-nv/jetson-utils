@@ -1,7 +1,8 @@
 
 import numpy as np
 
-from jetson_utils import cudaToNumpy, cudaToTorch, assert_cuda, getLogger, NamedDict
+from jetson_utils import getLogger, NamedDict
+from . import cudaToNumpy, cudaToTorch, assert_cuda
 
 
 log = getLogger(__name__)

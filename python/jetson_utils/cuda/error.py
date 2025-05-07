@@ -19,12 +19,12 @@ def cudaGetErrorCode(error):
     """
     Convert cudaResult_t or CUresult types to int type
     """
-    if isinstance(result, tuple) and len(result) == 1:
-        result = result[0]
+    if isinstance(error, tuple) and len(error) == 1:
+        error = error[0]
     try:
-        return int(result)
+        return int(error)
     except Exception:
-        raise RuntimeError(f"Unknown error type: {result} ({type(result)})")
+        raise RuntimeError(f"Unknown error type: {error} ({type(error)})")
 
 
 def cudaGetErrorName(error):
