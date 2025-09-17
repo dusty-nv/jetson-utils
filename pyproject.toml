@@ -18,7 +18,7 @@ dependencies = [
 
 [tool.setuptools.packages.find]
 where = ["python"]
-include = ["jetson_utils"]
+include = ["jetson_utils*"]
 namespaces = false
 
 [project.urls]
