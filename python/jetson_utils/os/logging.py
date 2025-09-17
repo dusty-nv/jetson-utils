@@ -34,7 +34,8 @@ class Logger(logging.Logger):
     def verbose(self, *args, **kwargs):
         self.log(logging.VERBOSE, *args, **kwargs)
 
-    def getLevels(self):
+    @staticmethod
+    def getLevels():
         return dict(
             debug = logging.DEBUG,
             verbose = logging.VERBOSE,
