@@ -1,3 +1,4 @@
+import os
 import shutil
 import subprocess
 
@@ -21,7 +22,7 @@ def shell(cmd, echo=True, capture_output=False, dry_run=None, **kwargs):
         endline = f' \\\n    '
         
         dry_run_msg = '(Skipping shell command during DRY RUN)'
-        default_msg = dry_run_msg if dry_run else 'Running shell command'
+        default_msg = dry_run_msg if dry_run else 'Running shell command:'
 
         if isinstance(echo, str):
             echo = echo + ' ' + (dry_run_msg if dry_run else '') 
