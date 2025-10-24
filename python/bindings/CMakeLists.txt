@@ -89,9 +89,22 @@ message("-- CMake module path:  ${CMAKE_MODULE_PATH}")
 
 # Try to find NumPy using our detected Python executable
 if(PYTHON_EXECUTABLE)
-	# Use our detected Python executable to find NumPy
+	message("-- checking for NumPy with Python: ${PYTHON_EXECUTABLE}")
+	
+	# First, let's check what Python packages are available
+	execute_process(COMMAND ${PYTHON_EXECUTABLE} -c "import sys; print('Python path:'); [print(p) for p in sys.path]" 
+		OUTPUT_VARIABLE PYTHON_PATH_OUTPUT 
+		OUTPUT_STRIP_TRAILING_WHITESPACE
+		RESULT_VARIABLE PYTHON_PATH_RESULT)
+	
+	if(PYTHON_PATH_RESULT EQUAL 0)
+		message("-- Python path: ${PYTHON_PATH_OUTPUT}")
+	endif()
+	
+	# Try to find NumPy
 	execute_process(COMMAND ${PYTHON_EXECUTABLE} -c "import numpy as n; print(n.__version__); print(n.get_include())" 
 		OUTPUT_VARIABLE NUMPY_OUTPUT 
+		ERROR_VARIABLE NUMPY_ERROR
 		OUTPUT_STRIP_TRAILING_WHITESPACE
 		RESULT_VARIABLE NUMPY_RESULT)
 	
@@ -110,6 +123,17 @@ if(PYTHON_EXECUTABLE)
 		link_directories(${NUMPY_INCLUDE_DIR}/../lib)
 	else()
 		message("-- NumPy not found")
+		message("-- NumPy error: ${NUMPY_ERROR}")
+		
+		# Try to find NumPy in common locations
+		execute_process(COMMAND ${PYTHON_EXECUTABLE} -c "import site; print(site.getsitepackages())" 
+			OUTPUT_VARIABLE SITE_PACKAGES 
+			OUTPUT_STRIP_TRAILING_WHITESPACE
+			RESULT_VARIABLE SITE_RESULT)
+		
+		if(SITE_RESULT EQUAL 0)
+			message("-- site-packages: ${SITE_PACKAGES}")
+		endif()
 	endif()
 else()
 	# Fallback to standard CMake NumPy detection
