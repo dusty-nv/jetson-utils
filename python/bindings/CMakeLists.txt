@@ -24,6 +24,15 @@ unset(PYTHONLIBS_VERSION_STRING CACHE)
 # locate requested python version
 message("-- detecting Python ${PYTHON_BINDING_VERSION}...")
 
+# First try to find Python in the virtual environment
+find_program(PYTHON_EXECUTABLE python${PYTHON_BINDING_VERSION} PATHS /opt/venv/bin /opt/env/bin /usr/bin /usr/local/bin)
+
+if(PYTHON_EXECUTABLE)
+	message("-- found Python executable: ${PYTHON_EXECUTABLE}")
+	# Set the Python executable for CMake's detection
+	set(Python_EXECUTABLE ${PYTHON_EXECUTABLE})
+endif()
+
 # Try to find Python using modern CMake detection
 find_package(Python${PYTHON_BINDING_VERSION} COMPONENTS Interpreter Development QUIET)
 
@@ -119,6 +128,34 @@ if(PYTHON_EXECUTABLE)
 	
 	# Debug: Check what Python executable was actually used
 	message("-- Python_EXECUTABLE after find_package: ${Python_EXECUTABLE}")
+	
+	# If CMake's detection failed, try direct NumPy detection with our Python
+	if(NOT Python_NumPy_FOUND)
+		message("-- CMake NumPy detection failed, trying direct detection with ${PYTHON_EXECUTABLE}")
+		execute_process(COMMAND ${PYTHON_EXECUTABLE} -c "import numpy; print(numpy.__version__); print(numpy.get_include())" 
+			OUTPUT_VARIABLE NUMPY_DIRECT_OUTPUT 
+			ERROR_VARIABLE NUMPY_DIRECT_ERROR
+			OUTPUT_STRIP_TRAILING_WHITESPACE
+			RESULT_VARIABLE NUMPY_DIRECT_RESULT)
+		
+		if(NUMPY_DIRECT_RESULT EQUAL 0)
+			# Parse NumPy version and include directory
+			string(REPLACE "\n" ";" NUMPY_LINES ${NUMPY_DIRECT_OUTPUT})
+			list(GET NUMPY_LINES 0 NUMPY_VERSION)
+			list(GET NUMPY_LINES 1 NUMPY_INCLUDE_DIR)
+			
+			set(NUMPY_FOUND TRUE)
+			set(Python_NumPy_FOUND TRUE)
+			message("-- found NumPy version:  ${NUMPY_VERSION} (via direct detection)")
+			message("-- found NumPy include:  ${NUMPY_INCLUDE_DIR}")
+			
+			add_definitions(-DHAS_NUMPY)
+			include_directories(${NUMPY_INCLUDE_DIR})
+			link_directories(${NUMPY_INCLUDE_DIR}/../lib)
+		else()
+			message("-- direct NumPy detection also failed: ${NUMPY_DIRECT_ERROR}")
+		endif()
+	endif()
 	
 	# Debug: Test if the Python executable we're using actually has NumPy
 	execute_process(COMMAND ${Python_EXECUTABLE} -c "import numpy; print('NumPy version:', numpy.__version__); print('NumPy include:', numpy.get_include())" 
