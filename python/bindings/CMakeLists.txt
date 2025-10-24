@@ -27,14 +27,18 @@ message("-- PYTHON_BINDING_VERSION: ${PYTHON_BINDING_VERSION}")
 
 # First try to find Python in the virtual environment
 # Check for the specific version requested
+message("-- Looking for Python executable: /opt/venv/bin/python${PYTHON_BINDING_VERSION}")
 if(EXISTS "/opt/venv/bin/python${PYTHON_BINDING_VERSION}")
 	set(PYTHON_EXECUTABLE "/opt/venv/bin/python${PYTHON_BINDING_VERSION}")
 	message("-- found Python executable in virtual environment: ${PYTHON_EXECUTABLE}")
 else()
+	message("-- Python ${PYTHON_BINDING_VERSION} not found in /opt/venv/bin/, trying general search...")
 	# Fallback to general search
 	find_program(PYTHON_EXECUTABLE python${PYTHON_BINDING_VERSION} PATHS /opt/venv/bin /opt/env/bin /usr/bin /usr/local/bin)
 	if(PYTHON_EXECUTABLE)
 		message("-- found Python executable: ${PYTHON_EXECUTABLE}")
+	else()
+		message("-- No Python executable found for version ${PYTHON_BINDING_VERSION}")
 	endif()
 endif()
 
@@ -74,11 +78,44 @@ message("-- Trying to find Python${PYTHON_BINDING_VERSION} with CMake...")
 find_package(Python${PYTHON_BINDING_VERSION} COMPONENTS Interpreter Development QUIET)
 message("-- Python${PYTHON_BINDING_VERSION}_FOUND: ${Python${PYTHON_BINDING_VERSION}_FOUND}")
 
+# Debug: Check what Python executable we have
+if(PYTHON_EXECUTABLE)
+	message("-- Current PYTHON_EXECUTABLE: ${PYTHON_EXECUTABLE}")
+	# Check if the Python executable matches the requested version
+	execute_process(COMMAND ${PYTHON_EXECUTABLE} -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')" OUTPUT_VARIABLE ACTUAL_PYTHON_VERSION OUTPUT_STRIP_TRAILING_WHITESPACE)
+	message("-- Actual Python version: ${ACTUAL_PYTHON_VERSION}")
+	message("-- Requested Python version: ${PYTHON_BINDING_VERSION}")
+	
+	# If the versions don't match, clear the executable
+	if(NOT ACTUAL_PYTHON_VERSION STREQUAL PYTHON_BINDING_VERSION)
+		message("-- Version mismatch! Clearing PYTHON_EXECUTABLE")
+		unset(PYTHON_EXECUTABLE)
+	endif()
+endif()
+
 # If not found, try alternative detection methods for uv environments
 if(NOT Python${PYTHON_BINDING_VERSION}_FOUND)
 	message("-- CMake Python detection failed, trying direct detection...")
 	# Try to find Python executable directly
 	find_program(PYTHON_EXECUTABLE python${PYTHON_BINDING_VERSION} PATHS /opt/venv/bin /opt/env/bin /usr/bin /usr/local/bin)
+	
+	# If still not found, try to find any Python executable and check its version
+	if(NOT PYTHON_EXECUTABLE)
+		message("-- No Python executable found for version ${PYTHON_BINDING_VERSION}, trying to find any Python...")
+		find_program(PYTHON_EXECUTABLE python3 PATHS /opt/venv/bin /opt/env/bin /usr/bin /usr/local/bin)
+		if(PYTHON_EXECUTABLE)
+			execute_process(COMMAND ${PYTHON_EXECUTABLE} -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')" OUTPUT_VARIABLE FOUND_PYTHON_VERSION OUTPUT_STRIP_TRAILING_WHITESPACE)
+			message("-- Found Python executable: ${PYTHON_EXECUTABLE} (version ${FOUND_PYTHON_VERSION})")
+			
+			# If the found version matches what we're looking for, use it
+			if(FOUND_PYTHON_VERSION STREQUAL PYTHON_BINDING_VERSION)
+				message("-- Using found Python executable for version ${PYTHON_BINDING_VERSION}")
+			else()
+				message("-- Found Python version ${FOUND_PYTHON_VERSION} but need ${PYTHON_BINDING_VERSION}, clearing...")
+				unset(PYTHON_EXECUTABLE)
+			endif()
+		endif()
+	endif()
 	
 	if(PYTHON_EXECUTABLE)
 		message("-- Found Python executable: ${PYTHON_EXECUTABLE}")
@@ -344,6 +381,21 @@ else()
 	message("-- PYTHON_EXECUTABLE: ${PYTHON_EXECUTABLE}")
 	message("-- PYTHON_INCLUDE_DIRS: ${PYTHON_INCLUDE_DIRS}")
 	message("-- PYTHON_LIBRARIES: ${PYTHON_LIBRARIES}")
+	
+	# Try to find what Python executables are available
+	message("-- Available Python executables:")
+	execute_process(COMMAND find /opt/venv/bin -name "python*" OUTPUT_VARIABLE AVAILABLE_PYTHONS OUTPUT_STRIP_TRAILING_WHITESPACE)
+	message("-- ${AVAILABLE_PYTHONS}")
+	
+	# Try to find what Python libraries are available
+	message("-- Available Python libraries:")
+	execute_process(COMMAND find /opt/venv -name "libpython*" OUTPUT_VARIABLE AVAILABLE_LIBS OUTPUT_STRIP_TRAILING_WHITESPACE)
+	message("-- ${AVAILABLE_LIBS}")
+	
+	# Try to find what Python include directories are available
+	message("-- Available Python include directories:")
+	execute_process(COMMAND find /opt/venv -name "python*" -type d OUTPUT_VARIABLE AVAILABLE_INCLUDES OUTPUT_STRIP_TRAILING_WHITESPACE)
+	message("-- ${AVAILABLE_INCLUDES}")
 endif()
 
 if(${NUMPY_FOUND})
