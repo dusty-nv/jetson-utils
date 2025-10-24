@@ -87,67 +87,55 @@ include_directories(${PYTHON_INCLUDE_DIRS})
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}")
 message("-- CMake module path:  ${CMAKE_MODULE_PATH}")
 
-# Try to find NumPy using our detected Python executable
+# Use CMake's built-in NumPy detection (available since CMake 3.12)
+# This is more reliable than custom detection methods
 if(PYTHON_EXECUTABLE)
-	message("-- checking for NumPy with Python: ${PYTHON_EXECUTABLE}")
-	
-	# First, let's check what Python packages are available
-	execute_process(COMMAND ${PYTHON_EXECUTABLE} -c "import sys; print('Python path:'); [print(p) for p in sys.path]" 
-		OUTPUT_VARIABLE PYTHON_PATH_OUTPUT 
-		OUTPUT_STRIP_TRAILING_WHITESPACE
-		RESULT_VARIABLE PYTHON_PATH_RESULT)
-	
-	if(PYTHON_PATH_RESULT EQUAL 0)
-		message("-- Python path: ${PYTHON_PATH_OUTPUT}")
-	endif()
-	
-	# Try to find NumPy
-	execute_process(COMMAND ${PYTHON_EXECUTABLE} -c "import numpy as n; print(n.__version__); print(n.get_include())" 
-		OUTPUT_VARIABLE NUMPY_OUTPUT 
-		ERROR_VARIABLE NUMPY_ERROR
-		OUTPUT_STRIP_TRAILING_WHITESPACE
-		RESULT_VARIABLE NUMPY_RESULT)
-	
-	if(NUMPY_RESULT EQUAL 0)
-		# Parse NumPy version and include directory
-		string(REPLACE "\n" ";" NUMPY_LINES ${NUMPY_OUTPUT})
-		list(GET NUMPY_LINES 0 NUMPY_VERSION)
-		list(GET NUMPY_LINES 1 NUMPY_INCLUDE_DIR)
-		
-		set(NUMPY_FOUND TRUE)
-		message("-- found NumPy version:  ${NUMPY_VERSION}")
-		message("-- found NumPy include:  ${NUMPY_INCLUDE_DIR}")
-		
-		add_definitions(-DHAS_NUMPY)
-		include_directories(${NUMPY_INCLUDE_DIR})
-		link_directories(${NUMPY_INCLUDE_DIR}/../lib)
-	else()
-		message("-- NumPy not found")
-		message("-- NumPy error: ${NUMPY_ERROR}")
-		
-		# Try to find NumPy in common locations
-		execute_process(COMMAND ${PYTHON_EXECUTABLE} -c "import site; print(site.getsitepackages())" 
-			OUTPUT_VARIABLE SITE_PACKAGES 
-			OUTPUT_STRIP_TRAILING_WHITESPACE
-			RESULT_VARIABLE SITE_RESULT)
-		
-		if(SITE_RESULT EQUAL 0)
-			message("-- site-packages: ${SITE_PACKAGES}")
-		endif()
-	endif()
-else()
-	# Fallback to standard CMake NumPy detection
-	find_package(NumPy QUIET)
-	
-	if(${NUMPY_FOUND})
-		message("-- found NumPy version:  ${NUMPY_VERSION}")
-		message("-- found NumPy include:  ${NUMPY_INCLUDE_DIR}")
+	# Set the Python executable for CMake's NumPy detection
+	set(Python_EXECUTABLE ${PYTHON_EXECUTABLE})
+endif()
 
-		add_definitions(-DHAS_NUMPY)
-		include_directories(${NUMPY_INCLUDE_DIR})
-		link_directories(${NUMPY_INCLUDE_DIR}/../lib)
-	else()
-		message("-- NumPy not found")
+# Use CMake's built-in NumPy detection
+find_package(Python COMPONENTS NumPy QUIET)
+
+if(Python_NumPy_FOUND)
+	set(NUMPY_FOUND TRUE)
+	set(NUMPY_VERSION ${Python_NumPy_VERSION})
+	set(NUMPY_INCLUDE_DIR ${Python_NumPy_INCLUDE_DIRS})
+	
+	message("-- found NumPy version:  ${NUMPY_VERSION}")
+	message("-- found NumPy include:  ${NUMPY_INCLUDE_DIR}")
+	
+	add_definitions(-DHAS_NUMPY)
+	include_directories(${NUMPY_INCLUDE_DIR})
+	link_directories(${NUMPY_INCLUDE_DIR}/../lib)
+else()
+	message("-- NumPy not found")
+	
+	# Fallback to custom detection if CMake's method fails
+	if(PYTHON_EXECUTABLE)
+		message("-- trying custom NumPy detection...")
+		execute_process(COMMAND ${PYTHON_EXECUTABLE} -c "import numpy as n; print(n.__version__); print(n.get_include())" 
+			OUTPUT_VARIABLE NUMPY_OUTPUT 
+			ERROR_VARIABLE NUMPY_ERROR
+			OUTPUT_STRIP_TRAILING_WHITESPACE
+			RESULT_VARIABLE NUMPY_RESULT)
+		
+		if(NUMPY_RESULT EQUAL 0)
+			# Parse NumPy version and include directory
+			string(REPLACE "\n" ";" NUMPY_LINES ${NUMPY_OUTPUT})
+			list(GET NUMPY_LINES 0 NUMPY_VERSION)
+			list(GET NUMPY_LINES 1 NUMPY_INCLUDE_DIR)
+			
+			set(NUMPY_FOUND TRUE)
+			message("-- found NumPy version:  ${NUMPY_VERSION} (via custom detection)")
+			message("-- found NumPy include:  ${NUMPY_INCLUDE_DIR}")
+			
+			add_definitions(-DHAS_NUMPY)
+			include_directories(${NUMPY_INCLUDE_DIR})
+			link_directories(${NUMPY_INCLUDE_DIR}/../lib)
+		else()
+			message("-- custom NumPy detection also failed: ${NUMPY_ERROR}")
+		endif()
 	endif()
 endif()
 
