@@ -25,10 +25,19 @@ unset(PYTHONLIBS_VERSION_STRING CACHE)
 message("-- detecting Python ${PYTHON_BINDING_VERSION}...")
 
 # First try to find Python in the virtual environment
-find_program(PYTHON_EXECUTABLE python${PYTHON_BINDING_VERSION} PATHS /opt/venv/bin /opt/env/bin /usr/bin /usr/local/bin)
+# Check if /opt/venv/bin/python3.12 exists specifically
+if(EXISTS "/opt/venv/bin/python3.12")
+	set(PYTHON_EXECUTABLE "/opt/venv/bin/python3.12")
+	message("-- found Python executable in virtual environment: ${PYTHON_EXECUTABLE}")
+else()
+	# Fallback to general search
+	find_program(PYTHON_EXECUTABLE python${PYTHON_BINDING_VERSION} PATHS /opt/venv/bin /opt/env/bin /usr/bin /usr/local/bin)
+	if(PYTHON_EXECUTABLE)
+		message("-- found Python executable: ${PYTHON_EXECUTABLE}")
+	endif()
+endif()
 
 if(PYTHON_EXECUTABLE)
-	message("-- found Python executable: ${PYTHON_EXECUTABLE}")
 	# Set the Python executable for CMake's detection
 	set(Python_EXECUTABLE ${PYTHON_EXECUTABLE})
 endif()
