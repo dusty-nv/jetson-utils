@@ -6,9 +6,9 @@
 # If you want to support another version of Python, add it here.
 #
 if(LSB_RELEASE_CODENAME MATCHES "noble")
-  set(PYTHON_BINDING_VERSIONS 3.12)
+  set(PYTHON_BINDING_VERSIONS 3.10 3.12)
 elseif(LSB_RELEASE_CODENAME MATCHES "jammy")
-	set(PYTHON_BINDING_VERSIONS 3.10)
+	set(PYTHON_BINDING_VERSIONS 3.8 3.10)
 elseif(LSB_RELEASE_CODENAME MATCHES "focal")
 	set(PYTHON_BINDING_VERSIONS 3.8)
 else()

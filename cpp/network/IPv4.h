@@ -24,6 +24,7 @@
 #define __NETWORK_IPV4_H_
 
 #include <string>
+#include <cstdint>
 
 
 /**
