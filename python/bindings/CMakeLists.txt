@@ -100,8 +100,38 @@ if(PYTHON_EXECUTABLE)
 	unset(Python_NumPy_INCLUDE_DIRS CACHE)
 	unset(Python_NumPy_LIBRARIES CACHE)
 	
+	# Also clear the general Python variables
+	unset(Python_FOUND CACHE)
+	unset(Python_EXECUTABLE CACHE)
+	unset(Python_VERSION CACHE)
+	unset(Python_INCLUDE_DIRS CACHE)
+	unset(Python_LIBRARIES CACHE)
+	
+	# Force CMake to use our specific Python executable
+	set(Python_EXECUTABLE ${PYTHON_EXECUTABLE} CACHE FILEPATH "Python executable" FORCE)
+	
+	# Debug: Check what Python executable CMake is actually using
+	message("-- Python_EXECUTABLE after setting: ${Python_EXECUTABLE}")
+	message("-- PYTHON_EXECUTABLE: ${PYTHON_EXECUTABLE}")
+	
 	# Use the specific Python version we detected
 	find_package(Python${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR} COMPONENTS NumPy QUIET)
+	
+	# Debug: Check what Python executable was actually used
+	message("-- Python_EXECUTABLE after find_package: ${Python_EXECUTABLE}")
+	
+	# Debug: Test if the Python executable we're using actually has NumPy
+	execute_process(COMMAND ${Python_EXECUTABLE} -c "import numpy; print('NumPy version:', numpy.__version__); print('NumPy include:', numpy.get_include())" 
+		OUTPUT_VARIABLE NUMPY_TEST_OUTPUT 
+		ERROR_VARIABLE NUMPY_TEST_ERROR
+		OUTPUT_STRIP_TRAILING_WHITESPACE
+		RESULT_VARIABLE NUMPY_TEST_RESULT)
+	
+	if(NUMPY_TEST_RESULT EQUAL 0)
+		message("-- NumPy test with ${Python_EXECUTABLE} succeeded: ${NUMPY_TEST_OUTPUT}")
+	else()
+		message("-- NumPy test with ${Python_EXECUTABLE} failed: ${NUMPY_TEST_ERROR}")
+	endif()
 else()
 	# Fallback to general Python detection
 	find_package(Python COMPONENTS NumPy QUIET)
