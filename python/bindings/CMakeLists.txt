@@ -30,7 +30,7 @@ find_package(Python${PYTHON_BINDING_VERSION} COMPONENTS Interpreter Development 
 # If not found, try alternative detection methods for uv environments
 if(NOT Python${PYTHON_BINDING_VERSION}_FOUND)
 	# Try to find Python executable directly
-	find_program(PYTHON_EXECUTABLE python${PYTHON_BINDING_VERSION} PATHS /opt/env/bin /usr/bin /usr/local/bin)
+	find_program(PYTHON_EXECUTABLE python${PYTHON_BINDING_VERSION} PATHS /opt/venv/bin /opt/env/bin /usr/bin /usr/local/bin)
 	
 	if(PYTHON_EXECUTABLE)
 		# Get Python version and paths
@@ -126,6 +126,24 @@ if(PYTHON_EXECUTABLE)
 		ERROR_VARIABLE NUMPY_TEST_ERROR
 		OUTPUT_STRIP_TRAILING_WHITESPACE
 		RESULT_VARIABLE NUMPY_TEST_RESULT)
+	
+	# Also test with the original PYTHON_EXECUTABLE if it's different
+	if(NOT Python_EXECUTABLE STREQUAL PYTHON_EXECUTABLE)
+		message("-- also testing with original PYTHON_EXECUTABLE: ${PYTHON_EXECUTABLE}")
+		execute_process(COMMAND ${PYTHON_EXECUTABLE} -c "import numpy; print('NumPy version:', numpy.__version__); print('NumPy include:', numpy.get_include())" 
+			OUTPUT_VARIABLE NUMPY_TEST_OUTPUT2 
+			ERROR_VARIABLE NUMPY_TEST_ERROR2
+			OUTPUT_STRIP_TRAILING_WHITESPACE
+			RESULT_VARIABLE NUMPY_TEST_RESULT2)
+		
+		if(NUMPY_TEST_RESULT2 EQUAL 0)
+			message("-- NumPy test with ${PYTHON_EXECUTABLE} succeeded: ${NUMPY_TEST_OUTPUT2}")
+			# Use the working Python executable
+			set(Python_EXECUTABLE ${PYTHON_EXECUTABLE})
+		else()
+			message("-- NumPy test with ${PYTHON_EXECUTABLE} also failed: ${NUMPY_TEST_ERROR2}")
+		endif()
+	endif()
 	
 	if(NUMPY_TEST_RESULT EQUAL 0)
 		message("-- NumPy test with ${Python_EXECUTABLE} succeeded: ${NUMPY_TEST_OUTPUT}")
