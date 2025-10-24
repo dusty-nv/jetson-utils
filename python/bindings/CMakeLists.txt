@@ -1,3 +1,6 @@
+# Set CMake policies to suppress deprecation warnings
+cmake_policy(SET CMP0148 NEW)
+
 # clear CMakeCache of Python version
 unset(PYTHONINTERP_FOUND CACHE)
 unset(PYTHON_EXECUTABLE CACHE)
@@ -21,25 +24,59 @@ unset(PYTHONLIBS_VERSION_STRING CACHE)
 # locate requested python version
 message("-- detecting Python ${PYTHON_BINDING_VERSION}...")
 
-# Use modern CMake Python detection
+# Try to find Python using modern CMake detection
 find_package(Python${PYTHON_BINDING_VERSION} COMPONENTS Interpreter Development QUIET)
 
+# If not found, try alternative detection methods for uv environments
 if(NOT Python${PYTHON_BINDING_VERSION}_FOUND)
-	message("-- Python ${PYTHON_BINDING_VERSION} wasn't found")
-	return()
+	# Try to find Python executable directly
+	find_program(PYTHON_EXECUTABLE python${PYTHON_BINDING_VERSION} PATHS /opt/env/bin /usr/bin /usr/local/bin)
+	
+	if(PYTHON_EXECUTABLE)
+		# Get Python version and paths
+		execute_process(COMMAND ${PYTHON_EXECUTABLE} -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')" OUTPUT_VARIABLE PYTHON_VERSION_STRING OUTPUT_STRIP_TRAILING_WHITESPACE)
+		execute_process(COMMAND ${PYTHON_EXECUTABLE} -c "import sys; print(sys.prefix)" OUTPUT_VARIABLE PYTHON_PREFIX OUTPUT_STRIP_TRAILING_WHITESPACE)
+		execute_process(COMMAND ${PYTHON_EXECUTABLE} -c "import sys; print(sys.exec_prefix)" OUTPUT_VARIABLE PYTHON_EXEC_PREFIX OUTPUT_STRIP_TRAILING_WHITESPACE)
+		
+		# Set version components
+		string(REPLACE "." ";" PYTHON_VERSION_LIST ${PYTHON_VERSION_STRING})
+		list(GET PYTHON_VERSION_LIST 0 PYTHON_VERSION_MAJOR)
+		list(GET PYTHON_VERSION_LIST 1 PYTHON_VERSION_MINOR)
+		
+		# Set include and library paths
+		set(PYTHON_INCLUDE_DIRS "${PYTHON_PREFIX}/include/python${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}")
+		set(PYTHON_LIBRARIES "${PYTHON_EXEC_PREFIX}/lib/libpython${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}.so")
+		
+		# Check if paths exist
+		if(EXISTS ${PYTHON_INCLUDE_DIRS} AND EXISTS ${PYTHON_LIBRARIES})
+			set(Python${PYTHON_BINDING_VERSION}_FOUND TRUE)
+			set(PYTHONLIBS_FOUND TRUE)
+			message("-- found Python version:  ${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR} (via direct detection)")
+			message("-- found Python include:  ${PYTHON_INCLUDE_DIRS}")
+			message("-- found Python library:  ${PYTHON_LIBRARIES}")
+		else()
+			message("-- Python ${PYTHON_BINDING_VERSION} wasn't found")
+			return()
+		endif()
+	else()
+		message("-- Python ${PYTHON_BINDING_VERSION} wasn't found")
+		return()
+	endif()
 endif()
 
 # Set variables for compatibility with existing code
-set(PYTHON_EXECUTABLE ${Python${PYTHON_BINDING_VERSION}_EXECUTABLE})
-set(PYTHON_INCLUDE_DIRS ${Python${PYTHON_BINDING_VERSION}_INCLUDE_DIRS})
-set(PYTHON_LIBRARIES ${Python${PYTHON_BINDING_VERSION}_LIBRARIES})
-set(PYTHON_VERSION_MAJOR ${Python${PYTHON_BINDING_VERSION}_VERSION_MAJOR})
-set(PYTHON_VERSION_MINOR ${Python${PYTHON_BINDING_VERSION}_VERSION_MINOR})
-set(PYTHONLIBS_FOUND TRUE)
+if(Python${PYTHON_BINDING_VERSION}_FOUND)
+	set(PYTHON_EXECUTABLE ${Python${PYTHON_BINDING_VERSION}_EXECUTABLE})
+	set(PYTHON_INCLUDE_DIRS ${Python${PYTHON_BINDING_VERSION}_INCLUDE_DIRS})
+	set(PYTHON_LIBRARIES ${Python${PYTHON_BINDING_VERSION}_LIBRARIES})
+	set(PYTHON_VERSION_MAJOR ${Python${PYTHON_BINDING_VERSION}_VERSION_MAJOR})
+	set(PYTHON_VERSION_MINOR ${Python${PYTHON_BINDING_VERSION}_VERSION_MINOR})
+	set(PYTHONLIBS_FOUND TRUE)
 
-message("-- found Python version:  ${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}")
-message("-- found Python include:  ${PYTHON_INCLUDE_DIRS}")
-message("-- found Python library:  ${PYTHON_LIBRARIES}") 
+	message("-- found Python version:  ${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}")
+	message("-- found Python include:  ${PYTHON_INCLUDE_DIRS}")
+	message("-- found Python library:  ${PYTHON_LIBRARIES}")
+endif() 
 
 include_directories(${PYTHON_INCLUDE_DIRS})
 
