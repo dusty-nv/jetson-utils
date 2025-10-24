@@ -23,11 +23,12 @@ unset(PYTHONLIBS_VERSION_STRING CACHE)
 
 # locate requested python version
 message("-- detecting Python ${PYTHON_BINDING_VERSION}...")
+message("-- PYTHON_BINDING_VERSION: ${PYTHON_BINDING_VERSION}")
 
 # First try to find Python in the virtual environment
-# Check if /opt/venv/bin/python3.12 exists specifically
-if(EXISTS "/opt/venv/bin/python3.12")
-	set(PYTHON_EXECUTABLE "/opt/venv/bin/python3.12")
+# Check for the specific version requested
+if(EXISTS "/opt/venv/bin/python${PYTHON_BINDING_VERSION}")
+	set(PYTHON_EXECUTABLE "/opt/venv/bin/python${PYTHON_BINDING_VERSION}")
 	message("-- found Python executable in virtual environment: ${PYTHON_EXECUTABLE}")
 else()
 	# Fallback to general search
@@ -69,27 +70,73 @@ if(PYTHON_EXECUTABLE)
 endif()
 
 # Try to find Python using modern CMake detection
+message("-- Trying to find Python${PYTHON_BINDING_VERSION} with CMake...")
 find_package(Python${PYTHON_BINDING_VERSION} COMPONENTS Interpreter Development QUIET)
+message("-- Python${PYTHON_BINDING_VERSION}_FOUND: ${Python${PYTHON_BINDING_VERSION}_FOUND}")
 
 # If not found, try alternative detection methods for uv environments
 if(NOT Python${PYTHON_BINDING_VERSION}_FOUND)
+	message("-- CMake Python detection failed, trying direct detection...")
 	# Try to find Python executable directly
 	find_program(PYTHON_EXECUTABLE python${PYTHON_BINDING_VERSION} PATHS /opt/venv/bin /opt/env/bin /usr/bin /usr/local/bin)
 	
 	if(PYTHON_EXECUTABLE)
+		message("-- Found Python executable: ${PYTHON_EXECUTABLE}")
 		# Get Python version and paths
 		execute_process(COMMAND ${PYTHON_EXECUTABLE} -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')" OUTPUT_VARIABLE PYTHON_VERSION_STRING OUTPUT_STRIP_TRAILING_WHITESPACE)
 		execute_process(COMMAND ${PYTHON_EXECUTABLE} -c "import sys; print(sys.prefix)" OUTPUT_VARIABLE PYTHON_PREFIX OUTPUT_STRIP_TRAILING_WHITESPACE)
 		execute_process(COMMAND ${PYTHON_EXECUTABLE} -c "import sys; print(sys.exec_prefix)" OUTPUT_VARIABLE PYTHON_EXEC_PREFIX OUTPUT_STRIP_TRAILING_WHITESPACE)
+		message("-- Python version string: ${PYTHON_VERSION_STRING}")
+		message("-- Python prefix: ${PYTHON_PREFIX}")
+		message("-- Python exec prefix: ${PYTHON_EXEC_PREFIX}")
 		
 		# Set version components
 		string(REPLACE "." ";" PYTHON_VERSION_LIST ${PYTHON_VERSION_STRING})
 		list(GET PYTHON_VERSION_LIST 0 PYTHON_VERSION_MAJOR)
 		list(GET PYTHON_VERSION_LIST 1 PYTHON_VERSION_MINOR)
+		message("-- Python version major: ${PYTHON_VERSION_MAJOR}")
+		message("-- Python version minor: ${PYTHON_VERSION_MINOR}")
 		
-		# Set include and library paths
-		set(PYTHON_INCLUDE_DIRS "${PYTHON_PREFIX}/include/python${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}")
-		set(PYTHON_LIBRARIES "${PYTHON_EXEC_PREFIX}/lib/libpython${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}.so")
+		# Try multiple possible include and library paths
+		set(PYTHON_INCLUDE_CANDIDATES
+			"${PYTHON_PREFIX}/include/python${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}"
+			"${PYTHON_PREFIX}/include/python${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}m"
+			"${PYTHON_EXEC_PREFIX}/include/python${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}"
+			"${PYTHON_EXEC_PREFIX}/include/python${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}m"
+			"/usr/include/python${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}"
+			"/usr/include/python${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}m"
+		)
+		
+		set(PYTHON_LIBRARY_CANDIDATES
+			"${PYTHON_EXEC_PREFIX}/lib/libpython${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}.so"
+			"${PYTHON_EXEC_PREFIX}/lib/libpython${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}m.so"
+			"${PYTHON_PREFIX}/lib/libpython${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}.so"
+			"${PYTHON_PREFIX}/lib/libpython${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}m.so"
+			"/usr/lib/${CMAKE_SYSTEM_PROCESSOR}-linux-gnu/libpython${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}.so"
+			"/usr/lib/${CMAKE_SYSTEM_PROCESSOR}-linux-gnu/libpython${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}m.so"
+		)
+		
+		# Find the first existing include directory
+		message("-- Searching for Python include directory...")
+		foreach(INCLUDE_CANDIDATE ${PYTHON_INCLUDE_CANDIDATES})
+			message("-- Checking include candidate: ${INCLUDE_CANDIDATE}")
+			if(EXISTS ${INCLUDE_CANDIDATE})
+				set(PYTHON_INCLUDE_DIRS ${INCLUDE_CANDIDATE})
+				message("-- Found include directory: ${PYTHON_INCLUDE_DIRS}")
+				break()
+			endif()
+		endforeach()
+		
+		# Find the first existing library
+		message("-- Searching for Python library...")
+		foreach(LIBRARY_CANDIDATE ${PYTHON_LIBRARY_CANDIDATES})
+			message("-- Checking library candidate: ${LIBRARY_CANDIDATE}")
+			if(EXISTS ${LIBRARY_CANDIDATE})
+				set(PYTHON_LIBRARIES ${LIBRARY_CANDIDATE})
+				message("-- Found library: ${PYTHON_LIBRARIES}")
+				break()
+			endif()
+		endforeach()
 		
 		# Check if paths exist
 		if(EXISTS ${PYTHON_INCLUDE_DIRS} AND EXISTS ${PYTHON_LIBRARIES})
@@ -100,6 +147,10 @@ if(NOT Python${PYTHON_BINDING_VERSION}_FOUND)
 			message("-- found Python library:  ${PYTHON_LIBRARIES}")
 		else()
 			message("-- Python ${PYTHON_BINDING_VERSION} wasn't found")
+			message("-- Include dir candidates: ${PYTHON_INCLUDE_CANDIDATES}")
+			message("-- Library candidates: ${PYTHON_LIBRARY_CANDIDATES}")
+			message("-- Found include: ${PYTHON_INCLUDE_DIRS}")
+			message("-- Found library: ${PYTHON_LIBRARIES}")
 			return()
 		endif()
 	else()
@@ -277,8 +328,23 @@ endif()
 # build the bindings
 file(GLOB pythonUtilsSources *.cpp)
 
-cuda_add_library(jetson-utils-python-${PYTHON_VERSION_MAJOR}${PYTHON_VERSION_MINOR} SHARED ${pythonUtilsSources})
-target_link_libraries(jetson-utils-python-${PYTHON_VERSION_MAJOR}${PYTHON_VERSION_MINOR} jetson-utils ${PYTHON_LIBRARIES})
+message("-- Building Python bindings for version ${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}")
+message("-- Python sources: ${pythonUtilsSources}")
+message("-- Python libraries: ${PYTHON_LIBRARIES}")
+message("-- Python include dirs: ${PYTHON_INCLUDE_DIRS}")
+
+# Only build if we have valid Python detection
+if(PYTHON_EXECUTABLE AND PYTHON_INCLUDE_DIRS AND PYTHON_LIBRARIES)
+	message("-- Creating Python binding target...")
+	cuda_add_library(jetson-utils-python-${PYTHON_VERSION_MAJOR}${PYTHON_VERSION_MINOR} SHARED ${pythonUtilsSources})
+	target_link_libraries(jetson-utils-python-${PYTHON_VERSION_MAJOR}${PYTHON_VERSION_MINOR} jetson-utils ${PYTHON_LIBRARIES})
+	message("-- Python binding target created successfully")
+else()
+	message("-- Skipping Python binding creation - missing required components")
+	message("-- PYTHON_EXECUTABLE: ${PYTHON_EXECUTABLE}")
+	message("-- PYTHON_INCLUDE_DIRS: ${PYTHON_INCLUDE_DIRS}")
+	message("-- PYTHON_LIBRARIES: ${PYTHON_LIBRARIES}")
+endif()
 
 if(${NUMPY_FOUND})
 	if(DEFINED NUMPY_VERSION AND NUMPY_VERSION VERSION_GREATER_EQUAL "2.0")
