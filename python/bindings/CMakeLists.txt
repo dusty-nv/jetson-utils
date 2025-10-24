@@ -88,19 +88,34 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}")
 message("-- CMake module path:  ${CMAKE_MODULE_PATH}")
 
 # Use CMake's built-in NumPy detection (available since CMake 3.12)
-# This is more reliable than custom detection methods
+# This is more reliable than custom detection methods and handles virtual environments properly
 if(PYTHON_EXECUTABLE)
 	# Set the Python executable for CMake's NumPy detection
 	set(Python_EXECUTABLE ${PYTHON_EXECUTABLE})
+	message("-- using Python executable for NumPy detection: ${PYTHON_EXECUTABLE}")
+	
+	# Clear any cached Python variables to force detection with our specific Python
+	unset(Python_NumPy_FOUND CACHE)
+	unset(Python_NumPy_VERSION CACHE)
+	unset(Python_NumPy_INCLUDE_DIRS CACHE)
+	unset(Python_NumPy_LIBRARIES CACHE)
+	
+	# Use the specific Python version we detected
+	find_package(Python${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR} COMPONENTS NumPy QUIET)
+else()
+	# Fallback to general Python detection
+	find_package(Python COMPONENTS NumPy QUIET)
 endif()
 
-# Use CMake's built-in NumPy detection
-find_package(Python COMPONENTS NumPy QUIET)
-
-if(Python_NumPy_FOUND)
+if(Python_NumPy_FOUND OR Python${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}_NumPy_FOUND)
 	set(NUMPY_FOUND TRUE)
-	set(NUMPY_VERSION ${Python_NumPy_VERSION})
-	set(NUMPY_INCLUDE_DIR ${Python_NumPy_INCLUDE_DIRS})
+	if(Python_NumPy_FOUND)
+		set(NUMPY_VERSION ${Python_NumPy_VERSION})
+		set(NUMPY_INCLUDE_DIR ${Python_NumPy_INCLUDE_DIRS})
+	else()
+		set(NUMPY_VERSION ${Python${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}_NumPy_VERSION})
+		set(NUMPY_INCLUDE_DIR ${Python${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}_NumPy_INCLUDE_DIRS})
+	endif()
 	
 	message("-- found NumPy version:  ${NUMPY_VERSION}")
 	message("-- found NumPy include:  ${NUMPY_INCLUDE_DIR}")
