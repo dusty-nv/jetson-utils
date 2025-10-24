@@ -21,15 +21,23 @@ unset(PYTHONLIBS_VERSION_STRING CACHE)
 # locate requested python version
 message("-- detecting Python ${PYTHON_BINDING_VERSION}...")
 
-find_package(PythonInterp ${PYTHON_BINDING_VERSION} QUIET)
-find_package(PythonLibs ${PYTHON_BINDING_VERSION} QUIET)
+# Use modern CMake Python detection
+find_package(Python${PYTHON_BINDING_VERSION} COMPONENTS Interpreter Development QUIET)
 
-if(NOT ${PYTHONLIBS_FOUND})
+if(NOT Python${PYTHON_BINDING_VERSION}_FOUND)
 	message("-- Python ${PYTHON_BINDING_VERSION} wasn't found")
 	return()
 endif()
 
-message("-- found Python version:  ${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR} (${PYTHONLIBS_VERSION_STRING})")
+# Set variables for compatibility with existing code
+set(PYTHON_EXECUTABLE ${Python${PYTHON_BINDING_VERSION}_EXECUTABLE})
+set(PYTHON_INCLUDE_DIRS ${Python${PYTHON_BINDING_VERSION}_INCLUDE_DIRS})
+set(PYTHON_LIBRARIES ${Python${PYTHON_BINDING_VERSION}_LIBRARIES})
+set(PYTHON_VERSION_MAJOR ${Python${PYTHON_BINDING_VERSION}_VERSION_MAJOR})
+set(PYTHON_VERSION_MINOR ${Python${PYTHON_BINDING_VERSION}_VERSION_MINOR})
+set(PYTHONLIBS_FOUND TRUE)
+
+message("-- found Python version:  ${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}")
 message("-- found Python include:  ${PYTHON_INCLUDE_DIRS}")
 message("-- found Python library:  ${PYTHON_LIBRARIES}") 
 
