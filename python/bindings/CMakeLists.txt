@@ -40,6 +40,32 @@ endif()
 if(PYTHON_EXECUTABLE)
 	# Set the Python executable for CMake's detection
 	set(Python_EXECUTABLE ${PYTHON_EXECUTABLE})
+	
+	# Debug: Test the Python executable directly
+	execute_process(COMMAND ${PYTHON_EXECUTABLE} -c "import sys; print('Python version:', sys.version); print('Python executable:', sys.executable); print('Python prefix:', sys.prefix)" 
+		OUTPUT_VARIABLE PYTHON_DEBUG_OUTPUT 
+		ERROR_VARIABLE PYTHON_DEBUG_ERROR
+		OUTPUT_STRIP_TRAILING_WHITESPACE
+		RESULT_VARIABLE PYTHON_DEBUG_RESULT)
+	
+	if(PYTHON_DEBUG_RESULT EQUAL 0)
+		message("-- Python debug info: ${PYTHON_DEBUG_OUTPUT}")
+	else()
+		message("-- Python debug failed: ${PYTHON_DEBUG_ERROR}")
+	endif()
+	
+	# Debug: Test NumPy directly
+	execute_process(COMMAND ${PYTHON_EXECUTABLE} -c "import numpy; print('NumPy version:', numpy.__version__); print('NumPy location:', numpy.__file__)" 
+		OUTPUT_VARIABLE NUMPY_DEBUG_OUTPUT 
+		ERROR_VARIABLE NUMPY_DEBUG_ERROR
+		OUTPUT_STRIP_TRAILING_WHITESPACE
+		RESULT_VARIABLE NUMPY_DEBUG_RESULT)
+	
+	if(NUMPY_DEBUG_RESULT EQUAL 0)
+		message("-- NumPy debug info: ${NUMPY_DEBUG_OUTPUT}")
+	else()
+		message("-- NumPy debug failed: ${NUMPY_DEBUG_ERROR}")
+	endif()
 endif()
 
 # Try to find Python using modern CMake detection
