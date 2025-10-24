@@ -66,16 +66,19 @@ endif()
 
 # Set variables for compatibility with existing code
 if(Python${PYTHON_BINDING_VERSION}_FOUND)
-	set(PYTHON_EXECUTABLE ${Python${PYTHON_BINDING_VERSION}_EXECUTABLE})
-	set(PYTHON_INCLUDE_DIRS ${Python${PYTHON_BINDING_VERSION}_INCLUDE_DIRS})
-	set(PYTHON_LIBRARIES ${Python${PYTHON_BINDING_VERSION}_LIBRARIES})
-	set(PYTHON_VERSION_MAJOR ${Python${PYTHON_BINDING_VERSION}_VERSION_MAJOR})
-	set(PYTHON_VERSION_MINOR ${Python${PYTHON_BINDING_VERSION}_VERSION_MINOR})
-	set(PYTHONLIBS_FOUND TRUE)
+	# Only set variables if they haven't been set by direct detection
+	if(NOT PYTHON_EXECUTABLE)
+		set(PYTHON_EXECUTABLE ${Python${PYTHON_BINDING_VERSION}_EXECUTABLE})
+		set(PYTHON_INCLUDE_DIRS ${Python${PYTHON_BINDING_VERSION}_INCLUDE_DIRS})
+		set(PYTHON_LIBRARIES ${Python${PYTHON_BINDING_VERSION}_LIBRARIES})
+		set(PYTHON_VERSION_MAJOR ${Python${PYTHON_BINDING_VERSION}_VERSION_MAJOR})
+		set(PYTHON_VERSION_MINOR ${Python${PYTHON_BINDING_VERSION}_VERSION_MINOR})
+		set(PYTHONLIBS_FOUND TRUE)
 
-	message("-- found Python version:  ${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}")
-	message("-- found Python include:  ${PYTHON_INCLUDE_DIRS}")
-	message("-- found Python library:  ${PYTHON_LIBRARIES}")
+		message("-- found Python version:  ${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}")
+		message("-- found Python include:  ${PYTHON_INCLUDE_DIRS}")
+		message("-- found Python library:  ${PYTHON_LIBRARIES}")
+	endif()
 endif() 
 
 include_directories(${PYTHON_INCLUDE_DIRS})
@@ -83,17 +86,45 @@ include_directories(${PYTHON_INCLUDE_DIRS})
 # attempt to find numpy
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}")
 message("-- CMake module path:  ${CMAKE_MODULE_PATH}")
-find_package(NumPy QUIET)
 
-if(${NUMPY_FOUND})
-	message("-- found NumPy version:  ${NUMPY_VERSION}")
-	message("-- found NumPy include:  ${NUMPY_INCLUDE_DIR}")
-
-	add_definitions(-DHAS_NUMPY)
-	include_directories(${NUMPY_INCLUDE_DIR})
-	link_directories(${NUMPY_INCLUDE_DIR}/../lib)
+# Try to find NumPy using our detected Python executable
+if(PYTHON_EXECUTABLE)
+	# Use our detected Python executable to find NumPy
+	execute_process(COMMAND ${PYTHON_EXECUTABLE} -c "import numpy as n; print(n.__version__); print(n.get_include())" 
+		OUTPUT_VARIABLE NUMPY_OUTPUT 
+		OUTPUT_STRIP_TRAILING_WHITESPACE
+		RESULT_VARIABLE NUMPY_RESULT)
+	
+	if(NUMPY_RESULT EQUAL 0)
+		# Parse NumPy version and include directory
+		string(REPLACE "\n" ";" NUMPY_LINES ${NUMPY_OUTPUT})
+		list(GET NUMPY_LINES 0 NUMPY_VERSION)
+		list(GET NUMPY_LINES 1 NUMPY_INCLUDE_DIR)
+		
+		set(NUMPY_FOUND TRUE)
+		message("-- found NumPy version:  ${NUMPY_VERSION}")
+		message("-- found NumPy include:  ${NUMPY_INCLUDE_DIR}")
+		
+		add_definitions(-DHAS_NUMPY)
+		include_directories(${NUMPY_INCLUDE_DIR})
+		link_directories(${NUMPY_INCLUDE_DIR}/../lib)
+	else()
+		message("-- NumPy not found")
+	endif()
 else()
-	message("-- NumPy not found")
+	# Fallback to standard CMake NumPy detection
+	find_package(NumPy QUIET)
+	
+	if(${NUMPY_FOUND})
+		message("-- found NumPy version:  ${NUMPY_VERSION}")
+		message("-- found NumPy include:  ${NUMPY_INCLUDE_DIR}")
+
+		add_definitions(-DHAS_NUMPY)
+		include_directories(${NUMPY_INCLUDE_DIR})
+		link_directories(${NUMPY_INCLUDE_DIR}/../lib)
+	else()
+		message("-- NumPy not found")
+	endif()
 endif()
 
 # build the bindings
