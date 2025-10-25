@@ -54,7 +54,6 @@ cudaError_t cudaBayerToRGB( uint8_t* input, uchar3* output, size_t width, size_t
 		return cudaErrorInvalidValue;
 	
 	NppStreamContext nppStreamContext;
-	nppGetStreamContext(&nppStreamContext);
 	nppStreamContext.hStream = stream;
 	
 	const NppStatus result = nppiCFAToRGB_8u_C1C3R_Ctx(input, width * sizeof(uint8_t), size, roi, 

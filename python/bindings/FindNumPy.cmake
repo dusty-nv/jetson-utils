@@ -15,7 +15,7 @@
 unset(NUMPY_VERSION)
 unset(NUMPY_INCLUDE_DIR)
 
-if(PYTHONINTERP_FOUND)
+if(PYTHONINTERP_FOUND OR PYTHON_EXECUTABLE)
   execute_process(COMMAND "${PYTHON_EXECUTABLE}" "-c"
     "import numpy as n; print(n.__version__); print(n.get_include());"
     RESULT_VARIABLE __result
@@ -43,7 +43,7 @@ if(PYTHONINTERP_FOUND)
     endif()
   endif()
 else()
-  message(STATUS "To find NumPy Python interpretator is required to be found.")
+  message(STATUS "To find NumPy Python interpreter is required to be found.")
 endif()
 
 include(FindPackageHandleStandardArgs)
