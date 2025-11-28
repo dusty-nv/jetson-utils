@@ -141,7 +141,7 @@ inline void* RingBuffer::Peek( uint32_t flags )
 
 	if( flags & Write )
 		bufferIndex = (mLatestWrite + 1) % mNumBuffers;
-	else if( flags & ReadLatest )
+	else if( (flags & ReadLatest) == ReadLatest )
 		bufferIndex = mLatestWrite;
 	else if( flags & Read )
 		bufferIndex = mLatestRead;
@@ -181,14 +181,14 @@ inline void* RingBuffer::Next( uint32_t flags )
 		bufferIndex  = mLatestWrite;
 		mReadOnce    = false;
 	}
-	else if( (flags & ReadOnce) && mReadOnce )
+	else if( (flags & ReadOnce) == ReadOnce && mReadOnce )
 	{
 		if( flags & Threaded )
 			mMutex.Unlock();
 
 		return NULL;
 	}
-	else if( flags & ReadLatest )
+	else if( (flags & ReadLatest) == ReadLatest )
 	{
 		mLatestRead = mLatestWrite;
 		bufferIndex = mLatestWrite;
