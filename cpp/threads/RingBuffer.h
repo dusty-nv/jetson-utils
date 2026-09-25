@@ -85,6 +85,13 @@ public:
 	inline void* Next( uint32_t flags );
 
 	/**
+	 * Get the index of the buffer most recently returned by Next(Write).
+	 * Valid after at least one Next(Write) call; useful for tracking the
+	 * lifetime of a specific slot when buffers are handed off zero-copy.
+	 */
+	inline uint32_t GetLatestWrite() const	{ return mLatestWrite; }
+
+	/**
 	 * Get the flags of the ring buffer.
 	 */
 	inline uint32_t GetFlags() const;

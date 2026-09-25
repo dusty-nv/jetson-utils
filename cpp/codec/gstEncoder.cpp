@@ -33,14 +33,13 @@
 #include "cudaColorspace.h"
 
 #define GST_USE_UNSTABLE_API
-#include <gst/webrtc/webrtc.h>
 #include <gst/app/gstappsrc.h>
-
-#include <sstream>
+#include <gst/webrtc/webrtc.h>
 #include <string.h>
 #include <strings.h>
 #include <unistd.h>
 
+#include <sstream>
 
 // supported video file extensions
 const char* gstEncoder::SupportedExtensions[] = { "mkv", "mp4", "qt", 
@@ -81,6 +80,11 @@ gstEncoder::gstEncoder( const videoOptions& options ) : videoOutput(options)
 	mNeedData     = false;
 
 	mBufferYUV.SetThreaded(false);
+
+	for( uint32_t n=0; n < YUVBufferCount; n++ )
+	{
+		mBufferBusy[n].store(false);
+	}
 }
 
 
@@ -171,7 +175,7 @@ bool gstEncoder::initPipeline()
 	}
 
 	// check if default framerate is needed
-	if( mOptions.frameRate <= 0 )
+	if( mOptions.frameRate < 0 )
 		mOptions.frameRate = 30;
 
 	// set default bitrate if needed
@@ -308,10 +312,37 @@ bool gstEncoder::buildCapsStr()
 bool gstEncoder::buildLaunchStr()
 {
 	std::ostringstream ss;
-	ss << "appsrc name=mysource is-live=true do-timestamp=true format=3 ! ";  // setup appsrc input element
-	
-	const URI& uri = GetResource();
-	std::string encoderOptions = "";
+	ss << "appsrc name=mysource is-live=true do-timestamp=true format=3";  // setup appsrc input element
+
+	if( !mOptions.block){
+		ss << " block=false";
+	}
+
+	if( mOptions.input_is_rgb ) {
+		// This specifies that the input is RGB of the width and height
+		ss << " caps=\"video/x-raw,format=RGB";
+		ss << ",width=";
+		ss << std::to_string(mOptions.width);
+		ss << ",height=";
+		ss << std::to_string(mOptions.height);
+		ss << ",framerate="<<std::to_string(mOptions.frameRate)<<"/1\"";
+	}
+
+	if (mOptions.latestOnly) {
+		ss << " ! queue max-size-buffers=3 leaky=downstream";
+	}
+
+	ss << " ! ";
+
+	if ( mOptions.codec != videoOptions::CODEC_H264 && mOptions.rescale && mOptions.output_width != 0 and mOptions.output_height != 0 ) {
+		ss << "videoconvert ! videoscale ! ";
+		ss << "video/x-raw,";
+		ss << "width=";
+		ss << std::to_string(mOptions.output_width);
+		ss << ",height=";
+		ss << std::to_string(mOptions.output_height);
+		ss << " ! ";
+	}
 
 	// select the encoder
 	const char* encoder = gst_select_encoder(mOptions.codec, mOptions.codecType);
@@ -328,23 +359,52 @@ bool gstEncoder::buildLaunchStr()
 		
 		return false;
 	}
-	
+
+	// nvcudah264enc only accepts NV12/Y444, unlike the Jetson and CPU encoders which take I420
+	const bool isDesktopNvenc = strncmp(encoder, "nvcudah264enc", 13) == 0;
+
+	if( mOptions.input_is_rgb ) {
+		// convert to the format needed by the encoder
+		ss << "videoconvert ! ";
+		// bt709 is limited range (16-235). Full range costs ~15% of the code space but only pays off if
+		// every consumer honours video_full_range_flag - ours does not, so it arrived over-contrasty
+		// with over-saturated chroma. Stated explicitly so it no longer depends on frame height.
+		ss << (isDesktopNvenc ? "video/x-raw,format=NV12,colorimetry=bt709 ! " : "video/x-raw,format=I420 ! ");
+	}
+
+	const URI& uri = GetResource();
+	std::string encoderOptions = "";
+
+
 	// the V4L2 encoders expect NVMM memory, so use nvvidconv to convert it
-	if( mOptions.codecType == videoOptions::CODEC_V4L2 && mOptions.codec != videoOptions::CODEC_MJPEG )
-		ss << "nvvidconv name=vidconv ! video/x-raw(memory:NVMM) ! ";
+	if( mOptions.codecType == videoOptions::CODEC_V4L2 && mOptions.codec != videoOptions::CODEC_MJPEG ){
+		ss << "nvvidconv name=vidconv ! video/x-raw(memory:NVMM)";
+		if (mOptions.codec == videoOptions::CODEC_H264 && mOptions.rescale && mOptions.output_width != 0 and mOptions.output_height != 0){
+			ss << ",width=";
+			ss << std::to_string(mOptions.output_width);
+			ss << ",height=";
+			ss << std::to_string(mOptions.output_height);
+		}
+
+		ss << " ! ";
+	}
 	
 	// setup the encoder and options
 	ss << encoder << " name=encoder ";
-	
-	if( mOptions.codecType == videoOptions::CODEC_CPU )
+
+	if( isDesktopNvenc )
+	{
+		// desktop NVENC (nvcodec): bitrate is in kbit/sec (like x264enc). Only set bitrate and rely
+		// on element defaults for everything else, so the pipeline launches regardless of nvcodec
+		// plugin version (preset/rc-mode/zerolatency property names vary across versions).
+		ss << "bitrate=" << mOptions.bitRate / 1000 << " ";
+	}
+	else if( mOptions.codecType == videoOptions::CODEC_CPU )
 	{
 		if( mOptions.codec == videoOptions::CODEC_H264 || mOptions.codec == videoOptions::CODEC_H265 )
 		{
 			ss << "bitrate=" << mOptions.bitRate / 1000 << " ";	// x264enc/x265enc bitrates are in kbits
 			ss << "speed-preset=ultrafast tune=zerolatency ";
-			
-			if( mOptions.deviceType == videoOptions::DEVICE_IP )
-				ss << "key-int-max=30 insert-vui=1 ";			// send keyframes/I-frames more frequently for network streams
 		}
 		else if( mOptions.codec == videoOptions::CODEC_VP8 || mOptions.codec == videoOptions::CODEC_VP9 )
 		{
@@ -361,7 +421,8 @@ bool gstEncoder::buildLaunchStr()
 		if( mOptions.deviceType == videoOptions::DEVICE_IP )
 		{
 			if( mOptions.codecType == videoOptions::CODEC_V4L2 )
-				ss << "insert-sps-pps=1 insert-vui=1 idrinterval=30 ";
+                ss << "insert-sps-pps=1 insert-vui=1 idrinterval=" << mOptions.maxIFrameInterval
+                   << " peak-bitrate=30000000 control-rate=1 vbv-size=450000 ";
 			else if( mOptions.codecType == videoOptions::CODEC_OMX )
 				ss << "insert-sps-pps=1 insert-vui=1 ";
 		}
@@ -370,8 +431,31 @@ bool gstEncoder::buildLaunchStr()
 			ss << "maxperf-enable=1 ";
 	}
 
-	if( mOptions.codec == videoOptions::CODEC_H264 )
-		ss << "! video/x-h264 ! ";
+	if( mOptions.codec == videoOptions::CODEC_H264 || mOptions.codec == videoOptions::CODEC_H265 )
+	{
+		// send keyframes/I-frames more frequently for network streams
+		if( mOptions.deviceType == videoOptions::DEVICE_IP ) {
+			if (mOptions.maxIFrameInterval == 0){
+				mOptions.maxIFrameInterval = 30;
+			}
+			#ifdef __aarch64__
+			ss << "iframeinterval=" << std::to_string(mOptions.maxIFrameInterval) << " insert-vui=1 ";
+			#else
+			if( isDesktopNvenc )
+				ss << "b-frames=0 gop-size=" << std::to_string(mOptions.maxIFrameInterval) << " ";  // nvcodec: b-frames/gop-size, no key-int-max/insert-vui
+			else
+				ss << "bframes=0 key-int-max=" << std::to_string(mOptions.maxIFrameInterval) << " insert-vui=1 ";
+			#endif
+		}	
+
+	}
+
+	if( mOptions.codec == videoOptions::CODEC_H264 ) {
+	    ss << "! video/x-h264,profile=constrained-baseline ! ";
+#ifndef __aarch64__
+	    ss<<" h264parse config-interval=1 ! ";
+#endif
+	}
 	else if( mOptions.codec == videoOptions::CODEC_H265 )
 		ss << "! video/x-h265 ! ";
 	else if( mOptions.codec == videoOptions::CODEC_VP8 )
@@ -380,7 +464,7 @@ bool gstEncoder::buildLaunchStr()
 		ss << "! video/x-vp9 ! ";
 	else if( mOptions.codec == videoOptions::CODEC_MJPEG )
 		ss << "! image/jpeg ! ";
-	
+
 	if( mOptions.save.path.length() > 0 )
 	{
 		ss << "tee name=savetee savetee. ! queue ! ";
@@ -403,15 +487,25 @@ bool gstEncoder::buildLaunchStr()
 		else if( mOptions.codec == videoOptions::CODEC_H265 )
 			ss << "rtph265pay";
 		else if( mOptions.codec == videoOptions::CODEC_VP8 )
-			ss << "rtpvp8pay";
+			ss << "rtpvp8pay picture-id-mode=15-bit";
 		else if( mOptions.codec == videoOptions::CODEC_VP9 )
 			ss << "rtpvp9pay";
 		else if( mOptions.codec == videoOptions::CODEC_MJPEG )
 			ss << "rtpjpegpay";
 
 		if( mOptions.codec == videoOptions::CODEC_H264 || mOptions.codec == videoOptions::CODEC_H265 ) 
-			ss << " config-interval=1";	// aggregate-mode=zero-latency";
+			ss << " config-interval=1 aggregate-mode=1 mtu="<<mOptions.mtu;
+
+		if (mOptions.payload_type != 0){
+			ss << " pt=";
+			ss << std::to_string(mOptions.payload_type);
+		}
 		
+		if (mOptions.ssrc != 0){
+			ss << " ssrc=";
+			ss << std::to_string(mOptions.ssrc);
+		}
+
 		if( uri.protocol == "rtsp" )
 			ss << " name=pay0";	 // GstRTSPServer expects the payloaders to be named pay0, pay1, ect
 		else
@@ -423,7 +517,7 @@ bool gstEncoder::buildLaunchStr()
 
 			if( uri.port != 0 )
 				ss << "port=" << uri.port;
-
+            ss << " buffer-size=2000000";
 			ss << " auto-multicast=true";
 		}
 		else if( uri.protocol == "webrtc" )
@@ -463,6 +557,8 @@ bool gstEncoder::buildLaunchStr()
 		return false;
 	}
 
+	ss << " sync=false";
+
 	mLaunchStr = ss.str();
 
 	LogInfo(LOG_GSTREAMER "gstEncoder -- pipeline launch string:\n");
@@ -498,8 +594,31 @@ void gstEncoder::onEnoughData( GstElement* pipeline, gpointer user_data )
 }
 
 
+// context handed to a wrapped GstBuffer's release callback
+struct gstYUVBufferRef
+{
+	gstEncoder* encoder;
+	int         slot;
+};
+
+
+// onBufferReleased
+void gstEncoder::onBufferReleased( void* user_data )
+{
+	gstYUVBufferRef* ref = (gstYUVBufferRef*)user_data;
+
+	if( !ref )
+		return;
+
+	if( ref->encoder != NULL && ref->slot >= 0 && ref->slot < (int)YUVBufferCount )
+		ref->encoder->mBufferBusy[ref->slot].store(false);
+
+	delete ref;
+}
+
+
 // encodeYUV
-bool gstEncoder::encodeYUV( void* buffer, size_t size )
+bool gstEncoder::encodeYUV( void* buffer, size_t size, int slot )
 {
 	if( !buffer || size == 0 )
 		return false;
@@ -545,33 +664,29 @@ bool gstEncoder::encodeYUV( void* buffer, size_t size )
 	}
 
 #if GST_CHECK_VERSION(1,0,0)
-	// allocate gstreamer buffer memory
-	GstBuffer* gstBuffer = gst_buffer_new_allocate(NULL, size, NULL);
-	
-	// map the buffer for write access
-	GstMapInfo map; 
+	// Wrap the ring-buffer slot directly into a GstBuffer instead of allocating a new
+	// buffer and memcpy'ing into it. The slot's memory is CUDA-accessible (ZeroCopy) and
+	// already holds this frame's I420 data (converted into it on Tegra, D2H-copied into it
+	// on discrete GPUs). The slot's busy flag is held until GStreamer frees the buffer
+	// (onBufferReleased), so Render() won't overwrite a slot still in flight downstream.
+	if( slot >= 0 && slot < (int)YUVBufferCount )
+		mBufferBusy[slot].store(true);
 
-	if( gst_buffer_map(gstBuffer, &map, GST_MAP_WRITE) ) 
-	{ 
-		if( map.size != size )
-		{
-			LogError(LOG_GSTREAMER "gstEncoder -- gst_buffer_map() size mismatch, got %zu bytes, expected %zu bytes\n", map.size, size);
-			gst_buffer_unref(gstBuffer);
-			return false;
-		}
-		
-		memcpy(map.data, buffer, size);
-		gst_buffer_unmap(gstBuffer, &map); 
-	} 
-	else
+	gstYUVBufferRef* bufferRef = new gstYUVBufferRef{ this, slot };
+
+	GstBuffer* gstBuffer = gst_buffer_new_wrapped_full(GST_MEMORY_FLAG_READONLY, buffer, size, 0, size, bufferRef, onBufferReleased);
+
+	if( !gstBuffer )
 	{
-		LogError(LOG_GSTREAMER "gstEncoder -- failed to map gstreamer buffer memory (%zu bytes)\n", size);
-		gst_buffer_unref(gstBuffer);
+		LogError(LOG_GSTREAMER "gstEncoder -- failed to wrap gstreamer buffer memory (%zu bytes)\n", size);
+		onBufferReleased(bufferRef);	// clears the busy flag and frees the ref
 		return false;
 	}
 #else
+	(void)slot;	// slot lifetime tracking only applies to the 1.0 zero-copy wrap path
+
 	// convert memory to GstBuffer
-	GstBuffer* gstBuffer = gst_buffer_new();	
+	GstBuffer* gstBuffer = gst_buffer_new();
 
 	GST_BUFFER_MALLOCDATA(gstBuffer) = (guint8*)g_malloc(size);
 	GST_BUFFER_DATA(gstBuffer) = GST_BUFFER_MALLOCDATA(gstBuffer);
@@ -690,8 +805,11 @@ bool gstEncoder::Render( void* image, uint32_t width, uint32_t height, imageForm
 
 	// allocate color conversion buffer
 	const size_t i420Size = imageFormatSize(IMAGE_I420, width, height);
-
-	if( !mBufferYUV.Alloc(2, i420Size, RingBuffer::ZeroCopy) )
+	// nextYUV must be host-mapped (ZeroCopy): on Tegra the convert kernel writes I420 straight
+	// into it, on discrete GPUs the I420 image is bulk-copied D->H into it. It is then wrapped
+	// zero-copy into a GstBuffer (no host memcpy). RingBuffer::Threaded (no ZeroCopy) allocates
+	// device-only memory (cudaMalloc), which is not CPU/GStreamer-accessible.
+	if( !mBufferYUV.Alloc(YUVBufferCount, i420Size, RingBuffer::ZeroCopy) )
 	{
 		LogError(LOG_GSTREAMER "gstEncoder -- failed to allocate buffers (%zu bytes each)\n", i420Size);
 		enc_success = false;
@@ -700,27 +818,71 @@ bool gstEncoder::Render( void* image, uint32_t width, uint32_t height, imageForm
 
 	// perform colorspace conversion
 	void* nextYUV = mBufferYUV.Next(RingBuffer::Write);
+	const int yuvSlot = (int)mBufferYUV.GetLatestWrite();
 
-	if( CUDA_FAILED(cudaConvertColor(image, format, nextYUV, IMAGE_I420, width, height, stream)) )
+	// don't reuse a slot that GStreamer is still holding downstream (wrapped zero-copy).
+	// With YUVBufferCount slots >> pipeline depth this is essentially never hit, but if it
+	// is, skip this frame rather than corrupt an in-flight buffer.
+	if( mBufferBusy[yuvSlot].load() )
+	{		
+		LogDebug(LOG_GSTREAMER "gstEncoder -- all YUV push buffers in flight, skipping frame %zu\n", mOptions.frameCount);
+		enc_success = true;
+		render_end();
+	}
+
+#if defined(__aarch64__)
+	// Tegra: nextYUV is unified memory, so convert straight into it.
+	const bool convert_ok = !CUDA_FAILED(cudaConvertColor(image, format, nextYUV, IMAGE_I420, width, height, stream));
+#else
+	// Discrete GPU (x86): nextYUV is ZeroCopy (host-mapped) memory. Converting RGB->I420 directly
+	// into it scatters per-pixel writes across PCIe (~12ms/frame - this dominated the GPU). Instead
+	// convert into a device buffer (coalesced device writes, sub-ms) then do a single bulk D2H copy
+	// into the host push buffer. thread_local: each stream's Render runs on its own dedicated thread,
+	// so the per-thread device buffer avoids any cross-encoder race.
+    bool convert_ok = false;
+    {
+        thread_local TL_si420 s_dev_i420;
+        thread_local size_t s_dev_size = 0;
+        if (s_dev_size < i420Size) {
+            if (s_dev_i420._ptr) {
+                cudaFree(s_dev_i420._ptr);
+            }
+            if (CUDA_FAILED(cudaMalloc(&s_dev_i420._ptr, i420Size))) {
+                s_dev_i420._ptr = nullptr;
+                s_dev_size = 0;
+            } else {
+                s_dev_size = i420Size;
+            }
+        }
+        if (s_dev_i420._ptr && !CUDA_FAILED(cudaConvertColor(image, format, s_dev_i420._ptr, IMAGE_I420, width, height, stream))) {
+            convert_ok = !CUDA_FAILED(cudaMemcpyAsync(nextYUV, s_dev_i420._ptr, i420Size, cudaMemcpyDeviceToHost, stream));
+        }
+	}
+#endif
+
+	if( !convert_ok ) 
 	{
 		LogError(LOG_GSTREAMER "gstEncoder::Render() -- unsupported image format (%s)\n", imageFormatToStr(format));
 		LogError(LOG_GSTREAMER "                        supported formats are:\n");
-		LogError(LOG_GSTREAMER "                            * rgb8\n");		
-		LogError(LOG_GSTREAMER "                            * rgba8\n");		
-		LogError(LOG_GSTREAMER "                            * rgb32f\n");		
+		LogError(LOG_GSTREAMER "                            * rgb8\n");
+		LogError(LOG_GSTREAMER "                            * rgba8\n");
+		LogError(LOG_GSTREAMER "                            * rgb32f\n");
 		LogError(LOG_GSTREAMER "                            * rgba32f\n");
-		
+
 		enc_success = false;
 		render_end();
 	}
 
-    if( stream != 0 )
+    if( stream != 0 ) 
+    {
         CUDA(cudaStreamSynchronize(stream));
-    else
-	    CUDA(cudaDeviceSynchronize());
-	
-	// encode YUV buffer
-	enc_success = encodeYUV(nextYUV, i420Size);
+    } 
+    else 
+    {
+        CUDA(cudaDeviceSynchronize());
+    }
+	// encode YUV buffer (wrapped zero-copy from ring slot yuvSlot)
+	enc_success = encodeYUV(nextYUV, i420Size, yuvSlot);
 
 	// render sub-streams
 	render_end();	

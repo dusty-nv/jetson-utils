@@ -96,12 +96,37 @@ public:
 	 */
 	uint32_t numBuffers;
 
+    /**
+     MTU, can change depending on network interface support
+     */
+    uint16_t mtu = 1400;
+
 	/**
 	 * If true, indicates the buffers are allocated in zeroCopy memory that is mapped to
 	 * both the CPU and GPU.  Otherwise, the buffers are only accessible from the GPU.
 	 * @note the default is true (zeroCopy CPU/GPU access enabled).
 	 */
 	bool zeroCopy;
+
+	/**
+	 * The maximum number of frames between Iframes. 0 means to use the default.
+	 */
+	uint32_t maxIFrameInterval;
+
+	/**
+	 * The SSRC value to initialize the stream with, 0 for random / unassigned
+	 */
+	uint32_t ssrc;
+
+	/**
+	 * The payload type option for the stream. 0 for default
+	 */
+	uint8_t payload_type;
+
+	/**
+	 * The `block` flag, whether or not to have the encoder block on trying to send an image
+	 */
+	bool block;
 	
 	/**
 	 * Control the number of loops for videoSource disk-based inputs (for example,
@@ -125,6 +150,31 @@ public:
 	 * It can be set from the command line using `--input-latency=N` or `--output-latency=N`
 	 */
 	int latency;
+
+	/**
+	 * Whether or not to rescale the image. If this is set, output_width and output_height need to be set as well
+	 */
+	bool rescale;
+
+	/**
+	 * Only care about the latest image, don't buffer more than one
+	 */
+	bool latestOnly;
+
+	/**
+	 * The width after rescaling
+	 */
+	uint32_t output_width;
+
+	/**
+	 * The height after rescaling
+	 */
+	uint32_t output_height;
+
+	/**
+	 * Some encoders need to have the image converted out of RGB before it reaches them
+	 */
+	bool input_is_rgb;
 
 	/**
 	 * Device interface types.

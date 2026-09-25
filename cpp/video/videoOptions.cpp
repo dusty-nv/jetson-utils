@@ -39,6 +39,15 @@ videoOptions::videoOptions()
 	loop        = 0;
 	latency     = 10;
 	zeroCopy    = true;
+	maxIFrameInterval = 0;
+	ssrc = 0;
+	payload_type = 0;
+	block = true;
+	rescale = false;
+	latestOnly = false;
+	output_width = 0;
+	output_height = 0;
+	input_is_rgb = false;
 	ioType      = INPUT;
 	deviceType  = DEVICE_DEFAULT;
 	flipMethod  = FLIP_DEFAULT;

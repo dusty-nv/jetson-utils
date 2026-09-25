@@ -7,6 +7,42 @@ get_directory_property(hasParent PARENT_DIRECTORY)
 
 if(hasParent)
 	message("-- jetson-utils:  building as submodule, ${hasParent}")
+
+	# this was originally meant for building with nvidia inference stuff and not needing to setup the cuda directories. We aren't doing that, so set them up.
+	set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cuda")
+	find_package(CUDA)
+	message("-- CUDA version: ${CUDA_VERSION}")
+
+	set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS}; -O3)
+
+	if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64")
+		message("-- CUDA ${CUDA_VERSION} detected (${CMAKE_SYSTEM_PROCESSOR}), enabling SM_53 SM_62")
+		set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS}; -gencode arch=compute_53,code=sm_53 -gencode arch=compute_62,code=sm_62)
+
+		if(CUDA_VERSION_MAJOR GREATER 9)
+			message("-- CUDA ${CUDA_VERSION} detected (${CMAKE_SYSTEM_PROCESSOR}), enabling SM_72")
+			set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS}; -gencode arch=compute_72,code=sm_72)
+		endif()
+
+		if(CUDA_VERSION_MAJOR GREATER 10)
+			message("-- CUDA ${CUDA_VERSION} detected (${CMAKE_SYSTEM_PROCESSOR}), enabling SM_87")
+			set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS}; -gencode arch=compute_87,code=sm_87)
+		endif()
+	endif()
+
+	# Use CMAKE_CURRENT_BINARY_DIR so it doesn't pollute the root project's binary dir
+	set(JETSON_UTILS_OUTPUT_DIR "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_SYSTEM_PROCESSOR}")
+	set(JETSON_UTILS_INCLUDE_DIR "${JETSON_UTILS_OUTPUT_DIR}/include")
+
+	# Update the global-style variables for internal jetson-utils use
+	set(PROJECT_OUTPUT_DIR  ${JETSON_UTILS_OUTPUT_DIR})
+	set(PROJECT_INCLUDE_DIR ${JETSON_UTILS_INCLUDE_DIR})
+
+	# Ensure the directories exist
+	file(MAKE_DIRECTORY ${PROJECT_INCLUDE_DIR})
+	file(MAKE_DIRECTORY ${PROJECT_OUTPUT_DIR}/bin)
+	file(MAKE_DIRECTORY ${PROJECT_OUTPUT_DIR}/lib)
+
 else()
 	message("-- jetson-utils:  building as standalone")
 	
@@ -68,6 +104,50 @@ else()
 
 endif()
 
+find_package(CUDA REQUIRED)
+
+include_directories(
+	${CUDA_INCLUDE_DIRS}
+	/usr/local/include/jetson-utils
+	/usr/local/include/jetson-inference
+)
+
+# --- TensorRT Discovery ---
+# Allow users to pass -DTENSORRT_ROOT=/path/to/TRT via command line
+set(TENSORRT_ROOT "" CACHE PATH "Path to TensorRT SDK root")
+
+# Define search hints for different environments
+set(TRT_HINTS
+    ${TENSORRT_ROOT}
+    ${CMAKE_SOURCE_DIR}/../tensorrt  # Common if vendored
+    /opt/tensorrt-10.3
+	/opt/tensorrt-10.13				# support both versions of tensorrt
+    /usr/lib/x86_64-linux-gnu       # Standard x86
+    /usr/lib/aarch64-linux-gnu      # Standard Jetson
+)
+
+# 1. Search for headers
+find_path(TENSORRT_INCLUDE_DIR NvInfer.h
+    HINTS ${TRT_HINTS}
+    PATH_SUFFIXES include
+)
+
+# 2. Search for the library (Handles the nv_infer vs nvinfer name mismatch)
+find_library(TENSORRT_LIB 
+    NAMES nvinfer nv_infer
+    HINTS ${TRT_HINTS}
+    PATH_SUFFIXES lib lib64
+)
+
+if(TENSORRT_INCLUDE_DIR AND TENSORRT_LIB)
+    message(STATUS "-- Found TensorRT: ${TENSORRT_LIB}")
+    include_directories(${TENSORRT_INCLUDE_DIR})
+    set(TRT_LIBRARIES ${TENSORRT_LIB})
+else()
+    # Fallback/Failure
+    message(FATAL_ERROR "TensorRT not found. Please set TENSORRT_ROOT or install dependencies.")
+endif()
+
 # option for enabling/disabling NVMM memory in multimedia stack
 find_library(NVBUF_UTILS NAMES nvbuf_utils PATHS /usr/lib/${CMAKE_SYSTEM_PROCESSOR}-linux-gnu/tegra)
 message("-- nvbuf_utils:  ${NVBUF_UTILS}")
@@ -107,12 +187,22 @@ file(GLOB jetsonUtilsInc cpp/*/*.h cpp/*/*.hpp cpp/*/*.inl cuda/*.h cuda/*.cuh)
 
 cuda_add_library(jetson-utils SHARED ${jetsonUtilsSrc})
 
+target_include_directories(jetson-utils PUBLIC 
+    $<BUILD_INTERFACE:${PROJECT_INCLUDE_DIR}>
+    $<INSTALL_INTERFACE:include>
+)
+
 target_link_libraries( jetson-utils 
 	GL GLU GLEW ${CUDA_nppicc_LIBRARY}
 	gstreamer-1.0 gstapp-1.0 gstpbutils-1.0 
 	gstwebrtc-1.0 gstsdp-1.0 gstrtspserver-1.0 
-	json-glib-1.0 soup-2.4
-)	
+	json-glib-1.0 soup-2.4 ${TRT_LIBRARIES}
+)
+
+# Fix for C++20/C++23 where <cstdint> is no longer implicit
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    add_definitions(-include cstdint)
+endif()
 
 if(NVBUF_UTILS)
 	target_link_libraries(jetson-utils nvbuf_utils)
@@ -138,7 +228,7 @@ install(TARGETS jetson-utils DESTINATION lib EXPORT jetson-utilsConfig)
 install(EXPORT jetson-utilsConfig DESTINATION share/jetson-utils/cmake)
 
 # build python bindings
-add_subdirectory(python)
+# add_subdirectory(python)
 
 # build sample apps
 add_subdirectory(cpp/video/video-viewer)

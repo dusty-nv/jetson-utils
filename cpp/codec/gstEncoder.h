@@ -27,6 +27,8 @@
 #include "videoOutput.h"
 #include "RingBuffer.h"
 
+#include <atomic>
+
 
 // Forward declarations
 class RTSPServer;
@@ -140,11 +142,15 @@ protected:
 	void checkMsgBus();
 	bool buildCapsStr();
 	bool buildLaunchStr();
-	bool encodeYUV( void* buffer, size_t size );
-	
+	bool encodeYUV( void* buffer, size_t size, int slot );
+
 	// appsrc callbacks
 	static void onNeedData( GstElement* pipeline, uint32_t size, void* user_data );
 	static void onEnoughData( GstElement* pipeline, void* user_data );
+
+	// GDestroyNotify invoked when GStreamer releases a zero-copy YUV buffer,
+	// clearing the busy flag for the ring slot it wrapped.
+	static void onBufferReleased( void* user_data );
 
 	// WebRTC callbacks
 	static void onWebsocketMessage( WebRTCPeer* peer, const char* message, size_t message_size, void* user_data );
@@ -158,11 +164,25 @@ protected:
 	std::string  mCapsStr;
 	std::string  mLaunchStr;
 
+	// YUV push buffers are wrapped into GstBuffers zero-copy (no host memcpy). Each slot
+	// stays "busy" until GStreamer frees the wrapped buffer, so Render() won't overwrite a
+	// slot still referenced downstream. Sized well above the pipeline's in-flight depth.
+	static const uint32_t YUVBufferCount = 8;
 	RingBuffer mBufferYUV;
-	
+	std::atomic<bool> mBufferBusy[YUVBufferCount];
+
 	RTSPServer*   mRTSPServer;
 	WebRTCServer* mWebRTCServer;
 };
- 
- 
+
+/**
+ * Thread local storage for si420 cudaMalloc memory
+ * cleans up on destruction
+*/
+ struct TL_si420 {
+		void* _ptr;
+		TL_si420() : _ptr( nullptr ) {}
+		~TL_si420() { cudaFree( _ptr ); }
+ };
+
 #endif

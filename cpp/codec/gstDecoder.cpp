@@ -582,7 +582,9 @@ bool gstDecoder::buildLaunchStr()
 		}
 
 		ss << "udpsrc port=" << uri.port;
-		ss << " multicast-group=" << uri.location << " auto-multicast=true";
+
+	    //For our use case, we are not multicasting so no need for this ( it actually hurts)
+		//ss << " multicast-group=" << uri.location << " auto-multicast=true";
 
 		ss << " caps=\"" << "application/x-rtp,media=(string)video,clock-rate=(int)90000,encoding-name=(string)";
 		
@@ -668,6 +670,9 @@ bool gstDecoder::buildLaunchStr()
 		ss << "enable-max-performance=1 ";
 	
 	ss << "! ";
+
+    // I was not able to decode stream until adding this arg into the pipeline
+    ss << " videoconvert ! ";
 	
 	// resize if requested
 	if( mCustomSize || mOptions.flipMethod != videoOptions::FLIP_NONE )

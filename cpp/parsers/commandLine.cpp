@@ -69,7 +69,7 @@ static inline char* strSwapDelimiter( const char* string )
 		return NULL;
 	
 	// allocate a new string to modify
-	char* new_str = (char*)malloc(str_length);
+	char* new_str = (char*)malloc(str_length + 1);
 
 	if( !new_str )
 		return NULL;
