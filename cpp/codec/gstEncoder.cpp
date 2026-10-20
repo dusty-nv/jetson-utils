@@ -39,7 +39,133 @@
 #include <strings.h>
 #include <unistd.h>
 
+#include <gst/gst.h>
+#include <cstring>
+#include <vector>
+
 #include <sstream>
+
+// any 16 bytes, shared with the receiver
+static const uint8_t kUUID[16] = {
+	0xa1, 0xb2, 0xc3, 0xd4, 0xe5, 0xf6, 0x07, 0x18,
+	0x29, 0x3a, 0x4b, 0x5c, 0x6d, 0x7e, 0x8f, 0x90
+};
+
+// Builds the SEI for a custom user NAL packet, in our case for holding timestamps
+static std::vector<uint8_t> build_sei(uint64_t timestamp_ns) {
+    std::vector<uint8_t> raw_byte_sequence_payload;
+    // first push payload type: user_data_unregistered
+    raw_byte_sequence_payload.push_back(5);
+
+    // next push payload size: 16 (UUID) + 8 (timestamp)
+    raw_byte_sequence_payload.push_back(24);
+
+    // append kUUID
+    raw_byte_sequence_payload.insert(raw_byte_sequence_payload.end(), kUUID, kUUID + 16);
+
+    // append timestamp
+    for (int byte_num = 7; byte_num >= 0; byte_num--) {
+        raw_byte_sequence_payload.push_back((timestamp_ns >> (8 * byte_num)) & 0xff);
+    }
+
+    // append trailing bits, which indicates to SEI parser that there are no more messages
+    raw_byte_sequence_payload.push_back(0x80);
+
+    // Annex-B start code and NAL header (6 = SEI)
+    std::vector<uint8_t> out = {0, 0, 0, 1, 0x06};
+
+    // emulation-prevention - keep the timestamp intact and avoid forbidden patterns, which are 00 00 00 - 00 00 03
+    // changes bytes being read from 00 00 0x to 00 00 03 0x, where x is [0,3]
+    int num_zeros = 0;
+    for (uint8_t byte : raw_byte_sequence_payload) {
+        if (num_zeros >= 2 && byte <= 3) {
+            out.push_back(3);
+            num_zeros = 0;
+        }
+        out.push_back(byte);
+        num_zeros = (byte == 0) ? num_zeros + 1 : 0;
+    }
+    return out;
+}
+
+// Find the first slice NAL so that we can insert our SEI NAL directly before it
+static ssize_t find_first_slice(const uint8_t* gst_map_info, size_t gst_map_size) {
+    for (size_t ind = 0; ind + 3 < gst_map_size; ind++) {
+        // look for 00 00 01, which indicates an NAL start code
+        if (gst_map_info[ind] == 0 && gst_map_info[ind + 1] == 0 && gst_map_info[ind + 2] == 1) {
+            // check next byte, which is the NAL header, and extract NAL type
+            int type = gst_map_info[ind + 3] & 0x1f;
+
+            // types 1 and 5 indicate picture data, which the SEI needs to go in front of
+            if (type == 1 || type == 5) {
+                // account for the fact that start codes can be either 3 or 4 bytes
+                if (ind > 0 && gst_map_info[ind - 1] == 0) {
+                    return (ssize_t) ind - 1;
+                } else {
+                    return (ssize_t) ind;
+                }
+            }
+        }
+    }
+    return -1;
+}
+
+// Adds SEI probe for each frame that is being sent
+static GstPadProbeReturn sei_probe(GstPad*, GstPadProbeInfo* info, gpointer user_data)
+{
+    GstElement* pipeline = GST_ELEMENT(user_data);
+    GstBuffer* buf = GST_PAD_PROBE_INFO_BUFFER(info);
+    if (!buf || !GST_BUFFER_PTS_IS_VALID(buf)) {
+	    return GST_PAD_PROBE_OK;
+    }
+
+    GstClock* clock = gst_element_get_clock(pipeline);
+    if (!clock) {
+    	return GST_PAD_PROBE_OK;
+    }
+
+    // Age of this frame on the pipeline clock, subtracted from the current Unix time
+    GstClockTime abs_time = GST_BUFFER_PTS(buf) + gst_element_get_base_time(pipeline);
+    GstClockTime now_clk  = gst_clock_get_time(clock);
+    gst_object_unref(clock);
+
+    gint64 age_ns  = (gint64)now_clk - (gint64)abs_time;
+    guint64 unix_ns = (guint64)(g_get_real_time() * 1000) - age_ns;
+
+    GstMapInfo map;
+    if (!gst_buffer_map(buf, &map, GST_MAP_READ)) {
+	    return GST_PAD_PROBE_OK;
+    }
+
+    // find the slice where we can insert the SEI NAL unit beforehand
+    ssize_t pos = find_first_slice(map.data, map.size);
+    if (pos < 0) {
+	    gst_buffer_unmap(buf, &map);
+    	return GST_PAD_PROBE_OK;
+    }
+
+    // build the SEI NAL
+    std::vector<uint8_t> sei = build_sei(unix_ns);
+
+    // allocate space to include the SEI NAL, and memcpy over the new NAL
+    GstBuffer* out = gst_buffer_new_allocate(nullptr, map.size + sei.size(), nullptr);
+    GstMapInfo omap;
+    gst_buffer_map(out, &omap, GST_MAP_WRITE);
+    memcpy(omap.data,                    map.data,       pos);
+    memcpy(omap.data + pos,              sei.data(),     sei.size());
+    memcpy(omap.data + pos + sei.size(), map.data + pos, map.size - pos);
+    gst_buffer_unmap(out, &omap);
+    gst_buffer_unmap(buf, &map);
+
+	// copy over the remaining info from the buf to the new GstBuffer out
+    gst_buffer_copy_into(out, buf,
+        (GstBufferCopyFlags)(GST_BUFFER_COPY_FLAGS | GST_BUFFER_COPY_TIMESTAMPS), 0, -1);
+
+	// copy the new buffer, which includes the SEI NAL, into the same location as the original info
+    GST_PAD_PROBE_INFO_DATA(info) = out;
+    gst_buffer_unref(buf);
+    return GST_PAD_PROBE_OK;
+}
 
 // supported video file extensions
 const char* gstEncoder::SupportedExtensions[] = { "mkv", "mp4", "qt", 
@@ -192,6 +318,17 @@ bool gstEncoder::initPipeline()
 	// create the pipeline
 	GError* err = NULL;
 	mPipeline = gst_parse_launch(mLaunchStr.c_str(), &err);
+
+	GstElement* parse = gst_bin_get_by_name(GST_BIN(mPipeline), "sei_parse");
+	if (parse) {
+		GstPad* pad = gst_element_get_static_pad(parse, "src");
+		gst_pad_add_probe(pad, GST_PAD_PROBE_TYPE_BUFFER, sei_probe, mPipeline, nullptr);
+		gst_object_unref(pad);
+		gst_object_unref(parse);
+		LogInfo(LOG_GSTREAMER "gstEncoder -- found sei_parse, timestamps embedded\n");
+	} else {
+		LogWarning(LOG_GSTREAMER "gstEncoder -- couldn't find sei_parse, timestamps not embedded\n");
+	}
 
 	if( err != NULL )
 	{
@@ -451,9 +588,9 @@ bool gstEncoder::buildLaunchStr()
 	}
 
 	if( mOptions.codec == videoOptions::CODEC_H264 ) {
-	    ss << "! video/x-h264,profile=constrained-baseline ! ";
+	    ss << "! video/x-h264,stream-format=byte-stream,alignment=au ! ";
 #ifndef __aarch64__
-	    ss<<" h264parse config-interval=1 ! ";
+	    ss << "h264parse name=sei_parse config-interval=-1 ! ";
 #endif
 	}
 	else if( mOptions.codec == videoOptions::CODEC_H265 )
