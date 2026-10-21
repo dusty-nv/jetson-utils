@@ -71,7 +71,7 @@ static std::vector<uint8_t> build_sei(uint64_t timestamp_ns) {
     // append trailing bits, which indicates to SEI parser that there are no more messages
     raw_byte_sequence_payload.push_back(0x80);
 
-    // Annex-B start code and NAL header (6 = SEI)
+    // Annex-B start code and NAL header (6 = for H264/H265 NAL unit)
     std::vector<uint8_t> out = {0, 0, 0, 1, 0x06};
 
     // emulation-prevention - keep the timestamp intact and avoid forbidden patterns, which are 00 00 00 - 00 00 03
@@ -111,8 +111,7 @@ static ssize_t find_first_slice(const uint8_t* gst_map_info, size_t gst_map_size
 }
 
 // Adds SEI probe for each frame that is being sent
-static GstPadProbeReturn sei_probe(GstPad*, GstPadProbeInfo* info, gpointer user_data)
-{
+static GstPadProbeReturn sei_probe(GstPad*, GstPadProbeInfo* info, gpointer user_data) {
     GstElement* pipeline = GST_ELEMENT(user_data);
     GstBuffer* buf = GST_PAD_PROBE_INFO_BUFFER(info);
     if (!buf || !GST_BUFFER_PTS_IS_VALID(buf)) {
