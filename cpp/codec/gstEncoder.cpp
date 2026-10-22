@@ -167,8 +167,8 @@ static GstPadProbeReturn sei_probe(GstPad*, GstPadProbeInfo* info, gpointer user
 }
 
 // supported video file extensions
-const char* gstEncoder::SupportedExtensions[] = { "mkv", "mp4", "qt", 
-										"flv", "avi", "h264", 
+const char* gstEncoder::SupportedExtensions[] = { "mkv", "mp4", "qt",
+										"flv", "avi", "h264",
 										"h265", NULL };
 
 bool gstEncoder::IsSupportedExtension( const char* ext )
@@ -195,7 +195,7 @@ bool gstEncoder::IsSupportedExtension( const char* ext )
 
 // constructor
 gstEncoder::gstEncoder( const videoOptions& options ) : videoOutput(options)
-{	
+{
 	mAppSrc       = NULL;
 	mBus          = NULL;
 	mBufferCaps   = NULL;
@@ -213,7 +213,7 @@ gstEncoder::gstEncoder( const videoOptions& options ) : videoOutput(options)
 }
 
 
-// destructor	
+// destructor
 gstEncoder::~gstEncoder()
 {
 	Close();
@@ -223,13 +223,13 @@ gstEncoder::~gstEncoder()
 		mRTSPServer->Release();
 		mRTSPServer = NULL;
 	}
-	
+
 	if( mWebRTCServer != NULL )
 	{
 		mWebRTCServer->Release();
 		mWebRTCServer = NULL;
 	}
-	
+
 	destroyPipeline();
 }
 
@@ -262,16 +262,16 @@ void gstEncoder::destroyPipeline()
 gstEncoder* gstEncoder::Create( const videoOptions& options )
 {
 	gstEncoder* enc = new gstEncoder(options);
-	
+
 	if( !enc )
 		return NULL;
-	
+
 	if( !enc->init() )
 	{
 		LogError(LOG_GSTREAMER "gstEncoder -- failed to create encoder engine\n");
 		return NULL;
 	}
-	
+
 	return enc;
 }
 
@@ -287,7 +287,7 @@ gstEncoder* gstEncoder::Create( const URI& resource, videoOptions::Codec codec )
 
 	return Create(opt);
 }
-	
+
 
 // initPipeline
 bool gstEncoder::initPipeline()
@@ -305,15 +305,15 @@ bool gstEncoder::initPipeline()
 
 	// set default bitrate if needed
 	if( mOptions.bitRate == 0 )
-		mOptions.bitRate = 4000000; 
-	
+		mOptions.bitRate = 4000000;
+
 	// build pipeline string
 	if( !buildLaunchStr() )
 	{
 		LogError(LOG_GSTREAMER "gstEncoder -- failed to build pipeline string\n");
 		return false;
 	}
-	
+
 	// create the pipeline
 	GError* err = NULL;
 	mPipeline = gst_parse_launch(mLaunchStr.c_str(), &err);
@@ -336,15 +336,15 @@ bool gstEncoder::initPipeline()
 		g_error_free(err);
 		return false;
 	}
-	
+
 	GstPipeline* pipeline = GST_PIPELINE(mPipeline);
 
 	if( !pipeline )
 	{
 		LogError(LOG_GSTREAMER "gstEncoder -- failed to cast GstElement into GstPipeline\n");
 		return false;
-	}	
-	
+	}
+
 	// retrieve pipeline bus
 	mBus = gst_pipeline_get_bus(pipeline);
 
@@ -353,7 +353,7 @@ bool gstEncoder::initPipeline()
 		LogError(LOG_GSTREAMER "gstEncoder -- failed to retrieve GstBus from pipeline\n");
 		return false;
 	}
-	
+
 	// add watch for messages (disabled when we poll the bus ourselves, instead of gmainloop)
 	//gst_bus_add_watch(mBus, (GstBusFunc)gst_message_print, NULL);
 
@@ -366,12 +366,12 @@ bool gstEncoder::initPipeline()
 		LogError(LOG_GSTREAMER "gstEncoder -- failed to retrieve appsrc element from pipeline\n");
 		return false;
 	}
-	
+
 	mAppSrc = appsrcElement;
 
 	g_signal_connect(appsrcElement, "need-data", G_CALLBACK(onNeedData), this);
 	g_signal_connect(appsrcElement, "enough-data", G_CALLBACK(onEnoughData), this);
-	
+
 	return true;
 }
 
@@ -397,26 +397,26 @@ bool gstEncoder::init()
 	if( mOptions.resource.protocol == "rtsp" )
 	{
 		mRTSPServer = RTSPServer::Create(mOptions.resource.port);
-		
+
 		if( !mRTSPServer )
 			return false;
-		
+
 		mRTSPServer->AddRoute(mOptions.resource.path.c_str(), mPipeline);
 	}
 	else if( mOptions.resource.protocol == "webrtc" )
 	{
 		mWebRTCServer = WebRTCServer::Create(mOptions.resource.port, mOptions.stunServer.c_str(),
 									  mOptions.sslCert.c_str(), mOptions.sslKey.c_str());
-		
+
 		if( !mWebRTCServer )
 			return false;
-		
+
 		mWebRTCServer->AddRoute(mOptions.resource.path.c_str(), onWebsocketMessage, this, WEBRTC_VIDEO|WEBRTC_SEND|WEBRTC_PUBLIC|WEBRTC_MULTI_CLIENT);
-	}		
+	}
 
 	return true;
 }
-	
+
 
 // buildCapsStr
 bool gstEncoder::buildCapsStr()
@@ -436,13 +436,13 @@ bool gstEncoder::buildCapsStr()
 	ss << ",format=(fourcc)I420";
 	ss << ",framerate=" << (int)mOptions.frameRate << "/1";
 #endif
-	
+
 	mCapsStr = ss.str();
 	LogInfo(LOG_GSTREAMER "gstEncoder -- new caps: %s\n", mCapsStr.c_str());
 	return true;
 }
-	
-	
+
+
 
 // buildLaunchStr
 bool gstEncoder::buildLaunchStr()
@@ -482,7 +482,7 @@ bool gstEncoder::buildLaunchStr()
 
 	// select the encoder
 	const char* encoder = gst_select_encoder(mOptions.codec, mOptions.codecType);
-	
+
 	if( !encoder )
 	{
 		LogError(LOG_GSTREAMER "gstEncoder -- unsupported codec requested (%s)\n", videoOptions::CodecToStr(mOptions.codec));
@@ -492,7 +492,7 @@ bool gstEncoder::buildLaunchStr()
 		LogError(LOG_GSTREAMER "                 * vp8\n");
 		LogError(LOG_GSTREAMER "                 * vp9\n");
 		LogError(LOG_GSTREAMER "                 * mjpeg\n");
-		
+
 		return false;
 	}
 
@@ -524,7 +524,7 @@ bool gstEncoder::buildLaunchStr()
 
 		ss << " ! ";
 	}
-	
+
 	// setup the encoder and options
 	ss << encoder << " name=encoder ";
 
@@ -545,7 +545,7 @@ bool gstEncoder::buildLaunchStr()
 		else if( mOptions.codec == videoOptions::CODEC_VP8 || mOptions.codec == videoOptions::CODEC_VP9 )
 		{
 			ss << "target-bitrate=" << mOptions.bitRate << " ";
-			
+
 			if( mOptions.deviceType == videoOptions::DEVICE_IP )
 				ss << "keyframe-max-dist=30 ";
 		}
@@ -553,7 +553,7 @@ bool gstEncoder::buildLaunchStr()
 	else if( mOptions.codec != videoOptions::CODEC_MJPEG )
 	{
 		ss << "bitrate=" << mOptions.bitRate << " ";
-		
+
 		if( mOptions.deviceType == videoOptions::DEVICE_IP )
 		{
 			if( mOptions.codecType == videoOptions::CODEC_V4L2 )
@@ -562,7 +562,7 @@ bool gstEncoder::buildLaunchStr()
 			else if( mOptions.codecType == videoOptions::CODEC_OMX )
 				ss << "insert-sps-pps=1 insert-vui=1 ";
 		}
-		
+
 		if( mOptions.codecType == videoOptions::CODEC_V4L2 )
 			ss << "maxperf-enable=1 ";
 	}
@@ -582,15 +582,15 @@ bool gstEncoder::buildLaunchStr()
 			else
 				ss << "bframes=0 key-int-max=" << std::to_string(mOptions.maxIFrameInterval) << " insert-vui=1 ";
 			#endif
-		}	
+		}
 
 	}
 
 	if( mOptions.codec == videoOptions::CODEC_H264 ) {
-	    ss << "! video/x-h264,stream-format=byte-stream,alignment=au ! ";
 #ifndef __aarch64__
-	    ss << "h264parse name=sei_parse config-interval=-1 ! ";
+	    ss << "! h264parse name=sei_parse config-interval=-1 ";
 #endif
+	    ss << "! video/x-h264,stream-format=byte-stream,alignment=au ! ";
 	}
 	else if( mOptions.codec == videoOptions::CODEC_H265 )
 		ss << "! video/x-h265 ! ";
