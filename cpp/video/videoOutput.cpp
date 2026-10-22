@@ -19,15 +19,15 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  */
- 
+
 #include "videoOutput.h"
-#include "imageWriter.h"
+
+#include <iostream>
 
 #include "glDisplay.h"
 #include "gstEncoder.h"
-
+#include "imageWriter.h"
 #include "logging.h"
-
 
 // constructor
 videoOutput::videoOutput( const videoOptions& options ) : mOptions(options)
@@ -72,30 +72,30 @@ static void applyDisplayFlags( videoOutput* output, const commandLine& cmdLine )
 {
 	if( !output )
 		return;
-	
+
 	if( output->IsType(glDisplay::Type) )
 	{
 		glDisplay* display = (glDisplay*)output;
-		
+
 		if( cmdLine.GetFlag("maximized") )
 			display->SetMaximized(true);
-		
+
 		if( cmdLine.GetFlag("fullscreen") )
 			display->SetFullscreen(true);
 	}
-	
+
 	for( uint32_t n=0; n < output->GetNumOutputs(); n++ )
 		applyDisplayFlags(output->GetOutput(n), cmdLine);
 }
 
-		
+
 // Create
 videoOutput* videoOutput::Create( const videoOptions& options )
 {
 	videoOutput* output = NULL;
-	
+
 	const URI& uri = options.resource;
-	
+
 	if( uri.protocol == "file" )
 	{
 		if( gstEncoder::IsSupportedExtension(uri.extension.c_str()) )
@@ -137,7 +137,7 @@ videoOutput* videoOutput::Create( const char* resource, const commandLine& cmdLi
 	}
 
 	videoOutput* output = Create(opt);
-	
+
 	if( !output )
 	{
 		if( positionArg >= cmdLine.GetPositionArgs() && (resource == NULL || strlen(resource) == 0) )
@@ -145,10 +145,10 @@ videoOutput* videoOutput::Create( const char* resource, const commandLine& cmdLi
 		else
 			return NULL;
 	}
-	
+
 	output = createDisplaySubstream(output, opt, cmdLine);
 	applyDisplayFlags(output, cmdLine);
-	
+
 	return output;
 }
 
@@ -183,7 +183,7 @@ videoOutput* videoOutput::CreateNullOutput()
 	opt.ioType = videoOptions::OUTPUT;
 
 	videoOutput* output = new videoOutput(opt);
-	
+
 	if( !output )
 		return NULL;
 
@@ -191,7 +191,7 @@ videoOutput* videoOutput::CreateNullOutput()
 	LogWarning(LOG_VIDEO "no valid output streams, creating fake null output\n");
 	return output;
 }
-	
+
 // Open
 bool videoOutput::Open()
 {
@@ -209,7 +209,7 @@ void videoOutput::Close()
 
 // Render
 bool videoOutput::Render( void* image, uint32_t width, uint32_t height, imageFormat format, cudaStream_t stream )
-{	
+{
 	const uint32_t numOutputs = mOutputs.size();
 	bool result = true;
 
@@ -225,7 +225,12 @@ bool videoOutput::Render( void* image, uint32_t width, uint32_t height, imageFor
 // SetFrameTimestamp
 void videoOutput::SetFrameTimestamp( double unix_time_now )
 {
-    mFrameTimestamp = unix_time_now;
+    const uint32_t numOutputs = mOutputs.size();
+
+    for( uint32_t n=0; n < numOutputs; n++ )
+    {
+        mOutputs[n]->SetFrameTimestamp(unix_time_now);
+    }
 }
 
 // SetStatus

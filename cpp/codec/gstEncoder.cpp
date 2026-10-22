@@ -34,16 +34,15 @@
 
 #define GST_USE_UNSTABLE_API
 #include <gst/app/gstappsrc.h>
+#include <gst/gst.h>
 #include <gst/webrtc/webrtc.h>
 #include <string.h>
 #include <strings.h>
 #include <unistd.h>
 
-#include <gst/gst.h>
 #include <cstring>
-#include <vector>
-
 #include <sstream>
+#include <vector>
 
 // any 16 bytes, shared with the receiver
 static const uint8_t kUUID[16] = {
@@ -123,7 +122,7 @@ GstPadProbeReturn gstEncoder::sei_probe(GstPad*, GstPadProbeInfo* info, gpointer
     if (m) {
         unix_ns = m->timestamp;
     } else {
-        GstElement* pipeline = GST_ELEMENT(user_data);
+        GstElement* pipeline = GST_ELEMENT(self->mPipeline);
         GstClock* clock = gst_element_get_clock(pipeline);
         if (!clock) {
             return GST_PAD_PROBE_OK;
@@ -854,27 +853,27 @@ bool gstEncoder::encodeYUV( void* buffer, size_t size, int slot )
 	// queue buffer to gstreamer
 	while( true )
 	{
-		GstFlowReturn ret;	
+		GstFlowReturn ret;
 		g_signal_emit_by_name(mAppSrc, "push-buffer", gstBuffer, &ret);
-		
+
 		if( ret >= 0 )
 		{
 			gst_buffer_unref(gstBuffer);
 			break;
 		}
-		
+
 		LogError(LOG_GSTREAMER "gstEncoder -- an error occurred pushing appsrc buffer (result=%i '%s')\n", (int)ret, gst_flow_get_name(ret));
-		
+
 		// check to make sure the pipeline is still playing (some pipelines like RTSP server may disconnect)
 		GstState state = GST_STATE_VOID_PENDING;
 		gst_element_get_state(mPipeline, &state, NULL, GST_CLOCK_TIME_NONE);
-	
+
 		if( state != GST_STATE_PLAYING )
 		{
 			LogError(LOG_GSTREAMER "gstEncoder -- pipeline is in the '%s' state, restarting pipeline...\n", gst_element_state_get_name(state));
-			
+
 			mStreaming = false;
-			
+
 			if( !Open() )
 			{
 				gst_buffer_unref(gstBuffer);
@@ -882,7 +881,7 @@ bool gstEncoder::encodeYUV( void* buffer, size_t size, int slot )
 			}
 		}
 	}
-	
+
 	checkMsgBus();
 	return true;
 }
@@ -890,14 +889,14 @@ bool gstEncoder::encodeYUV( void* buffer, size_t size, int slot )
 
 // Render
 bool gstEncoder::Render( void* image, uint32_t width, uint32_t height, imageFormat format, cudaStream_t stream )
-{	
+{
 	// update the webrtc server if needed
 	if( mWebRTCServer != NULL && !mWebRTCServer->IsThreaded() )
-		mWebRTCServer->ProcessRequests();	
-	
+		mWebRTCServer->ProcessRequests();
+
 	// increment frame counter
 	mOptions.frameCount += 1;
-		
+
 	// verify image dimensions
 	if( !image || width == 0 || height == 0 )
 		return false;

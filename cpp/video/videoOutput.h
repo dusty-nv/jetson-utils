@@ -336,8 +336,6 @@ protected:
 	videoOptions mOptions;
 
 	std::vector<videoOutput*> mOutputs;
-
-    uint64_t mFrameTimestamp = 0;
 };
 
 #endif
