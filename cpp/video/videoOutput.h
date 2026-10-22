@@ -206,6 +206,13 @@ public:
 	 */
 	virtual bool Render( void* image, uint32_t width, uint32_t height, imageFormat format, cudaStream_t stream=0 );
 
+    /**
+     * Set the timestamp at which the frame was captured.
+     *
+     * @param unix_time_now The UNIX time, in nanoseconds, at which each frame is captured.
+     */
+    virtual void SetFrameTimestamp( double unix_time_now );
+
 	/**
 	 * Begin streaming the device.
 	 * After Open() is called, frames from the device can begin to be rendered.
@@ -244,17 +251,17 @@ public:
 	 * Return the height of the stream, in pixels.
 	 */
 	inline uint32_t GetHeight() const						{ return mOptions.height; }
-	
+
 	/**
 	 * Return the framerate, in Hz or FPS.
 	 */
 	inline float GetFrameRate() const						{ return mOptions.frameRate; }
-	
+
 	/**
 	 * Return the number of frames output.
 	 */
 	inline uint64_t GetFrameCount() const					{ return mOptions.frameCount; }
-	
+
 	/**
 	 * Return the resource URI of the stream.
 	 */
@@ -305,7 +312,7 @@ public:
 
 	/**
 	 * Check if a this stream is of a particular type.
-	 * Can be used with glDisplay, gstEncoder, and imageWriter.  For example:  
+	 * Can be used with glDisplay, gstEncoder, and imageWriter.  For example:
 	 *
 	 *    if( stream->IsType<glDisplay>() )
 	 *         glDisplay* display = (glDisplay*)stream;	// safe to cast
@@ -329,6 +336,8 @@ protected:
 	videoOptions mOptions;
 
 	std::vector<videoOutput*> mOutputs;
+
+    uint64_t mFrameTimestamp = 0;
 };
 
 #endif

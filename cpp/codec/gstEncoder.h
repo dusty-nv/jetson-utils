@@ -132,13 +132,16 @@ public:
 	 */
 	static bool IsSupportedExtension( const char* ext );
 
+    static GstPadProbeReturn sei_probe(GstPad*, GstPadProbeInfo* info, gpointer user_data);
+    void SetFrameTimestamp( uint64_t timestamp) { mFrameTimestamp = timestamp; }
+
 protected:
 	gstEncoder( const videoOptions& options );
-	
+
 	bool init();
 	bool initPipeline();
 	void destroyPipeline();
-	
+
 	void checkMsgBus();
 	bool buildCapsStr();
 	bool buildLaunchStr();
@@ -160,7 +163,7 @@ protected:
 	GstElement* mAppSrc;
 	GstElement* mPipeline;
 	bool        mNeedData;
-	
+
 	std::string  mCapsStr;
 	std::string  mLaunchStr;
 
@@ -173,6 +176,9 @@ protected:
 
 	RTSPServer*   mRTSPServer;
 	WebRTCServer* mWebRTCServer;
+
+    uint64_t mFrameTimestamp = 0;
+    GstCaps* sTsCaps = nullptr;        // label for the reference timestamp
 };
 
 /**

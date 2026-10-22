@@ -222,6 +222,11 @@ bool videoOutput::Render( void* image, uint32_t width, uint32_t height, imageFor
 	return result;
 }
 
+// SetFrameTimestamp
+void videoOutput::SetFrameTimestamp( double unix_time_now )
+{
+    mFrameTimestamp = unix_time_now;
+}
 
 // SetStatus
 void videoOutput::SetStatus( const char* str )

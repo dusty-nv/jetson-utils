@@ -111,25 +111,32 @@ static ssize_t find_first_slice(const uint8_t* gst_map_info, size_t gst_map_size
 }
 
 // Adds SEI probe for each frame that is being sent
-static GstPadProbeReturn sei_probe(GstPad*, GstPadProbeInfo* info, gpointer user_data) {
-    GstElement* pipeline = GST_ELEMENT(user_data);
+GstPadProbeReturn gstEncoder::sei_probe(GstPad*, GstPadProbeInfo* info, gpointer user_data) {
     GstBuffer* buf = GST_PAD_PROBE_INFO_BUFFER(info);
     if (!buf || !GST_BUFFER_PTS_IS_VALID(buf)) {
 	    return GST_PAD_PROBE_OK;
     }
 
-    GstClock* clock = gst_element_get_clock(pipeline);
-    if (!clock) {
-    	return GST_PAD_PROBE_OK;
+    gstEncoder* self = (gstEncoder*)user_data;
+    guint64 unix_ns;
+    GstReferenceTimestampMeta* m = gst_buffer_get_reference_timestamp_meta(buf, self->sTsCaps);
+    if (m) {
+        unix_ns = m->timestamp;
+    } else {
+        GstElement* pipeline = GST_ELEMENT(user_data);
+        GstClock* clock = gst_element_get_clock(pipeline);
+        if (!clock) {
+            return GST_PAD_PROBE_OK;
+        }
+
+        // Age of this frame on the pipeline clock, subtracted from the current Unix time
+        GstClockTime abs_time = GST_BUFFER_PTS(buf) + gst_element_get_base_time(pipeline);
+        GstClockTime now_clk  = gst_clock_get_time(clock);
+        gst_object_unref(clock);
+
+        gint64 age_ns  = (gint64)now_clk - (gint64)abs_time;
+        unix_ns = (guint64)(g_get_real_time() * 1000) - age_ns;
     }
-
-    // Age of this frame on the pipeline clock, subtracted from the current Unix time
-    GstClockTime abs_time = GST_BUFFER_PTS(buf) + gst_element_get_base_time(pipeline);
-    GstClockTime now_clk  = gst_clock_get_time(clock);
-    gst_object_unref(clock);
-
-    gint64 age_ns  = (gint64)now_clk - (gint64)abs_time;
-    guint64 unix_ns = (guint64)(g_get_real_time() * 1000) - age_ns;
 
     GstMapInfo map;
     if (!gst_buffer_map(buf, &map, GST_MAP_READ)) {
@@ -321,13 +328,15 @@ bool gstEncoder::initPipeline()
 	GstElement* parse = gst_bin_get_by_name(GST_BIN(mPipeline), "sei_parse");
 	if (parse) {
 		GstPad* pad = gst_element_get_static_pad(parse, "src");
-		gst_pad_add_probe(pad, GST_PAD_PROBE_TYPE_BUFFER, sei_probe, mPipeline, nullptr);
+		gst_pad_add_probe(pad, GST_PAD_PROBE_TYPE_BUFFER, sei_probe, this, nullptr);
 		gst_object_unref(pad);
 		gst_object_unref(parse);
 		LogInfo(LOG_GSTREAMER "gstEncoder -- found sei_parse, timestamps embedded\n");
 	} else {
 		LogWarning(LOG_GSTREAMER "gstEncoder -- couldn't find sei_parse, timestamps not embedded\n");
 	}
+
+    sTsCaps = gst_caps_new_empty_simple("timestamp/x-unix-ns");
 
 	if( err != NULL )
 	{
@@ -604,13 +613,13 @@ bool gstEncoder::buildLaunchStr()
 	if( mOptions.save.path.length() > 0 )
 	{
 		ss << "tee name=savetee savetee. ! queue ! ";
-		
+
 		if( !gst_build_filesink(mOptions.save, mOptions.codec, ss) )
 			return false;
 
 		ss << "savetee. ! queue ! ";
 	}
-	
+
 	if( uri.protocol == "file" )
 	{
 		if( !gst_build_filesink(uri, mOptions.codec, ss) )
@@ -629,14 +638,14 @@ bool gstEncoder::buildLaunchStr()
 		else if( mOptions.codec == videoOptions::CODEC_MJPEG )
 			ss << "rtpjpegpay";
 
-		if( mOptions.codec == videoOptions::CODEC_H264 || mOptions.codec == videoOptions::CODEC_H265 ) 
+		if( mOptions.codec == videoOptions::CODEC_H264 || mOptions.codec == videoOptions::CODEC_H265 )
 			ss << " config-interval=1 aggregate-mode=1 mtu="<<mOptions.mtu;
 
 		if (mOptions.payload_type != 0){
 			ss << " pt=";
 			ss << std::to_string(mOptions.payload_type);
 		}
-		
+
 		if (mOptions.ssrc != 0){
 			ss << " ssrc=";
 			ss << std::to_string(mOptions.ssrc);
@@ -646,7 +655,7 @@ bool gstEncoder::buildLaunchStr()
 			ss << " name=pay0";	 // GstRTSPServer expects the payloaders to be named pay0, pay1, ect
 		else
 			ss << " ! ";
-		
+
 		if( uri.protocol == "rtp" )
 		{
 			ss << "udpsink host=" << uri.location << " ";
@@ -665,7 +674,7 @@ bool gstEncoder::buildLaunchStr()
 	else if( uri.protocol == "rtpmp2ts" )
 	{
 		// https://forums.developer.nvidia.com/t/gstreamer-udp-to-vlc/215349/5
-		if( mOptions.codec == videoOptions::CODEC_H264 ) 
+		if( mOptions.codec == videoOptions::CODEC_H264 )
 			ss << "h264parse config-interval=1 ! mpegtsmux ! rtpmp2tpay ! udpsink host=";
 		else if (mOptions.codec == videoOptions::CODEC_H265 )
 			ss << "h265parse config-interval=1 ! mpegtsmux ! rtpmp2tpay ! udpsink host=";
@@ -674,7 +683,7 @@ bool gstEncoder::buildLaunchStr()
 			LogError(LOG_GSTREAMER "gstEncoder -- rtpmp2ts output only supports h264 and h265. Unsupported codec (%s)\n", uri.extension.c_str());
 			return false;
 		}
- 		
+
 		ss << uri.location << " ";
 
 		if( uri.port != 0 )
@@ -708,14 +717,14 @@ bool gstEncoder::buildLaunchStr()
 void gstEncoder::onNeedData( GstElement* pipeline, guint size, gpointer user_data )
 {
 	//LogDebug(LOG_GSTREAMER "gstEncoder -- appsrc requesting data (%u bytes)\n", size);
-	
+
 	if( !user_data )
 		return;
 
 	gstEncoder* enc = (gstEncoder*)user_data;
 	enc->mNeedData  = true;
 }
- 
+
 
 // onEnoughData
 void gstEncoder::onEnoughData( GstElement* pipeline, gpointer user_data )
@@ -758,7 +767,7 @@ bool gstEncoder::encodeYUV( void* buffer, size_t size, int slot )
 {
 	if( !buffer || size == 0 )
 		return false;
-	
+
 	// confirm the stream is open
 	if( !mStreaming )
 	{
@@ -772,7 +781,7 @@ bool gstEncoder::encodeYUV( void* buffer, size_t size, int slot )
 	{
 		if( mOptions.frameCount % 25 == 0 )
 			LogVerbose(LOG_GSTREAMER "gstEncoder -- pipeline full, skipping frame %zu (%ux%u, %zu bytes)\n", mOptions.frameCount, mOptions.width, mOptions.height, size);
-		
+
 		return true;
 	}*/
 
@@ -827,16 +836,20 @@ bool gstEncoder::encodeYUV( void* buffer, size_t size, int slot )
 	GST_BUFFER_MALLOCDATA(gstBuffer) = (guint8*)g_malloc(size);
 	GST_BUFFER_DATA(gstBuffer) = GST_BUFFER_MALLOCDATA(gstBuffer);
 	GST_BUFFER_SIZE(gstBuffer) = size;
-	
+
 	//static size_t num_frame = 0;
 	//GST_BUFFER_TIMESTAMP(gstBuffer) = (GstClockTime)((num_frame / 30.0) * 1e9);	// for 1.0, use GST_BUFFER_PTS or GST_BUFFER_DTS instead
 	//num_frame++;
 
 	if( mBufferCaps != NULL )
 		gst_buffer_set_caps(gstBuffer, mBufferCaps);
-	
+
 	memcpy(GST_BUFFER_DATA(gstBuffer), buffer, size);
 #endif
+
+    if (mFrameTimestamp != 0) {
+        gst_buffer_add_reference_timestamp_meta(gstBuffer, sTsCaps, mFrameTimestamp, GST_CLOCK_TIME_NONE);
+    }
 
 	// queue buffer to gstreamer
 	while( true )
