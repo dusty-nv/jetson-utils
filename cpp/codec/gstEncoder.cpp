@@ -313,6 +313,9 @@ bool gstEncoder::initPipeline()
 	if( mOptions.bitRate == 0 )
 		mOptions.bitRate = 4000000;
 
+	// set payload type to be 96 (allows for proper foxglove connection with BSB media gateway)
+	mOptions.payload_type = 96;
+
 	// build pipeline string
 	if( !buildLaunchStr() )
 	{
